@@ -7,8 +7,14 @@ from apps.accounts.api_views import SessionLoginView, SessionLogoutView
 
 urlpatterns = [
     path("admin/", admin.site.urls),
-    # Health Check
+    # Health Check & Frontend Domain pages
     path("", include("apps.core.urls")),
+    path("vendors/", include("apps.vendors.urls")),
+    path("requisitions/", include("apps.requisitions.urls")),
+    path("orders/", include("apps.orders.urls")),
+    path("contracts/", include("apps.contracts.urls")),
+    path("invoices/", include("apps.invoices.urls")),
+
     # OpenAPI Schema & Swagger Docs
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),

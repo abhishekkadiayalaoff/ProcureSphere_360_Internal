@@ -14,36 +14,83 @@
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
 </head>
 <body class="bg-light">
-    <!-- Navigation Bar -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm">
-        <div class="container-fluid">
-            <a class="navbar-brand fw-bold" href="/">
-                <i class="fa-solid fa-layer-group text-primary me-2"></i>ProcureSphere 360
+    <!-- Layout Wrapper -->
+    <div class="d-flex" style="min-height: 100vh;">
+        
+        <!-- Sidebar -->
+        <div class="bg-dark text-white p-3 d-flex flex-column" style="width: 280px;">
+            <a href="/" class="d-flex align-items-center mb-3 mb-md-0 me-md-auto text-white text-decoration-none">
+                <i class="fa-solid fa-layer-group text-primary fa-2x me-2"></i>
+                <span class="fs-5 fw-bold">ProcureSphere 360</span>
             </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav me-auto">
-                    <li class="nav-item"><a class="nav-link active" href="/"><i class="fa-solid fa-chart-line me-1"></i> Dashboard</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/api/docs/"><i class="fa-solid fa-book me-1"></i> API Docs</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/health/"><i class="fa-solid fa-heart-pulse me-1"></i> System Health</a></li>
-                </ul>
-                <div class="d-flex align-items-center text-white">
-                    {% if user.is_authenticated %}
-                        <span class="me-3"><i class="fa-solid fa-user-circle me-1"></i> {{ user.email }} ({{ user.role_code|default:"User" }})</span>
-                        <a href="/admin/logout/" class="btn btn-outline-light btn-sm">Logout</a>
-                    {% else %}
-                        <a href="/admin/login/" class="btn btn-primary btn-sm me-2">Sign In</a>
-                    {% endif %}
-                </div>
+            <hr>
+            <ul class="nav nav-pills flex-column mb-auto">
+                <li class="nav-item mb-1">
+                    <a href="/" class="nav-link active text-white" aria-current="page">
+                        <i class="fa-solid fa-chart-pie me-2"></i> Dashboard
+                    </a>
+                </li>
+                <li class="nav-item mb-1">
+                    <a href="/vendors/" class="nav-link text-white">
+                        <i class="fa-solid fa-building-user me-2"></i> Vendors
+                    </a>
+                </li>
+                <li class="nav-item mb-1">
+                    <a href="/requisitions/" class="nav-link text-white">
+                        <i class="fa-solid fa-file-invoice-dollar me-2"></i> Requisitions (PR)
+                    </a>
+                </li>
+                <li class="nav-item mb-1">
+                    <a href="/orders/" class="nav-link text-white">
+                        <i class="fa-solid fa-cart-shopping me-2"></i> Purchase Orders
+                    </a>
+                </li>
+                <li class="nav-item mb-1">
+                    <a href="/contracts/" class="nav-link text-white">
+                        <i class="fa-solid fa-file-contract me-2"></i> Contracts
+                    </a>
+                </li>
+                <li class="nav-item mb-1">
+                    <a href="/invoices/" class="nav-link text-white">
+                        <i class="fa-solid fa-file-invoice me-2"></i> Invoices
+                    </a>
+                </li>
+                <li class="nav-item mb-1">
+                    <a href="#" class="nav-link text-white">
+                        <i class="fa-solid fa-chart-line me-2"></i> Analytics
+                    </a>
+                </li>
+            </ul>
+            <hr>
+            <div class="small text-muted">
+                <i class="fa-solid fa-shield-halved me-1"></i> Logged in as:
+                <div class="text-white fw-bold">{% if user.is_authenticated %}{{ user.role_code }}{% else %}Guest{% endif %}</div>
             </div>
         </div>
-    </nav>
 
-    <!-- Main Container -->
-    <div class="container-fluid my-4">
-        {% block content %}{% endblock %}
+        <!-- Main Content Area -->
+        <div class="flex-grow-1 bg-light d-flex flex-column">
+            
+            <!-- Topbar -->
+            <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm px-4 py-3">
+                <div class="container-fluid">
+                    <span class="navbar-brand mb-0 h1 fw-bold text-muted">ERP Portal</span>
+                    <div class="d-flex align-items-center">
+                        {% if user.is_authenticated %}
+                            <span class="me-3 text-dark fw-semibold"><i class="fa-solid fa-user-circle me-1 text-primary"></i> {{ user.email }}</span>
+                            <a href="/admin/logout/" class="btn btn-outline-danger btn-sm"><i class="fa-solid fa-right-from-bracket me-1"></i>Logout</a>
+                        {% else %}
+                            <a href="/admin/login/" class="btn btn-primary btn-sm"><i class="fa-solid fa-right-to-bracket me-1"></i>Sign In</a>
+                        {% endif %}
+                    </div>
+                </div>
+            </nav>
+
+            <!-- Page Content -->
+            <div class="container-fluid p-4 overflow-auto">
+                {% block content %}{% endblock %}
+            </div>
+        </div>
     </div>
 
     <!-- Bootstrap 5 Bundle JS -->
