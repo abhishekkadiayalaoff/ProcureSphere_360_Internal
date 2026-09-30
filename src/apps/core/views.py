@@ -60,7 +60,7 @@ from apps.reports.services import (
 @login_required(login_url="/admin/login/")
 def home_view(request):
     """
-    Dashboard / Landing page view based on user role.
+    Dashboard / Landing page view based on user role with live aggregated ERP metrics.
     """
     role_code = getattr(request.user, "role_code", None) or (request.user.role.code if hasattr(request.user, "role") and request.user.role else None)
     
@@ -79,10 +79,54 @@ def home_view(request):
     
     template_name = template_map.get(role_code, "pages/dashboard.html")
 
+    # Aggregate ERP Metrics (from dev branch)
+    from django.db.models import Avg, Count, Sum
+    from apps.budgets.models import Budget, SpendLedger
+    from apps.invoices.models import MatchException, SupplierInvoice
+    from apps.orders.models import PurchaseOrder
+    from apps.requisitions.models import PurchaseRequisition
+    from apps.scorecards.models import VendorScorecard
+    from apps.sourcing.models import SourcingEvent
+    from apps.vendors.models import Vendor
+
+    total_pr_count = PurchaseRequisition.objects.count()
+    pending_pr_count = PurchaseRequisition.objects.filter(status__in=["SUBMITTED", "MANAGER_REVIEW", "BUDGET_REVIEW"]).count()
+    
+    total_vendors = Vendor.objects.count()
+    active_vendors = Vendor.objects.filter(status="ACTIVE").count()
+    kyc_review_vendors = Vendor.objects.filter(status="KYC_REVIEW").count()
+
+    open_sourcing_events = SourcingEvent.objects.filter(status__in=["PUBLISHED", "BID_WINDOW"]).count()
+    total_pos = PurchaseOrder.objects.count()
+    
+    total_invoices = SupplierInvoice.objects.count()
+    pending_exceptions = MatchException.objects.filter(resolved=False).count()
+
+    allocated_budget = Budget.objects.aggregate(total=Sum("amount"))["total"] or 0
+    committed_spend = SpendLedger.objects.filter(transaction_type="COMMITMENT").aggregate(total=Sum("amount"))["total"] or 0
+    actual_spend = SpendLedger.objects.filter(transaction_type="ACTUAL").aggregate(total=Sum("amount"))["total"] or 0
+
+    avg_scorecard = VendorScorecard.objects.aggregate(avg=Avg("overall_score"))["avg"] or 0.0
+
     context = {
         "project_name": "ProcureSphere 360",
         "version": "1.0.0-DRAFT",
         "role_code": role_code,
+        "metrics": {
+            "total_pr_count": total_pr_count,
+            "pending_pr_count": pending_pr_count,
+            "total_vendors": total_vendors,
+            "active_vendors": active_vendors,
+            "kyc_review_vendors": kyc_review_vendors,
+            "open_sourcing_events": open_sourcing_events,
+            "total_pos": total_pos,
+            "total_invoices": total_invoices,
+            "pending_exceptions": pending_exceptions,
+            "allocated_budget": float(allocated_budget),
+            "committed_spend": float(committed_spend),
+            "actual_spend": float(actual_spend),
+            "avg_scorecard": round(float(avg_scorecard), 1),
+        }
     }
 
     if role_code == "SUPER_ADMIN":
