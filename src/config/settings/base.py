@@ -221,7 +221,7 @@ AXES_COOLOFF_TIME = 1
 AXES_LOCKOUT_TEMPLATE = "pages/lockout.html"
 AXES_LOCKOUT_PARAMETERS = ["ip_address", "username"]
 LOGIN_REDIRECT_URL = "/"
-LOGIN_URL = "/admin/login/"
+LOGIN_URL = "/login/"
 
 
 # Security Baseline

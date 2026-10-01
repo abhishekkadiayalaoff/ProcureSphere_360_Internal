@@ -5,8 +5,12 @@ from django.urls import include, path
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 from apps.accounts.api_views import SessionLoginView, SessionLogoutView
 
+from apps.accounts.views import portal_login_view, portal_logout_view
+
 urlpatterns = [
     path("admin/", admin.site.urls),
+    path("login/", portal_login_view, name="login"),
+    path("logout/", portal_logout_view, name="logout"),
     # Health Check & Frontend Domain pages
     path("", include("apps.core.urls")),
     path("vendors/", include("apps.vendors.urls")),

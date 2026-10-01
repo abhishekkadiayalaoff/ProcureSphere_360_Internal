@@ -57,7 +57,7 @@ from apps.reports.services import (
     get_supplier_performance_report,
 )
 
-@login_required(login_url="/admin/login/")
+@login_required(login_url="/login/")
 def home_view(request):
     """
     Dashboard / Landing page view based on user role with live aggregated ERP metrics.
