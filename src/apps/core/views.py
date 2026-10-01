@@ -100,13 +100,13 @@ def home_view(request):
     total_pos = PurchaseOrder.objects.count()
     
     total_invoices = SupplierInvoice.objects.count()
-    pending_exceptions = MatchException.objects.filter(resolved=False).count()
+    pending_exceptions = MatchException.objects.filter(status="OPEN").count()
 
-    allocated_budget = Budget.objects.aggregate(total=Sum("amount"))["total"] or 0
-    committed_spend = SpendLedger.objects.filter(transaction_type="COMMITMENT").aggregate(total=Sum("amount"))["total"] or 0
-    actual_spend = SpendLedger.objects.filter(transaction_type="ACTUAL").aggregate(total=Sum("amount"))["total"] or 0
+    allocated_budget = Budget.objects.aggregate(total=Sum("allocated_amount"))["total"] or 0
+    committed_spend = SpendLedger.objects.filter(entry_type="COMMITMENT").aggregate(total=Sum("amount"))["total"] or 0
+    actual_spend = SpendLedger.objects.filter(entry_type="ACTUAL").aggregate(total=Sum("amount"))["total"] or 0
 
-    avg_scorecard = VendorScorecard.objects.aggregate(avg=Avg("overall_score"))["avg"] or 0.0
+    avg_scorecard = VendorScorecard.objects.aggregate(avg=Avg("composite_score"))["avg"] or 0.0
 
     context = {
         "project_name": "ProcureSphere 360",

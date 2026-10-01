@@ -215,11 +215,13 @@ CELERY_BEAT_SCHEDULE = {
         "schedule": 60.0,  # every 60 seconds
     },
 }
-# Login Throttling (django-axes)
+# Login Throttling (django-axes) & Redirects
 AXES_FAILURE_LIMIT = 5
 AXES_COOLOFF_TIME = 1
 AXES_LOCKOUT_TEMPLATE = "pages/lockout.html"
 AXES_LOCKOUT_PARAMETERS = ["ip_address", "username"]
+LOGIN_REDIRECT_URL = "/"
+LOGIN_URL = "/admin/login/"
 
 
 # Security Baseline

@@ -41,6 +41,11 @@ services:
       - .env
     environment:
       - DJANGO_SETTINGS_MODULE=config.settings.dev
+      - DATABASE_URL=
+      - DB_HOST=db
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
     depends_on:
       db:
         condition: service_healthy
@@ -57,6 +62,11 @@ services:
       - .env
     environment:
       - DJANGO_SETTINGS_MODULE=config.settings.dev
+      - DATABASE_URL=
+      - DB_HOST=db
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
     depends_on:
       db:
         condition: service_healthy
@@ -73,6 +83,11 @@ services:
       - .env
     environment:
       - DJANGO_SETTINGS_MODULE=config.settings.dev
+      - DATABASE_URL=
+      - DB_HOST=db
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
     depends_on:
       db:
         condition: service_healthy
