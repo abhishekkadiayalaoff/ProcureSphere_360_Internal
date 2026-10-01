@@ -109,3 +109,26 @@ class ContractAlert(TimeStampedModel):
 
     def __str__(self):
         return f"{self.get_alert_type_display()} for {self.contract.contract_number}"
+
+
+class ContractObligation(TimeStampedModel):
+    contract = models.ForeignKey(Contract, on_delete=models.CASCADE, related_name="obligations")
+    title = models.CharField(max_length=200)
+    responsible_party = models.CharField(max_length=100, default="VENDOR")
+    due_date = models.DateField()
+    is_fulfilled = models.BooleanField(default=False)
+    fulfilled_at = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        return f"Obligation: {self.title} for {self.contract.contract_number} [{'FULFILLED' if self.is_fulfilled else 'PENDING'}]"
+
+
+class ContractDocument(TimeStampedModel):
+    contract = models.ForeignKey(Contract, on_delete=models.CASCADE, related_name="documents")
+    title = models.CharField(max_length=200)
+    file = models.FileField(upload_to="contract_docs/%Y/%m/")
+    uploaded_by = models.ForeignKey("accounts.User", on_delete=models.PROTECT, related_name="uploaded_contract_docs")
+
+    def __str__(self):
+        return f"Doc: {self.title} for {self.contract.contract_number}"
+

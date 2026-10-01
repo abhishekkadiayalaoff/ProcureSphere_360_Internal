@@ -45,7 +45,7 @@ from apps.vendors.services import (
 class Command(BaseCommand):
     help = "Seeds ProcureSphere 360 database with realistic demonstration data for all core ERP workflows."
 
-    def get_or_create_user(self, email, role, is_superuser=True):
+    def get_or_create_user(self, email, role, is_superuser=False):
         user = User.objects.filter(email=email).first()
         if not user:
             user = User.objects.create_user(email=email, role=role)
@@ -53,7 +53,7 @@ class Command(BaseCommand):
         user.set_password("Password123!")
         user.is_active = True
         user.is_staff = True
-        user.is_superuser = True
+        user.is_superuser = is_superuser
         user.save()
         return user
 
@@ -102,15 +102,15 @@ class Command(BaseCommand):
 
         # 2. Seed Users
         self.get_or_create_user("admin@hpe.com", roles[Role.SUPER_ADMIN], is_superuser=True)
-        requester = self.get_or_create_user("requester@hpe.com", roles[Role.REQUESTER])
-        approver = self.get_or_create_user("approver@hpe.com", roles[Role.DEPT_APPROVER])
-        proc_exec = self.get_or_create_user("procexec@hpe.com", roles[Role.PROC_EXEC])
-        proc_mgr = self.get_or_create_user("procmgr@hpe.com", roles[Role.PROC_MGR])
-        finance_user = self.get_or_create_user("finance@hpe.com", roles[Role.FINANCE_AP])
-        receiver_user = self.get_or_create_user("receiver@hpe.com", roles[Role.STORES_RECEIVER])
-        legal_user = self.get_or_create_user("legal@hpe.com", roles[Role.LEGAL_MGR])
-        self.get_or_create_user("auditor@hpe.com", roles[Role.AUDITOR])
-        vendor_user = self.get_or_create_user("vendoruser@cisco.com", roles[Role.VENDOR_USER])
+        requester = self.get_or_create_user("requester@hpe.com", roles[Role.REQUESTER], is_superuser=False)
+        approver = self.get_or_create_user("approver@hpe.com", roles[Role.DEPT_APPROVER], is_superuser=False)
+        proc_exec = self.get_or_create_user("procexec@hpe.com", roles[Role.PROC_EXEC], is_superuser=False)
+        proc_mgr = self.get_or_create_user("procmgr@hpe.com", roles[Role.PROC_MGR], is_superuser=False)
+        finance_user = self.get_or_create_user("finance@hpe.com", roles[Role.FINANCE_AP], is_superuser=False)
+        receiver_user = self.get_or_create_user("receiver@hpe.com", roles[Role.STORES_RECEIVER], is_superuser=False)
+        legal_user = self.get_or_create_user("legal@hpe.com", roles[Role.LEGAL_MGR], is_superuser=False)
+        self.get_or_create_user("auditor@hpe.com", roles[Role.AUDITOR], is_superuser=False)
+        vendor_user = self.get_or_create_user("vendoruser@cisco.com", roles[Role.VENDOR_USER], is_superuser=False)
 
         # 3. Organization Master Data
         org, _ = Organization.objects.get_or_create(

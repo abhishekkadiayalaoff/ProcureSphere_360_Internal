@@ -97,3 +97,16 @@ class POAmendment(TimeStampedModel):
 
     def __str__(self):
         return f"Amendment #{self.amendment_number} for {self.po.po_number}"
+
+
+class DeliverySchedule(TimeStampedModel):
+    po = models.ForeignKey(PurchaseOrder, on_delete=models.CASCADE, related_name="delivery_schedules")
+    po_line = models.ForeignKey(POLine, on_delete=models.CASCADE, related_name="schedules")
+    expected_delivery_date = models.DateField()
+    quantity_expected = models.DecimalField(max_digits=12, decimal_places=2)
+    destination_address = models.TextField(blank=True)
+    status = models.CharField(max_length=30, default="SCHEDULED")
+
+    def __str__(self):
+        return f"Delivery Schedule for {self.po.po_number} Line {self.po_line.id} on {self.expected_delivery_date}"
+

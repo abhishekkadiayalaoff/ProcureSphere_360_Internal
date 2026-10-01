@@ -1,12 +1,17 @@
 from .models import Vendor, VendorDocument
 
 
+def get_all_vendors():
+    return Vendor.objects.select_related("category").order_by("-created_at")
+
+
 def get_all_active_vendors():
     return (
         Vendor.objects.select_related("category")
         .filter(status=Vendor.STATUS_ACTIVE)
         .order_by("legal_name")
     )
+
 
 
 def get_vendor_by_id(vendor_id):

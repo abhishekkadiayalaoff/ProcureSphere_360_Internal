@@ -172,3 +172,45 @@ def set_approval_delegate_service(
         reason=reason,
     )
     return delegate_record
+
+
+@transaction.atomic
+def process_approval_action_service(
+    *, target_object, actor: User, action: str, comments: str = ""
+):
+    """
+    Processes an approval action (APPROVE or REJECT) on a target object (e.g. PurchaseRequisition).
+    """
+    from apps.requisitions.models import PurchaseRequisition
+    from apps.requisitions.services import (
+        approve_purchase_requisition_service,
+        reject_purchase_requisition_service,
+    )
+
+    act_str = str(action).upper()
+    if isinstance(target_object, PurchaseRequisition):
+        if act_str in ["APPROVE", "APPROVED"]:
+            return approve_purchase_requisition_service(
+                requisition=target_object, approver=actor, comments=comments
+            )
+        elif act_str in ["REJECT", "REJECTED"]:
+            return reject_purchase_requisition_service(
+                requisition=target_object, approver=actor, comments=comments
+            )
+
+    previous_state = getattr(target_object, "status", "UNKNOWN")
+    new_state = "APPROVED" if act_str in ["APPROVE", "APPROVED"] else "REJECTED"
+    if hasattr(target_object, "status"):
+        target_object.status = new_state
+        target_object.save()
+
+    return record_approval_action_service(
+        target_object_id=target_object.id,
+        target_model_name=target_object.__class__.__name__,
+        actor=actor,
+        action=ApprovalAction.ACTION_APPROVE if act_str in ["APPROVE", "APPROVED"] else ApprovalAction.ACTION_REJECT,
+        previous_state=previous_state,
+        new_state=new_state,
+        comments=comments,
+    )
+

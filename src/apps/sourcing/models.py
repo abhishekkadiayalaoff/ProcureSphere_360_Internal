@@ -121,3 +121,33 @@ class AwardDecision(TimeStampedModel):
 
     def __str__(self):
         return f"Award for {self.event.event_number} -> {self.winning_bid.vendor.legal_name}"
+
+
+class BidEvaluation(TimeStampedModel):
+    event = models.ForeignKey(SourcingEvent, on_delete=models.CASCADE, related_name="evaluations")
+    bid = models.ForeignKey(VendorBid, on_delete=models.CASCADE, related_name="evaluations")
+    evaluator = models.ForeignKey("accounts.User", on_delete=models.PROTECT, related_name="evaluations")
+    technical_score = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal("0.00"))
+    commercial_score = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal("0.00"))
+    weighted_total_score = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal("0.00"))
+    comments = models.TextField(blank=True)
+
+    def save(self, *args, **kwargs):
+        self.weighted_total_score = (self.technical_score * Decimal("0.50")) + (self.commercial_score * Decimal("0.50"))
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"Eval for Bid {self.bid.bid_number} by {self.evaluator.email}: {self.weighted_total_score}"
+
+
+class Clarification(TimeStampedModel):
+    event = models.ForeignKey(SourcingEvent, on_delete=models.CASCADE, related_name="clarifications")
+    vendor = models.ForeignKey("vendors.Vendor", on_delete=models.CASCADE, related_name="clarifications")
+    question = models.TextField()
+    answer = models.TextField(blank=True)
+    answered_by = models.ForeignKey("accounts.User", on_delete=models.SET_NULL, null=True, blank=True)
+    answered_at = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        return f"Clarification Q for {self.event.event_number} by {self.vendor.legal_name}"
+
