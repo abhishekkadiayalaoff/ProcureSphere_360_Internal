@@ -209,7 +209,12 @@ CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
 CELERY_TIMEZONE = TIME_ZONE
 CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
-
+CELERY_BEAT_SCHEDULE = {
+    "test-beat-task-every-minute": {
+        "task": "apps.notifications.tasks.test_celery_beat_task",
+        "schedule": 60.0,  # every 60 seconds
+    },
+}
 # Login Throttling (django-axes)
 AXES_FAILURE_LIMIT = 5
 AXES_COOLOFF_TIME = 1

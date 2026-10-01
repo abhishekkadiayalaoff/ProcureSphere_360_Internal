@@ -27,4 +27,5 @@ RUN chmod +x /app/scripts/entrypoint.sh 2>/dev/null || true
 
 EXPOSE 8000
 
+ENTRYPOINT ["/app/scripts/entrypoint.sh"]
 CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
