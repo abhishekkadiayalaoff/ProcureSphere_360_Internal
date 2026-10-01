@@ -1,0 +1,113 @@
+{% extends 'base.html' %}
+
+{% block title %}Legal & Contracts SLA Desk — ProcureSphere 360 ERP{% endblock %}
+
+{% block content %}
+<!-- Legal Banner -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="glass-card-dark p-4 position-relative overflow-hidden">
+            <div class="row align-items-center">
+                <div class="col-lg-8">
+                    <div class="d-flex align-items-center mb-2">
+                        <span class="badge bg-secondary text-white rounded-pill fw-bold px-3 py-1 me-2">LEGAL & CONTRACTS</span>
+                        <span class="text-white-50 small"><i class="fa-solid fa-scale-balanced me-1"></i> {{ user.email }} &bull; Contract SLA & Obligations</span>
+                    </div>
+                    <h1 class="fw-bold text-white mb-2 display-6">Contract Lifecycle & SLA Workspace</h1>
+                    <p class="text-white-50 mb-0">Monitor contract expiry timelines, track SLA milestone obligations, and oversee automated renewal notifications.</p>
+                </div>
+                <div class="col-lg-4 text-lg-end mt-3 mt-lg-0">
+                    <a href="/contracts/" class="btn btn-light btn-lg rounded-pill fw-bold px-4 shadow-sm">
+                        <i class="fa-solid fa-file-contract me-1"></i> Contract Register
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Stat Cards -->
+<div class="row g-4 mb-4">
+    <div class="col-md-4">
+        <div class="stat-card hover-elevate shadow-sm h-100 border-start border-primary border-4">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+                <span class="text-muted small fw-semibold">ACTIVE CONTRACTS</span>
+                <i class="fa-solid fa-file-contract text-primary fs-4"></i>
+            </div>
+            <div class="metric-value text-navy">{{ metrics.active_contracts }}</div>
+            <div class="text-muted small mt-1">Executing supplier agreements</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stat-card hover-elevate shadow-sm h-100 border-start border-danger border-4">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+                <span class="text-muted small fw-semibold">EXPIRING SOON (<30 DAYS)</span>
+                <i class="fa-solid fa-clock-rotate-left text-danger fs-4"></i>
+            </div>
+            <div class="metric-value text-danger">{{ metrics.expiring_soon }}</div>
+            <div class="text-muted small mt-1">Renewal notice period active</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stat-card hover-elevate shadow-sm h-100 border-start border-success border-4">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+                <span class="text-muted small fw-semibold">TOTAL CONTRACT VALUE</span>
+                <i class="fa-solid fa-sack-dollar text-success fs-4"></i>
+            </div>
+            <div class="metric-value text-success">${{ metrics.total_contract_value|floatformat:2 }}</div>
+            <div class="text-muted small mt-1">Aggregated committed value</div>
+        </div>
+    </div>
+</div>
+
+<!-- Active Contracts Table -->
+<div class="glass-card p-4 shadow-sm">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+        <h5 class="fw-bold text-dark mb-0"><i class="fa-solid fa-file-contract text-secondary me-2"></i> Active Contracts & Renewal Notice Schedule</h5>
+        <a href="/contracts/" class="btn btn-outline-secondary btn-sm rounded-pill px-3">View All Contracts</a>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr class="small text-uppercase text-muted">
+                    <th class="ps-4">Contract Code & Title</th>
+                    <th>Supplier / Vendor</th>
+                    <th>Contract Value</th>
+                    <th>Expiry Date</th>
+                    <th>Status</th>
+                    <th class="text-end pe-4">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for contract in active_contracts_list %}
+                    <tr>
+                        <td class="ps-4">
+                            <div class="fw-bold text-dark"><code>{{ contract.contract_number }}</code></div>
+                            <div class="text-muted small">{{ contract.title }}</div>
+                        </td>
+                        <td>
+                            <div class="fw-semibold text-dark">{{ contract.vendor.legal_name }}</div>
+                        </td>
+                        <td class="fw-bold text-navy">${{ contract.contract_value|floatformat:2 }}</td>
+                        <td class="text-muted small">{{ contract.end_date|date:"M d, Y" }}</td>
+                        <td>
+                            {% if contract.status == 'ACTIVE' %}
+                                <span class="badge badge-status badge-status-approved">ACTIVE</span>
+                            {% else %}
+                                <span class="badge badge-status badge-status-pending">{{ contract.status }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end pe-4">
+                            <a href="/contracts/" class="btn btn-outline-secondary btn-sm rounded-pill px-3">View SLA Milestones</a>
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center py-4 text-muted">No contracts currently active in the workspace.</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
