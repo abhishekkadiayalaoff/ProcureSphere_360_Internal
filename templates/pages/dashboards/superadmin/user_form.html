@@ -1,0 +1,44 @@
+<div class="modal-header bg-light border-bottom-0 pb-0">
+    <h5 class="modal-title fw-bold text-dark"><i class="fa-solid fa-user text-info me-2"></i>{% if form.instance.pk %}Edit User{% else %}Create User{% endif %}</h5>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+</div>
+<form hx-post="{% if form.instance.pk %}/superadmin/users/{{ form.instance.pk }}/edit/{% else %}/superadmin/users/create/{% endif %}" hx-target="#modal-content-body" hx-swap="outerHTML">
+    {% csrf_token %}
+    <div class="modal-body pt-4">
+        {% if form.non_field_errors %}
+        <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+        {% endif %}
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label class="form-label fw-semibold text-secondary small">Email Address</label>
+                {{ form.email }}
+                {% if form.email.errors %}<div class="text-danger small">{{ form.email.errors }}</div>{% endif %}
+            </div>
+            <div class="col-md-6">
+                <label class="form-label fw-semibold text-secondary small">Phone Number</label>
+                {{ form.phone_number }}
+                {% if form.phone_number.errors %}<div class="text-danger small">{{ form.phone_number.errors }}</div>{% endif %}
+            </div>
+            <div class="col-md-6">
+                <label class="form-label fw-semibold text-secondary small">Role</label>
+                {{ form.role }}
+                {% if form.role.errors %}<div class="text-danger small">{{ form.role.errors }}</div>{% endif %}
+            </div>
+            <div class="col-md-6">
+                <label class="form-label fw-semibold text-secondary small">Department</label>
+                {{ form.department }}
+                {% if form.department.errors %}<div class="text-danger small">{{ form.department.errors }}</div>{% endif %}
+            </div>
+            <div class="col-12">
+                <div class="form-check form-switch mt-2">
+                    {{ form.is_active }}
+                    <label class="form-check-label fw-semibold" for="{{ form.is_active.id_for_label }}">Active User Account</label>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-footer border-top-0 pt-0">
+        <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
+        <button type="submit" class="btn btn-info text-white fw-bold rounded-pill px-4">Save User</button>
+    </div>
+</form>

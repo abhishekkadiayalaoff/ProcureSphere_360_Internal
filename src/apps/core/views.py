@@ -283,4 +283,4 @@ def home_view(request):
             "vendor_count": len(scorecard_data),
         },
     }
-    return render(request, "pages/dashboard.html", context)
+    return render(request, "pages/dashboards/superadmin_dashboard.html", context)

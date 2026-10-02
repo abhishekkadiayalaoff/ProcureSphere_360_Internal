@@ -25,6 +25,7 @@ urlpatterns = [
     # path("scorecards/", include("apps.scorecards.urls")),
     path("reports/", include("apps.reports.urls")),
     # path("audit/", include("apps.audit.urls")),
+    path("superadmin/", include("apps.core.superadmin_urls")),
     path("", include("apps.core.urls")),
     # OpenAPI Schema & Swagger Docs
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
