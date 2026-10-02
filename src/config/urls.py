@@ -21,8 +21,9 @@ urlpatterns = [
     # path("receipts/", include("apps.receipts.urls")),
     path("invoices/", include("apps.invoices.urls")),
     path("contracts/", include("apps.contracts.urls")),
+    path("budgets/", include("apps.budgets.urls")),
     # path("scorecards/", include("apps.scorecards.urls")),
-    # path("reports/", include("apps.reports.urls")),
+    path("reports/", include("apps.reports.urls")),
     # path("audit/", include("apps.audit.urls")),
     path("", include("apps.core.urls")),
     # OpenAPI Schema & Swagger Docs

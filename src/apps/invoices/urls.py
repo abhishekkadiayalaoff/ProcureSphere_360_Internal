@@ -3,4 +3,10 @@ from . import views
 
 urlpatterns = [
     path("", views.list_view, name="invoices_list"),
+    path("create/", views.create_invoice_view, name="create_invoice"),
+    path("exceptions/", views.exceptions_list_view, name="exceptions_list"),
+    path("exceptions/<int:exception_id>/", views.exception_detail_view, name="exception_detail"),
+    path("exceptions/<int:exception_id>/resolve/", views.resolve_exception_view, name="resolve_exception"),
+    path("ready/", views.ready_for_payment_view, name="ready_list"),
+    path("ready/<int:invoice_id>/pay/", views.pay_invoice_view, name="pay_invoice"),
 ]

@@ -1,0 +1,51 @@
+{% extends 'layouts/finance_base.html' %}
+
+{% block title %}Spend Ledger — ProcureSphere 360{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12 d-flex justify-content-between align-items-center">
+        <div>
+            <h2 class="fw-bold text-dark mb-1"><i class="fa-solid fa-book-journal-whills text-secondary me-2"></i> Spend Ledger</h2>
+            <p class="text-muted mb-0">Detailed transaction history affecting budget balances.</p>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow-sm border-0">
+    <div class="card-body p-0">
+        <table class="table table-hover table-striped align-middle mb-0">
+            <thead class="table-dark">
+                <tr>
+                    <th scope="col" class="ps-4">Date</th>
+                    <th scope="col">Cost Center</th>
+                    <th scope="col">Entry Type</th>
+                    <th scope="col">Amount</th>
+                    <th scope="col">Reference</th>
+                    <th scope="col">Description</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for entry in ledger %}
+                <tr>
+                    <td class="ps-4 text-muted">{{ entry.created_at|date:"M d, Y" }}</td>
+                    <td class="fw-bold">{{ entry.budget.cost_center.code }}</td>
+                    <td>
+                        <span class="badge bg-secondary">{{ entry.get_entry_type_display }}</span>
+                    </td>
+                    <td class="fw-bold">${{ entry.amount|floatformat:2 }}</td>
+                    <td><code>{{ entry.reference_number }}</code></td>
+                    <td class="text-muted small">{{ entry.description }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="text-center py-5 text-muted">
+                        <h5>No Spend Ledger Entries</h5>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
