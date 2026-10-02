@@ -15,6 +15,7 @@ class PurchaseRequisition(TimeStampedModel):
     STATUS_REJECTED = "REJECTED"
     STATUS_SOURCING = "SOURCING"
     STATUS_PO_ISSUED = "PO_ISSUED"
+    STATUS_CANCELLED = "CANCELLED"
 
     STATUS_CHOICES = [
         (STATUS_DRAFT, "Draft"),
@@ -25,6 +26,7 @@ class PurchaseRequisition(TimeStampedModel):
         (STATUS_REJECTED, "Rejected"),
         (STATUS_SOURCING, "In Sourcing"),
         (STATUS_PO_ISSUED, "PO Issued"),
+        (STATUS_CANCELLED, "Cancelled"),
     ]
 
     pr_number = models.CharField(max_length=50, unique=True)

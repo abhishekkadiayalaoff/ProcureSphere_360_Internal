@@ -24,6 +24,7 @@ def create_purchase_requisition_service(
     cost_center: CostCenter,
     requested_delivery_date,
     line_items: list,
+    attachments: list = None,
 ) -> PurchaseRequisition:
     """
     Creates a new PurchaseRequisition in DRAFT status with atomic document number generation.
@@ -60,6 +61,15 @@ def create_purchase_requisition_service(
 
     pr.total_amount = total
     pr.save(update_fields=["total_amount", "updated_at"])
+
+    if attachments:
+        from .models import PRAttachment
+        for uploaded_file in attachments:
+            PRAttachment.objects.create(
+                requisition=pr,
+                title=uploaded_file.name,
+                file=uploaded_file
+            )
 
     AuditLog.objects.create(
         actor=requester,
