@@ -194,17 +194,27 @@ def home_view(request):
 
     # 8. LEGAL / CONTRACT MANAGER DASHBOARD
     elif role_code == Role.LEGAL_MGR:
-        from django.utils import timezone
-        active_contracts = Contract.objects.filter(status="ACTIVE").order_by("end_date")
-        expiring_soon = Contract.objects.filter(status="ACTIVE", end_date__lte=timezone.now().date() + timezone.timedelta(days=30)).count()
-        total_val = Contract.objects.aggregate(total=Sum("contract_value"))["total"] or 0
+        from apps.contracts.selectors import (
+            get_contracts_pending_legal_review,
+            get_expiring_contracts,
+            get_pending_obligations,
+            get_active_contract_alerts,
+            get_legal_dashboard_metrics,
+        )
+        active_contracts = Contract.objects.filter(status__in=[Contract.STATUS_ACTIVE, Contract.STATUS_RENEWED]).order_by("end_date")
+        pending_legal = get_contracts_pending_legal_review()
+        expiring_contracts = get_expiring_contracts(days=30)
+        pending_obligations = get_pending_obligations()
+        active_alerts = get_active_contract_alerts()
+        metrics = get_legal_dashboard_metrics()
+
         context = {
-            "metrics": {
-                "active_contracts": active_contracts.count(),
-                "expiring_soon": expiring_soon,
-                "total_contract_value": float(total_val),
-            },
+            "metrics": metrics,
             "active_contracts_list": active_contracts[:10],
+            "pending_legal_list": pending_legal[:10],
+            "expiring_contracts_list": expiring_contracts[:10],
+            "pending_obligations_list": pending_obligations[:10],
+            "active_alerts_list": active_alerts[:10],
         }
         return render(request, "pages/dashboards/legal_dashboard.html", context)
 
@@ -212,7 +222,7 @@ def home_view(request):
     elif role_code == Role.AUDITOR:
         total_logs = AuditLog.objects.count()
         total_approvals = AuditLog.objects.filter(action=AuditLog.ACTION_APPROVE).count()
-        recent_logs = AuditLog.objects.select_related("actor").order_by("-created_at")[:15]
+        recent_logs = AuditLog.objects.select_related("actor").order_by("-timestamp")[:15]
         context = {
             "metrics": {
                 "total_audit_logs": total_logs,
