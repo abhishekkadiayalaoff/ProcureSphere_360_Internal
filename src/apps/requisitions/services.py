@@ -8,10 +8,13 @@ from apps.accounts.models import User
 from apps.approvals.models import ApprovalAction, ApprovalPolicy
 from apps.approvals.services import evaluate_approval_chain, record_approval_action_service
 from apps.audit.models import AuditLog
-from apps.budgets.services import check_and_reserve_budget_service
+from apps.budgets.services import (
+    check_and_reserve_budget_service,
+    validate_budget_availability_service,
+)
 from apps.organization.models import CostCenter, Department
 
-from .models import PRLine, PurchaseRequisition
+from .models import PRAttachment, PRLine, PurchaseRequisition
 
 
 @transaction.atomic
@@ -62,8 +65,6 @@ def create_purchase_requisition_service(
     pr.total_amount = total
 
     # Validate budget availability before saving PR to prevent draft creation on overspend
-    from apps.budgets.services import validate_budget_availability_service
-
     validate_budget_availability_service(
         cost_center=cost_center,
         amount=total,
@@ -73,8 +74,6 @@ def create_purchase_requisition_service(
     pr.save(update_fields=["total_amount", "updated_at"])
 
     if attachments:
-        from .models import PRAttachment
-
         for uploaded_file in attachments:
             PRAttachment.objects.create(
                 requisition=pr,

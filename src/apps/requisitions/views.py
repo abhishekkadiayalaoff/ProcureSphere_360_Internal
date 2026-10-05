@@ -1,11 +1,14 @@
+from decimal import Decimal
+
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
 
 from apps.accounts.models import Role
+from apps.budgets.services import validate_budget_availability_service
 from apps.organization.models import CostCenter, Department
-from apps.requisitions.models import PRLine, PurchaseRequisition
+from apps.requisitions.models import PRAttachment, PRLine, PurchaseRequisition
 
 
 @login_required(login_url="/login/")
@@ -191,10 +194,6 @@ def edit_view(request, pk):
                     total_amount += qty * price
 
                 # Validate budget before saving PR total
-                from decimal import Decimal
-
-                from apps.budgets.services import validate_budget_availability_service
-
                 validate_budget_availability_service(
                     cost_center=cost_center, amount=Decimal(str(total_amount))
                 )
@@ -203,8 +202,6 @@ def edit_view(request, pk):
                 pr.save()
 
                 if attachments:
-                    from apps.requisitions.models import PRAttachment
-
                     for uploaded_file in attachments:
                         PRAttachment.objects.create(
                             requisition=pr,

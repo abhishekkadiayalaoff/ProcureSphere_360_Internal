@@ -87,7 +87,7 @@ def detect_entity_type(identifier: str) -> str:
     return "UNKNOWN"
 
 
-def get_transaction_lifecycle_service(
+def get_transaction_lifecycle_service(  # noqa: C901
     entity_type: Optional[str] = None,
     entity_identifier: str = "",
 ) -> Dict[str, Any]:
@@ -811,26 +811,26 @@ def get_transaction_lifecycle_service(
         logs = (
             AuditLog.objects.filter(audit_query).select_related("actor").order_by("timestamp")[:100]
         )
-        for l in logs:
+        for log in logs:
             lifecycle["audit_logs"].append(
                 {
-                    "id": str(l.id),
-                    "timestamp": l.timestamp.isoformat(),
-                    "actor": l.actor.email if l.actor else "System",
-                    "action": l.action,
-                    "target_model": l.target_model,
-                    "target_object_id": l.target_object_id,
-                    "ip_address": l.ip_address,
-                    "request_id": l.request_id,
-                    "previous_state": l.previous_state,
-                    "new_state": l.new_state,
+                    "id": str(log.id),
+                    "timestamp": log.timestamp.isoformat(),
+                    "actor": log.actor.email if log.actor else "System",
+                    "action": log.action,
+                    "target_model": log.target_model,
+                    "target_object_id": log.target_object_id,
+                    "ip_address": log.ip_address,
+                    "request_id": log.request_id,
+                    "previous_state": log.previous_state,
+                    "new_state": log.new_state,
                 }
             )
 
     return lifecycle
 
 
-def export_auditor_data_service(
+def export_auditor_data_service(  # noqa: C901
     export_type: str,
     export_format: str = "csv",
     filters: Optional[Dict[str, Any]] = None,
