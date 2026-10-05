@@ -140,3 +140,60 @@ def test_demo_2_pr_multi_level_approval_and_budget_reservation(db_roles):
 
     app_action = actions.filter(action=ApprovalAction.ACTION_APPROVE).first()
     assert app_action.actor == dept_mgr_user
+
+
+@pytest.mark.django_db
+def test_pr_creation_fails_when_budget_exceeded(db_roles):
+    """
+    Verify that creating a draft PR with requested total amount exceeding cost center available budget
+    raises a ValidationError and prevents draft PR creation.
+    """
+    from django.core.exceptions import ValidationError
+
+    today = timezone.now().date()
+    org = Organization.objects.create(name="HPE Tech Solutions", code="HPE-US-2")
+    dept = Department.objects.create(organization=org, name="IT Services", code="DEPT-IT-2")
+    user = User.objects.create_user(
+        email="requester_it2@hpe.com",
+        password="Password123!",
+        role=db_roles[Role.REQUESTER],
+        department=dept,
+    )
+    cost_center = CostCenter.objects.create(
+        department=dept, code="CC-IT-101", name="IT Ops", manager=user
+    )
+    period = FiscalPeriod.objects.create(
+        organization=org,
+        year=today.year,
+        period_number=1,
+        name=f"FY-{today.year}-Q1-IT",
+        start_date=today - timedelta(days=30),
+        end_date=today + timedelta(days=60),
+    )
+    # Budget allocation: $50,000
+    allocate_budget_service(cost_center=cost_center, fiscal_period=period, allocated_amount=Decimal("50000.00"))
+
+    # Attempt to create PR totaling $80,000 (exceeds $50,000)
+    line_items = [
+        {
+            "item_description": "High-end Workstations",
+            "quantity": 10,
+            "unit_of_measure": "EA",
+            "estimated_unit_price": "8000.00",  # $80,000 total
+        }
+    ]
+
+    with pytest.raises(ValidationError) as excinfo:
+        create_purchase_requisition_service(
+            title="Over-budget IT Hardware",
+            justification="Hardware refresh",
+            requester=user,
+            department=dept,
+            cost_center=cost_center,
+            requested_delivery_date=today + timedelta(days=14),
+            line_items=line_items,
+        )
+
+    assert "Insufficient budget in Cost Center 'CC-IT-101'" in str(excinfo.value)
+    assert PurchaseRequisition.objects.filter(title="Over-budget IT Hardware").count() == 0
+

@@ -32,6 +32,39 @@ def allocate_budget_service(
     return budget
 
 
+def validate_budget_availability_service(*, cost_center: CostCenter, amount: Decimal, today=None):
+    """
+    Validates if a cost center has sufficient available budget for an amount.
+    Raises ValidationError if insufficient budget.
+    """
+    if not today:
+        from django.utils import timezone
+        today = timezone.now().date()
+
+    budget = (
+        Budget.objects.filter(
+            cost_center=cost_center,
+            fiscal_period__start_date__lte=today,
+            fiscal_period__end_date__gte=today,
+            fiscal_period__is_closed=False,
+        )
+        .first()
+    )
+
+    if not budget:
+        raise ValidationError(
+            f"No active fiscal period budget allocation found for Cost Center '{cost_center.code}'."
+        )
+
+    if amount > budget.available_amount and not budget.allow_overspend:
+        raise ValidationError(
+            f"Insufficient budget in Cost Center '{cost_center.code}'. "
+            f"Requested: ${amount:,.2f}, Available: ${budget.available_amount:,.2f}."
+        )
+
+    return budget
+
+
 @transaction.atomic
 def check_and_reserve_budget_service(*, requisition, requested_by_user) -> BudgetReservation:
     """

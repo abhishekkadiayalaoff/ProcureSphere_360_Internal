@@ -60,6 +60,15 @@ def create_purchase_requisition_service(
         total += line.estimated_total
 
     pr.total_amount = total
+
+    # Validate budget availability before saving PR to prevent draft creation on overspend
+    from apps.budgets.services import validate_budget_availability_service
+    validate_budget_availability_service(
+        cost_center=cost_center,
+        amount=total,
+        today=requested_delivery_date,
+    )
+
     pr.save(update_fields=["total_amount", "updated_at"])
 
     if attachments:

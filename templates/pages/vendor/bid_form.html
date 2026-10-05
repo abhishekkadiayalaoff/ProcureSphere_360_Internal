@@ -335,8 +335,6 @@ function removeLineRow(btn) {
     if (tbody.children.length > 1) {
         btn.closest('tr').remove();
         recalcTotal();
-    } else {
-        alert("At least one commercial line item is required.");
     }
 }
 

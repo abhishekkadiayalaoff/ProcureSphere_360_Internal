@@ -87,12 +87,32 @@ def create_view(request):
     else:
         departments = Department.objects.all()
         cost_centers = CostCenter.objects.all()
+
+    cost_centers = _attach_available_budgets(cost_centers)
         
     return render(
         request, 
         "pages/requisitions/create.html", 
         {"departments": departments, "cost_centers": cost_centers}
     )
+
+def _attach_available_budgets(cost_centers):
+    from apps.budgets.models import Budget
+    from django.utils import timezone
+    today = timezone.now().date()
+
+    budgets = Budget.objects.filter(
+        cost_center__in=cost_centers,
+        fiscal_period__start_date__lte=today,
+        fiscal_period__end_date__gte=today,
+        fiscal_period__is_closed=False,
+    )
+    budget_map = {b.cost_center_id: b.available_amount for b in budgets}
+    cc_list = []
+    for cc in cost_centers:
+        cc.available_budget = budget_map.get(cc.id, None)
+        cc_list.append(cc)
+    return cc_list
 
 @login_required(login_url="/login/")
 def edit_view(request, pk):
@@ -153,6 +173,11 @@ def edit_view(request, pk):
                     )
                     total_amount += (qty * price)
                     
+                # Validate budget before saving PR total
+                from apps.budgets.services import validate_budget_availability_service
+                from decimal import Decimal
+                validate_budget_availability_service(cost_center=cost_center, amount=Decimal(str(total_amount)))
+
                 pr.total_amount = total_amount
                 pr.save()
                 
@@ -177,6 +202,8 @@ def edit_view(request, pk):
     else:
         departments = Department.objects.all()
         cost_centers = CostCenter.objects.all()
+
+    cost_centers = _attach_available_budgets(cost_centers)
         
     return render(
         request, 
@@ -199,6 +226,17 @@ def detail_view(request, pk):
         target_object_id=pr.id,
         target_model_name="PurchaseRequisition"
     ).order_by("created_at")
+
+    from apps.budgets.models import Budget
+    from django.utils import timezone
+    today = timezone.now().date()
+    active_budget = Budget.objects.filter(
+        cost_center=pr.cost_center,
+        fiscal_period__start_date__lte=today,
+        fiscal_period__end_date__gte=today,
+        fiscal_period__is_closed=False,
+    ).first()
+    available_budget = active_budget.available_amount if active_budget else None
         
     return render(
         request,
@@ -206,7 +244,8 @@ def detail_view(request, pk):
         {
             "pr": pr, 
             "role_code": role_code,
-            "approval_history": approval_history
+            "approval_history": approval_history,
+            "available_budget": available_budget,
         }
     )
 
