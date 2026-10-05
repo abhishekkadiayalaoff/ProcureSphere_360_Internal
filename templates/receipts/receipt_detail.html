@@ -1,0 +1,210 @@
+{% extends 'base.html' %}
+
+{% block title %}Goods Receipt {{ grn.grn_number }} — ProcureSphere 360{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+    <div>
+        <a href="{% url 'receipts_list' %}" class="text-decoration-none text-muted mb-2 d-inline-block">
+            <i class="fa-solid fa-arrow-left me-1"></i> Back to Receipts List
+        </a>
+        <div class="d-flex align-items-center gap-3">
+            <span class="badge bg-secondary px-3 py-2 text-uppercase">
+                <i class="fa-solid fa-receipt me-1"></i> GRN Details
+            </span>
+            <h2 class="fw-bold text-dark mb-0 font-monospace">{{ grn.grn_number }}</h2>
+            
+            {% if grn.overall_inspection_status == 'PASSED' %}
+                <span class="badge bg-success-subtle text-success border border-success px-3 py-2">
+                    <i class="fa-solid fa-circle-check me-1"></i> Inspection Passed
+                </span>
+            {% elif grn.overall_inspection_status == 'FAILED' or grn.overall_inspection_status == 'REJECTED' %}
+                <span class="badge bg-danger-subtle text-danger border border-danger px-3 py-2">
+                    <i class="fa-solid fa-triangle-exclamation me-1"></i> Inspection Failed / Rejection
+                </span>
+            {% elif grn.overall_inspection_status == 'PARTIALLY_INSPECTED' %}
+                <span class="badge bg-info-subtle text-info border border-info px-3 py-2">
+                    <i class="fa-solid fa-clock-rotate-left me-1"></i> Partially Inspected
+                </span>
+            {% else %}
+                <span class="badge bg-warning-subtle text-warning border border-warning px-3 py-2">
+                    <i class="fa-solid fa-hourglass-half me-1"></i> Pending Inspection
+                </span>
+            {% endif %}
+        </div>
+        <p class="text-muted small mb-0 mt-1">
+            Recorded against PO <a href="{% url 'order_detail' po.id %}" class="fw-semibold text-primary font-monospace">{{ po.po_number }}</a> &bull; 
+            Vendor: <span class="fw-semibold text-dark">{{ po.vendor.legal_name }}</span>
+        </p>
+    </div>
+
+    <div class="d-flex align-items-center gap-2">
+        <a href="{% url 'receipt_inspect' grn_id=grn.id %}" class="btn btn-warning rounded-pill px-4 fw-semibold shadow-sm text-dark">
+            <i class="fa-solid fa-clipboard-check me-1"></i> Quality Inspection
+        </a>
+        <a href="{% url 'order_detail' po.id %}" class="btn btn-outline-secondary rounded-pill px-3 fw-semibold">
+            <i class="fa-solid fa-file-invoice me-1"></i> View PO
+        </a>
+    </div>
+</div>
+
+{% if messages %}
+<div class="mb-4">
+    {% for message in messages %}
+    <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %} alert-dismissible fade show rounded-3" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<!-- GRN Header Information Card -->
+<div class="card border-0 shadow-sm rounded-4 mb-4">
+    <div class="card-header bg-white border-bottom-0 pt-4 pb-0 px-4">
+        <h5 class="fw-bold text-dark mb-0">
+            <i class="fa-solid fa-circle-info text-primary me-2"></i> Goods Receipt Note Information
+        </h5>
+    </div>
+    <div class="card-body p-4">
+        <div class="row g-4">
+            <div class="col-md-3 col-sm-6">
+                <small class="text-uppercase text-secondary fw-semibold">GRN Number</small>
+                <div class="fs-6 fw-bold font-monospace text-primary">{{ grn.grn_number }}</div>
+            </div>
+            <div class="col-md-3 col-sm-6">
+                <small class="text-uppercase text-secondary fw-semibold">Purchase Order</small>
+                <div>
+                    <a href="{% url 'order_detail' po.id %}" class="fs-6 fw-bold font-monospace text-dark text-decoration-none">
+                        {{ po.po_number }}
+                    </a>
+                    <span class="badge bg-secondary-subtle text-secondary border ms-1">{{ po.get_status_display }}</span>
+                </div>
+            </div>
+            <div class="col-md-3 col-sm-6">
+                <small class="text-uppercase text-secondary fw-semibold">Vendor / Supplier</small>
+                <div class="fs-6 fw-bold text-dark">{{ po.vendor.legal_name }}</div>
+            </div>
+            <div class="col-md-3 col-sm-6">
+                <small class="text-uppercase text-secondary fw-semibold">Delivery Note / Waybill</small>
+                <div class="fs-6 fw-bold text-dark">{{ grn.delivery_note_number|default:"N/A" }}</div>
+            </div>
+
+            <div class="col-md-3 col-sm-6">
+                <small class="text-uppercase text-secondary fw-semibold">Received Date & Time</small>
+                <div class="text-dark fw-semibold">{{ grn.received_date|date:"M d, Y H:i" }}</div>
+            </div>
+            <div class="col-md-3 col-sm-6">
+                <small class="text-uppercase text-secondary fw-semibold">Received By</small>
+                <div class="text-dark fw-semibold">{{ grn.received_by.get_full_name|default:grn.received_by.email }}</div>
+            </div>
+            <div class="col-md-6 col-sm-12">
+                <small class="text-uppercase text-secondary fw-semibold">Receiving Remarks</small>
+                <div class="text-dark">{{ grn.remarks|default:"No receiving remarks provided." }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Received Lines & Quality Inspection Table -->
+<div class="card border-0 shadow-sm rounded-4 mb-4">
+    <div class="card-header bg-white border-bottom-0 pt-4 pb-0 px-4 d-flex justify-content-between align-items-center">
+        <div>
+            <h5 class="fw-bold text-dark mb-1">
+                <i class="fa-solid fa-boxes-stacked text-success me-2"></i> Received Line Items & Quality Inspection
+            </h5>
+            <p class="text-muted small mb-0">Review item details, accepted and rejected quantities, and inspection results.</p>
+        </div>
+        <a href="{% url 'receipt_inspect' grn_id=grn.id %}" class="btn btn-sm btn-outline-warning text-dark fw-semibold rounded-pill px-3">
+            <i class="fa-solid fa-pencil me-1"></i> Edit Inspection
+        </a>
+    </div>
+    <div class="card-body p-4">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light small text-uppercase text-secondary">
+                    <tr>
+                        <th class="ps-3" style="width: 35px;">#</th>
+                        <th style="min-width: 220px;">Item Description</th>
+                        <th class="text-end" style="min-width: 90px;">PO Ordered</th>
+                        <th class="text-end" style="min-width: 100px;">Qty Received</th>
+                        <th class="text-end" style="min-width: 100px;">Qty Accepted</th>
+                        <th class="text-end" style="min-width: 100px;">Qty Rejected</th>
+                        <th class="text-center" style="min-width: 70px;">UOM</th>
+                        <th class="text-center" style="min-width: 130px;">Inspection Status</th>
+                        <th style="min-width: 200px;" class="pe-3">Inspection & Rejection Notes</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for line in lines %}
+                    <tr>
+                        <td class="ps-3 text-secondary small">{{ forloop.counter }}</td>
+                        <td>
+                            <div class="fw-bold text-dark">{{ line.po_line.item_description }}</div>
+                            <small class="text-muted font-monospace">Line #{{ line.po_line.line_number }}</small>
+                        </td>
+                        <td class="text-end font-monospace">{{ line.po_line.quantity|floatformat:2 }}</td>
+                        <td class="text-end font-monospace fw-bold text-primary">{{ line.quantity_received|floatformat:2 }}</td>
+                        <td class="text-end font-monospace fw-bold text-success">{{ line.quantity_accepted|floatformat:2 }}</td>
+                        <td class="text-end font-monospace fw-bold {% if line.quantity_rejected > 0 %}text-danger{% else %}text-muted{% endif %}">
+                            {{ line.quantity_rejected|floatformat:2 }}
+                        </td>
+                        <td class="text-center"><span class="badge bg-light text-dark border">{{ line.po_line.uom|default:"EA" }}</span></td>
+                        <td class="text-center">
+                            {% if line.inspection_status == 'PASSED' %}
+                                <span class="badge bg-success-subtle text-success border border-success">
+                                    <i class="fa-solid fa-check me-1"></i> Passed
+                                </span>
+                            {% elif line.inspection_status == 'REJECTED' %}
+                                <span class="badge bg-danger-subtle text-danger border border-danger">
+                                    <i class="fa-solid fa-ban me-1"></i> Rejected
+                                </span>
+                            {% elif line.inspection_status == 'FAILED' %}
+                                <span class="badge bg-danger-subtle text-danger border border-danger">
+                                    <i class="fa-solid fa-xmark me-1"></i> Failed
+                                </span>
+                            {% else %}
+                                <span class="badge bg-warning-subtle text-warning border border-warning">
+                                    <i class="fa-solid fa-clock me-1"></i> Pending
+                                </span>
+                            {% endif %}
+                        </td>
+                        <td class="pe-3 small">
+                            {% if line.inspection %}
+                                <div>
+                                    <span class="text-secondary fw-semibold">Inspector:</span> 
+                                    <span class="text-dark">{{ line.inspection.inspected_by.get_full_name|default:line.inspection.inspected_by.email }}</span>
+                                </div>
+                                <div class="text-muted fst-italic">"{{ line.inspection.inspection_notes }}"</div>
+                            {% else %}
+                                <span class="text-muted">No inspection recorded yet.</span>
+                            {% endif %}
+
+                            {% if line.quantity_rejected > 0 %}
+                                {% for rej in line.rejections.all %}
+                                <div class="mt-1 p-2 bg-danger-subtle rounded-2 border border-danger-subtle">
+                                    <div class="text-danger fw-semibold">
+                                        <i class="fa-solid fa-triangle-exclamation me-1"></i> Rejection: {{ rej.rejected_quantity|floatformat:2 }} units
+                                    </div>
+                                    <div class="text-dark">{{ rej.rejection_reason }}</div>
+                                    <div class="mt-1">
+                                        <span class="badge {% if rej.returned_to_vendor %}bg-warning text-dark{% else %}bg-secondary{% endif %}">
+                                            Return to Vendor: {% if rej.returned_to_vendor %}Yes{% else %}Pending{% endif %}
+                                        </span>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="9" class="text-center py-4 text-muted">No receipt line items found.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

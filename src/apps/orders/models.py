@@ -85,6 +85,10 @@ class POLine(TimeStampedModel):
         self.line_total = self.quantity * self.unit_price
         super().save(*args, **kwargs)
 
+    @property
+    def remaining_quantity(self):
+        return max(Decimal("0.00"), self.quantity - (self.quantity_received or Decimal("0.00")))
+
     def __str__(self):
         return f"{self.item_description} (Qty: {self.quantity}, Recv: {self.quantity_received})"
 
@@ -108,7 +112,9 @@ class POAmendment(TimeStampedModel):
 
 
 class DeliverySchedule(TimeStampedModel):
-    po = models.ForeignKey(PurchaseOrder, on_delete=models.CASCADE, related_name="delivery_schedules")
+    po = models.ForeignKey(
+        PurchaseOrder, on_delete=models.CASCADE, related_name="delivery_schedules"
+    )
     po_line = models.ForeignKey(POLine, on_delete=models.CASCADE, related_name="schedules")
     expected_delivery_date = models.DateField()
     quantity_expected = models.DecimalField(max_digits=12, decimal_places=2)
@@ -117,4 +123,3 @@ class DeliverySchedule(TimeStampedModel):
 
     def __str__(self):
         return f"Delivery Schedule for {self.po.po_number} Line {self.po_line.id} on {self.expected_delivery_date}"
-

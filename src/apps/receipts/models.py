@@ -20,6 +20,20 @@ class GoodsReceipt(TimeStampedModel):
     def __str__(self):
         return f"{self.grn_number} for {self.po.po_number}"
 
+    @property
+    def overall_inspection_status(self):
+        lines = list(self.lines.all())
+        if not lines:
+            return "PENDING"
+        statuses = [line.inspection_status for line in lines]
+        if all(s == "PASSED" for s in statuses):
+            return "PASSED"
+        if any(s in ["FAILED", "REJECTED"] for s in statuses):
+            return "FAILED"
+        if any(s == "PASSED" for s in statuses):
+            return "PARTIALLY_INSPECTED"
+        return "PENDING"
+
 
 class ReceiptLine(TimeStampedModel):
     receipt = models.ForeignKey(GoodsReceipt, on_delete=models.CASCADE, related_name="lines")
@@ -36,6 +50,35 @@ class ReceiptLine(TimeStampedModel):
     def save(self, *args, **kwargs):
         self.quantity_rejected = self.quantity_received - self.quantity_accepted
         super().save(*args, **kwargs)
+
+    @property
+    def inspection_status(self):
+        try:
+            insp = self.inspection
+        except Exception:
+            insp = None
+        if not insp:
+            return "PENDING"
+        if insp.passed:
+            return "PASSED"
+        if self.quantity_rejected > Decimal("0.00") or self.rejections.exists():
+            return "REJECTED"
+        return "FAILED"
+
+    @property
+    def inspection_status_display(self):
+        status_map = {
+            "PENDING": "Pending Inspection",
+            "PASSED": "Passed",
+            "FAILED": "Failed",
+            "REJECTED": "Rejected",
+            "PARTIALLY_INSPECTED": "Partially Inspected",
+        }
+        return status_map.get(self.inspection_status, "Pending Inspection")
+
+    @property
+    def latest_rejection(self):
+        return self.rejections.order_by("-created_at").first()
 
     def __str__(self):
         return f"GRN Line: Recv {self.quantity_received}, Accept {self.quantity_accepted}, Reject {self.quantity_rejected}"
