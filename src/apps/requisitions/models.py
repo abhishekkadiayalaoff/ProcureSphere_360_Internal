@@ -91,14 +91,15 @@ class PRAttachment(TimeStampedModel):
     file_size = models.PositiveIntegerField(default=0, help_text="File size in bytes")
 
     def save(self, *args, **kwargs):
-        if self.file and hasattr(self.file, 'size'):
+        if self.file and hasattr(self.file, "size"):
             self.file_size = self.file.size
         super().save(*args, **kwargs)
 
     @property
     def file_extension(self):
         import os
-        return os.path.splitext(self.file.name)[1][1:].lower() if self.file else ''
+
+        return os.path.splitext(self.file.name)[1][1:].lower() if self.file else ""
 
     @property
     def file_size_display(self):

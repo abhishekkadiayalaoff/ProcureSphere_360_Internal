@@ -667,9 +667,11 @@ def get_transaction_lifecycle_service(
                         "quantity_received": float(r_line.quantity_received),
                         "quantity_accepted": float(r_line.quantity_accepted),
                         "quantity_rejected": float(r_line.quantity_rejected),
-                        "inspection_status": "PASSED"
-                        if (insp and insp.passed)
-                        else ("FAILED" if insp else "PENDING"),
+                        "inspection_status": (
+                            "PASSED"
+                            if (insp and insp.passed)
+                            else ("FAILED" if insp else "PENDING")
+                        ),
                         "rejections": [
                             {"qty": float(rj.rejected_quantity), "reason": rj.rejection_reason}
                             for rj in rejs
@@ -712,9 +714,11 @@ def get_transaction_lifecycle_service(
                 "invoice_date": str(inv.invoice_date),
                 "due_date": str(inv.due_date),
                 "total_amount": float(inv.total_amount),
-                "match_status": "PASSED"
-                if (match_res and match_res.is_matched)
-                else ("FAILED" if match_res else "NOT_PERFORMED"),
+                "match_status": (
+                    "PASSED"
+                    if (match_res and match_res.is_matched)
+                    else ("FAILED" if match_res else "NOT_PERFORMED")
+                ),
                 "exceptions": [
                     {
                         "type": exc.exception_type,
@@ -725,15 +729,17 @@ def get_transaction_lifecycle_service(
                     }
                     for exc in inv.exceptions.all()
                 ],
-                "payment": {
-                    "payment_reference": pay_obj.payment_reference,
-                    "payment_date": str(pay_obj.payment_date),
-                    "amount_paid": float(pay_obj.amount_paid),
-                    "method": pay_obj.payment_method,
-                    "paid_by": pay_obj.paid_by.email if pay_obj.paid_by else None,
-                }
-                if pay_obj
-                else None,
+                "payment": (
+                    {
+                        "payment_reference": pay_obj.payment_reference,
+                        "payment_date": str(pay_obj.payment_date),
+                        "amount_paid": float(pay_obj.amount_paid),
+                        "method": pay_obj.payment_method,
+                        "paid_by": pay_obj.paid_by.email if pay_obj.paid_by else None,
+                    }
+                    if pay_obj
+                    else None
+                ),
             }
             lifecycle["invoices"].append(inv_dict)
 
@@ -780,12 +786,14 @@ def get_transaction_lifecycle_service(
             "status": vendor_obj.status,
             "category": vendor_obj.category.name if vendor_obj.category else None,
             "email": vendor_obj.email,
-            "risk_level": vendor_obj.risk_records.order_by("-created_at").first().risk_level
-            if vendor_obj.risk_records.exists()
-            else "LOW",
-            "composite_score": float(latest_scorecard.composite_score)
-            if latest_scorecard
-            else None,
+            "risk_level": (
+                vendor_obj.risk_records.order_by("-created_at").first().risk_level
+                if vendor_obj.risk_records.exists()
+                else "LOW"
+            ),
+            "composite_score": (
+                float(latest_scorecard.composite_score) if latest_scorecard else None
+            ),
             "kyc_documents_count": vendor_obj.documents.count(),
         }
 

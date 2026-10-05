@@ -181,7 +181,7 @@ def edit_view(request, pk):
                     price = float(unit_prices[i])
                     uom = uoms[i]
 
-                    line = PRLine.objects.create(
+                    PRLine.objects.create(
                         requisition=pr,
                         item_description=desc,
                         quantity=qty,
