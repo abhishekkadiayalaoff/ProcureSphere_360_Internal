@@ -101,7 +101,9 @@ def generate_purchase_order_service(
 
 
 @transaction.atomic
-def acknowledge_purchase_order_service(*, po: PurchaseOrder, vendor_user: User) -> PurchaseOrder:
+def acknowledge_purchase_order_service(
+    *, po: PurchaseOrder, vendor_user: User, acknowledgement_notes: str = ""
+) -> PurchaseOrder:
     """
     Vendor acknowledges an issued PO. Transitions status to ACKNOWLEDGED.
     """
@@ -111,7 +113,9 @@ def acknowledge_purchase_order_service(*, po: PurchaseOrder, vendor_user: User) 
     previous_status = po.status
     po.status = PurchaseOrder.STATUS_ACKNOWLEDGED
     po.acknowledged_at = timezone.now()
-    po.save(update_fields=["status", "acknowledged_at", "updated_at"])
+    po.acknowledged_by = vendor_user
+    po.acknowledgement_notes = acknowledgement_notes or po.acknowledgement_notes
+    po.save(update_fields=["status", "acknowledged_at", "acknowledged_by", "acknowledgement_notes", "updated_at"])
 
     AuditLog.objects.create(
         actor=vendor_user,
@@ -119,7 +123,12 @@ def acknowledge_purchase_order_service(*, po: PurchaseOrder, vendor_user: User) 
         target_model="PurchaseOrder",
         target_object_id=str(po.id),
         previous_state={"status": previous_status},
-        new_state={"status": po.status, "acknowledged_at": str(po.acknowledged_at)},
+        new_state={
+            "status": po.status,
+            "acknowledged_at": str(po.acknowledged_at),
+            "acknowledged_by": vendor_user.email,
+            "acknowledgement_notes": po.acknowledgement_notes,
+        },
     )
 
     return po
