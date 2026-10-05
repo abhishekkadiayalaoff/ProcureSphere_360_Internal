@@ -77,7 +77,10 @@ def create_purchase_requisition_service(
 
         for uploaded_file in attachments:
             PRAttachment.objects.create(
-                requisition=pr, title=uploaded_file.name, file=uploaded_file
+                requisition=pr,
+                uploaded_by=requester,
+                title=uploaded_file.name,
+                file=uploaded_file,
             )
 
     AuditLog.objects.create(

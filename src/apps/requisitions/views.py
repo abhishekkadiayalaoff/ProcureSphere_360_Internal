@@ -207,7 +207,10 @@ def edit_view(request, pk):
 
                     for uploaded_file in attachments:
                         PRAttachment.objects.create(
-                            requisition=pr, title=uploaded_file.name, file=uploaded_file
+                            requisition=pr,
+                            uploaded_by=request.user,
+                            title=uploaded_file.name,
+                            file=uploaded_file,
                         )
 
             messages.success(request, f"Requisition {pr.pr_number} updated successfully.")

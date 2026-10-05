@@ -208,24 +208,61 @@
             </div>
         </div>
 
-        <!-- Attachments -->
-        {% if pr.attachments.exists %}
+        <!-- Attachments — always show so approvers can confirm docs were reviewed -->
         <div class="card border-0 shadow-sm rounded-4 mb-4">
-            <div class="card-header bg-white border-bottom-0 pt-4 pb-0 px-4">
-                <h5 class="fw-bold text-dark mb-0">Supporting Documents</h5>
+            <div class="card-header bg-white border-bottom-0 pt-4 pb-2 px-4 d-flex align-items-center justify-content-between">
+                <h5 class="fw-bold text-dark mb-0">
+                    <i class="fa-solid fa-paperclip text-primary me-2"></i>Supporting Documents
+                </h5>
+                <span class="badge bg-light text-dark border rounded-pill">{{ pr.attachments.count }} file{{ pr.attachments.count|pluralize }}</span>
             </div>
             <div class="card-body p-4">
+                {% if pr.attachments.exists %}
                 <ul class="list-group list-group-flush">
                     {% for attachment in pr.attachments.all %}
-                    <li class="list-group-item px-0 border-0 d-flex align-items-center">
-                        <i class="fa-solid fa-file-pdf text-danger fs-4 me-3"></i>
-                        <a href="{{ attachment.file.url }}" target="_blank" class="text-decoration-none fw-semibold">{{ attachment.title }}</a>
+                    <li class="list-group-item px-0 border-bottom py-3 d-flex align-items-center justify-content-between">
+                        <div class="d-flex align-items-center overflow-hidden">
+                            {% with ext=attachment.file_extension %}
+                            {% if ext == 'pdf' %}
+                                <div class="bg-danger-subtle rounded-3 d-flex align-items-center justify-content-center flex-shrink-0 me-3" style="width:44px;height:44px;">
+                                    <i class="fa-solid fa-file-pdf text-danger fs-4"></i>
+                                </div>
+                            {% else %}
+                                <div class="bg-primary-subtle rounded-3 d-flex align-items-center justify-content-center flex-shrink-0 me-3" style="width:44px;height:44px;">
+                                    <i class="fa-solid fa-file-word text-primary fs-4"></i>
+                                </div>
+                            {% endif %}
+                            {% endwith %}
+                            <div class="overflow-hidden">
+                                <div class="fw-semibold text-dark text-truncate" style="max-width:220px;" title="{{ attachment.title }}">{{ attachment.title }}</div>
+                                <div class="text-muted small d-flex align-items-center gap-2 mt-1">
+                                    <span><i class="fa-solid fa-weight-hanging fa-xs me-1"></i>{{ attachment.file_size_display }}</span>
+                                    {% if attachment.uploaded_by %}
+                                    <span>&bull;</span>
+                                    <span><i class="fa-solid fa-user fa-xs me-1"></i>{{ attachment.uploaded_by.get_full_name|default:attachment.uploaded_by.email }}</span>
+                                    {% endif %}
+                                    <span>&bull;</span>
+                                    <span><i class="fa-regular fa-clock fa-xs me-1"></i>{{ attachment.created_at|date:"M d, Y" }}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <a href="{{ attachment.file.url }}"
+                           target="_blank"
+                           class="btn btn-sm btn-outline-primary rounded-pill px-3 ms-3 flex-shrink-0"
+                           title="Download {{ attachment.title }}">
+                            <i class="fa-solid fa-download me-1"></i>Download
+                        </a>
                     </li>
                     {% endfor %}
                 </ul>
+                {% else %}
+                <div class="text-center py-4 text-muted">
+                    <i class="fa-solid fa-folder-open fs-2 mb-2 d-block text-secondary"></i>
+                    <span class="small">No supporting documents attached to this requisition.</span>
+                </div>
+                {% endif %}
             </div>
         </div>
-        {% endif %}
     </div>
     
     <div class="col-lg-4">
