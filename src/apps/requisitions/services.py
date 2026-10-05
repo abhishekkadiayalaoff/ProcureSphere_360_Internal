@@ -115,9 +115,7 @@ def submit_purchase_requisition_service(
     )
 
     previous_status = requisition.status
-    requisition.status = (
-        PurchaseRequisition.STATUS_MANAGER_REVIEW if chain else PurchaseRequisition.STATUS_APPROVED
-    )
+    requisition.status = PurchaseRequisition.STATUS_MANAGER_REVIEW
     requisition.save(update_fields=["status", "updated_at"])
 
     record_approval_action_service(
