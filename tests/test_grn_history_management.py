@@ -99,6 +99,8 @@ def grn_history_setup(db, db_roles):
         delivery_note_number="DN-DELL-9001",
         remarks="Delivered via BlueDart",
     )
+    grn1.received_date = timezone.now()
+    grn1.save(update_fields=["received_date"])
 
     # Create GRN 2: Lenovo (Failed / Rejection)
     grn2 = create_goods_receipt_service(
@@ -265,7 +267,7 @@ def test_date_filtering(client, grn_history_setup):
     grn3 = grn_history_setup["grn3"]  # 2 days ago
     client.force_login(receiver)
 
-    today_str = timezone.now().strftime("%Y-%m-%d")
+    today_str = timezone.localdate().strftime("%Y-%m-%d")
     response = client.get(f"/receipts/?date_from={today_str}&date_to={today_str}")
     assert response.status_code == 200
     assert grn1.grn_number.encode() in response.content
