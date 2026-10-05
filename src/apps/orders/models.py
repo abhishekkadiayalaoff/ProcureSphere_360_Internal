@@ -85,6 +85,10 @@ class POLine(TimeStampedModel):
         self.line_total = self.quantity * self.unit_price
         super().save(*args, **kwargs)
 
+    @property
+    def remaining_quantity(self):
+        return max(Decimal("0.00"), self.quantity - (self.quantity_received or Decimal("0.00")))
+
     def __str__(self):
         return f"{self.item_description} (Qty: {self.quantity}, Recv: {self.quantity_received})"
 
