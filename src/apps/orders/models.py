@@ -57,6 +57,14 @@ class PurchaseOrder(TimeStampedModel):
 
     terms_and_conditions = models.TextField(blank=True)
     acknowledged_at = models.DateTimeField(null=True, blank=True)
+    acknowledged_by = models.ForeignKey(
+        "accounts.User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="acknowledged_pos",
+    )
+    acknowledgement_notes = models.TextField(blank=True, default="")
 
     def __str__(self):
         return f"{self.po_number} V{self.version} - {self.vendor.legal_name} (${self.total_amount})"

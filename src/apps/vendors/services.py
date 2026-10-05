@@ -187,3 +187,98 @@ def set_vendor_status_governance_service(
         new_state={"status": vendor.status, "notes": notes},
     )
     return vendor
+
+
+@transaction.atomic
+def update_vendor_profile_service(
+    *,
+    vendor: Vendor,
+    user: User,
+    data: dict,
+) -> Vendor:
+    """
+    Vendor self-service profile update: updates trade name, address, phone, and banking info.
+    Legal name, TIN, vendor number, and category are locked and require governance approval.
+    """
+    previous_state = {
+        "trade_name": vendor.trade_name,
+        "address": vendor.address,
+        "phone": vendor.phone,
+        "bank_name": vendor.bank_name,
+        "bank_account_number": vendor.bank_account_number,
+        "bank_routing_code": vendor.bank_routing_code,
+    }
+
+    if "trade_name" in data:
+        vendor.trade_name = data["trade_name"]
+    if "address" in data:
+        vendor.address = data["address"]
+    if "phone" in data:
+        vendor.phone = data["phone"]
+    if "bank_name" in data:
+        vendor.bank_name = data["bank_name"]
+    if "bank_account_number" in data:
+        vendor.bank_account_number = data["bank_account_number"]
+    if "bank_routing_code" in data:
+        vendor.bank_routing_code = data["bank_routing_code"]
+
+    vendor.save(update_fields=[
+        "trade_name", "address", "phone", "bank_name",
+        "bank_account_number", "bank_routing_code", "updated_at"
+    ])
+
+    AuditLog.objects.create(
+        actor=user,
+        action=AuditLog.ACTION_UPDATE,
+        target_model="Vendor",
+        target_object_id=str(vendor.id),
+        previous_state=previous_state,
+        new_state={
+            "trade_name": vendor.trade_name,
+            "address": vendor.address,
+            "phone": vendor.phone,
+            "bank_name": vendor.bank_name,
+            "bank_account_number": vendor.bank_account_number,
+            "bank_routing_code": vendor.bank_routing_code,
+        },
+    )
+    return vendor
+
+
+@transaction.atomic
+def upload_vendor_document_service(
+    *,
+    vendor: Vendor,
+    user: User,
+    file,
+    document_type: str,
+    title: str = "",
+    expiry_date=None,
+) -> VendorDocument:
+    """
+    Uploads a KYC or compliance document for a vendor.
+    """
+    if not title or not title.strip():
+        title = getattr(file, "name", "Vendor Document")
+
+    doc = VendorDocument.objects.create(
+        vendor=vendor,
+        document_type=document_type,
+        title=title.strip(),
+        file=file,
+        expiry_date=expiry_date,
+        is_verified=False,
+    )
+
+    AuditLog.objects.create(
+        actor=user,
+        action=AuditLog.ACTION_CREATE,
+        target_model="VendorDocument",
+        target_object_id=str(doc.id),
+        new_state={
+            "vendor": vendor.legal_name,
+            "document_type": doc.document_type,
+            "title": doc.title,
+        },
+    )
+    return doc

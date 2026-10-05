@@ -9,6 +9,13 @@ class Notification(TimeStampedModel):
     TYPE_EXCEPTION_RAISED = "EXCEPTION_RAISED"
     TYPE_CONTRACT_EXPIRATION = "CONTRACT_EXPIRATION"
     TYPE_PO_ACKNOWLEDGED = "PO_ACKNOWLEDGED"
+    TYPE_RFQ_INVITATION = "RFQ_INVITATION"
+    TYPE_CLARIFICATION_RESPONSE = "CLARIFICATION_RESPONSE"
+    TYPE_BID_SUBMITTED = "BID_SUBMITTED"
+    TYPE_BID_AMENDED = "BID_AMENDED"
+    TYPE_PO_ISSUED = "PO_ISSUED"
+    TYPE_PO_AMENDMENT = "PO_AMENDMENT"
+    TYPE_KYC_REQUEST = "KYC_REQUEST"
 
     TYPE_CHOICES = [
         (TYPE_APPROVAL_REQUIRED, "Approval Required"),
@@ -16,6 +23,13 @@ class Notification(TimeStampedModel):
         (TYPE_EXCEPTION_RAISED, "3-Way Match Exception"),
         (TYPE_CONTRACT_EXPIRATION, "Contract Expiration Warning"),
         (TYPE_PO_ACKNOWLEDGED, "PO Acknowledged"),
+        (TYPE_RFQ_INVITATION, "New RFQ/RFP Invitation"),
+        (TYPE_CLARIFICATION_RESPONSE, "Clarification Response"),
+        (TYPE_BID_SUBMITTED, "Bid Submission Confirmation"),
+        (TYPE_BID_AMENDED, "Bid Amendment Confirmation"),
+        (TYPE_PO_ISSUED, "Purchase Order Issued"),
+        (TYPE_PO_AMENDMENT, "PO Amendment Notification"),
+        (TYPE_KYC_REQUEST, "KYC / Compliance Notification"),
     ]
 
     recipient = models.ForeignKey(
