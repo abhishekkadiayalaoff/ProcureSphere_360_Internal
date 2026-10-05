@@ -1,0 +1,104 @@
+{% extends 'base.html' %}
+
+{% block title %}Compliance & Audit Hub — ProcureSphere 360 ERP{% endblock %}
+
+{% block content %}
+<!-- Auditor Banner -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="glass-card-dark p-4 position-relative overflow-hidden">
+            <div class="row align-items-center">
+                <div class="col-lg-8">
+                    <div class="d-flex align-items-center mb-2">
+                        <span class="badge bg-dark border text-cyan rounded-pill fw-bold px-3 py-1 me-2">COMPLIANCE & AUDIT</span>
+                        <span class="text-white-50 small"><i class="fa-solid fa-shield-halved me-1"></i> {{ user.email }} &bull; Immutable Audit Logs</span>
+                    </div>
+                    <h1 class="fw-bold text-white mb-2 display-6">Audit Trail & Traceability Hub</h1>
+                    <p class="text-white-50 mb-0">Read-only audit inspection, system state transition tracking, authorization evidence, and report exports.</p>
+                </div>
+                <div class="col-lg-4 text-lg-end mt-3 mt-lg-0">
+                    <a href="/audit/logs/" class="btn btn-cyan btn-lg rounded-pill fw-bold px-4 shadow-sm">
+                        <i class="fa-solid fa-list-check me-1"></i> Audit Trail Log
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Auditor Stat Cards -->
+<div class="row g-4 mb-4">
+    <div class="col-md-4">
+        <div class="stat-card hover-elevate shadow-sm h-100 border-start border-dark border-4">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+                <span class="text-muted small fw-semibold">TOTAL AUDIT TRAIL LOGS</span>
+                <i class="fa-solid fa-shield-halved text-dark fs-4"></i>
+            </div>
+            <div class="metric-value text-dark">{{ metrics.total_audit_logs }}</div>
+            <div class="text-muted small mt-1">Append-only audit trail records</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stat-card hover-elevate shadow-sm h-100 border-start border-success border-4">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+                <span class="text-muted small fw-semibold">APPROVAL ACTIONS RECORDED</span>
+                <i class="fa-solid fa-square-check text-success fs-4"></i>
+            </div>
+            <div class="metric-value text-success">{{ metrics.total_approvals }}</div>
+            <div class="text-muted small mt-1">Recorded signature events</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stat-card hover-elevate shadow-sm h-100 border-start border-info border-4">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+                <span class="text-muted small fw-semibold">SYSTEM WORKFLOWS</span>
+                <i class="fa-solid fa-diagram-project text-info fs-4"></i>
+            </div>
+            <div class="metric-value text-navy">6 Core State Machines</div>
+            <div class="text-muted small mt-1">PR, Sourcing, PO, Invoice, Contract, Vendor</div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent System Audit Logs Table -->
+<div class="glass-card p-4 shadow-sm">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+        <h5 class="fw-bold text-dark mb-0"><i class="fa-solid fa-shield-halved text-dark me-2"></i> Recent Immutable System Audit Logs</h5>
+        <a href="/audit/logs/" class="btn btn-outline-dark btn-sm rounded-pill px-3">Full Audit Register</a>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr class="small text-uppercase text-muted">
+                    <th class="ps-4">Timestamp</th>
+                    <th>Actor / User</th>
+                    <th>Action</th>
+                    <th>Target Model & ID</th>
+                    <th class="text-end pe-4">State Transition</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for log in recent_logs %}
+                    <tr>
+                        <td class="ps-4 text-muted small">{{ log.created_at|date:"M d, Y H:i:s" }}</td>
+                        <td>
+                            <div class="fw-semibold text-dark">{{ log.actor.email|default:"System Engine" }}</div>
+                        </td>
+                        <td><span class="badge bg-light text-dark border fw-bold">{{ log.action }}</span></td>
+                        <td><code>{{ log.target_model }}</code> (<code>{{ log.target_object_id|truncatechars:12 }}</code>)</td>
+                        <td class="text-end pe-4">
+                            <span class="badge bg-secondary-subtle text-secondary border">{{ log.previous_state|default:"None" }}</span>
+                            <i class="fa-solid fa-arrow-right mx-1 text-muted"></i>
+                            <span class="badge bg-success-subtle text-success border">{{ log.new_state }}</span>
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="5" class="text-center py-4 text-muted">No audit log entries recorded yet.</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

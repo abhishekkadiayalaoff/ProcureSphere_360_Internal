@@ -1,480 +1,117 @@
-{% extends 'layouts/vendor_base.html' %}
+{% extends 'base.html' %}
 
-{% block vendor_title %}Vendor Dashboard Overview{% endblock %}
+{% block title %}Vendor Self-Service Portal — ProcureSphere 360 ERP{% endblock %}
 
-{% block vendor_content %}
-<div class="container-fluid px-0">
-    <!-- Welcome Header & Quick Actions -->
-    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
-        <div>
-            <h3 class="fw-bold text-dark mb-1">
-                Vendor Portal Dashboard
-            </h3>
-            <p class="text-muted mb-0 small">
-                Welcome, <strong>{{ user.email }}</strong> &bull; Sourcing participation, sealed bids, and purchase order governance.
-            </p>
-        </div>
-        <div class="d-flex gap-2">
-            <a href="/vendor/sourcing/?tab=active" class="btn btn-primary btn-sm rounded-pill px-3 shadow-sm">
-                <i class="fa-solid fa-gavel me-1"></i> Active Sourcing
-            </a>
-            <a href="/vendor/purchase-orders/?tab=pending_ack" class="btn btn-outline-dark btn-sm rounded-pill px-3">
-                <i class="fa-solid fa-clipboard-check me-1"></i> Review POs
-            </a>
-        </div>
-    </div>
-
-    <!-- 8 Summary Metric Cards (Real backend data) -->
-    <div class="row g-3 mb-4">
-        <!-- 1. Active Invitations -->
-        <div class="col-6 col-md-3">
-            <div class="stat-card glass-card h-100 border-start border-4 border-primary">
-                <div class="d-flex align-items-center justify-content-between mb-2">
-                    <span class="text-muted small fw-semibold text-uppercase">Active Invitations</span>
-                    <div class="brand-icon-box" style="width: 32px; height: 32px; background: rgba(13, 110, 253, 0.1); border-radius: 8px; display: flex; align-items: center; justify-content: center;">
-                        <i class="fa-solid fa-envelope-open-text text-primary"></i>
+{% block content %}
+<!-- Vendor Banner -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="glass-card-dark p-4 position-relative overflow-hidden">
+            <div class="row align-items-center">
+                <div class="col-lg-8">
+                    <div class="d-flex align-items-center mb-2">
+                        <span class="badge bg-success text-white rounded-pill fw-bold px-3 py-1 me-2"><i class="fa-solid fa-building me-1"></i> VENDOR PORTAL</span>
+                        <span class="text-white-50 small"><i class="fa-solid fa-id-card me-1"></i> {{ vendor.legal_name|default:user.email }} {% if vendor.vendor_number %}&bull; <code>{{ vendor.vendor_number }}</code>{% endif %}</span>
                     </div>
+                    <h1 class="fw-bold text-white mb-2 display-6">Vendor Self-Service Workspace</h1>
+                    <p class="text-white-50 mb-0">Submit sealed bids, acknowledge issued Purchase Orders, track payment readiness, and maintain KYC compliance documents.</p>
                 </div>
-                <div class="fs-3 fw-bold text-dark metric-value">{{ metrics.active_rfq_invitations }}</div>
-                <div class="text-muted small mt-1">
-                    <a href="/vendor/sourcing/?tab=active" class="text-decoration-none text-primary">View active events &rarr;</a>
-                </div>
-            </div>
-        </div>
-
-        <!-- 2. Bids in Draft -->
-        <div class="col-6 col-md-3">
-            <div class="stat-card glass-card h-100 border-start border-4 border-info">
-                <div class="d-flex align-items-center justify-content-between mb-2">
-                    <span class="text-muted small fw-semibold text-uppercase">Bids in Draft</span>
-                    <div class="brand-icon-box" style="width: 32px; height: 32px; background: rgba(13, 202, 240, 0.1); border-radius: 8px; display: flex; align-items: center; justify-content: center;">
-                        <i class="fa-solid fa-file-pen text-info"></i>
-                    </div>
-                </div>
-                <div class="fs-3 fw-bold text-dark metric-value">{{ metrics.bids_in_draft }}</div>
-                <div class="text-muted small mt-1">
-                    <a href="/vendor/bids/?tab=draft" class="text-decoration-none text-info">Resume draft &rarr;</a>
-                </div>
-            </div>
-        </div>
-
-        <!-- 3. Submitted Bids -->
-        <div class="col-6 col-md-3">
-            <div class="stat-card glass-card h-100 border-start border-4 border-success">
-                <div class="d-flex align-items-center justify-content-between mb-2">
-                    <span class="text-muted small fw-semibold text-uppercase">Submitted Bids</span>
-                    <div class="brand-icon-box" style="width: 32px; height: 32px; background: rgba(25, 135, 84, 0.1); border-radius: 8px; display: flex; align-items: center; justify-content: center;">
-                        <i class="fa-solid fa-file-circle-check text-success"></i>
-                    </div>
-                </div>
-                <div class="fs-3 fw-bold text-dark metric-value">{{ metrics.submitted_bids }}</div>
-                <div class="text-muted small mt-1">
-                    <span class="text-muted">Sealed & protected</span>
-                </div>
-            </div>
-        </div>
-
-        <!-- 4. Upcoming Deadlines -->
-        <div class="col-6 col-md-3">
-            <div class="stat-card glass-card h-100 border-start border-4 border-danger">
-                <div class="d-flex align-items-center justify-content-between mb-2">
-                    <span class="text-muted small fw-semibold text-uppercase">Upcoming Deadlines</span>
-                    <div class="brand-icon-box" style="width: 32px; height: 32px; background: rgba(220, 53, 69, 0.1); border-radius: 8px; display: flex; align-items: center; justify-content: center;">
-                        <i class="fa-solid fa-clock-rotate-left text-danger"></i>
-                    </div>
-                </div>
-                <div class="fs-3 fw-bold text-dark metric-value">{{ metrics.upcoming_deadlines }}</div>
-                <div class="text-muted small mt-1">
-                    <span class="text-danger">Closing in &le; 7 days</span>
-                </div>
-            </div>
-        </div>
-
-        <!-- 5. Pending Clarifications -->
-        <div class="col-6 col-md-3">
-            <div class="stat-card glass-card h-100 border-start border-4 border-warning">
-                <div class="d-flex align-items-center justify-content-between mb-2">
-                    <span class="text-muted small fw-semibold text-uppercase">Pending Questions</span>
-                    <div class="brand-icon-box" style="width: 32px; height: 32px; background: rgba(255, 193, 7, 0.1); border-radius: 8px; display: flex; align-items: center; justify-content: center;">
-                        <i class="fa-solid fa-circle-question text-warning"></i>
-                    </div>
-                </div>
-                <div class="fs-3 fw-bold text-dark metric-value">{{ metrics.pending_clarifications }}</div>
-                <div class="text-muted small mt-1">
-                    <a href="/vendor/clarifications/" class="text-decoration-none text-warning">View questions &rarr;</a>
-                </div>
-            </div>
-        </div>
-
-        <!-- 6. POs Requiring Acknowledgement -->
-        <div class="col-6 col-md-3">
-            <div class="stat-card glass-card h-100 border-start border-4 border-cyan" style="border-left-color: var(--hpe-cyan) !important;">
-                <div class="d-flex align-items-center justify-content-between mb-2">
-                    <span class="text-muted small fw-semibold text-uppercase">POs Requiring Ack</span>
-                    <div class="brand-icon-box" style="width: 32px; height: 32px; background: rgba(0, 176, 185, 0.1); border-radius: 8px; display: flex; align-items: center; justify-content: center;">
-                        <i class="fa-solid fa-stamp text-cyan"></i>
-                    </div>
-                </div>
-                <div class="fs-3 fw-bold text-dark metric-value">{{ metrics.pos_requiring_ack }}</div>
-                <div class="text-muted small mt-1">
-                    <a href="/vendor/purchase-orders/?tab=pending_ack" class="text-decoration-none text-cyan">Review & acknowledge &rarr;</a>
-                </div>
-            </div>
-        </div>
-
-        <!-- 7. Active Purchase Orders -->
-        <div class="col-6 col-md-3">
-            <div class="stat-card glass-card h-100 border-start border-4 border-secondary">
-                <div class="d-flex align-items-center justify-content-between mb-2">
-                    <span class="text-muted small fw-semibold text-uppercase">Active Purchase Orders</span>
-                    <div class="brand-icon-box" style="width: 32px; height: 32px; background: rgba(108, 117, 125, 0.1); border-radius: 8px; display: flex; align-items: center; justify-content: center;">
-                        <i class="fa-solid fa-truck-ramp-box text-secondary"></i>
-                    </div>
-                </div>
-                <div class="fs-3 fw-bold text-dark metric-value">{{ metrics.active_pos }}</div>
-                <div class="text-muted small mt-1">
-                    <a href="/vendor/purchase-orders/?tab=active" class="text-decoration-none text-secondary">Track fulfillment &rarr;</a>
-                </div>
-            </div>
-        </div>
-
-        <!-- 8. KYC/Compliance Status -->
-        <div class="col-6 col-md-3">
-            <div class="stat-card glass-card h-100 border-start border-4 {% if metrics.kyc_compliance_status == 'ACTIVE' %}border-success{% elif metrics.kyc_compliance_status == 'SUSPENDED' or metrics.kyc_compliance_status == 'REJECTED' %}border-danger{% else %}border-warning{% endif %}">
-                <div class="d-flex align-items-center justify-content-between mb-2">
-                    <span class="text-muted small fw-semibold text-uppercase">KYC Status</span>
-                    <div class="brand-icon-box" style="width: 32px; height: 32px; background: rgba(0,0,0,0.05); border-radius: 8px; display: flex; align-items: center; justify-content: center;">
-                        <i class="fa-solid fa-shield-halved text-dark"></i>
-                    </div>
-                </div>
-                <div class="fs-4 fw-bold text-dark metric-value">{{ metrics.kyc_compliance_status }}</div>
-                <div class="text-muted small mt-1">
-                    <a href="/vendor/profile/" class="text-decoration-none text-primary">Check compliance &rarr;</a>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Row: Sections A & B (Recent RFQ/RFP Invitations & Upcoming Deadlines) -->
-    <div class="row g-4 mb-4">
-        <!-- Section A: Recent RFQ/RFP Invitations -->
-        <div class="col-lg-7">
-            <div class="card glass-card border-0 shadow-sm h-100">
-                <div class="card-header bg-white border-bottom border-light py-3 d-flex justify-content-between align-items-center">
-                    <h6 class="mb-0 fw-bold text-dark">
-                        <i class="fa-solid fa-gavel text-primary me-2"></i> Section A: Recent RFQ/RFP Invitations
-                    </h6>
-                    <a href="/vendor/sourcing/?tab=invitations" class="btn btn-sm btn-link text-decoration-none p-0">View All &rarr;</a>
-                </div>
-                <div class="card-body p-0">
-                    {% if recent_invitations %}
-                    <div class="table-responsive">
-                        <table class="table table-hover align-middle mb-0">
-                            <thead class="table-light small text-uppercase text-secondary">
-                                <tr>
-                                    <th class="ps-3">Event Ref</th>
-                                    <th>Title</th>
-                                    <th>Type</th>
-                                    <th>Bid Deadline</th>
-                                    <th>Status</th>
-                                    <th class="text-end pe-3">Action</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for inv in recent_invitations %}
-                                <tr>
-                                    <td class="ps-3 fw-semibold text-primary">
-                                        <a href="/vendor/sourcing/{{ inv.event.id }}/" class="text-decoration-none">
-                                            {{ inv.event.event_number }}
-                                        </a>
-                                    </td>
-                                    <td>
-                                        <div class="fw-semibold text-dark text-truncate" style="max-width: 200px;">{{ inv.event.title }}</div>
-                                    </td>
-                                    <td>
-                                        <span class="badge bg-secondary bg-opacity-10 text-dark border">{{ inv.event.event_type }}</span>
-                                    </td>
-                                    <td class="small text-muted">{{ inv.event.bid_end_date|date:"M d, Y H:i" }}</td>
-                                    <td>
-                                        <span class="badge {% if inv.event.status == 'BID_WINDOW' %}bg-success{% else %}bg-secondary{% endif %}">
-                                            {{ inv.event.status }}
-                                        </span>
-                                    </td>
-                                    <td class="text-end pe-3">
-                                        <a href="/vendor/sourcing/{{ inv.event.id }}/" class="btn btn-sm btn-outline-primary rounded-pill px-3">
-                                            View
-                                        </a>
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                    {% else %}
-                    <div class="text-center py-5 px-3">
-                        <i class="fa-regular fa-folder-open text-muted fs-1 mb-2"></i>
-                        <p class="text-muted mb-0">No sourcing invitations available at this time.</p>
-                        <small class="text-secondary">When procurement invites your company to an RFQ or RFP, it will appear here.</small>
-                    </div>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
-
-        <!-- Section B: Upcoming Bid Deadlines -->
-        <div class="col-lg-5">
-            <div class="card glass-card border-0 shadow-sm h-100">
-                <div class="card-header bg-white border-bottom border-light py-3 d-flex justify-content-between align-items-center">
-                    <h6 class="mb-0 fw-bold text-dark">
-                        <i class="fa-solid fa-hourglass-half text-danger me-2"></i> Section B: Upcoming Deadlines
-                    </h6>
-                    <span class="badge bg-danger bg-opacity-10 text-danger rounded-pill">Time-Sensitive</span>
-                </div>
-                <div class="card-body p-3">
-                    {% if upcoming_events %}
-                    <div class="d-flex flex-column gap-3">
-                        {% for ev in upcoming_events %}
-                        <div class="p-3 rounded border border-danger border-opacity-25 bg-danger bg-opacity-10 d-flex justify-content-between align-items-center">
-                            <div>
-                                <div class="fw-bold text-dark">{{ ev.event_number }}</div>
-                                <div class="text-muted small text-truncate" style="max-width: 220px;">{{ ev.title }}</div>
-                                <div class="text-danger small mt-1 fw-semibold">
-                                    <i class="fa-solid fa-clock me-1"></i> Closes: {{ ev.bid_end_date|date:"M d, Y H:i" }}
-                                </div>
-                            </div>
-                            <div>
-                                <a href="/vendor/bids/create/{{ ev.id }}/" class="btn btn-danger btn-sm rounded-pill px-3 shadow-sm">
-                                    Prepare Bid
-                                </a>
-                            </div>
-                        </div>
-                        {% endfor %}
-                    </div>
-                    {% else %}
-                    <div class="text-center py-5">
-                        <i class="fa-solid fa-circle-check text-success fs-1 mb-2"></i>
-                        <p class="text-muted mb-0">No urgent bid deadlines pending.</p>
-                        <small class="text-secondary">All open sourcing timelines are on track.</small>
-                    </div>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Row: Sections C & D (Recent Bid Activity & Pending Actions) -->
-    <div class="row g-4 mb-4">
-        <!-- Section C: Recent Bid Activity -->
-        <div class="col-lg-6">
-            <div class="card glass-card border-0 shadow-sm h-100">
-                <div class="card-header bg-white border-bottom border-light py-3 d-flex justify-content-between align-items-center">
-                    <h6 class="mb-0 fw-bold text-dark">
-                        <i class="fa-solid fa-file-lines text-success me-2"></i> Section C: Recent Bid Activity
-                    </h6>
-                    <a href="/vendor/bids/" class="btn btn-sm btn-link text-decoration-none p-0">All Bids &rarr;</a>
-                </div>
-                <div class="card-body p-0">
-                    {% if recent_bids %}
-                    <div class="table-responsive">
-                        <table class="table table-hover align-middle mb-0">
-                            <thead class="table-light small text-uppercase text-secondary">
-                                <tr>
-                                    <th class="ps-3">Bid Ref</th>
-                                    <th>Event</th>
-                                    <th>Amount</th>
-                                    <th>Version</th>
-                                    <th>Status</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for bid in recent_bids %}
-                                <tr>
-                                    <td class="ps-3">
-                                        <a href="/vendor/bids/{{ bid.id }}/" class="fw-semibold text-primary text-decoration-none">
-                                            {{ bid.bid_number }}
-                                        </a>
-                                    </td>
-                                    <td>
-                                        <span class="small text-muted">{{ bid.event.event_number }}</span>
-                                    </td>
-                                    <td class="fw-semibold text-dark">${{ bid.total_bid_amount|floatformat:2 }}</td>
-                                    <td><span class="badge bg-secondary">V{{ bid.version }}</span></td>
-                                    <td>
-                                        <span class="badge {% if bid.status == 'SUBMITTED' %}bg-success{% elif bid.status == 'AMENDED' %}bg-info text-dark{% else %}bg-warning text-dark{% endif %}">
-                                            {{ bid.status }}
-                                        </span>
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                    {% else %}
-                    <div class="text-center py-5">
-                        <i class="fa-solid fa-file-circle-question text-muted fs-1 mb-2"></i>
-                        <p class="text-muted mb-0">No recent bid activity recorded.</p>
-                        <small class="text-secondary">Submit or prepare bids for invited events to track progress.</small>
-                    </div>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
-
-        <!-- Section D: Pending Actions -->
-        <div class="col-lg-6">
-            <div class="card glass-card border-0 shadow-sm h-100">
-                <div class="card-header bg-white border-bottom border-light py-3 d-flex justify-content-between align-items-center">
-                    <h6 class="mb-0 fw-bold text-dark">
-                        <i class="fa-solid fa-triangle-exclamation text-warning me-2"></i> Section D: Pending Actions
-                    </h6>
-                    <span class="badge bg-warning bg-opacity-25 text-dark rounded-pill">Action Items</span>
-                </div>
-                <div class="card-body p-3">
-                    {% if pending_pos or draft_bids %}
-                    <div class="d-flex flex-column gap-2">
-                        {% for po in pending_pos %}
-                        <div class="p-2 px-3 rounded border border-warning bg-warning bg-opacity-10 d-flex justify-content-between align-items-center">
-                            <div>
-                                <span class="badge bg-warning text-dark me-2">PO Acknowledgment</span>
-                                <strong class="text-dark">{{ po.po_number }}</strong>
-                                <span class="text-muted small">(${ {{ po.total_amount|floatformat:2 }} })</span>
-                            </div>
-                            <a href="/vendor/purchase-orders/{{ po.id }}/" class="btn btn-sm btn-warning rounded-pill px-3 fw-semibold">
-                                Acknowledge
-                            </a>
-                        </div>
-                        {% endfor %}
-
-                        {% for draft in draft_bids %}
-                        <div class="p-2 px-3 rounded border border-info bg-info bg-opacity-10 d-flex justify-content-between align-items-center">
-                            <div>
-                                <span class="badge bg-info text-dark me-2">Draft Bid</span>
-                                <strong class="text-dark">{{ draft.bid_number }}</strong>
-                                <span class="text-muted small">({{ draft.event.event_number }})</span>
-                            </div>
-                            <a href="/vendor/bids/create/{{ draft.event.id }}/" class="btn btn-sm btn-outline-info rounded-pill px-3">
-                                Complete & Submit
-                            </a>
-                        </div>
-                        {% endfor %}
-                    </div>
-                    {% else %}
-                    <div class="text-center py-5">
-                        <i class="fa-solid fa-list-check text-success fs-1 mb-2"></i>
-                        <p class="text-muted mb-0">No pending actions required.</p>
-                        <small class="text-secondary">All purchase orders acknowledged and bids up to date.</small>
-                    </div>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Row: Sections E & F (Recent Purchase Orders & Notifications) -->
-    <div class="row g-4">
-        <!-- Section E: Recent Purchase Orders -->
-        <div class="col-lg-7">
-            <div class="card glass-card border-0 shadow-sm h-100">
-                <div class="card-header bg-white border-bottom border-light py-3 d-flex justify-content-between align-items-center">
-                    <h6 class="mb-0 fw-bold text-dark">
-                        <i class="fa-solid fa-cart-shopping text-cyan me-2"></i> Section E: Recent Purchase Orders
-                    </h6>
-                    <a href="/vendor/purchase-orders/" class="btn btn-sm btn-link text-decoration-none p-0">View All &rarr;</a>
-                </div>
-                <div class="card-body p-0">
-                    {% if recent_pos %}
-                    <div class="table-responsive">
-                        <table class="table table-hover align-middle mb-0">
-                            <thead class="table-light small text-uppercase text-secondary">
-                                <tr>
-                                    <th class="ps-3">PO Number</th>
-                                    <th>Issued Date</th>
-                                    <th>Total Amount</th>
-                                    <th>Status</th>
-                                    <th>Ack Status</th>
-                                    <th class="text-end pe-3">Action</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for po in recent_pos %}
-                                <tr>
-                                    <td class="ps-3">
-                                        <a href="/vendor/purchase-orders/{{ po.id }}/" class="fw-semibold text-primary text-decoration-none">
-                                            {{ po.po_number }}
-                                        </a>
-                                    </td>
-                                    <td class="small text-muted">{{ po.created_at|date:"M d, Y" }}</td>
-                                    <td class="fw-bold text-dark">${{ po.total_amount|floatformat:2 }}</td>
-                                    <td>
-                                        <span class="badge {% if po.status == 'ACKNOWLEDGED' %}bg-success{% elif po.status == 'ISSUED' %}bg-warning text-dark{% elif po.status == 'COMPLETED' %}bg-info text-dark{% else %}bg-secondary{% endif %}">
-                                            {{ po.status }}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        {% if po.acknowledged_at %}
-                                        <span class="text-success small fw-semibold"><i class="fa-solid fa-check me-1"></i> {{ po.acknowledged_at|date:"M d" }}</span>
-                                        {% else %}
-                                        <span class="text-warning small fw-semibold"><i class="fa-solid fa-clock me-1"></i> Pending</span>
-                                        {% endif %}
-                                    </td>
-                                    <td class="text-end pe-3">
-                                        <a href="/vendor/purchase-orders/{{ po.id }}/" class="btn btn-sm btn-outline-primary rounded-pill px-3">
-                                            Review
-                                        </a>
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                    {% else %}
-                    <div class="text-center py-5">
-                        <i class="fa-solid fa-receipt text-muted fs-1 mb-2"></i>
-                        <p class="text-muted mb-0">No purchase orders issued yet.</p>
-                        <small class="text-secondary">Awarded contracts and sourcing events will generate POs here.</small>
-                    </div>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
-
-        <!-- Section F: Notifications -->
-        <div class="col-lg-5">
-            <div class="card glass-card border-0 shadow-sm h-100">
-                <div class="card-header bg-white border-bottom border-light py-3 d-flex justify-content-between align-items-center">
-                    <h6 class="mb-0 fw-bold text-dark">
-                        <i class="fa-solid fa-bell text-warning me-2"></i> Section F: Recent Notifications
-                    </h6>
-                    <a href="/vendor/notifications/" class="btn btn-sm btn-link text-decoration-none p-0">Notification Center &rarr;</a>
-                </div>
-                <div class="card-body p-3">
-                    {% if recent_notifications %}
-                    <div class="d-flex flex-column gap-2">
-                        {% for n in recent_notifications %}
-                        <div class="p-2 px-3 rounded border {% if not n.is_read %}border-primary bg-primary bg-opacity-10{% else %}border-light bg-light{% endif %} d-flex justify-content-between align-items-center">
-                            <div>
-                                <div class="fw-semibold small text-dark">{{ n.title }}</div>
-                                <div class="text-muted small text-truncate" style="max-width: 250px;">{{ n.message }}</div>
-                                <div class="text-muted" style="font-size: 0.65rem;">{{ n.created_at|date:"M d, Y H:i" }}</div>
-                            </div>
-                            <div>
-                                {% if not n.is_read %}
-                                <span class="badge bg-primary rounded-pill">New</span>
-                                {% endif %}
-                            </div>
-                        </div>
-                        {% endfor %}
-                    </div>
-                    {% else %}
-                    <div class="text-center py-5">
-                        <i class="fa-regular fa-bell text-muted fs-1 mb-2"></i>
-                        <p class="text-muted mb-0">No notifications at present.</p>
-                        <small class="text-secondary">System notices and invitations will appear here.</small>
-                    </div>
-                    {% endif %}
+                <div class="col-lg-4 text-lg-end mt-3 mt-lg-0">
+                    <a href="/sourcing-events/" class="btn btn-primary btn-lg rounded-pill fw-bold px-4 shadow-sm">
+                        <i class="fa-solid fa-gavel me-1"></i> Browse Open RFQs
+                    </a>
                 </div>
             </div>
         </div>
     </div>
 </div>
-{% endblock vendor_content %}
+
+<!-- Key Stat Cards for Vendor -->
+<div class="row g-4 mb-4">
+    <div class="col-md-3">
+        <div class="stat-card hover-elevate shadow-sm h-100 border-start border-success border-4">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+                <span class="text-muted small fw-semibold">VENDOR STATUS</span>
+                <i class="fa-solid fa-shield-halved text-success fs-4"></i>
+            </div>
+            <div class="metric-value text-success fs-3">{{ vendor.status|default:"ACTIVE" }}</div>
+            <div class="text-muted small mt-1">KYC Verified & Eligible</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card hover-elevate shadow-sm h-100 border-start border-primary border-4">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+                <span class="text-muted small fw-semibold">ISSUED POs</span>
+                <i class="fa-solid fa-cart-shopping text-primary fs-4"></i>
+            </div>
+            <div class="metric-value text-dark">{{ metrics.total_pos|default:metrics.active_pos|default:0 }}</div>
+            <div class="text-muted small mt-1">Purchase orders from HPE</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card hover-elevate shadow-sm h-100 border-start border-warning border-4">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+                <span class="text-muted small fw-semibold">ACTIVE BIDS</span>
+                <i class="fa-solid fa-lock text-warning fs-4"></i>
+            </div>
+            <div class="metric-value text-warning">{{ metrics.active_bids|default:metrics.submitted_bids|default:0 }}</div>
+            <div class="text-muted small mt-1">Sealed proposal submissions</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card hover-elevate shadow-sm h-100 border-start border-info border-4">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+                <span class="text-muted small fw-semibold">SUBMITTED INVOICES</span>
+                <i class="fa-solid fa-receipt text-info fs-4"></i>
+            </div>
+            <div class="metric-value text-navy">{{ metrics.total_invoices|default:0 }}</div>
+            <div class="text-muted small mt-1">3-Way Match & Paid</div>
+        </div>
+    </div>
+</div>
+
+<!-- My Issued Purchase Orders Waiting Acknowledgement -->
+<div class="glass-card p-4 shadow-sm mb-4">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+        <h5 class="fw-bold text-dark mb-0"><i class="fa-solid fa-file-contract text-primary me-2"></i> Issued Purchase Orders</h5>
+        <a href="/purchase-orders/" class="btn btn-outline-primary btn-sm rounded-pill px-3">View All Orders</a>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr class="small text-uppercase text-muted">
+                    <th class="ps-4">PO Number & Version</th>
+                    <th>Total Amount</th>
+                    <th>Status</th>
+                    <th class="text-end pe-4">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for po in vendor_pos %}
+                    <tr>
+                        <td class="ps-4">
+                            <div class="fw-bold text-dark"><code>{{ po.po_number }}</code></div>
+                            <div class="text-muted small">Issued {{ po.created_at|date:"M d, Y" }} &bull; Version V{{ po.version }}</div>
+                        </td>
+                        <td class="fw-bold text-navy">${{ po.total_amount|floatformat:2 }}</td>
+                        <td>
+                            {% if po.status == 'ACKNOWLEDGED' %}
+                                <span class="badge bg-success text-white rounded-pill px-3 py-1"><i class="fa-solid fa-check me-1"></i> ACKNOWLEDGED</span>
+                            {% else %}
+                                <span class="badge bg-warning text-dark rounded-pill px-3 py-1">{{ po.status }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end pe-4">
+                            <a href="/purchase-orders/" class="btn btn-primary btn-sm rounded-pill px-3">Inspect & Acknowledge</a>
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="4" class="text-center py-4 text-muted">No purchase orders currently assigned to your vendor account.</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

@@ -1,5 +1,15 @@
 from django.contrib import admin
-from .models import SourcingEvent, BidInvite, VendorBid, BidLine, BidVersion, BidAttachment, Clarification, BidEvaluation
+from .models import (
+    AwardDecision,
+    BidAttachment,
+    BidEvaluation,
+    BidInvite,
+    BidLine,
+    BidVersion,
+    Clarification,
+    SourcingEvent,
+    VendorBid,
+)
 
 
 class BidInviteInline(admin.TabularInline):
@@ -50,3 +60,9 @@ class ClarificationAdmin(admin.ModelAdmin):
 class BidEvaluationAdmin(admin.ModelAdmin):
     list_display = ("event", "bid", "evaluator", "weighted_total_score", "created_at")
     search_fields = ("event__event_number", "bid__bid_number")
+
+
+@admin.register(AwardDecision)
+class AwardDecisionAdmin(admin.ModelAdmin):
+    list_display = ("event", "winning_bid", "awarded_amount", "approved_by", "created_at")
+    search_fields = ("event__event_number", "winning_bid__bid_number")

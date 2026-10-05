@@ -11,14 +11,15 @@ def portal_login_view(request):
         return redirect("/")
 
     if request.method == "POST":
-        email = request.POST.get("email", "").strip()
+        email = (request.POST.get("email") or request.POST.get("username") or "").strip()
         password = request.POST.get("password", "")
 
         if not email or not password:
             messages.error(request, "Please provide both email and password.")
             return render(request, "pages/login.html", {"email": email})
 
-        user = authenticate(request, username=email, password=password)
+        # Explicit request=request keyword parameter is required for django-axes compatibility
+        user = authenticate(request=request, username=email, password=password)
 
         if user is not None:
             if not user.is_active:
@@ -41,3 +42,9 @@ def portal_logout_view(request):
     logout(request)
     messages.info(request, "You have been logged out successfully.")
     return redirect("/login/")
+
+
+# Aliases for route compatibility
+login_page_view = portal_login_view
+logout_page_view = portal_logout_view
+

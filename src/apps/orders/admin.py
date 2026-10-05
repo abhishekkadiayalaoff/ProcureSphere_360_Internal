@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import PurchaseOrder, POLine, POAmendment, DeliverySchedule
+from .models import DeliverySchedule, POAmendment, POLine, PurchaseOrder
 
 
 class POLineInline(admin.TabularInline):
@@ -25,6 +25,18 @@ class PurchaseOrderAdmin(admin.ModelAdmin):
     search_fields = ("po_number", "vendor__legal_name")
     inlines = [POLineInline, DeliveryScheduleInline, POAmendmentInline]
     readonly_fields = ("created_at", "updated_at")
+
+
+@admin.register(POLine)
+class POLineAdmin(admin.ModelAdmin):
+    list_display = ("po", "item_description", "quantity", "unit_price", "total_price")
+    search_fields = ("po__po_number", "item_description")
+
+
+@admin.register(POAmendment)
+class POAmendmentAdmin(admin.ModelAdmin):
+    list_display = ("po", "amendment_number", "reason", "created_at")
+    search_fields = ("po__po_number", "reason")
 
 
 @admin.register(DeliverySchedule)

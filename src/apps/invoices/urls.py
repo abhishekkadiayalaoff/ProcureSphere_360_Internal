@@ -2,7 +2,8 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
-    path("", views.list_view, name="invoices_list"),
+    path("invoices/", views.list_view, name="invoices_list"),
+    path("", views.list_view, name="invoices_list_root"),
     path("create/", views.create_invoice_view, name="create_invoice"),
     path("exceptions/", views.exceptions_list_view, name="exceptions_list"),
     path("exceptions/<int:exception_id>/", views.exception_detail_view, name="exception_detail"),

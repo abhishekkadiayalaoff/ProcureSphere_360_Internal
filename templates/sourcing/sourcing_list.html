@@ -1,0 +1,98 @@
+{% extends 'base.html' %}
+
+{% block title %}Sourcing Events & Sealed Bids — ProcureSphere 360 ERP{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+        <h2 class="fw-bold text-dark mb-1"><i class="fa-solid fa-gavel text-warning me-2"></i> RFQ / RFP Sourcing Events</h2>
+        <p class="text-muted small mb-0">Stage-gated sealed bid evaluation, commercial pricing comparisons & award approvals.</p>
+    </div>
+    <div>
+        <button class="btn btn-warning text-dark fw-bold rounded-pill px-4 shadow-sm" hx-get="/sourcing-events/create/" hx-target="#modal-content-body" data-bs-toggle="modal" data-bs-target="#modal-container">
+            <i class="fa-solid fa-plus me-1"></i> Create Sourcing Event
+        </button>
+    </div>
+</div>
+
+
+<!-- Messages Alert -->
+{% if messages %}
+    {% for message in messages %}
+        <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %} alert-dismissible fade show rounded-3 small" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    {% endfor %}
+{% endif %}
+
+<!-- Status Filter Pills -->
+<div class="mb-4">
+    <div class="btn-group border rounded-pill p-1 bg-white shadow-sm" role="group">
+        <a href="/sourcing-events/" class="btn btn-sm rounded-pill px-3 {% if not status_filter %}btn-warning{% else %}btn-light{% endif %}">All Events</a>
+        <a href="/sourcing-events/?status=BID_WINDOW" class="btn btn-sm rounded-pill px-3 {% if status_filter == 'BID_WINDOW' %}btn-warning{% else %}btn-light{% endif %}">Sealed Window</a>
+        <a href="/sourcing-events/?status=COMMERCIAL_REVIEW" class="btn btn-sm rounded-pill px-3 {% if status_filter == 'COMMERCIAL_REVIEW' %}btn-warning{% else %}btn-light{% endif %}">Commercial Review</a>
+        <a href="/sourcing-events/?status=AWARDED" class="btn btn-sm rounded-pill px-3 {% if status_filter == 'AWARDED' %}btn-warning{% else %}btn-light{% endif %}">Awarded</a>
+    </div>
+</div>
+
+<!-- Sourcing Register Table -->
+<div class="glass-card shadow-sm overflow-hidden">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr class="small text-uppercase text-muted">
+                    <th class="ps-4">Event Code & Title</th>
+                    <th>Type</th>
+                    <th>Bid Secrecy State</th>
+                    <th>Bids Received</th>
+                    <th>Status</th>
+                    <th class="text-end pe-4">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for event in events %}
+                    <tr>
+                        <td class="ps-4">
+                            <div class="fw-bold text-dark">
+                                <a href="/sourcing-events/{{ event.id }}/" class="text-decoration-none text-navy">
+                                    {{ event.title }}
+                                </a>
+                            </div>
+                            <div class="text-muted small"><code>{{ event.event_number }}</code></div>
+                        </td>
+                        <td><span class="badge bg-light text-dark border">{{ event.event_type }}</span></td>
+                        <td>
+                            {% if event.status == 'BID_WINDOW' %}
+                                <span class="badge bg-dark text-cyan rounded-pill px-3 py-1"><i class="fa-solid fa-lock me-1"></i> SEALED</span>
+                            {% else %}
+                                <span class="badge bg-info-subtle text-info border border-info-subtle rounded-pill px-3 py-1"><i class="fa-solid fa-lock-open me-1"></i> UNSEALED</span>
+                            {% endif %}
+                        </td>
+                        <td><span class="badge bg-secondary text-white rounded-circle">{{ event.bids.count }}</span></td>
+                        <td>
+                            {% if event.status == 'AWARDED' %}
+                                <span class="badge badge-status badge-status-approved">AWARDED</span>
+                            {% else %}
+                                <span class="badge badge-status badge-status-pending">{{ event.status }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end pe-4">
+                            <a href="/sourcing-events/{{ event.id }}/" class="btn btn-outline-warning btn-sm rounded-pill px-3 text-dark fw-semibold">
+                                View Event <i class="fa-solid fa-arrow-right ms-1"></i>
+                            </a>
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center py-5 text-muted">
+                            <i class="fa-solid fa-gavel fa-3x mb-3 text-secondary"></i>
+                            <div>No Sourcing Events found matching the criteria.</div>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

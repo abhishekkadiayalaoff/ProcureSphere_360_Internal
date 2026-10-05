@@ -1,0 +1,96 @@
+{% extends 'base.html' %}
+
+{% block title %}Supplier Scorecards — ProcureSphere 360 ERP{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+        <h2 class="fw-bold text-dark mb-1"><i class="fa-solid fa-award text-success me-2"></i> Supplier Performance Scorecards</h2>
+        <p class="text-muted small mb-0">Weighted rating algorithm: Delivery Timeliness (30%), Quality Acceptance (30%), Price Adherence (20%), Compliance (20%).</p>
+    </div>
+</div>
+
+<!-- Messages Alert -->
+{% if messages %}
+    {% for message in messages %}
+        <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %} alert-dismissible fade show rounded-3 small" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    {% endfor %}
+{% endif %}
+
+<!-- Scorecard Leaderboard Table -->
+<div class="glass-card shadow-sm overflow-hidden">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr class="small text-uppercase text-muted">
+                    <th class="ps-4">Supplier Name</th>
+                    <th>Delivery Timeliness (30%)</th>
+                    <th>Quality Acceptance (30%)</th>
+                    <th>Price Adherence (20%)</th>
+                    <th>Compliance (20%)</th>
+                    <th>Overall Weighted Rating</th>
+                    <th class="text-end pe-4">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for card in scorecards %}
+                    <tr>
+                        <td class="ps-4">
+                            <div class="fw-bold text-dark">{{ card.vendor.legal_name }}</div>
+                            <div class="text-muted small"><code>{{ card.vendor.vendor_code }}</code></div>
+                        </td>
+                        <td>
+                            <div class="progress" style="height: 6px; width: 100px;">
+                                <div class="progress-bar bg-primary" style="width: {{ card.delivery_score }}%;"></div>
+                            </div>
+                            <div class="small fw-semibold mt-1">{{ card.delivery_score|floatformat:1 }}/100</div>
+                        </td>
+                        <td>
+                            <div class="progress" style="height: 6px; width: 100px;">
+                                <div class="progress-bar bg-success" style="width: {{ card.quality_score }}%;"></div>
+                            </div>
+                            <div class="small fw-semibold mt-1">{{ card.quality_score|floatformat:1 }}/100</div>
+                        </td>
+                        <td>
+                            <div class="progress" style="height: 6px; width: 100px;">
+                                <div class="progress-bar bg-warning" style="width: {{ card.price_score }}%;"></div>
+                            </div>
+                            <div class="small fw-semibold mt-1">{{ card.price_score|floatformat:1 }}/100</div>
+                        </td>
+                        <td>
+                            <div class="progress" style="height: 6px; width: 100px;">
+                                <div class="progress-bar bg-info" style="width: {{ card.compliance_score }}%;"></div>
+                            </div>
+                            <div class="small fw-semibold mt-1">{{ card.compliance_score|floatformat:1 }}/100</div>
+                        </td>
+                        <td>
+                            {% if card.overall_score >= 85 %}
+                                <span class="badge bg-success fs-6 px-3 py-2"><i class="fa-solid fa-star me-1"></i> {{ card.overall_score|floatformat:1 }}/100</span>
+                            {% elif card.overall_score >= 70 %}
+                                <span class="badge bg-warning text-dark fs-6 px-3 py-2">{{ card.overall_score|floatformat:1 }}/100</span>
+                            {% else %}
+                                <span class="badge bg-danger fs-6 px-3 py-2">{{ card.overall_score|floatformat:1 }}/100</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end pe-4">
+                            <a href="/vendors/{{ card.vendor.id }}/" class="btn btn-outline-success btn-sm rounded-pill px-3">
+                                Vendor Profile <i class="fa-solid fa-arrow-right ms-1"></i>
+                            </a>
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="7" class="text-center py-5 text-muted">
+                            <i class="fa-solid fa-award fa-3x mb-3 text-secondary"></i>
+                            <div>No Supplier Scorecard records generated yet. Run transactions to compute scores.</div>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

@@ -1,41 +1,59 @@
-from django.shortcuts import render
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.shortcuts import redirect, render
+
 from apps.accounts.models import Role
 from apps.requisitions.models import PurchaseRequisition
-from apps.approvals.models import ApprovalAction
+from .services import process_approval_action_service
+
 
 @login_required(login_url="/login/")
-def inbox_view(request):
+def approvals_inbox_view(request):
+    """
+    Unified Approvals Inbox for Department Approvers, Procurement Managers, and Finance.
+    """
     user = request.user
-    role_code = getattr(user, "role_code", None) or (user.role.code if hasattr(user, "role") and user.role else Role.SUPER_ADMIN)
-    
+    role_code = getattr(user, "role_code", None) or (
+        user.role.code if hasattr(user, "role") and user.role else Role.SUPER_ADMIN
+    )
+
+    if request.method == "POST":
+        pr_id = request.POST.get("pr_id")
+        action = request.POST.get("action")  # APPROVED or REJECTED
+        comments = request.POST.get("comments", "").strip()
+
+        try:
+            pr = PurchaseRequisition.objects.get(id=pr_id)
+            process_approval_action_service(
+                target_object=pr,
+                actor=request.user,
+                action=action,
+                comments=comments,
+            )
+            messages.success(request, f"Requisition {pr.pr_number} successfully {action.lower()}!")
+            return redirect("approvals_inbox")
+        except Exception as e:
+            messages.error(request, f"Error processing approval action: {str(e)}")
+
     if role_code == Role.REQUESTER:
-        # Requesters don't approve things, but they can see their pending items.
         pending_prs = PurchaseRequisition.objects.filter(
-            requester=user, 
-            status__in=["SUBMITTED", "MANAGER_REVIEW", "BUDGET_REVIEW"]
+            requester=user,
+            status__in=["SUBMITTED", "MANAGER_REVIEW", "BUDGET_REVIEW"],
         ).order_by("-updated_at")
-        
-        return render(
-            request,
-            "pages/approvals/inbox.html",
-            {
-                "pending_prs": pending_prs,
-                "role_code": role_code
-            }
-        )
     else:
-        # Other roles (like DEPT_APPROVER) would see items assigned to them.
-        # For now, just show all pending PRs as a placeholder.
         pending_prs = PurchaseRequisition.objects.filter(
             status__in=["SUBMITTED", "MANAGER_REVIEW", "BUDGET_REVIEW"]
         ).order_by("-updated_at")
-        
-        return render(
-            request,
-            "pages/approvals/inbox.html",
-            {
-                "pending_prs": pending_prs,
-                "role_code": role_code
-            }
-        )
+
+    context = {
+        "pending_prs": pending_prs,
+        "role_code": role_code,
+    }
+    try:
+        return render(request, "approvals/inbox.html", context)
+    except Exception:
+        return render(request, "pages/approvals/inbox.html", context)
+
+
+# Alias for URL route compatibility
+inbox_view = approvals_inbox_view

@@ -4,7 +4,7 @@ from .models import Vendor, VendorCategory, VendorContact, VendorDocument, Vendo
 
 @admin.register(VendorCategory)
 class VendorCategoryAdmin(admin.ModelAdmin):
-    list_display = ("name", "code", "created_at")
+    list_display = ("name", "code", "description", "created_at")
     search_fields = ("name", "code")
 
 
@@ -41,12 +41,19 @@ class VendorAdmin(admin.ModelAdmin):
         "tax_identification_number",
         "category",
         "status",
+        "email",
         "created_at",
     )
     list_filter = ("status", "category")
     search_fields = ("legal_name", "trade_name", "vendor_number", "tax_identification_number", "email")
     inlines = [VendorContactInline, VendorDocumentInline, VendorRiskRecordInline]
     readonly_fields = ("created_at", "updated_at")
+
+
+@admin.register(VendorContact)
+class VendorContactAdmin(admin.ModelAdmin):
+    list_display = ("vendor", "name", "email", "phone", "is_primary")
+    search_fields = ("name", "email", "vendor__legal_name")
 
 
 @admin.register(VendorRiskRecord)

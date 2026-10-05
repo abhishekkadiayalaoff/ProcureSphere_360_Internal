@@ -38,7 +38,7 @@
                             {% endfor %}
                         {% endif %}
 
-                        <form method="POST" action="/login/{% if request.GET.next %}?next={{ request.GET.next }}{% endif %}">
+                        <form id="loginForm" method="POST" action="/login/{% if request.GET.next %}?next={{ request.GET.next }}{% endif %}">
                             {% csrf_token %}
                             
                             <div class="mb-3">
@@ -57,12 +57,29 @@
                                 </div>
                             </div>
 
-                            <div class="d-grid">
+                            <div class="d-grid mb-4">
                                 <button type="submit" class="btn btn-primary btn-lg fw-bold py-3 text-uppercase shadow-sm fs-6">
                                     <i class="fa-solid fa-right-to-bracket me-2"></i> Sign In to Dashboard
                                 </button>
                             </div>
                         </form>
+
+                        <!-- Quick Demo Accounts Helper -->
+                        <div class="border-top pt-3 text-center">
+                            <p class="small text-muted fw-semibold mb-2"><i class="fa-solid fa-bolt text-warning me-1"></i> Quick 1-Click Role Logins (Password: <code>Password123!</code>)</p>
+                            <div class="d-flex flex-wrap justify-content-center gap-1">
+                                <button type="button" class="btn btn-outline-dark btn-sm py-1 px-2" style="font-size: 0.72rem;" onclick="quickLogin('admin@hpe.com')">Super Admin</button>
+                                <button type="button" class="btn btn-outline-primary btn-sm py-1 px-2" style="font-size: 0.72rem;" onclick="quickLogin('requester@hpe.com')">Requester</button>
+                                <button type="button" class="btn btn-outline-warning btn-sm py-1 px-2" style="font-size: 0.72rem;" onclick="quickLogin('approver@hpe.com')">Dept Approver</button>
+                                <button type="button" class="btn btn-outline-info btn-sm py-1 px-2" style="font-size: 0.72rem;" onclick="quickLogin('procexec@hpe.com')">Proc Exec</button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm py-1 px-2" style="font-size: 0.72rem;" onclick="quickLogin('procmgr@hpe.com')">Proc Mgr</button>
+                                <button type="button" class="btn btn-outline-success btn-sm py-1 px-2" style="font-size: 0.72rem;" onclick="quickLogin('receiver@hpe.com')">Stores Receiver</button>
+                                <button type="button" class="btn btn-outline-danger btn-sm py-1 px-2" style="font-size: 0.72rem;" onclick="quickLogin('finance@hpe.com')">Finance AP</button>
+                                <button type="button" class="btn btn-outline-dark btn-sm py-1 px-2" style="font-size: 0.72rem;" onclick="quickLogin('legal@hpe.com')">Legal Mgr</button>
+                                <button type="button" class="btn btn-outline-info btn-sm py-1 px-2" style="font-size: 0.72rem;" onclick="quickLogin('auditor@hpe.com')">Auditor</button>
+                                <button type="button" class="btn btn-outline-success btn-sm py-1 px-2" style="font-size: 0.72rem;" onclick="quickLogin('vendoruser@cisco.com')">Vendor User</button>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="card-footer bg-light text-center py-3 border-0">
@@ -75,5 +92,12 @@
 
     <!-- Bootstrap JS Bundle -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function quickLogin(email) {
+            document.getElementById('email').value = email;
+            document.getElementById('password').value = 'Password123!';
+            document.getElementById('loginForm').submit();
+        }
+    </script>
 </body>
 </html>

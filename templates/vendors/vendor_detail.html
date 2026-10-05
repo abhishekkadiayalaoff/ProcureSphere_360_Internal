@@ -1,0 +1,162 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ vendor.legal_name }} — ProcureSphere 360 ERP{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-xl-10">
+        <!-- Header Banner -->
+        <div class="d-flex align-items-center justify-content-between mb-4">
+            <div>
+                <div class="d-flex align-items-center mb-1">
+                    <span class="h4 fw-bold text-dark mb-0 me-3"><code>{{ vendor.vendor_code }}</code></span>
+                    {% if vendor.status == 'ACTIVE' %}
+                        <span class="badge badge-status badge-status-approved fs-6">ACTIVE</span>
+                    {% elif vendor.status == 'SUSPENDED' %}
+                        <span class="badge badge-status badge-status-suspended fs-6">SUSPENDED</span>
+                    {% else %}
+                        <span class="badge badge-status badge-status-pending fs-6">{{ vendor.status }}</span>
+                    {% endif %}
+                </div>
+                <h3 class="fw-bold text-navy mb-0">{{ vendor.legal_name }}</h3>
+            </div>
+            <a href="/vendors/" class="btn btn-outline-secondary rounded-pill px-3">
+                <i class="fa-solid fa-arrow-left me-1"></i> Vendor Register
+            </a>
+        </div>
+
+        <!-- Messages Alert -->
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %} alert-dismissible fade show rounded-3 small" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <!-- Overview & Governance Grid -->
+        <div class="row g-4 mb-4">
+            <div class="col-md-8">
+                <div class="glass-card p-4 h-100 shadow-sm">
+                    <h5 class="fw-bold text-dark mb-3 border-bottom pb-2"><i class="fa-solid fa-building text-success me-2"></i> Company Details & Governance</h5>
+                    
+                    <div class="row g-3">
+                        <div class="col-sm-6">
+                            <div class="small text-muted fw-semibold">TAX REGISTRATION ID</div>
+                            <div class="fw-semibold text-dark">{{ vendor.tax_id }}</div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="small text-muted fw-semibold">COUNTRY OF REGISTRATION</div>
+                            <div class="fw-semibold text-dark">{{ vendor.country }}</div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="small text-muted fw-semibold">RISK ASSESSMENT RATING</div>
+                            <div>
+                                {% if vendor.risk_rating == 'LOW' %}
+                                    <span class="badge bg-success text-white">LOW RISK</span>
+                                {% else %}
+                                    <span class="badge bg-warning text-dark">{{ vendor.risk_rating }} RISK</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="small text-muted fw-semibold">KYC VERIFICATION STATUS</div>
+                            <div>
+                                {% if vendor.kyc_status == 'VERIFIED' %}
+                                    <span class="badge bg-success text-white"><i class="fa-solid fa-check me-1"></i> VERIFIED</span>
+                                {% else %}
+                                    <span class="badge bg-warning text-dark"><i class="fa-solid fa-clock me-1"></i> {{ vendor.kyc_status }}</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Vendor Governance Action Form -->
+                    <hr class="my-4">
+                    <h6 class="fw-bold text-dark mb-2">Governance Controls & Status Update</h6>
+                    <form method="POST" action="/vendors/{{ vendor.id }}/" class="row g-2 align-items-center">
+                        {% csrf_token %}
+                        <div class="col-md-7">
+                            <input type="text" name="comments" class="form-control form-control-sm" placeholder="Reviewer notes / governance reason...">
+                        </div>
+                        <div class="col-md-5 d-flex gap-2">
+                            {% if vendor.status != 'ACTIVE' %}
+                                <button type="submit" name="action" value="APPROVE_KYC" class="btn btn-success btn-sm flex-fill rounded-pill fw-bold">
+                                    <i class="fa-solid fa-check me-1"></i> Approve KYC
+                                </button>
+                            {% endif %}
+                            {% if vendor.status != 'SUSPENDED' %}
+                                <button type="submit" name="action" value="SUSPEND" class="btn btn-danger btn-sm flex-fill rounded-pill fw-bold">
+                                    <i class="fa-solid fa-ban me-1"></i> Suspend
+                                </button>
+                            {% endif %}
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Contact & Address Card -->
+            <div class="col-md-4">
+                <div class="glass-card p-4 h-100 shadow-sm">
+                    <h5 class="fw-bold text-dark mb-3 border-bottom pb-2"><i class="fa-solid fa-address-book text-primary me-2"></i> Primary Contact</h5>
+                    {% for contact in contacts %}
+                        <div class="mb-3">
+                            <div class="fw-bold text-dark">{{ contact.name }}</div>
+                            <div class="text-muted small">{{ contact.title }}</div>
+                            <div class="small text-primary mt-1"><i class="fa-solid fa-envelope me-1"></i> {{ contact.email }}</div>
+                            <div class="small text-muted"><i class="fa-solid fa-phone me-1"></i> {{ contact.phone }}</div>
+                        </div>
+                    {% empty %}
+                        <div class="text-muted small">No explicit contact records on file.</div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Submitted KYC Documents -->
+        <div class="glass-card p-4 shadow-sm">
+            <h5 class="fw-bold text-dark mb-3 border-bottom pb-2"><i class="fa-solid fa-folder-open text-cyan me-2"></i> Verified KYC & Compliance Documents</h5>
+            <div class="table-responsive">
+                <table class="table align-middle mb-0">
+                    <thead class="table-light small">
+                        <tr>
+                            <th class="ps-3">Document Title & Type</th>
+                            <th>Status</th>
+                            <th>Uploaded Date</th>
+                            <th class="text-end pe-3">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for doc in documents %}
+                            <tr>
+                                <td class="ps-3">
+                                    <div class="fw-semibold text-dark">{{ doc.document_type }}</div>
+                                    <div class="text-muted small"><code>{{ doc.document_number|default:"DOC-N/A" }}</code></div>
+                                </td>
+                                <td>
+                                    {% if doc.status == 'VERIFIED' %}
+                                        <span class="badge bg-success-subtle text-success border border-success-subtle">VERIFIED</span>
+                                    {% else %}
+                                        <span class="badge bg-warning-subtle text-warning border border-warning-subtle">{{ doc.status }}</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-muted small">{{ doc.uploaded_at|date:"M d, Y" }}</td>
+                                <td class="text-end pe-3">
+                                    <a href="#" class="btn btn-outline-primary btn-sm rounded-pill px-3">
+                                        <i class="fa-solid fa-download me-1"></i> Download
+                                    </a>
+                                </td>
+                            </tr>
+                        {% empty %}
+                            <tr>
+                                <td colspan="4" class="text-center py-4 text-muted small">No uploaded KYC documents attached to this vendor record.</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

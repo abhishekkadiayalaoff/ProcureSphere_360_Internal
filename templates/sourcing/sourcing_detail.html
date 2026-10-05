@@ -1,0 +1,124 @@
+{% extends 'base.html' %}
+
+{% block title %}RFQ {{ event.event_number }} — ProcureSphere 360 ERP{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-xl-10">
+        <!-- Header Banner -->
+        <div class="d-flex align-items-center justify-content-between mb-4">
+            <div>
+                <div class="d-flex align-items-center mb-1">
+                    <span class="h4 fw-bold text-dark mb-0 me-3"><code>{{ event.event_number }}</code></span>
+                    {% if event.status == 'BID_WINDOW' %}
+                        <span class="badge bg-dark text-cyan rounded-pill px-3 py-1 fs-6"><i class="fa-solid fa-lock me-1"></i> SEALED BID WINDOW</span>
+                    {% elif event.status == 'AWARDED' %}
+                        <span class="badge badge-status badge-status-approved fs-6">AWARDED</span>
+                    {% else %}
+                        <span class="badge badge-status badge-status-pending fs-6">{{ event.status }}</span>
+                    {% endif %}
+                </div>
+                <h3 class="fw-bold text-navy mb-0">{{ event.title }}</h3>
+            </div>
+            <a href="/sourcing-events/" class="btn btn-outline-secondary rounded-pill px-3">
+                <i class="fa-solid fa-arrow-left me-1"></i> Sourcing Register
+            </a>
+        </div>
+
+        <!-- Messages Alert -->
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %} alert-dismissible fade show rounded-3 small" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <!-- Event Overview Glass Card -->
+        <div class="glass-card p-4 shadow-sm mb-4">
+            <h5 class="fw-bold text-dark mb-3 border-bottom pb-2"><i class="fa-solid fa-bullhorn text-warning me-2"></i> Event Specification</h5>
+            <p class="text-dark mb-4">{{ event.description|default:"No event description specified." }}</p>
+            <div class="row g-3">
+                <div class="col-sm-4">
+                    <div class="small text-muted fw-semibold">EVENT TYPE</div>
+                    <div class="fw-semibold text-dark">{{ event.event_type }}</div>
+                </div>
+                <div class="col-sm-4">
+                    <div class="small text-muted fw-semibold">SUBMISSION DEADLINE</div>
+                    <div class="fw-semibold text-dark">{{ event.bid_submission_deadline|date:"F d, Y — H:i" }}</div>
+                </div>
+                <div class="col-sm-4">
+                    <div class="small text-muted fw-semibold">TOTAL BIDS SUBMITTED</div>
+                    <div class="fw-bold text-primary fs-5">{{ bids|length }}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Vendor Bids & Commercial Evaluation -->
+        <div class="glass-card p-4 shadow-sm">
+            <h5 class="fw-bold text-dark mb-3 border-bottom pb-2 d-flex justify-content-between align-items-center">
+                <span><i class="fa-solid fa-gavel text-warning me-2"></i> Supplier Bids & Commercial Evaluation</span>
+                {% if is_sealed %}
+                    <span class="badge bg-dark text-warning border border-warning small"><i class="fa-solid fa-user-shield me-1"></i> Sealed Bids Hidden Until Close</span>
+                {% endif %}
+            </h5>
+
+            {% if is_sealed %}
+                <div class="p-5 text-center bg-light rounded-3 border">
+                    <i class="fa-solid fa-user-lock fa-3x text-warning mb-3"></i>
+                    <h5 class="fw-bold text-dark mb-1">Sealed Bid Window Active</h5>
+                    <p class="text-muted mb-0">Per HPE PRD Sealed Bidding rules, supplier pricing and commercial proposals remain encrypted and strictly invisible to reviewers until the stage transitions out of BID_WINDOW.</p>
+                </div>
+            {% else %}
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light small">
+                            <tr>
+                                <th class="ps-3">Supplier Name</th>
+                                <th>Total Bid Amount</th>
+                                <th>Tech Score</th>
+                                <th>Commercial Score</th>
+                                <th>Status</th>
+                                <th class="text-end pe-3">Award Decision</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for bid in bids %}
+                                <tr {% if bid.status == 'WINNING' %}class="table-success"{% endif %}>
+                                    <td class="ps-3 fw-bold text-dark">{{ bid.vendor.legal_name }}</td>
+                                    <td class="fw-bold text-navy">${{ bid.total_amount|floatformat:2 }}</td>
+                                    <td><span class="badge bg-info text-dark">{{ bid.technical_score|default:"N/A" }}/100</span></td>
+                                    <td><span class="badge bg-primary">{{ bid.commercial_score|default:"N/A" }}/100</span></td>
+                                    <td>
+                                        {% if bid.status == 'WINNING' %}
+                                            <span class="badge bg-success text-white"><i class="fa-solid fa-trophy me-1"></i> AWARDED</span>
+                                        {% else %}
+                                            <span class="badge bg-light text-dark border">{{ bid.status }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-end pe-3">
+                                        {% if event.status != 'AWARDED' %}
+                                            <form method="POST" class="d-inline">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="winning_bid_id" value="{{ bid.id }}">
+                                                <button type="submit" name="award_winning_bid" value="true" class="btn btn-success btn-sm rounded-pill px-3 fw-bold shadow-sm" onclick="return confirm('Award sourcing contract to {{ bid.vendor.legal_name }}?')">
+                                                    <i class="fa-solid fa-trophy me-1"></i> Award Event
+                                                </button>
+                                            </form>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% empty %}
+                                <tr>
+                                    <td colspan="6" class="text-center py-4 text-muted small">No vendor bids submitted for this sourcing event.</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

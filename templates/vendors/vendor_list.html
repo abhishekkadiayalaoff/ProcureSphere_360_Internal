@@ -1,0 +1,114 @@
+{% extends 'base.html' %}
+
+{% block title %}Vendor Master & Governance — ProcureSphere 360 ERP{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+        <h2 class="fw-bold text-dark mb-1"><i class="fa-solid fa-building-user text-success me-2"></i> Vendor Master & KYC Governance</h2>
+        <p class="text-muted small mb-0">Supplier onboarding, KYC document verification, and due-diligence risk controls.</p>
+    </div>
+    <div>
+        <button class="btn btn-success rounded-pill fw-bold px-4 shadow-sm" hx-get="/vendors/create/" hx-target="#modal-content-body" data-bs-toggle="modal" data-bs-target="#modal-container">
+            <i class="fa-solid fa-plus me-1"></i> Onboard New Vendor
+        </button>
+    </div>
+</div>
+
+
+<!-- Messages Alert -->
+{% if messages %}
+    {% for message in messages %}
+        <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %} alert-dismissible fade show rounded-3 small" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    {% endfor %}
+{% endif %}
+
+<!-- Status Filter Pills -->
+<div class="mb-4">
+    <div class="btn-group border rounded-pill p-1 bg-white shadow-sm" role="group">
+        <a href="/vendors/" class="btn btn-sm rounded-pill px-3 {% if not status_filter %}btn-success{% else %}btn-light{% endif %}">All Vendors</a>
+        <a href="/vendors/?status=ACTIVE" class="btn btn-sm rounded-pill px-3 {% if status_filter == 'ACTIVE' %}btn-success{% else %}btn-light{% endif %}">Active</a>
+        <a href="/vendors/?status=KYC_REVIEW" class="btn btn-sm rounded-pill px-3 {% if status_filter == 'KYC_REVIEW' %}btn-success{% else %}btn-light{% endif %}">KYC Review</a>
+        <a href="/vendors/?status=APPROVED" class="btn btn-sm rounded-pill px-3 {% if status_filter == 'APPROVED' %}btn-success{% else %}btn-light{% endif %}">Approved</a>
+        <a href="/vendors/?status=SUSPENDED" class="btn btn-sm rounded-pill px-3 {% if status_filter == 'SUSPENDED' %}btn-success{% else %}btn-light{% endif %}">Suspended</a>
+    </div>
+</div>
+
+<!-- Vendor Master Table -->
+<div class="glass-card shadow-sm overflow-hidden">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr class="small text-uppercase text-muted">
+                    <th class="ps-4">Vendor Code & Name</th>
+                    <th>Tax ID / Registration</th>
+                    <th>Risk Rating</th>
+                    <th>KYC Status</th>
+                    <th>Lifecycle State</th>
+                    <th class="text-end pe-4">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for vendor in vendors %}
+                    <tr>
+                        <td class="ps-4">
+                            <div class="fw-bold text-dark">
+                                <a href="/vendors/{{ vendor.id }}/" class="text-decoration-none text-navy">
+                                    {{ vendor.legal_name }}
+                                </a>
+                            </div>
+                            <div class="text-muted small"><code>{{ vendor.vendor_code }}</code> &bull; {{ vendor.trade_name|default:vendor.legal_name }}</div>
+                        </td>
+                        <td>
+                            <div class="fw-semibold text-dark">{{ vendor.tax_id }}</div>
+                            <div class="text-muted small">{{ vendor.country }}</div>
+                        </td>
+                        <td>
+                            {% if vendor.risk_rating == 'LOW' %}
+                                <span class="badge bg-success-subtle text-success border border-success-subtle"><i class="fa-solid fa-shield-check me-1"></i> LOW RISK</span>
+                            {% elif vendor.risk_rating == 'HIGH' %}
+                                <span class="badge bg-danger-subtle text-danger border border-danger-subtle"><i class="fa-solid fa-triangle-exclamation me-1"></i> HIGH RISK</span>
+                            {% else %}
+                                <span class="badge bg-warning-subtle text-warning border border-warning-subtle"><i class="fa-solid fa-shield me-1"></i> MEDIUM RISK</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if vendor.kyc_status == 'VERIFIED' %}
+                                <span class="badge bg-success text-white rounded-pill px-3 py-1"><i class="fa-solid fa-check me-1"></i> VERIFIED</span>
+                            {% elif vendor.kyc_status == 'REJECTED' %}
+                                <span class="badge bg-danger text-white rounded-pill px-3 py-1"><i class="fa-solid fa-xmark me-1"></i> REJECTED</span>
+                            {% else %}
+                                <span class="badge bg-warning text-dark rounded-pill px-3 py-1"><i class="fa-solid fa-hourglass me-1"></i> PENDING</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if vendor.status == 'ACTIVE' %}
+                                <span class="badge badge-status badge-status-approved">ACTIVE</span>
+                            {% elif vendor.status == 'SUSPENDED' %}
+                                <span class="badge badge-status badge-status-suspended">SUSPENDED</span>
+                            {% else %}
+                                <span class="badge badge-status badge-status-pending">{{ vendor.status }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end pe-4">
+                            <a href="/vendors/{{ vendor.id }}/" class="btn btn-outline-success btn-sm rounded-pill px-3">
+                                Inspect Profile <i class="fa-solid fa-arrow-right ms-1"></i>
+                            </a>
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center py-5 text-muted">
+                            <i class="fa-solid fa-building-slash fa-3x mb-3 text-secondary"></i>
+                            <div>No Vendor records found matching the criteria.</div>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
