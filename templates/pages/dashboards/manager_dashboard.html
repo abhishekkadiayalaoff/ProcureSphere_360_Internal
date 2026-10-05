@@ -109,7 +109,7 @@
                                 <tr>
                                     <td class="ps-3 fw-semibold text-primary">{{ pr.pr_number }}</td>
                                     <td>{{ pr.title|truncatechars:30 }}</td>
-                                    <td><strong class="text-dark">${{ pr.estimated_cost|floatformat:2 }}</strong></td>
+                                    <td><strong class="text-dark">${{ pr.total_amount|floatformat:2 }}</strong></td>
                                     <td><span class="badge bg-warning text-dark">{{ pr.status }}</span></td>
                                     <td class="text-end pe-3">
                                         <a href="/requisitions/{{ pr.id }}/" class="btn btn-sm btn-outline-primary">Review</a>
@@ -148,10 +148,10 @@
                             <tbody>
                                 {% for vendor in kyc_vendors %}
                                 <tr>
-                                    <td class="ps-3 fw-semibold">{{ vendor.name }}</td>
+                                    <td class="ps-3 fw-semibold">{{ vendor.legal_name }}</td>
                                     <td><span class="badge bg-light text-dark border">{{ vendor.category.name|default:"General" }}</span></td>
                                     <td class="text-end pe-3">
-                                        <a href="/vendors/" class="btn btn-sm btn-outline-success">KYC Approve</a>
+                                        <a href="/vendors/{{ vendor.id }}/" class="btn btn-sm btn-outline-success">KYC Approve</a>
                                     </td>
                                 </tr>
                                 {% empty %}

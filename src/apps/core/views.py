@@ -102,7 +102,7 @@ def home_view(request):
             },
             "pending_prs": pending_prs,
         }
-        return render(request, "pages/dashboards/dept_approver.html", context)
+        return render(request, "pages/dashboards/approver_dashboard.html", context)
 
     # 3. PROCUREMENT MANAGER GOVERNANCE DASHBOARD
     elif role_code == Role.PROC_MGR:
@@ -120,7 +120,7 @@ def home_view(request):
             "pending_prs": pending_prs[:5],
             "kyc_vendors": kyc_vendors[:5],
         }
-        return render(request, "pages/dashboards/proc_mgr.html", context)
+        return render(request, "pages/dashboards/manager_dashboard.html", context)
 
     # 4. STORES / RECEIVER DASHBOARD
     elif role_code == Role.STORES_RECEIVER:
@@ -139,7 +139,7 @@ def home_view(request):
             },
             "recent_grns": recent_grns,
         }
-        return render(request, "pages/dashboards/stores_receiver.html", context)
+        return render(request, "pages/dashboards/stores_dashboard.html", context)
 
     # 5. VENDOR PORTAL USER DASHBOARD
     elif role_code == Role.VENDOR_USER:
@@ -178,7 +178,7 @@ def home_view(request):
             },
             "active_events": active_events,
         }
-        return render(request, "pages/dashboards/proc_exec.html", context)
+        return render(request, "pages/dashboards/procurement_dashboard.html", context)
 
     # 8. LEGAL / CONTRACT MANAGER DASHBOARD
     elif role_code == Role.LEGAL_MGR:
@@ -218,7 +218,7 @@ def home_view(request):
             },
             "recent_logs": recent_logs,
         }
-        return render(request, "pages/dashboards/auditor.html", context)
+        return render(request, "pages/dashboards/auditor_dashboard.html", context)
 
     # 10. SUPER ADMIN / EXECUTIVE CONTROL CENTER
     total_pr_count = PurchaseRequisition.objects.count()
