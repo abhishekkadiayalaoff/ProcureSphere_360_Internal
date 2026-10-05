@@ -33,22 +33,34 @@ def exception_detail_view(request, exception_id):
 
 @login_required(login_url="/login/")
 def resolve_exception_view(request, exception_id):
+    from apps.accounts.models import Role
+
+    role_code = getattr(request.user, "role_code", None) or (
+        request.user.role.code if hasattr(request.user, "role") and request.user.role else Role.SUPER_ADMIN
+    )
+    if role_code == Role.AUDITOR:
+        messages.error(
+            request,
+            "Permission Denied: Compliance Auditors hold strictly read-only permissions and cannot resolve invoice match exceptions.",
+        )
+        return redirect("exceptions_list")
+
     if request.method == "POST":
         exception = get_object_or_404(MatchException, id=exception_id)
-        action = request.POST.get("action") # 'RESOLVE' or 'REJECT'
+        action = request.POST.get("action")  # 'RESOLVE' or 'REJECT'
         notes = request.POST.get("resolution_notes", "")
-        
+
         try:
             resolve_match_exception_service(
                 match_exception=exception,
                 resolved_by_user=request.user,
                 resolution_notes=notes,
-                action=action
+                action=action,
             )
             messages.success(request, f"Exception successfully {action.lower()}d.")
         except Exception as e:
             messages.error(request, f"Error: {str(e)}")
-            
+
     return redirect("exceptions_list")
 
 @login_required(login_url="/login/")

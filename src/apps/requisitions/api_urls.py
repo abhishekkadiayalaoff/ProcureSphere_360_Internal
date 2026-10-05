@@ -2,6 +2,7 @@ from rest_framework import serializers, viewsets
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.routers import DefaultRouter
 
+from apps.audit.permissions import AuditorReadOnlyPermission
 from .models import PRAttachment, PRLine, PurchaseRequisition
 
 
@@ -35,7 +36,7 @@ class PurchaseRequisitionViewSet(viewsets.ModelViewSet):
         .all()
     )
     serializer_class = PurchaseRequisitionSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, AuditorReadOnlyPermission]
 
     def get_queryset(self):
         user = self.request.user

@@ -27,6 +27,18 @@ def portal_login_view(request):
                 return render(request, "pages/login.html", {"email": email})
 
             login(request, user)
+            
+            # Record AuditLog for authentication
+            from apps.audit.services import create_audit_log_service
+            from apps.audit.models import AuditLog
+            create_audit_log_service(
+                actor=user,
+                action=AuditLog.ACTION_LOGIN,
+                target_model="User",
+                target_object_id=str(user.id),
+                new_state={"email": user.email, "role": user.role_code if hasattr(user, "role_code") else None},
+            )
+
             next_url = request.GET.get("next") or "/"
             return redirect(next_url)
         else:
@@ -39,6 +51,18 @@ def portal_logout_view(request):
     """
     Logs out the user from the ERP Portal and redirects to /login/.
     """
+    user = request.user if request.user.is_authenticated else None
+    if user:
+        from apps.audit.services import create_audit_log_service
+        from apps.audit.models import AuditLog
+        create_audit_log_service(
+            actor=user,
+            action=AuditLog.ACTION_LOGOUT,
+            target_model="User",
+            target_object_id=str(user.id),
+            previous_state={"email": user.email},
+        )
+
     logout(request)
     messages.info(request, "You have been logged out successfully.")
     return redirect("/login/")
