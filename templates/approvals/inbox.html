@@ -1,4 +1,4 @@
-{% extends 'base.html' %}
+{% extends 'layouts/requester_base.html' %}
 
 {% block title %}Approvals Inbox — ProcureSphere 360 ERP{% endblock %}
 
@@ -49,11 +49,12 @@
                         </div>
                         <div class="col-4">
                             <div class="small text-muted">ESTIMATED TOTAL</div>
-                            <div class="fw-bold text-navy small">${{ pr.total_estimated_amount|floatformat:2 }}</div>
+                            <div class="fw-bold text-navy small">${{ pr.total_amount|floatformat:2 }}</div>
                         </div>
                     </div>
                 </div>
 
+                {% if role_code != 'REQUESTER' %}
                 <form method="POST" action="/approvals/inbox/">
                     {% csrf_token %}
                     <input type="hidden" name="pr_id" value="{{ pr.id }}">
@@ -72,14 +73,24 @@
                         </a>
                     </div>
                 </form>
+                {% else %}
+                <div class="d-flex align-items-center justify-content-between pt-2 border-top">
+                    <span class="small text-muted">
+                        <i class="fa-solid fa-clock-rotate-left text-warning me-1"></i> Awaiting Department Manager Authorization
+                    </span>
+                    <a href="/requisitions/{{ pr.id }}/" class="btn btn-primary btn-sm rounded-pill px-4 py-2 fw-semibold">
+                        <i class="fa-solid fa-eye me-1"></i> View & Track
+                    </a>
+                </div>
+                {% endif %}
             </div>
         </div>
     {% empty %}
         <div class="col-12">
             <div class="glass-card p-5 text-center text-muted shadow-sm">
                 <i class="fa-solid fa-circle-check fa-3x text-success mb-3"></i>
-                <h5 class="fw-bold text-dark mb-1">Your Approvals Inbox is Clear!</h5>
-                <p class="mb-0">There are currently no pending Purchase Requisitions or Change Orders requiring your authorization.</p>
+                <h5 class="fw-bold text-dark mb-1">{% if role_code == 'REQUESTER' %}No Pending Requisitions{% else %}Your Approvals Inbox is Clear!{% endif %}</h5>
+                <p class="mb-0">{% if role_code == 'REQUESTER' %}You have no requisitions currently awaiting approval.{% else %}There are currently no pending Purchase Requisitions or Change Orders requiring your authorization.{% endif %}</p>
             </div>
         </div>
     {% endfor %}

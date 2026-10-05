@@ -49,10 +49,7 @@ def approvals_inbox_view(request):
         "pending_prs": pending_prs,
         "role_code": role_code,
     }
-    try:
-        return render(request, "approvals/inbox.html", context)
-    except Exception:
-        return render(request, "pages/approvals/inbox.html", context)
+    return render(request, "pages/approvals/inbox.html", context)
 
 
 # Alias for URL route compatibility
