@@ -1,4 +1,5 @@
 from rest_framework import permissions
+
 from apps.accounts.models import Role
 
 
@@ -31,7 +32,13 @@ class CanViewContract(permissions.BasePermission):
             request.user.role.code if getattr(request.user, "role", None) else None
         )
 
-        if role_code in [Role.SUPER_ADMIN, Role.LEGAL_MGR, Role.PROC_MGR, Role.PROC_EXEC, Role.AUDITOR]:
+        if role_code in [
+            Role.SUPER_ADMIN,
+            Role.LEGAL_MGR,
+            Role.PROC_MGR,
+            Role.PROC_EXEC,
+            Role.AUDITOR,
+        ]:
             return True
 
         if role_code == Role.VENDOR_USER:

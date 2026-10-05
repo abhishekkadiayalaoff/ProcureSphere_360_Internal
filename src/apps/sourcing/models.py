@@ -114,6 +114,7 @@ class BidVersion(TimeStampedModel):
     """
     Immutable historical snapshot of each submitted and amended bid version.
     """
+
     bid = models.ForeignKey(VendorBid, on_delete=models.CASCADE, related_name="versions")
     version_number = models.PositiveIntegerField()
     status = models.CharField(max_length=30)
@@ -137,6 +138,7 @@ class BidAttachment(TimeStampedModel):
     """
     Documents / attachments uploaded by vendor as part of technical or commercial bid submission.
     """
+
     DOC_TYPE_TECHNICAL = "TECHNICAL"
     DOC_TYPE_COMMERCIAL = "COMMERCIAL"
     DOC_TYPE_COMPLIANCE = "COMPLIANCE"
@@ -191,14 +193,20 @@ class AwardDecision(TimeStampedModel):
 class BidEvaluation(TimeStampedModel):
     event = models.ForeignKey(SourcingEvent, on_delete=models.CASCADE, related_name="evaluations")
     bid = models.ForeignKey(VendorBid, on_delete=models.CASCADE, related_name="evaluations")
-    evaluator = models.ForeignKey("accounts.User", on_delete=models.PROTECT, related_name="evaluations")
+    evaluator = models.ForeignKey(
+        "accounts.User", on_delete=models.PROTECT, related_name="evaluations"
+    )
     technical_score = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal("0.00"))
     commercial_score = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal("0.00"))
-    weighted_total_score = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal("0.00"))
+    weighted_total_score = models.DecimalField(
+        max_digits=5, decimal_places=2, default=Decimal("0.00")
+    )
     comments = models.TextField(blank=True)
 
     def save(self, *args, **kwargs):
-        self.weighted_total_score = (self.technical_score * Decimal("0.50")) + (self.commercial_score * Decimal("0.50"))
+        self.weighted_total_score = (self.technical_score * Decimal("0.50")) + (
+            self.commercial_score * Decimal("0.50")
+        )
         super().save(*args, **kwargs)
 
     def __str__(self):
@@ -206,11 +214,17 @@ class BidEvaluation(TimeStampedModel):
 
 
 class Clarification(TimeStampedModel):
-    event = models.ForeignKey(SourcingEvent, on_delete=models.CASCADE, related_name="clarifications")
-    vendor = models.ForeignKey("vendors.Vendor", on_delete=models.CASCADE, related_name="clarifications")
+    event = models.ForeignKey(
+        SourcingEvent, on_delete=models.CASCADE, related_name="clarifications"
+    )
+    vendor = models.ForeignKey(
+        "vendors.Vendor", on_delete=models.CASCADE, related_name="clarifications"
+    )
     question = models.TextField()
     answer = models.TextField(blank=True)
-    answered_by = models.ForeignKey("accounts.User", on_delete=models.SET_NULL, null=True, blank=True)
+    answered_by = models.ForeignKey(
+        "accounts.User", on_delete=models.SET_NULL, null=True, blank=True
+    )
     answered_at = models.DateTimeField(null=True, blank=True)
     status = models.CharField(
         max_length=30,
@@ -225,5 +239,3 @@ class Clarification(TimeStampedModel):
 
     def __str__(self):
         return f"Clarification Q for {self.event.event_number} by {self.vendor.legal_name}"
-
-

@@ -29,7 +29,11 @@ def get_requisitions_by_department(department_id):
 def get_user_requisitions(user):
     if not user or not user.is_authenticated:
         return PurchaseRequisition.objects.none()
-    if user.is_superuser or getattr(user, "role_code", "") in ["SUPER_ADMIN", "PROCUREMENT_MANAGER", "FINANCE_AP"]:
+    if user.is_superuser or getattr(user, "role_code", "") in [
+        "SUPER_ADMIN",
+        "PROCUREMENT_MANAGER",
+        "FINANCE_AP",
+    ]:
         return get_all_requisitions()
     return (
         PurchaseRequisition.objects.select_related("requester", "department", "cost_center")
@@ -37,4 +41,3 @@ def get_user_requisitions(user):
         .filter(requester=user)
         .order_by("-created_at")
     )
-

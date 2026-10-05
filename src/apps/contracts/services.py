@@ -1,4 +1,5 @@
 from decimal import Decimal
+
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.utils import timezone
@@ -84,7 +85,9 @@ def submit_for_legal_review_service(*, contract: Contract, user: User, notes: st
     Submits contract from DRAFT to LEGAL_REVIEW state.
     """
     if contract.status != Contract.STATUS_DRAFT:
-        raise ValidationError(f"Cannot submit contract in status '{contract.status}' for legal review.")
+        raise ValidationError(
+            f"Cannot submit contract in status '{contract.status}' for legal review."
+        )
 
     previous_status = contract.status
     contract.status = Contract.STATUS_LEGAL_REVIEW
@@ -108,7 +111,9 @@ def approve_legal_review_service(*, contract: Contract, user: User, notes: str =
     Approves legal review, moving contract to BUSINESS_APPROVAL state.
     """
     if contract.status != Contract.STATUS_LEGAL_REVIEW:
-        raise ValidationError(f"Cannot perform legal approval on contract in status '{contract.status}'.")
+        raise ValidationError(
+            f"Cannot perform legal approval on contract in status '{contract.status}'."
+        )
 
     previous_status = contract.status
     contract.status = Contract.STATUS_BUSINESS_APPROVAL
@@ -132,7 +137,9 @@ def reject_legal_review_service(*, contract: Contract, user: User, reason: str) 
     Rejects legal review, returning contract to DRAFT state for corrections.
     """
     if contract.status != Contract.STATUS_LEGAL_REVIEW:
-        raise ValidationError(f"Cannot reject legal review for contract in status '{contract.status}'.")
+        raise ValidationError(
+            f"Cannot reject legal review for contract in status '{contract.status}'."
+        )
 
     previous_status = contract.status
     contract.status = Contract.STATUS_DRAFT
@@ -155,8 +162,14 @@ def approve_business_service(*, contract: Contract, user: User, notes: str = "")
     """
     Business owner approves contract, moving status from BUSINESS_APPROVAL to ACTIVE.
     """
-    if contract.status not in [Contract.STATUS_BUSINESS_APPROVAL, Contract.STATUS_LEGAL_REVIEW, Contract.STATUS_DRAFT]:
-        raise ValidationError(f"Cannot perform business approval on contract in status '{contract.status}'.")
+    if contract.status not in [
+        Contract.STATUS_BUSINESS_APPROVAL,
+        Contract.STATUS_LEGAL_REVIEW,
+        Contract.STATUS_DRAFT,
+    ]:
+        raise ValidationError(
+            f"Cannot perform business approval on contract in status '{contract.status}'."
+        )
 
     previous_status = contract.status
     contract.status = Contract.STATUS_ACTIVE
@@ -227,7 +240,9 @@ def create_contract_version_service(
     contract.contract_value = contract_value
     contract.start_date = start_date
     contract.end_date = end_date
-    contract.save(update_fields=["version", "contract_value", "start_date", "end_date", "updated_at"])
+    contract.save(
+        update_fields=["version", "contract_value", "start_date", "end_date", "updated_at"]
+    )
 
     AuditLog.objects.create(
         actor=user,
@@ -261,7 +276,9 @@ def add_contract_milestone_service(
 
 
 @transaction.atomic
-def complete_contract_milestone_service(*, milestone: ContractMilestone, user: User) -> ContractMilestone:
+def complete_contract_milestone_service(
+    *, milestone: ContractMilestone, user: User
+) -> ContractMilestone:
     """
     Marks a milestone as completed.
     """
@@ -297,7 +314,9 @@ def add_contract_obligation_service(
 
 
 @transaction.atomic
-def fulfill_contract_obligation_service(*, obligation: ContractObligation, user: User) -> ContractObligation:
+def fulfill_contract_obligation_service(
+    *, obligation: ContractObligation, user: User
+) -> ContractObligation:
     """
     Marks an obligation as fulfilled.
     """
@@ -348,7 +367,11 @@ def renew_contract_service(
     """
     Renews an active or renewal-due contract, creating a new version.
     """
-    if contract.status not in [Contract.STATUS_ACTIVE, Contract.STATUS_RENEWAL_DUE, Contract.STATUS_EXPIRED]:
+    if contract.status not in [
+        Contract.STATUS_ACTIVE,
+        Contract.STATUS_RENEWAL_DUE,
+        Contract.STATUS_EXPIRED,
+    ]:
         raise ValidationError(f"Cannot renew contract in status '{contract.status}'.")
 
     value = new_value if new_value is not None else contract.contract_value
@@ -373,7 +396,11 @@ def renew_contract_service(
         target_model="Contract",
         target_object_id=str(contract.id),
         previous_state={"status": previous_status, "end_date": str(contract.end_date)},
-        new_state={"status": contract.status, "new_end_date": str(new_end_date), "value": str(value)},
+        new_state={
+            "status": contract.status,
+            "new_end_date": str(new_end_date),
+            "value": str(value),
+        },
     )
 
     return contract
@@ -414,7 +441,9 @@ def scan_contract_expirations_and_milestones_service() -> int:
     alerts_created = 0
 
     # 1. Expiration scan
-    active_contracts = Contract.objects.filter(status__in=[Contract.STATUS_ACTIVE, Contract.STATUS_RENEWED])
+    active_contracts = Contract.objects.filter(
+        status__in=[Contract.STATUS_ACTIVE, Contract.STATUS_RENEWED]
+    )
     for contract in active_contracts:
         notice_date = contract.end_date - timezone.timedelta(days=contract.renewal_notice_days)
         if (

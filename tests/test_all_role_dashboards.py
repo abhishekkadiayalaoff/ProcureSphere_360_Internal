@@ -1,4 +1,5 @@
 import pytest
+
 from apps.accounts.models import Role, User
 from apps.vendors.models import Vendor, VendorCategory
 

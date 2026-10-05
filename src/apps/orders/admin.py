@@ -1,4 +1,5 @@
 from django.contrib import admin
+
 from .models import DeliverySchedule, POAmendment, POLine, PurchaseOrder
 
 
@@ -20,7 +21,15 @@ class DeliveryScheduleInline(admin.TabularInline):
 
 @admin.register(PurchaseOrder)
 class PurchaseOrderAdmin(admin.ModelAdmin):
-    list_display = ("po_number", "vendor", "version", "status", "total_amount", "created_at", "acknowledged_at")
+    list_display = (
+        "po_number",
+        "vendor",
+        "version",
+        "status",
+        "total_amount",
+        "created_at",
+        "acknowledged_at",
+    )
     list_filter = ("status", "version")
     search_fields = ("po_number", "vendor__legal_name")
     inlines = [POLineInline, DeliveryScheduleInline, POAmendmentInline]

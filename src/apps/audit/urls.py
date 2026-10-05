@@ -18,13 +18,14 @@ urlpatterns = [
     # Main Executive Dashboard
     path("audit/", auditor_dashboard_view, name="auditor_dashboard_hub"),
     path("audit/dashboard/", auditor_dashboard_view, name="auditor_dashboard"),
-    
     # Dedicated Sub-Module Pages
     path("audit/logs/", audit_log_view, name="audit_log"),
     path("audit/vendors/", audit_vendors_view, name="audit_vendors"),
     path("audit/approvals/", audit_approvals_view, name="audit_approvals"),
     path("audit/po-changes/", audit_po_changes_view, name="audit_po_changes"),
-    path("audit/invoice-exceptions/", audit_invoice_exceptions_view, name="audit_invoice_exceptions"),
+    path(
+        "audit/invoice-exceptions/", audit_invoice_exceptions_view, name="audit_invoice_exceptions"
+    ),
     path("audit/contract-changes/", audit_contract_changes_view, name="audit_contract_changes"),
     path("audit/security-events/", audit_security_events_view, name="audit_security_events"),
     path("audit/sourcing-activity/", audit_sourcing_activity_view, name="audit_sourcing_activity"),

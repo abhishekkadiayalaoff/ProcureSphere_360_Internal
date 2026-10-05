@@ -127,32 +127,46 @@ def validate_bid_service(*, bid: VendorBid) -> dict:
     event = bid.event
 
     if event.status != SourcingEvent.STATUS_BID_WINDOW:
-        errors.append(f"Event '{event.event_number}' is not currently accepting bids (Status: {event.status}).")
+        errors.append(
+            f"Event '{event.event_number}' is not currently accepting bids (Status: {event.status})."
+        )
 
     if timezone.now() > event.bid_end_date:
-        errors.append(f"Bid submission deadline passed on {event.bid_end_date.strftime('%Y-%m-%d %H:%M')}.")
+        errors.append(
+            f"Bid submission deadline passed on {event.bid_end_date.strftime('%Y-%m-%d %H:%M')}."
+        )
 
     if bid.vendor.status == Vendor.STATUS_SUSPENDED:
-        errors.append("Vendor account is currently suspended and cannot participate in procurement.")
+        errors.append(
+            "Vendor account is currently suspended and cannot participate in procurement."
+        )
 
     if not bid.technical_proposal.strip() and not bid.proposal_summary.strip():
         errors.append("Technical response or proposal summary must be provided.")
 
     lines = list(bid.lines.all())
     if not lines:
-        errors.append("At least one commercial line item with quantity and quoted price is required.")
+        errors.append(
+            "At least one commercial line item with quantity and quoted price is required."
+        )
     else:
         for idx, line in enumerate(lines, 1):
             if line.quantity <= Decimal("0.00"):
-                errors.append(f"Line {idx} ('{line.item_description}'): Quantity must be greater than zero.")
+                errors.append(
+                    f"Line {idx} ('{line.item_description}'): Quantity must be greater than zero."
+                )
             if line.quoted_unit_price <= Decimal("0.00"):
-                errors.append(f"Line {idx} ('{line.item_description}'): Quoted unit price must be greater than zero.")
+                errors.append(
+                    f"Line {idx} ('{line.item_description}'): Quoted unit price must be greater than zero."
+                )
 
     if bid.total_bid_amount <= Decimal("0.00"):
         errors.append("Total bid amount must be greater than $0.00.")
 
     if event.required_documents and not bid.attachments.exists():
-        warnings.append("Event specifies required documents, but no attachments have been uploaded.")
+        warnings.append(
+            "Event specifies required documents, but no attachments have been uploaded."
+        )
 
     return {
         "is_valid": len(errors) == 0,
@@ -181,7 +195,9 @@ def save_draft_bid_service(
     Saves or updates a vendor's bid in DRAFT status.
     """
     if event.status != SourcingEvent.STATUS_BID_WINDOW:
-        raise ValidationError(f"Bidding is closed for event '{event.event_number}'. Status: {event.status}")
+        raise ValidationError(
+            f"Bidding is closed for event '{event.event_number}'. Status: {event.status}"
+        )
 
     if timezone.now() > event.bid_end_date:
         raise ValidationError("Cannot prepare bid: Sourcing event bid deadline has passed.")
@@ -209,7 +225,9 @@ def save_draft_bid_service(
         )
     else:
         if bid.status not in [VendorBid.STATUS_DRAFT]:
-            raise ValidationError(f"Bid is already in '{bid.status}' status. Use Amendment to modify.")
+            raise ValidationError(
+                f"Bid is already in '{bid.status}' status. Use Amendment to modify."
+            )
         bid.proposal_summary = proposal_summary
         bid.technical_proposal = technical_proposal
         bid.commercial_proposal = commercial_proposal
@@ -318,12 +336,14 @@ def submit_vendor_bid_service(
                 quoted_unit_price=unit_price,
             )
             total += line.quoted_total_price
-            snapshot_lines.append({
-                "item_description": line.item_description,
-                "quantity": str(line.quantity),
-                "quoted_unit_price": str(line.quoted_unit_price),
-                "quoted_total_price": str(line.quoted_total_price),
-            })
+            snapshot_lines.append(
+                {
+                    "item_description": line.item_description,
+                    "quantity": str(line.quantity),
+                    "quoted_unit_price": str(line.quoted_unit_price),
+                    "quoted_total_price": str(line.quoted_total_price),
+                }
+            )
         bid.total_bid_amount = total
     else:
         snapshot_lines = [
@@ -391,10 +411,14 @@ def amend_vendor_bid_service(
     """
     event = bid.event
     if event.status != SourcingEvent.STATUS_BID_WINDOW:
-        raise ValidationError(f"Cannot amend bid: Sourcing event is '{event.status}', not BID_WINDOW.")
+        raise ValidationError(
+            f"Cannot amend bid: Sourcing event is '{event.status}', not BID_WINDOW."
+        )
 
     if timezone.now() > event.bid_end_date:
-        raise ValidationError(f"Cannot amend bid: Sourcing event deadline passed on {event.bid_end_date.strftime('%Y-%m-%d %H:%M')}.")
+        raise ValidationError(
+            f"Cannot amend bid: Sourcing event deadline passed on {event.bid_end_date.strftime('%Y-%m-%d %H:%M')}."
+        )
 
     if not amendment_reason or not amendment_reason.strip():
         raise ValidationError("Amendment justification/reason is required for bid amendment.")
@@ -448,12 +472,14 @@ def amend_vendor_bid_service(
             quoted_unit_price=unit_price,
         )
         total += line.quoted_total_price
-        new_lines_snapshot.append({
-            "item_description": line.item_description,
-            "quantity": str(line.quantity),
-            "quoted_unit_price": str(line.quoted_unit_price),
-            "quoted_total_price": str(line.quoted_total_price),
-        })
+        new_lines_snapshot.append(
+            {
+                "item_description": line.item_description,
+                "quantity": str(line.quantity),
+                "quoted_unit_price": str(line.quoted_unit_price),
+                "quoted_total_price": str(line.quoted_total_price),
+            }
+        )
 
     bid.total_bid_amount = total
     bid.save()
@@ -603,4 +629,3 @@ def evaluate_and_award_sourcing_event_service(
     )
 
     return decision
-

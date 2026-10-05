@@ -1,4 +1,3 @@
-import json
 from datetime import timedelta
 from decimal import Decimal
 from functools import wraps
@@ -8,22 +7,20 @@ from django.contrib.auth import update_session_auth_hash
 from django.contrib.auth.forms import PasswordChangeForm
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db.models import Q
-from django.http import FileResponse, Http404, HttpResponse, JsonResponse
+from django.http import FileResponse, Http404, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
-from apps.accounts.models import Role, User
+from apps.accounts.models import Role
 from apps.audit.models import AuditLog
 from apps.notifications.models import Notification
-from apps.orders.models import DeliverySchedule, POAmendment, POLine, PurchaseOrder
+from apps.orders.models import PurchaseOrder
 from apps.orders.services import acknowledge_purchase_order_service
 from apps.scorecards.models import VendorScorecard
 from apps.sourcing.models import (
     BidAttachment,
     BidInvite,
-    BidLine,
-    BidVersion,
     Clarification,
     SourcingEvent,
     VendorBid,
@@ -36,7 +33,7 @@ from apps.sourcing.services import (
     upload_bid_attachment_service,
     validate_bid_service,
 )
-from apps.vendors.models import Vendor, VendorCategory, VendorDocument
+from apps.vendors.models import Vendor, VendorDocument
 from apps.vendors.selectors import get_vendor_dashboard_metrics
 from apps.vendors.services import (
     submit_vendor_kyc_service,
@@ -53,6 +50,7 @@ def vendor_required(view_func):
     3. User is associated with a valid Vendor account.
     Never relies on frontend checks; returns HTTP 403 on role or tenant mismatch.
     """
+
     @wraps(view_func)
     def _wrapped_view(request, *args, **kwargs):
         if not request.user or not request.user.is_authenticated:
@@ -60,11 +58,15 @@ def vendor_required(view_func):
 
         role_code = getattr(request.user, "role_code", None)
         if not (request.user.is_superuser or role_code == Role.VENDOR_USER):
-            raise PermissionDenied("Access restricted: Only registered Vendor Portal users are permitted.")
+            raise PermissionDenied(
+                "Access restricted: Only registered Vendor Portal users are permitted."
+            )
 
         vendor = getattr(request.user, "vendor", None)
         if not vendor and not request.user.is_superuser:
-            raise PermissionDenied("Vendor user account is not linked to an active Vendor company entity.")
+            raise PermissionDenied(
+                "Vendor user account is not linked to an active Vendor company entity."
+            )
 
         # For superuser testing without vendor, retrieve or attach first active vendor if exists
         if not vendor and request.user.is_superuser:
@@ -79,6 +81,7 @@ def vendor_required(view_func):
 # ==============================================================================
 # 2. DASHBOARD OVERVIEW
 # ==============================================================================
+
 
 @vendor_required
 def vendor_dashboard_overview_view(request):
@@ -100,26 +103,19 @@ def vendor_dashboard_overview_view(request):
 
     # Section A: Recent RFQ/RFP Invitations (Invited events)
     recent_invitations = (
-        BidInvite.objects.filter(vendor=vendor)
-        .select_related("event")
-        .order_by("-created_at")[:5]
+        BidInvite.objects.filter(vendor=vendor).select_related("event").order_by("-created_at")[:5]
     )
 
     # Section B: Upcoming Bid Deadlines (Events closing within 7 days)
-    upcoming_events = (
-        SourcingEvent.objects.filter(
-            invitations__vendor=vendor,
-            status=SourcingEvent.STATUS_BID_WINDOW,
-            bid_end_date__gte=now,
-        )
-        .order_by("bid_end_date")[:5]
-    )
+    upcoming_events = SourcingEvent.objects.filter(
+        invitations__vendor=vendor,
+        status=SourcingEvent.STATUS_BID_WINDOW,
+        bid_end_date__gte=now,
+    ).order_by("bid_end_date")[:5]
 
     # Section C: Recent Bid Activity
     recent_bids = (
-        VendorBid.objects.filter(vendor=vendor)
-        .select_related("event")
-        .order_by("-updated_at")[:5]
+        VendorBid.objects.filter(vendor=vendor).select_related("event").order_by("-updated_at")[:5]
     )
 
     # Section D: Pending Actions
@@ -132,16 +128,12 @@ def vendor_dashboard_overview_view(request):
     ).select_related("event")[:5]
 
     # Section E: Recent Purchase Orders
-    recent_pos = (
-        PurchaseOrder.objects.filter(vendor=vendor)
-        .order_by("-created_at")[:5]
-    )
+    recent_pos = PurchaseOrder.objects.filter(vendor=vendor).order_by("-created_at")[:5]
 
     # Section F: Recent Notifications
-    recent_notifications = (
-        Notification.objects.filter(recipient=request.user)
-        .order_by("-created_at")[:5]
-    )
+    recent_notifications = Notification.objects.filter(recipient=request.user).order_by(
+        "-created_at"
+    )[:5]
 
     context = {
         "vendor": vendor,
@@ -161,6 +153,7 @@ def vendor_dashboard_overview_view(request):
 # ==============================================================================
 # 3. COMPANY PROFILE
 # ==============================================================================
+
 
 @vendor_required
 def vendor_profile_view(request):
@@ -190,7 +183,9 @@ def vendor_profile_view(request):
             }
             try:
                 update_vendor_profile_service(vendor=vendor, user=request.user, data=data)
-                messages.success(request, "Company profile and banking information updated successfully.")
+                messages.success(
+                    request, "Company profile and banking information updated successfully."
+                )
             except Exception as e:
                 messages.error(request, f"Failed to update profile: {str(e)}")
             return redirect("vendor_profile")
@@ -213,7 +208,9 @@ def vendor_profile_view(request):
                         title=title,
                         expiry_date=expiry_date_val,
                     )
-                    messages.success(request, f"KYC document '{title or doc_file.name}' uploaded successfully.")
+                    messages.success(
+                        request, f"KYC document '{title or doc_file.name}' uploaded successfully."
+                    )
                 except Exception as e:
                     messages.error(request, f"Document upload error: {str(e)}")
             return redirect("vendor_profile")
@@ -231,9 +228,7 @@ def vendor_profile_view(request):
         .select_related("verified_by")
         .order_by("-created_at")
     )
-    risk_records = (
-        vendor.risk_records.select_related("assessed_by").order_by("-created_at")
-    )
+    risk_records = vendor.risk_records.select_related("assessed_by").order_by("-created_at")
 
     context = {
         "vendor": vendor,
@@ -248,6 +243,7 @@ def vendor_profile_view(request):
 # ==============================================================================
 # 4. SOURCING (RFQ / RFP INVITATIONS)
 # ==============================================================================
+
 
 @vendor_required
 def vendor_sourcing_list_view(request):
@@ -292,33 +288,34 @@ def vendor_sourcing_list_view(request):
         )
     elif tab == "closed":
         invites_qs = invites_qs.filter(
-            Q(event__status__in=[
-                SourcingEvent.STATUS_TECHNICAL_REVIEW,
-                SourcingEvent.STATUS_COMMERCIAL_REVIEW,
-                SourcingEvent.STATUS_AWARD_APPROVAL,
-                SourcingEvent.STATUS_AWARDED,
-                SourcingEvent.STATUS_CANCELLED,
-            ])
+            Q(
+                event__status__in=[
+                    SourcingEvent.STATUS_TECHNICAL_REVIEW,
+                    SourcingEvent.STATUS_COMMERCIAL_REVIEW,
+                    SourcingEvent.STATUS_AWARD_APPROVAL,
+                    SourcingEvent.STATUS_AWARDED,
+                    SourcingEvent.STATUS_CANCELLED,
+                ]
+            )
             | Q(event__bid_end_date__lt=now)
         )
 
     # Attach existing bid status for this vendor if present
-    vendor_bids_map = {
-        bid.event_id: bid
-        for bid in VendorBid.objects.filter(vendor=vendor)
-    }
+    vendor_bids_map = {bid.event_id: bid for bid in VendorBid.objects.filter(vendor=vendor)}
 
     invitations_data = []
     for inv in invites_qs:
         event = inv.event
         bid = vendor_bids_map.get(event.id)
-        is_open = (event.status == SourcingEvent.STATUS_BID_WINDOW and event.bid_end_date >= now)
-        invitations_data.append({
-            "invite": inv,
-            "event": event,
-            "bid": bid,
-            "is_open": is_open,
-        })
+        is_open = event.status == SourcingEvent.STATUS_BID_WINDOW and event.bid_end_date >= now
+        invitations_data.append(
+            {
+                "invite": inv,
+                "event": event,
+                "bid": bid,
+                "is_open": is_open,
+            }
+        )
 
     # Counts for tabs
     tab_counts = {
@@ -334,18 +331,20 @@ def vendor_sourcing_list_view(request):
             event__bid_end_date__gte=now,
             event__bid_end_date__lte=now + timedelta(days=3),
         ).count(),
-        "closed": BidInvite.objects.filter(
-            vendor=vendor
-        ).filter(
-            Q(event__status__in=[
-                SourcingEvent.STATUS_TECHNICAL_REVIEW,
-                SourcingEvent.STATUS_COMMERCIAL_REVIEW,
-                SourcingEvent.STATUS_AWARD_APPROVAL,
-                SourcingEvent.STATUS_AWARDED,
-                SourcingEvent.STATUS_CANCELLED,
-            ])
+        "closed": BidInvite.objects.filter(vendor=vendor)
+        .filter(
+            Q(
+                event__status__in=[
+                    SourcingEvent.STATUS_TECHNICAL_REVIEW,
+                    SourcingEvent.STATUS_COMMERCIAL_REVIEW,
+                    SourcingEvent.STATUS_AWARD_APPROVAL,
+                    SourcingEvent.STATUS_AWARDED,
+                    SourcingEvent.STATUS_CANCELLED,
+                ]
+            )
             | Q(event__bid_end_date__lt=now)
-        ).count(),
+        )
+        .count(),
     }
 
     context = {
@@ -380,16 +379,20 @@ def vendor_sourcing_detail_view(request, event_id):
     # BACKEND AUTHORIZATION: Vendor must be invited to this event
     invite = BidInvite.objects.filter(event=event, vendor=vendor).first()
     if not invite and not request.user.is_superuser:
-        raise PermissionDenied("Access Denied: You do not hold a valid invitation for this sourcing event.")
+        raise PermissionDenied(
+            "Access Denied: You do not hold a valid invitation for this sourcing event."
+        )
 
     now = timezone.now()
-    is_open = (event.status == SourcingEvent.STATUS_BID_WINDOW and event.bid_end_date >= now)
+    is_open = event.status == SourcingEvent.STATUS_BID_WINDOW and event.bid_end_date >= now
 
     # Existing bid by this vendor
     existing_bid = VendorBid.objects.filter(event=event, vendor=vendor).first()
 
     # Clarifications asked by this vendor for this event
-    clarifications = Clarification.objects.filter(event=event, vendor=vendor).order_by("-created_at")
+    clarifications = Clarification.objects.filter(event=event, vendor=vendor).order_by(
+        "-created_at"
+    )
 
     # If requisition linked, fetch PR lines as reference specifications
     reference_lines = []
@@ -432,6 +435,7 @@ def vendor_sourcing_participate_view(request, event_id):
 # 5 & 6. MY BIDS & BID CREATION
 # ==============================================================================
 
+
 @vendor_required
 def vendor_bids_list_view(request):
     """
@@ -465,12 +469,16 @@ def vendor_bids_list_view(request):
     now = timezone.now()
     bids_data = []
     for bid in bids:
-        is_event_open = (bid.event.status == SourcingEvent.STATUS_BID_WINDOW and bid.event.bid_end_date >= now)
-        bids_data.append({
-            "bid": bid,
-            "event": bid.event,
-            "is_event_open": is_event_open,
-        })
+        is_event_open = (
+            bid.event.status == SourcingEvent.STATUS_BID_WINDOW and bid.event.bid_end_date >= now
+        )
+        bids_data.append(
+            {
+                "bid": bid,
+                "event": bid.event,
+                "is_event_open": is_event_open,
+            }
+        )
 
     tab_counts = {
         "draft": bids_qs.filter(status=VendorBid.STATUS_DRAFT).count(),
@@ -511,35 +519,50 @@ def vendor_bid_create_view(request, event_id):
     event = get_object_or_404(SourcingEvent, id=event_id)
 
     # BACKEND AUTHORIZATION: Vendor must be invited
-    if not BidInvite.objects.filter(event=event, vendor=vendor).exists() and not request.user.is_superuser:
-        raise PermissionDenied("Access Denied: You do not hold an invitation for this sourcing event.")
+    if (
+        not BidInvite.objects.filter(event=event, vendor=vendor).exists()
+        and not request.user.is_superuser
+    ):
+        raise PermissionDenied(
+            "Access Denied: You do not hold an invitation for this sourcing event."
+        )
 
     now = timezone.now()
     if event.status != SourcingEvent.STATUS_BID_WINDOW:
-        messages.error(request, f"Bidding is closed for event '{event.event_number}'. Event status is '{event.status}'.")
+        messages.error(
+            request,
+            f"Bidding is closed for event '{event.event_number}'. Event status is '{event.status}'.",
+        )
         return redirect("vendor_sourcing_detail", event_id=event.id)
 
     if now > event.bid_end_date:
-        messages.error(request, f"The bid submission deadline passed on {event.bid_end_date.strftime('%Y-%m-%d %H:%M')}.")
+        messages.error(
+            request,
+            f"The bid submission deadline passed on {event.bid_end_date.strftime('%Y-%m-%d %H:%M')}.",
+        )
         return redirect("vendor_sourcing_detail", event_id=event.id)
 
     # Fetch existing draft or bid if already initiated
     bid = VendorBid.objects.filter(event=event, vendor=vendor).first()
     if bid and bid.status in [VendorBid.STATUS_SUBMITTED, VendorBid.STATUS_AMENDED]:
-        messages.info(request, f"Bid '{bid.bid_number}' has already been submitted. Use Amendment to update.")
+        messages.info(
+            request, f"Bid '{bid.bid_number}' has already been submitted. Use Amendment to update."
+        )
         return redirect("vendor_bid_detail", bid_id=bid.id)
 
     # Pre-populate line items from PR if bid has no lines yet
     existing_lines = list(bid.lines.all()) if bid else []
     if not existing_lines and event.requisition:
         for pr_line in event.requisition.lines.all():
-            existing_lines.append({
-                "item_description": pr_line.item_description,
-                "quantity": pr_line.quantity,
-                "quoted_unit_price": Decimal("0.00"),
-                "quoted_total_price": Decimal("0.00"),
-                "pr_line": pr_line,
-            })
+            existing_lines.append(
+                {
+                    "item_description": pr_line.item_description,
+                    "quantity": pr_line.quantity,
+                    "quoted_unit_price": Decimal("0.00"),
+                    "quoted_total_price": Decimal("0.00"),
+                    "pr_line": pr_line,
+                }
+            )
 
     if request.method == "POST":
         action = request.POST.get("action", "save_draft")
@@ -563,11 +586,13 @@ def vendor_bid_create_view(request, event_id):
             except Exception:
                 qty = Decimal("1")
                 price = Decimal("0.00")
-            line_items.append({
-                "item_description": desc,
-                "quantity": qty,
-                "quoted_unit_price": price,
-            })
+            line_items.append(
+                {
+                    "item_description": desc,
+                    "quantity": qty,
+                    "quoted_unit_price": price,
+                }
+            )
 
         if action == "save_draft":
             try:
@@ -623,10 +648,16 @@ def vendor_bid_create_view(request, event_id):
                         document_type=att_type,
                     )
 
-                messages.success(request, f"Bid '{bid.bid_number}' submitted successfully! Bid is sealed until deadline.")
+                messages.success(
+                    request,
+                    f"Bid '{bid.bid_number}' submitted successfully! Bid is sealed until deadline.",
+                )
                 return redirect("vendor_bid_detail", bid_id=bid.id)
             except ValidationError as ve:
-                messages.error(request, f"Submission Rejected: {ve.message if hasattr(ve, 'message') else str(ve)}")
+                messages.error(
+                    request,
+                    f"Submission Rejected: {ve.message if hasattr(ve, 'message') else str(ve)}",
+                )
             except Exception as e:
                 messages.error(request, f"Submission Error: {str(e)}")
 
@@ -661,17 +692,25 @@ def vendor_bid_detail_view(request, bid_id):
     """
     vendor = request.vendor
     bid = get_object_or_404(
-        VendorBid.objects.select_related("event", "vendor").prefetch_related("lines", "attachments", "versions"),
+        VendorBid.objects.select_related("event", "vendor").prefetch_related(
+            "lines", "attachments", "versions"
+        ),
         id=bid_id,
     )
 
     # BACKEND OBJECT-LEVEL AUTHORIZATION
     if bid.vendor != vendor and not request.user.is_superuser:
-        raise PermissionDenied("Access Denied: You do not have permission to access this bid record.")
+        raise PermissionDenied(
+            "Access Denied: You do not have permission to access this bid record."
+        )
 
     now = timezone.now()
-    is_event_open = (bid.event.status == SourcingEvent.STATUS_BID_WINDOW and bid.event.bid_end_date >= now)
-    can_amend = is_event_open and (bid.status in [VendorBid.STATUS_SUBMITTED, VendorBid.STATUS_AMENDED])
+    is_event_open = (
+        bid.event.status == SourcingEvent.STATUS_BID_WINDOW and bid.event.bid_end_date >= now
+    )
+    can_amend = is_event_open and (
+        bid.status in [VendorBid.STATUS_SUBMITTED, VendorBid.STATUS_AMENDED]
+    )
 
     versions = bid.versions.all().order_by("-version_number")
     validation_result = validate_bid_service(bid=bid)
@@ -709,6 +748,7 @@ def vendor_bid_validate_view(request, bid_id):
 # 8. BID AMENDMENTS
 # ==============================================================================
 
+
 @vendor_required
 def vendor_bid_amend_view(request, bid_id):
     """
@@ -719,7 +759,9 @@ def vendor_bid_amend_view(request, bid_id):
     """
     vendor = request.vendor
     bid = get_object_or_404(
-        VendorBid.objects.select_related("event", "vendor").prefetch_related("lines", "attachments", "versions"),
+        VendorBid.objects.select_related("event", "vendor").prefetch_related(
+            "lines", "attachments", "versions"
+        ),
         id=bid_id,
     )
 
@@ -732,11 +774,17 @@ def vendor_bid_amend_view(request, bid_id):
 
     # STRICT SERVER-SIDE DEADLINE CHECK
     if event.status != SourcingEvent.STATUS_BID_WINDOW:
-        messages.error(request, f"Amendments disabled: Event '{event.event_number}' is in '{event.status}' status.")
+        messages.error(
+            request,
+            f"Amendments disabled: Event '{event.event_number}' is in '{event.status}' status.",
+        )
         return redirect("vendor_bid_detail", bid_id=bid.id)
 
     if now > event.bid_end_date:
-        messages.error(request, f"Amendments disabled: Event deadline passed on {event.bid_end_date.strftime('%Y-%m-%d %H:%M')}.")
+        messages.error(
+            request,
+            f"Amendments disabled: Event deadline passed on {event.bid_end_date.strftime('%Y-%m-%d %H:%M')}.",
+        )
         return redirect("vendor_bid_detail", bid_id=bid.id)
 
     if request.method == "POST":
@@ -760,16 +808,20 @@ def vendor_bid_amend_view(request, bid_id):
             except Exception:
                 qty = Decimal("1")
                 price = Decimal("0.00")
-            line_items.append({
-                "item_description": desc,
-                "quantity": qty,
-                "quoted_unit_price": price,
-            })
+            line_items.append(
+                {
+                    "item_description": desc,
+                    "quantity": qty,
+                    "quoted_unit_price": price,
+                }
+            )
 
         if not amendment_reason:
             messages.error(request, "Amendment reason/justification is required.")
         elif not line_items:
-            messages.error(request, "At least one line item is required for the amended commercial bid.")
+            messages.error(
+                request, "At least one line item is required for the amended commercial bid."
+            )
         else:
             try:
                 amended_bid = amend_vendor_bid_service(
@@ -800,7 +852,10 @@ def vendor_bid_amend_view(request, bid_id):
                 )
                 return redirect("vendor_bid_detail", bid_id=amended_bid.id)
             except ValidationError as ve:
-                messages.error(request, f"Amendment Rejected: {ve.message if hasattr(ve, 'message') else str(ve)}")
+                messages.error(
+                    request,
+                    f"Amendment Rejected: {ve.message if hasattr(ve, 'message') else str(ve)}",
+                )
             except Exception as e:
                 messages.error(request, f"Amendment Error: {str(e)}")
 
@@ -817,6 +872,7 @@ def vendor_bid_amend_view(request, bid_id):
 # ==============================================================================
 # 9. CLARIFICATIONS
 # ==============================================================================
+
 
 @vendor_required
 def vendor_clarifications_view(request):
@@ -890,6 +946,7 @@ def vendor_clarifications_view(request):
 # 10 & 11. PURCHASE ORDERS & ACKNOWLEDGEMENT
 # ==============================================================================
 
+
 @vendor_required
 def vendor_purchase_orders_list_view(request):
     """
@@ -914,8 +971,7 @@ def vendor_purchase_orders_list_view(request):
 
     if query:
         pos_qs = pos_qs.filter(
-            Q(po_number__icontains=query)
-            | Q(lines__item_description__icontains=query)
+            Q(po_number__icontains=query) | Q(lines__item_description__icontains=query)
         ).distinct()
 
     if tab == "new" or tab == "pending_ack":
@@ -935,7 +991,9 @@ def vendor_purchase_orders_list_view(request):
 
     tab_counts = {
         "all": PurchaseOrder.objects.filter(vendor=vendor).count(),
-        "pending_ack": PurchaseOrder.objects.filter(vendor=vendor, status=PurchaseOrder.STATUS_ISSUED).count(),
+        "pending_ack": PurchaseOrder.objects.filter(
+            vendor=vendor, status=PurchaseOrder.STATUS_ISSUED
+        ).count(),
         "active": PurchaseOrder.objects.filter(
             vendor=vendor,
             status__in=[
@@ -944,8 +1002,12 @@ def vendor_purchase_orders_list_view(request):
                 PurchaseOrder.STATUS_PARTIAL_RECEIPT,
             ],
         ).count(),
-        "amended": PurchaseOrder.objects.filter(vendor=vendor, amendments__isnull=False).distinct().count(),
-        "completed": PurchaseOrder.objects.filter(vendor=vendor, status=PurchaseOrder.STATUS_COMPLETED).count(),
+        "amended": PurchaseOrder.objects.filter(vendor=vendor, amendments__isnull=False)
+        .distinct()
+        .count(),
+        "completed": PurchaseOrder.objects.filter(
+            vendor=vendor, status=PurchaseOrder.STATUS_COMPLETED
+        ).count(),
     }
 
     context = {
@@ -982,11 +1044,15 @@ def vendor_purchase_order_detail_view(request, po_id):
 
     # BACKEND AUTHORIZATION
     if po.vendor != vendor and not request.user.is_superuser:
-        raise PermissionDenied("Access Denied: You do not have authorization to view this purchase order.")
+        raise PermissionDenied(
+            "Access Denied: You do not have authorization to view this purchase order."
+        )
 
-    can_acknowledge = (po.status == PurchaseOrder.STATUS_ISSUED)
+    can_acknowledge = po.status == PurchaseOrder.STATUS_ISSUED
     amendments = po.amendments.select_related("requested_by").order_by("-amendment_number")
-    delivery_schedules = po.delivery_schedules.select_related("po_line").order_by("expected_delivery_date")
+    delivery_schedules = po.delivery_schedules.select_related("po_line").order_by(
+        "expected_delivery_date"
+    )
 
     context = {
         "vendor": vendor,
@@ -1024,7 +1090,9 @@ def vendor_purchase_order_acknowledge_view(request, po_id):
         )
         messages.success(request, f"Purchase Order {po.po_number} acknowledged successfully.")
     except ValidationError as ve:
-        messages.error(request, f"Acknowledgement Failed: {ve.message if hasattr(ve, 'message') else str(ve)}")
+        messages.error(
+            request, f"Acknowledgement Failed: {ve.message if hasattr(ve, 'message') else str(ve)}"
+        )
     except Exception as e:
         messages.error(request, f"System Error: {str(e)}")
 
@@ -1034,6 +1102,7 @@ def vendor_purchase_order_acknowledge_view(request, po_id):
 # ==============================================================================
 # 12. SUPPLIER PERFORMANCE
 # ==============================================================================
+
 
 @vendor_required
 def vendor_performance_view(request):
@@ -1065,6 +1134,7 @@ def vendor_performance_view(request):
 # 13. DOCUMENTS
 # ==============================================================================
 
+
 @vendor_required
 def vendor_documents_view(request):
     """
@@ -1080,7 +1150,11 @@ def vendor_documents_view(request):
     category = request.GET.get("category", "all")
 
     kyc_docs = VendorDocument.objects.filter(vendor=vendor).order_by("-created_at")
-    bid_attachments = BidAttachment.objects.filter(bid__vendor=vendor).select_related("bid", "bid__event").order_by("-created_at")
+    bid_attachments = (
+        BidAttachment.objects.filter(bid__vendor=vendor)
+        .select_related("bid", "bid__event")
+        .order_by("-created_at")
+    )
 
     category_counts = {
         "all": kyc_docs.count() + bid_attachments.count(),
@@ -1136,6 +1210,7 @@ def vendor_document_download_view(request, doc_type, doc_id):
 # 14. NOTIFICATIONS
 # ==============================================================================
 
+
 @vendor_required
 def vendor_notifications_view(request):
     """
@@ -1181,6 +1256,7 @@ def vendor_notifications_mark_all_read_view(request):
 # 15. REPORTS / HISTORY
 # ==============================================================================
 
+
 @vendor_required
 def vendor_reports_history_view(request):
     """
@@ -1202,18 +1278,10 @@ def vendor_reports_history_view(request):
         .order_by("-created_at")
     )
     sourcing_participation = (
-        BidInvite.objects.filter(vendor=vendor)
-        .select_related("event")
-        .order_by("-created_at")
+        BidInvite.objects.filter(vendor=vendor).select_related("event").order_by("-created_at")
     )
-    po_history = (
-        PurchaseOrder.objects.filter(vendor=vendor)
-        .order_by("-created_at")
-    )
-    scorecards_history = (
-        VendorScorecard.objects.filter(vendor=vendor)
-        .order_by("-created_at")
-    )
+    po_history = PurchaseOrder.objects.filter(vendor=vendor).order_by("-created_at")
+    scorecards_history = VendorScorecard.objects.filter(vendor=vendor).order_by("-created_at")
 
     vendor_bid_ids = [str(b.id) for b in bids_history]
     vendor_po_ids = [str(p.id) for p in po_history]
@@ -1240,6 +1308,7 @@ def vendor_reports_history_view(request):
 # ==============================================================================
 # 16. ACCOUNT & SECURITY
 # ==============================================================================
+
 
 @vendor_required
 def vendor_account_security_view(request):

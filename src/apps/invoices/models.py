@@ -112,25 +112,38 @@ class MatchException(TimeStampedModel):
 
 
 class MatchResult(TimeStampedModel):
-    invoice = models.ForeignKey(SupplierInvoice, on_delete=models.CASCADE, related_name="match_results")
+    invoice = models.ForeignKey(
+        SupplierInvoice, on_delete=models.CASCADE, related_name="match_results"
+    )
     is_matched = models.BooleanField(default=False)
-    price_variance_percentage = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal("0.00"))
-    quantity_variance = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))
-    tolerance_applied_percentage = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal("2.00"))
-    performed_by = models.ForeignKey("accounts.User", on_delete=models.PROTECT, related_name="performed_matches")
+    price_variance_percentage = models.DecimalField(
+        max_digits=5, decimal_places=2, default=Decimal("0.00")
+    )
+    quantity_variance = models.DecimalField(
+        max_digits=12, decimal_places=2, default=Decimal("0.00")
+    )
+    tolerance_applied_percentage = models.DecimalField(
+        max_digits=5, decimal_places=2, default=Decimal("2.00")
+    )
+    performed_by = models.ForeignKey(
+        "accounts.User", on_delete=models.PROTECT, related_name="performed_matches"
+    )
 
     def __str__(self):
         return f"Match Result for {self.invoice.invoice_number}: {'PASSED' if self.is_matched else 'FAILED'}"
 
 
 class PaymentStatus(TimeStampedModel):
-    invoice = models.OneToOneField(SupplierInvoice, on_delete=models.CASCADE, related_name="payment_record")
+    invoice = models.OneToOneField(
+        SupplierInvoice, on_delete=models.CASCADE, related_name="payment_record"
+    )
     payment_reference = models.CharField(max_length=100, unique=True)
     payment_date = models.DateField()
     amount_paid = models.DecimalField(max_digits=14, decimal_places=2)
     payment_method = models.CharField(max_length=50, default="ACH_TRANSFER")
-    paid_by = models.ForeignKey("accounts.User", on_delete=models.PROTECT, related_name="processed_payments")
+    paid_by = models.ForeignKey(
+        "accounts.User", on_delete=models.PROTECT, related_name="processed_payments"
+    )
 
     def __str__(self):
         return f"Payment {self.payment_reference} for {self.invoice.invoice_number} (${self.amount_paid})"
-

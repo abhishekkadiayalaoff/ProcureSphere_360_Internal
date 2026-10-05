@@ -1,10 +1,17 @@
-from django.contrib import admin
-from apps.invoices.models import InvoiceLine, MatchException, SupplierInvoice
 from apps.core.admin_site import RoleBasedModelAdmin, register_model
+from apps.invoices.models import InvoiceLine, MatchException, SupplierInvoice
 
 
 class SupplierInvoiceAdmin(RoleBasedModelAdmin):
-    list_display = ("invoice_number", "vendor", "po", "total_amount", "status", "invoice_date", "created_at")
+    list_display = (
+        "invoice_number",
+        "vendor",
+        "po",
+        "total_amount",
+        "status",
+        "invoice_date",
+        "created_at",
+    )
     list_filter = ("status",)
     search_fields = ("invoice_number", "vendor__legal_name", "po__po_number")
 

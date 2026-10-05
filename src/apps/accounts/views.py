@@ -2,6 +2,7 @@ from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
 from django.shortcuts import redirect, render
 
+
 def portal_login_view(request):
     """
     Renders and processes the ProcureSphere 360 ERP Portal login form.
@@ -23,20 +24,26 @@ def portal_login_view(request):
 
         if user is not None:
             if not user.is_active:
-                messages.error(request, "Your account has been deactivated. Please contact support.")
+                messages.error(
+                    request, "Your account has been deactivated. Please contact support."
+                )
                 return render(request, "pages/login.html", {"email": email})
 
             login(request, user)
-            
+
             # Record AuditLog for authentication
-            from apps.audit.services import create_audit_log_service
             from apps.audit.models import AuditLog
+            from apps.audit.services import create_audit_log_service
+
             create_audit_log_service(
                 actor=user,
                 action=AuditLog.ACTION_LOGIN,
                 target_model="User",
                 target_object_id=str(user.id),
-                new_state={"email": user.email, "role": user.role_code if hasattr(user, "role_code") else None},
+                new_state={
+                    "email": user.email,
+                    "role": user.role_code if hasattr(user, "role_code") else None,
+                },
             )
 
             next_url = request.GET.get("next") or "/"
@@ -53,8 +60,9 @@ def portal_logout_view(request):
     """
     user = request.user if request.user.is_authenticated else None
     if user:
-        from apps.audit.services import create_audit_log_service
         from apps.audit.models import AuditLog
+        from apps.audit.services import create_audit_log_service
+
         create_audit_log_service(
             actor=user,
             action=AuditLog.ACTION_LOGOUT,
@@ -71,4 +79,3 @@ def portal_logout_view(request):
 # Aliases for route compatibility
 login_page_view = portal_login_view
 logout_page_view = portal_logout_view
-

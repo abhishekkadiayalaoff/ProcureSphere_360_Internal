@@ -1,4 +1,5 @@
 from django.contrib import admin
+
 from .models import ApprovalAction, ApprovalDelegate, ApprovalPolicy, ApprovalStep
 
 
@@ -9,7 +10,15 @@ class ApprovalStepInline(admin.TabularInline):
 
 @admin.register(ApprovalPolicy)
 class ApprovalPolicyAdmin(admin.ModelAdmin):
-    list_display = ("name", "module", "department", "min_amount", "max_amount", "is_active", "created_at")
+    list_display = (
+        "name",
+        "module",
+        "department",
+        "min_amount",
+        "max_amount",
+        "is_active",
+        "created_at",
+    )
     list_filter = ("module", "is_active", "department")
     search_fields = ("name",)
     inlines = [ApprovalStepInline]
@@ -23,7 +32,14 @@ class ApprovalStepAdmin(admin.ModelAdmin):
 
 @admin.register(ApprovalAction)
 class ApprovalActionAdmin(admin.ModelAdmin):
-    list_display = ("target_model_name", "target_object_id", "actor", "action", "comments", "created_at")
+    list_display = (
+        "target_model_name",
+        "target_object_id",
+        "actor",
+        "action",
+        "comments",
+        "created_at",
+    )
     list_filter = ("action", "target_model_name")
     search_fields = ("actor__email", "target_model_name", "target_object_id")
 

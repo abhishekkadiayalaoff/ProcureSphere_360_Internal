@@ -5,7 +5,6 @@ from typing import Any, Dict, List, Optional
 from django.db.models import Count, Q
 from django.utils import timezone
 
-from apps.accounts.models import Role, User
 from apps.approvals.models import ApprovalAction
 from apps.audit.models import AuditLog
 from apps.contracts.models import Contract, ContractAlert, ContractObligation
@@ -87,9 +86,7 @@ def get_audit_metrics(period_days: int = 30) -> Dict[str, Any]:
     total_logs_all_time = AuditLog.objects.count()
 
     # Action counts breakdown
-    action_counts_raw = (
-        base_qs.values("action").annotate(count=Count("id")).order_by("-count")
-    )
+    action_counts_raw = base_qs.values("action").annotate(count=Count("id")).order_by("-count")
     action_distribution = {item["action"]: item["count"] for item in action_counts_raw}
 
     # Target model breakdown
@@ -106,8 +103,7 @@ def get_audit_metrics(period_days: int = 30) -> Dict[str, Any]:
         .order_by("-count")[:8]
     )
     top_actors = [
-        {"email": item["actor__email"], "count": item["count"]}
-        for item in top_actors_raw
+        {"email": item["actor__email"], "count": item["count"]} for item in top_actors_raw
     ]
 
     # Critical security & compliance event counts
@@ -124,10 +120,12 @@ def get_audit_metrics(period_days: int = 30) -> Dict[str, Any]:
     for day_offset in range(min(period_days, 14), -1, -1):
         day_date = (now - timedelta(days=day_offset)).date()
         count = AuditLog.objects.filter(timestamp__date=day_date).count()
-        daily_trend.append({
-            "date": day_date.strftime("%b %d"),
-            "count": count,
-        })
+        daily_trend.append(
+            {
+                "date": day_date.strftime("%b %d"),
+                "count": count,
+            }
+        )
 
     return {
         "period_days": period_days,
@@ -174,14 +172,10 @@ def get_auditor_dashboard_data(period_days: int = 30) -> Dict[str, Any]:
     )
 
     # 2. Activity Feeds
-    recent_logs = list(
-        AuditLog.objects.select_related("actor")
-        .order_by("-timestamp")[:25]
-    )
+    recent_logs = list(AuditLog.objects.select_related("actor").order_by("-timestamp")[:25])
 
     recent_approvals = list(
-        ApprovalAction.objects.select_related("actor", "policy_step")
-        .order_by("-created_at")[:15]
+        ApprovalAction.objects.select_related("actor", "policy_step").order_by("-created_at")[:15]
     )
 
     # 3. Domain totals for auditor context
@@ -194,8 +188,12 @@ def get_auditor_dashboard_data(period_days: int = 30) -> Dict[str, Any]:
         "total_contracts": Contract.objects.count(),
         "total_vendors": Vendor.objects.count(),
         "open_exceptions_count": MatchException.objects.filter(status="OPEN").count(),
-        "suspended_vendors_count": Vendor.objects.filter(status__in=["ON_HOLD", "SUSPENDED"]).count(),
-        "overdue_obligations_count": ContractObligation.objects.filter(is_fulfilled=False, due_date__lt=timezone.now().date()).count(),
+        "suspended_vendors_count": Vendor.objects.filter(
+            status__in=["ON_HOLD", "SUSPENDED"]
+        ).count(),
+        "overdue_obligations_count": ContractObligation.objects.filter(
+            is_fulfilled=False, due_date__lt=timezone.now().date()
+        ).count(),
     }
 
     return {
@@ -287,10 +285,16 @@ def get_vendor_compliance_audit(
     # Compute overall compliance statistics
     total_vendors = Vendor.objects.count()
     active_vendors = Vendor.objects.filter(status=Vendor.STATUS_ACTIVE).count()
-    suspended_vendors = Vendor.objects.filter(status__in=[Vendor.STATUS_ON_HOLD, Vendor.STATUS_SUSPENDED]).count()
-    draft_or_pending = Vendor.objects.filter(status__in=[Vendor.STATUS_DRAFT, Vendor.STATUS_SUBMITTED, Vendor.STATUS_KYC_REVIEW]).count()
-    
-    compliance_rate = round((active_vendors / total_vendors * 100), 2) if total_vendors > 0 else 100.0
+    suspended_vendors = Vendor.objects.filter(
+        status__in=[Vendor.STATUS_ON_HOLD, Vendor.STATUS_SUSPENDED]
+    ).count()
+    draft_or_pending = Vendor.objects.filter(
+        status__in=[Vendor.STATUS_DRAFT, Vendor.STATUS_SUBMITTED, Vendor.STATUS_KYC_REVIEW]
+    ).count()
+
+    compliance_rate = (
+        round((active_vendors / total_vendors * 100), 2) if total_vendors > 0 else 100.0
+    )
 
     items = []
     for v in vendors_page:
@@ -299,22 +303,24 @@ def get_vendor_compliance_audit(
         verified_docs = sum(1 for d in docs if d.is_verified)
         active_contracts_count = v.contracts.filter(status=Contract.STATUS_ACTIVE).count()
 
-        items.append({
-            "id": str(v.id),
-            "vendor_number": v.vendor_number,
-            "legal_name": v.legal_name,
-            "category": v.category.name if v.category else None,
-            "status": v.status,
-            "status_display": v.get_status_display(),
-            "tax_id": v.tax_identification_number,
-            "email": v.email,
-            "total_documents": total_docs,
-            "verified_documents": verified_docs,
-            "kyc_complete": total_docs > 0 and verified_docs == total_docs,
-            "active_contracts_count": active_contracts_count,
-            "created_at": v.created_at.isoformat(),
-            "updated_at": v.updated_at.isoformat(),
-        })
+        items.append(
+            {
+                "id": str(v.id),
+                "vendor_number": v.vendor_number,
+                "legal_name": v.legal_name,
+                "category": v.category.name if v.category else None,
+                "status": v.status,
+                "status_display": v.get_status_display(),
+                "tax_id": v.tax_identification_number,
+                "email": v.email,
+                "total_documents": total_docs,
+                "verified_documents": verified_docs,
+                "kyc_complete": total_docs > 0 and verified_docs == total_docs,
+                "active_contracts_count": active_contracts_count,
+                "created_at": v.created_at.isoformat(),
+                "updated_at": v.updated_at.isoformat(),
+            }
+        )
 
     return {
         "summary": {
@@ -344,7 +350,9 @@ def get_approval_history_audit(
     """
     Audits complete approval governance chain across all entities (PRs, Invoices, Contracts).
     """
-    qs = ApprovalAction.objects.select_related("actor", "policy_step", "policy_step__approver_role").all()
+    qs = ApprovalAction.objects.select_related(
+        "actor", "policy_step", "policy_step__approver_role"
+    ).all()
 
     if target_model:
         qs = qs.filter(target_model_name__iexact=target_model)
@@ -381,21 +389,23 @@ def get_approval_history_audit(
 
     items = []
     for a in actions_page:
-        items.append({
-            "id": str(a.id),
-            "target_object_id": str(a.target_object_id),
-            "target_model_name": a.target_model_name,
-            "action": a.action,
-            "action_display": a.get_action_display(),
-            "actor_id": str(a.actor.id) if a.actor else None,
-            "actor_email": a.actor.email if a.actor else "System",
-            "actor_role": a.actor.role.name if a.actor and a.actor.role else "System",
-            "policy_step": a.policy_step.step_number if a.policy_step else None,
-            "previous_state": a.previous_state,
-            "new_state": a.new_state,
-            "comments": a.comments,
-            "timestamp": a.created_at.isoformat(),
-        })
+        items.append(
+            {
+                "id": str(a.id),
+                "target_object_id": str(a.target_object_id),
+                "target_model_name": a.target_model_name,
+                "action": a.action,
+                "action_display": a.get_action_display(),
+                "actor_id": str(a.actor.id) if a.actor else None,
+                "actor_email": a.actor.email if a.actor else "System",
+                "actor_role": a.actor.role.name if a.actor and a.actor.role else "System",
+                "policy_step": a.policy_step.step_number if a.policy_step else None,
+                "previous_state": a.previous_state,
+                "new_state": a.new_state,
+                "comments": a.comments,
+                "timestamp": a.created_at.isoformat(),
+            }
+        )
 
     return {
         "summary": {
@@ -424,7 +434,11 @@ def get_sourcing_activity_audit(
     """
     Audits competitive bidding integrity, sealed bid protection, and award distributions.
     """
-    qs = SourcingEvent.objects.select_related("requisition").prefetch_related("bids", "invitations").all()
+    qs = (
+        SourcingEvent.objects.select_related("requisition")
+        .prefetch_related("bids", "invitations")
+        .all()
+    )
 
     if status:
         qs = qs.filter(status=status)
@@ -455,36 +469,48 @@ def get_sourcing_activity_audit(
         bids = list(e.bids.all())
         total_bids = len(bids)
         is_window_open = e.bid_start_date <= now <= e.bid_end_date
-        is_sealed_active = e.is_sealed and (now < e.bid_end_date) and (e.status != SourcingEvent.STATUS_AWARDED)
+        is_sealed_active = (
+            e.is_sealed and (now < e.bid_end_date) and (e.status != SourcingEvent.STATUS_AWARDED)
+        )
 
         awarded_bid = next((b for b in bids if b.status == "AWARDED"), None)
 
-        items.append({
-            "id": str(e.id),
-            "event_number": e.event_number,
-            "title": e.title,
-            "event_type": e.event_type,
-            "event_type_display": e.get_event_type_display(),
-            "status": e.status,
-            "status_display": e.get_status_display(),
-            "is_sealed": e.is_sealed,
-            "is_sealed_active": is_sealed_active,
-            "bid_start_date": e.bid_start_date.isoformat(),
-            "bid_end_date": e.bid_end_date.isoformat(),
-            "is_window_open": is_window_open,
-            "pr_number": e.requisition.pr_number if e.requisition else None,
-            "total_bids": total_bids,
-            "awarded_vendor": awarded_bid.vendor.legal_name if awarded_bid and awarded_bid.vendor else None,
-            "awarded_amount": float(awarded_bid.total_bid_amount) if awarded_bid else None,
-            "created_at": e.created_at.isoformat(),
-        })
+        items.append(
+            {
+                "id": str(e.id),
+                "event_number": e.event_number,
+                "title": e.title,
+                "event_type": e.event_type,
+                "event_type_display": e.get_event_type_display(),
+                "status": e.status,
+                "status_display": e.get_status_display(),
+                "is_sealed": e.is_sealed,
+                "is_sealed_active": is_sealed_active,
+                "bid_start_date": e.bid_start_date.isoformat(),
+                "bid_end_date": e.bid_end_date.isoformat(),
+                "is_window_open": is_window_open,
+                "pr_number": e.requisition.pr_number if e.requisition else None,
+                "total_bids": total_bids,
+                "awarded_vendor": awarded_bid.vendor.legal_name
+                if awarded_bid and awarded_bid.vendor
+                else None,
+                "awarded_amount": float(awarded_bid.total_bid_amount) if awarded_bid else None,
+                "created_at": e.created_at.isoformat(),
+            }
+        )
 
     return {
         "summary": {
             "total_events": SourcingEvent.objects.count(),
-            "awarded_events": SourcingEvent.objects.filter(status=SourcingEvent.STATUS_AWARDED).count(),
-            "active_bidding": SourcingEvent.objects.filter(status=SourcingEvent.STATUS_BID_WINDOW).count(),
-            "total_bids_submitted": VendorBid.objects.filter(status=VendorBid.STATUS_SUBMITTED).count(),
+            "awarded_events": SourcingEvent.objects.filter(
+                status=SourcingEvent.STATUS_AWARDED
+            ).count(),
+            "active_bidding": SourcingEvent.objects.filter(
+                status=SourcingEvent.STATUS_BID_WINDOW
+            ).count(),
+            "total_bids_submitted": VendorBid.objects.filter(
+                status=VendorBid.STATUS_SUBMITTED
+            ).count(),
         },
         "total_count": total_count,
         "limit": limit,
@@ -504,7 +530,11 @@ def get_po_changes_audit(
     """
     Audits purchase order amendments, change orders, status modifications, and cancellation trails.
     """
-    qs = PurchaseOrder.objects.select_related("vendor", "requisition", "cost_center").prefetch_related("amendments").all()
+    qs = (
+        PurchaseOrder.objects.select_related("vendor", "requisition", "cost_center")
+        .prefetch_related("amendments")
+        .all()
+    )
 
     if status:
         qs = qs.filter(status=status)
@@ -529,37 +559,43 @@ def get_po_changes_audit(
     items = []
     for po in pos_page:
         amendments = list(po.amendments.select_related("requested_by").all())
-        items.append({
-            "id": str(po.id),
-            "po_number": po.po_number,
-            "version": po.version,
-            "vendor_name": po.vendor.legal_name if po.vendor else None,
-            "pr_number": po.requisition.pr_number if po.requisition else None,
-            "cost_center": po.cost_center.name if po.cost_center else None,
-            "status": po.status,
-            "status_display": po.get_status_display(),
-            "total_amount": float(po.total_amount),
-            "amendments_count": len(amendments),
-            "acknowledged_at": po.acknowledged_at.isoformat() if po.acknowledged_at else None,
-            "created_at": po.created_at.isoformat(),
-            "updated_at": po.updated_at.isoformat(),
-            "amendments": [
-                {
-                    "amendment_number": a.amendment_number,
-                    "reason": a.reason,
-                    "requested_by": a.requested_by.email if a.requested_by else "System",
-                    "created_at": a.created_at.isoformat(),
-                }
-                for a in amendments
-            ],
-        })
+        items.append(
+            {
+                "id": str(po.id),
+                "po_number": po.po_number,
+                "version": po.version,
+                "vendor_name": po.vendor.legal_name if po.vendor else None,
+                "pr_number": po.requisition.pr_number if po.requisition else None,
+                "cost_center": po.cost_center.name if po.cost_center else None,
+                "status": po.status,
+                "status_display": po.get_status_display(),
+                "total_amount": float(po.total_amount),
+                "amendments_count": len(amendments),
+                "acknowledged_at": po.acknowledged_at.isoformat() if po.acknowledged_at else None,
+                "created_at": po.created_at.isoformat(),
+                "updated_at": po.updated_at.isoformat(),
+                "amendments": [
+                    {
+                        "amendment_number": a.amendment_number,
+                        "reason": a.reason,
+                        "requested_by": a.requested_by.email if a.requested_by else "System",
+                        "created_at": a.created_at.isoformat(),
+                    }
+                    for a in amendments
+                ],
+            }
+        )
 
     return {
         "summary": {
             "total_pos": PurchaseOrder.objects.count(),
             "total_amended_pos": PurchaseOrder.objects.filter(version__gt=1).count(),
-            "cancelled_pos": PurchaseOrder.objects.filter(status=PurchaseOrder.STATUS_CANCELLED).count(),
-            "completed_pos": PurchaseOrder.objects.filter(status=PurchaseOrder.STATUS_COMPLETED).count(),
+            "cancelled_pos": PurchaseOrder.objects.filter(
+                status=PurchaseOrder.STATUS_CANCELLED
+            ).count(),
+            "completed_pos": PurchaseOrder.objects.filter(
+                status=PurchaseOrder.STATUS_COMPLETED
+            ).count(),
         },
         "total_count": total_count,
         "limit": limit,
@@ -580,7 +616,9 @@ def get_invoice_exceptions_audit(
     """
     Audits 3-way match discrepancies, price/qty variances, and supervisor override resolutions.
     """
-    qs = MatchException.objects.select_related("invoice", "invoice__vendor", "invoice__po", "resolved_by").all()
+    qs = MatchException.objects.select_related(
+        "invoice", "invoice__vendor", "invoice__po", "resolved_by"
+    ).all()
 
     if status:
         qs = qs.filter(status=status)
@@ -614,22 +652,26 @@ def get_invoice_exceptions_audit(
 
     items = []
     for exc in exceptions_page:
-        items.append({
-            "id": str(exc.id),
-            "invoice_number": exc.invoice.invoice_number if exc.invoice else None,
-            "po_number": exc.invoice.po.po_number if exc.invoice and exc.invoice.po else None,
-            "vendor_name": exc.invoice.vendor.legal_name if exc.invoice and exc.invoice.vendor else None,
-            "invoice_total": float(exc.invoice.total_amount) if exc.invoice else 0.0,
-            "exception_type": exc.exception_type,
-            "exception_type_display": exc.get_exception_type_display(),
-            "status": exc.status,
-            "status_display": exc.get_status_display(),
-            "variance_amount": float(exc.variance_amount),
-            "description": exc.description,
-            "resolution_notes": exc.resolution_notes,
-            "resolved_by": exc.resolved_by.email if exc.resolved_by else None,
-            "created_at": exc.created_at.isoformat(),
-        })
+        items.append(
+            {
+                "id": str(exc.id),
+                "invoice_number": exc.invoice.invoice_number if exc.invoice else None,
+                "po_number": exc.invoice.po.po_number if exc.invoice and exc.invoice.po else None,
+                "vendor_name": exc.invoice.vendor.legal_name
+                if exc.invoice and exc.invoice.vendor
+                else None,
+                "invoice_total": float(exc.invoice.total_amount) if exc.invoice else 0.0,
+                "exception_type": exc.exception_type,
+                "exception_type_display": exc.get_exception_type_display(),
+                "status": exc.status,
+                "status_display": exc.get_status_display(),
+                "variance_amount": float(exc.variance_amount),
+                "description": exc.description,
+                "resolution_notes": exc.resolution_notes,
+                "resolved_by": exc.resolved_by.email if exc.resolved_by else None,
+                "created_at": exc.created_at.isoformat(),
+            }
+        )
 
     return {
         "summary": {
@@ -656,7 +698,11 @@ def get_contract_changes_audit(
     """
     Audits legal contract modifications, version amendments, milestone completions, and obligation tracking.
     """
-    qs = Contract.objects.select_related("vendor", "contract_owner").prefetch_related("versions", "milestones", "obligations", "alerts").all()
+    qs = (
+        Contract.objects.select_related("vendor", "contract_owner")
+        .prefetch_related("versions", "milestones", "obligations", "alerts")
+        .all()
+    )
 
     if status:
         qs = qs.filter(status=status)
@@ -689,34 +735,38 @@ def get_contract_changes_audit(
         overdue_ob_count = sum(1 for o in obligations if not o.is_fulfilled and o.due_date < today)
         completed_milestones = sum(1 for m in milestones if m.is_completed)
 
-        items.append({
-            "id": str(con.id),
-            "contract_number": con.contract_number,
-            "title": con.title,
-            "version": con.version,
-            "vendor_name": con.vendor.legal_name if con.vendor else None,
-            "status": con.status,
-            "status_display": con.get_status_display(),
-            "contract_value": float(con.contract_value),
-            "start_date": str(con.start_date),
-            "end_date": str(con.end_date),
-            "owner_email": con.contract_owner.email if con.contract_owner else None,
-            "versions_count": len(versions),
-            "milestones_total": len(milestones),
-            "milestones_completed": completed_milestones,
-            "obligations_total": len(obligations),
-            "overdue_obligations": overdue_ob_count,
-            "active_alerts_count": sum(1 for a in alerts if not a.is_processed),
-            "created_at": con.created_at.isoformat(),
-            "updated_at": con.updated_at.isoformat(),
-        })
+        items.append(
+            {
+                "id": str(con.id),
+                "contract_number": con.contract_number,
+                "title": con.title,
+                "version": con.version,
+                "vendor_name": con.vendor.legal_name if con.vendor else None,
+                "status": con.status,
+                "status_display": con.get_status_display(),
+                "contract_value": float(con.contract_value),
+                "start_date": str(con.start_date),
+                "end_date": str(con.end_date),
+                "owner_email": con.contract_owner.email if con.contract_owner else None,
+                "versions_count": len(versions),
+                "milestones_total": len(milestones),
+                "milestones_completed": completed_milestones,
+                "obligations_total": len(obligations),
+                "overdue_obligations": overdue_ob_count,
+                "active_alerts_count": sum(1 for a in alerts if not a.is_processed),
+                "created_at": con.created_at.isoformat(),
+                "updated_at": con.updated_at.isoformat(),
+            }
+        )
 
     return {
         "summary": {
             "total_contracts": Contract.objects.count(),
             "active_contracts": Contract.objects.filter(status=Contract.STATUS_ACTIVE).count(),
             "amended_contracts": Contract.objects.filter(version__gt=1).count(),
-            "total_overdue_obligations": ContractObligation.objects.filter(is_fulfilled=False, due_date__lt=today).count(),
+            "total_overdue_obligations": ContractObligation.objects.filter(
+                is_fulfilled=False, due_date__lt=today
+            ).count(),
         },
         "total_count": total_count,
         "limit": limit,
@@ -777,20 +827,22 @@ def get_security_events_audit(
 
     items = []
     for log in events_page:
-        items.append({
-            "id": str(log.id),
-            "timestamp": log.timestamp.isoformat(),
-            "actor_id": str(log.actor.id) if log.actor else None,
-            "actor_email": log.actor.email if log.actor else "System / Anonymous",
-            "actor_role": log.actor.role.name if log.actor and log.actor.role else "System",
-            "action": log.action,
-            "action_display": log.get_action_display(),
-            "target_model": log.target_model,
-            "target_object_id": log.target_object_id,
-            "ip_address": log.ip_address,
-            "request_id": log.request_id,
-            "user_agent": log.user_agent,
-        })
+        items.append(
+            {
+                "id": str(log.id),
+                "timestamp": log.timestamp.isoformat(),
+                "actor_id": str(log.actor.id) if log.actor else None,
+                "actor_email": log.actor.email if log.actor else "System / Anonymous",
+                "actor_role": log.actor.role.name if log.actor and log.actor.role else "System",
+                "action": log.action,
+                "action_display": log.get_action_display(),
+                "target_model": log.target_model,
+                "target_object_id": log.target_object_id,
+                "ip_address": log.ip_address,
+                "request_id": log.request_id,
+                "user_agent": log.user_agent,
+            }
+        )
 
     return {
         "summary": {
@@ -805,4 +857,3 @@ def get_security_events_audit(
         "offset": offset,
         "results": items,
     }
-

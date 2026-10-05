@@ -1,10 +1,9 @@
+from django.core.exceptions import ValidationError
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from django.core.exceptions import ValidationError
 
-from .models import Contract
 from .permissions import CanViewContract, IsLegalManager
 from .selectors import get_contracts_qs
 from .serializers import (
@@ -50,32 +49,60 @@ class ContractViewSet(viewsets.ModelViewSet):
         contract = self.get_object()
         notes = request.data.get("notes", "")
         try:
-            contract = submit_for_legal_review_service(contract=contract, user=request.user, notes=notes)
+            contract = submit_for_legal_review_service(
+                contract=contract, user=request.user, notes=notes
+            )
             return Response(ContractSerializer(contract).data, status=status.HTTP_200_OK)
         except ValidationError as e:
-            return Response({"error": {"code": "INVALID_TRANSITION", "message": str(e)}}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"error": {"code": "INVALID_TRANSITION", "message": str(e)}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
-    @action(detail=True, methods=["post"], url_path="legal-approve", permission_classes=[IsAuthenticated, IsLegalManager])
+    @action(
+        detail=True,
+        methods=["post"],
+        url_path="legal-approve",
+        permission_classes=[IsAuthenticated, IsLegalManager],
+    )
     def legal_approve(self, request, pk=None):
         contract = self.get_object()
         notes = request.data.get("notes", "")
         try:
-            contract = approve_legal_review_service(contract=contract, user=request.user, notes=notes)
+            contract = approve_legal_review_service(
+                contract=contract, user=request.user, notes=notes
+            )
             return Response(ContractSerializer(contract).data, status=status.HTTP_200_OK)
         except ValidationError as e:
-            return Response({"error": {"code": "INVALID_TRANSITION", "message": str(e)}}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"error": {"code": "INVALID_TRANSITION", "message": str(e)}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
-    @action(detail=True, methods=["post"], url_path="legal-reject", permission_classes=[IsAuthenticated, IsLegalManager])
+    @action(
+        detail=True,
+        methods=["post"],
+        url_path="legal-reject",
+        permission_classes=[IsAuthenticated, IsLegalManager],
+    )
     def legal_reject(self, request, pk=None):
         contract = self.get_object()
         reason = request.data.get("reason", "")
         if not reason:
-            return Response({"error": {"code": "MISSING_PARAM", "message": "Rejection reason required"}}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"error": {"code": "MISSING_PARAM", "message": "Rejection reason required"}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         try:
-            contract = reject_legal_review_service(contract=contract, user=request.user, reason=reason)
+            contract = reject_legal_review_service(
+                contract=contract, user=request.user, reason=reason
+            )
             return Response(ContractSerializer(contract).data, status=status.HTTP_200_OK)
         except ValidationError as e:
-            return Response({"error": {"code": "INVALID_TRANSITION", "message": str(e)}}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"error": {"code": "INVALID_TRANSITION", "message": str(e)}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
     @action(detail=True, methods=["post"], url_path="business-approve")
     def business_approve(self, request, pk=None):
@@ -85,7 +112,10 @@ class ContractViewSet(viewsets.ModelViewSet):
             contract = approve_business_service(contract=contract, user=request.user, notes=notes)
             return Response(ContractSerializer(contract).data, status=status.HTTP_200_OK)
         except ValidationError as e:
-            return Response({"error": {"code": "INVALID_TRANSITION", "message": str(e)}}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"error": {"code": "INVALID_TRANSITION", "message": str(e)}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
     @action(detail=True, methods=["post"], url_path="amend")
     def amend(self, request, pk=None):
@@ -96,7 +126,15 @@ class ContractViewSet(viewsets.ModelViewSet):
         end_date = request.data.get("end_date")
 
         if not summary or not value or not start_date or not end_date:
-            return Response({"error": {"code": "MISSING_PARAM", "message": "All amendment fields are required"}}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {
+                    "error": {
+                        "code": "MISSING_PARAM",
+                        "message": "All amendment fields are required",
+                    }
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         try:
             version = create_contract_version_service(
@@ -109,7 +147,10 @@ class ContractViewSet(viewsets.ModelViewSet):
             )
             return Response(ContractVersionSerializer(version).data, status=status.HTTP_201_CREATED)
         except ValidationError as e:
-            return Response({"error": {"code": "INVALID_AMENDMENT", "message": str(e)}}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"error": {"code": "INVALID_AMENDMENT", "message": str(e)}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
     @action(detail=True, methods=["post"], url_path="renew")
     def renew(self, request, pk=None):
@@ -118,7 +159,10 @@ class ContractViewSet(viewsets.ModelViewSet):
         new_value = request.data.get("new_value")
         notes = request.data.get("notes", "")
         if not new_end_date:
-            return Response({"error": {"code": "MISSING_PARAM", "message": "new_end_date is required"}}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"error": {"code": "MISSING_PARAM", "message": "new_end_date is required"}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         try:
             contract = renew_contract_service(
                 contract=contract,
@@ -129,16 +173,27 @@ class ContractViewSet(viewsets.ModelViewSet):
             )
             return Response(ContractSerializer(contract).data, status=status.HTTP_200_OK)
         except ValidationError as e:
-            return Response({"error": {"code": "INVALID_RENEWAL", "message": str(e)}}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"error": {"code": "INVALID_RENEWAL", "message": str(e)}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
     @action(detail=True, methods=["post"], url_path="terminate")
     def terminate(self, request, pk=None):
         contract = self.get_object()
         reason = request.data.get("reason", "")
         if not reason:
-            return Response({"error": {"code": "MISSING_PARAM", "message": "Termination reason is required"}}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"error": {"code": "MISSING_PARAM", "message": "Termination reason is required"}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         try:
-            contract = terminate_contract_service(contract=contract, user=request.user, reason=reason)
+            contract = terminate_contract_service(
+                contract=contract, user=request.user, reason=reason
+            )
             return Response(ContractSerializer(contract).data, status=status.HTTP_200_OK)
         except ValidationError as e:
-            return Response({"error": {"code": "INVALID_TERMINATION", "message": str(e)}}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"error": {"code": "INVALID_TERMINATION", "message": str(e)}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )

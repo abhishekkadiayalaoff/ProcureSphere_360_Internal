@@ -4,7 +4,9 @@ from apps.audit.models import AuditLog
 
 
 class AuditLogListSerializer(serializers.ModelSerializer):
-    actor_email = serializers.CharField(source="actor.email", read_only=True, default="System / Automated")
+    actor_email = serializers.CharField(
+        source="actor.email", read_only=True, default="System / Automated"
+    )
     action_display = serializers.CharField(source="get_action_display", read_only=True)
 
     class Meta:
@@ -24,7 +26,9 @@ class AuditLogListSerializer(serializers.ModelSerializer):
 
 
 class AuditLogDetailSerializer(serializers.ModelSerializer):
-    actor_email = serializers.CharField(source="actor.email", read_only=True, default="System / Automated")
+    actor_email = serializers.CharField(
+        source="actor.email", read_only=True, default="System / Automated"
+    )
     action_display = serializers.CharField(source="get_action_display", read_only=True)
 
     class Meta:
@@ -149,7 +153,9 @@ class AuditorExportRequestSerializer(serializers.Serializer):
 
 
 class TransactionLifecycleQuerySerializer(serializers.Serializer):
-    identifier = serializers.CharField(required=True, help_text="PR, PO, RFQ, Invoice, Contract, or Vendor number / UUID")
+    identifier = serializers.CharField(
+        required=True, help_text="PR, PO, RFQ, Invoice, Contract, or Vendor number / UUID"
+    )
     entity_type = serializers.CharField(required=False, default="AUTO")
 
 
