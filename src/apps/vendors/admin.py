@@ -52,8 +52,8 @@ class VendorAdmin(admin.ModelAdmin):
 
 @admin.register(VendorContact)
 class VendorContactAdmin(admin.ModelAdmin):
-    list_display = ("vendor", "name", "email", "phone", "is_primary")
-    search_fields = ("name", "email", "vendor__legal_name")
+    list_display = ("vendor", "first_name", "last_name", "email", "phone", "is_primary")
+    search_fields = ("first_name", "last_name", "email", "vendor__legal_name")
 
 
 @admin.register(VendorRiskRecord)

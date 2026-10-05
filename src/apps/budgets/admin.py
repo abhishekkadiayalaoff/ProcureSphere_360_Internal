@@ -19,9 +19,9 @@ class BudgetAdmin(admin.ModelAdmin):
 
 @admin.register(BudgetReservation)
 class BudgetReservationAdmin(admin.ModelAdmin):
-    list_display = ("budget", "pr", "reserved_amount", "status", "created_at")
+    list_display = ("budget", "requisition", "amount", "status", "created_at")
     list_filter = ("status", "budget__cost_center")
-    search_fields = ("pr__pr_number",)
+    search_fields = ("requisition__pr_number",)
 
 
 @admin.register(SpendLedger)

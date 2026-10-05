@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}Vendor Self-Service Portal — ProcureSphere 360 ERP{% endblock %}
+{% block title %}Vendor Portal — ProcureSphere 360 ERP{% endblock %}
 
 {% block content %}
 <!-- Vendor Banner -->
@@ -10,10 +10,10 @@
             <div class="row align-items-center">
                 <div class="col-lg-8">
                     <div class="d-flex align-items-center mb-2">
-                        <span class="badge bg-success text-white rounded-pill fw-bold px-3 py-1 me-2"><i class="fa-solid fa-building me-1"></i> VENDOR PORTAL</span>
+                        <span class="badge bg-success text-white rounded-pill fw-bold px-3 py-1 me-2"><i class="fa-solid fa-building me-1"></i> Vendor Portal</span>
                         <span class="text-white-50 small"><i class="fa-solid fa-id-card me-1"></i> {{ vendor.legal_name|default:user.email }} {% if vendor.vendor_number %}&bull; <code>{{ vendor.vendor_number }}</code>{% endif %}</span>
                     </div>
-                    <h1 class="fw-bold text-white mb-2 display-6">Vendor Self-Service Workspace</h1>
+                    <h1 class="fw-bold text-white mb-2 display-6">Vendor Portal Workspace</h1>
                     <p class="text-white-50 mb-0">Submit sealed bids, acknowledge issued Purchase Orders, track payment readiness, and maintain KYC compliance documents.</p>
                 </div>
                 <div class="col-lg-4 text-lg-end mt-3 mt-lg-0">

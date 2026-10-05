@@ -29,7 +29,7 @@ class PurchaseOrderAdmin(admin.ModelAdmin):
 
 @admin.register(POLine)
 class POLineAdmin(admin.ModelAdmin):
-    list_display = ("po", "item_description", "quantity", "unit_price", "total_price")
+    list_display = ("po", "item_description", "quantity", "unit_price", "line_total")
     search_fields = ("po__po_number", "item_description")
 
 

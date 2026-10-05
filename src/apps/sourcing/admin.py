@@ -64,5 +64,5 @@ class BidEvaluationAdmin(admin.ModelAdmin):
 
 @admin.register(AwardDecision)
 class AwardDecisionAdmin(admin.ModelAdmin):
-    list_display = ("event", "winning_bid", "awarded_amount", "approved_by", "created_at")
+    list_display = ("event", "winning_bid", "approved_by", "created_at")
     search_fields = ("event__event_number", "winning_bid__bid_number")

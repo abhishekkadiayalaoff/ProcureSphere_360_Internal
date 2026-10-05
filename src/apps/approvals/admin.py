@@ -1,5 +1,4 @@
 from django.contrib import admin
-
 from .models import ApprovalAction, ApprovalDelegate, ApprovalPolicy, ApprovalStep
 
 
@@ -31,6 +30,6 @@ class ApprovalActionAdmin(admin.ModelAdmin):
 
 @admin.register(ApprovalDelegate)
 class ApprovalDelegateAdmin(admin.ModelAdmin):
-    list_display = ("delegator", "delegatee", "start_date", "end_date", "is_active")
+    list_display = ("approver", "delegate", "start_date", "end_date", "is_active")
     list_filter = ("is_active",)
-    search_fields = ("delegator__email", "delegatee__email")
+    search_fields = ("approver__email", "delegate__email")
