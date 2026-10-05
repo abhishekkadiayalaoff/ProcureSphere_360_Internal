@@ -18,6 +18,13 @@ def approvals_inbox_view(request):
     )
 
     if request.method == "POST":
+        if role_code == Role.AUDITOR:
+            messages.error(
+                request,
+                "Permission Denied: Compliance Auditors hold strictly read-only permissions and cannot approve or reject requisitions.",
+            )
+            return redirect("approvals_inbox")
+
         pr_id = request.POST.get("pr_id")
         action = request.POST.get("action")  # APPROVED or REJECTED
         comments = request.POST.get("comments", "").strip()

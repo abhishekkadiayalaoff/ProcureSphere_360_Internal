@@ -3,7 +3,6 @@ from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
 import csv
 import openpyxl
-from reportlab.pdfgen import canvas
 from apps.accounts.models import User, Role
 from apps.organization.models import Organization, Department, CostCenter
 from apps.budgets.models import Budget
@@ -184,6 +183,10 @@ def audit_export_view(request):
         return response
         
     elif format_type == 'pdf':
+        try:
+            from reportlab.pdfgen import canvas
+        except ImportError:
+            return HttpResponse("PDF export is unavailable: reportlab is not installed.", status=501)
         response = HttpResponse(content_type='application/pdf')
         response['Content-Disposition'] = 'attachment; filename="audit_history.pdf"'
         p = canvas.Canvas(response)

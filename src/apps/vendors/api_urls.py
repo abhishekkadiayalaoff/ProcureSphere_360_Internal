@@ -2,6 +2,7 @@ from rest_framework import serializers, viewsets
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.routers import DefaultRouter
 
+from apps.audit.permissions import AuditorReadOnlyPermission
 from .models import Vendor, VendorCategory, VendorDocument
 
 
@@ -31,7 +32,7 @@ class VendorViewSet(viewsets.ModelViewSet):
         Vendor.objects.select_related("category").prefetch_related("documents", "contacts").all()
     )
     serializer_class = VendorSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, AuditorReadOnlyPermission]
 
     def get_queryset(self):
         user = self.request.user
@@ -44,7 +45,7 @@ class VendorViewSet(viewsets.ModelViewSet):
 class VendorCategoryViewSet(viewsets.ModelViewSet):
     queryset = VendorCategory.objects.all()
     serializer_class = VendorCategorySerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, AuditorReadOnlyPermission]
 
 
 router = DefaultRouter()

@@ -210,17 +210,9 @@ def home_view(request):
 
     # 9. COMPLIANCE AUDITOR DASHBOARD
     elif role_code == Role.AUDITOR:
-        total_logs = AuditLog.objects.count()
-        total_approvals = AuditLog.objects.filter(action=AuditLog.ACTION_APPROVE).count()
-        recent_logs = AuditLog.objects.select_related("actor").order_by("-timestamp")[:15]
-        context = {
-            "metrics": {
-                "total_audit_logs": total_logs,
-                "total_approvals": total_approvals,
-            },
-            "recent_logs": recent_logs,
-        }
-        return render(request, "pages/dashboards/auditor_dashboard.html", context)
+        from apps.audit.views import auditor_dashboard_view
+        return auditor_dashboard_view(request)
+
 
     # 10. SUPER ADMIN / EXECUTIVE CONTROL CENTER
     User = get_user_model()

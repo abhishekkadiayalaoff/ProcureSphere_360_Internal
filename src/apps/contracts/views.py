@@ -64,6 +64,16 @@ def create_view(request):
     """
     Creates a new Contract in DRAFT state.
     """
+    role_code = getattr(request.user, "role_code", None) or (
+        request.user.role.code if getattr(request.user, "role", None) else None
+    )
+    if role_code == Role.AUDITOR:
+        messages.error(
+            request,
+            "Permission Denied: Compliance Auditors hold strictly read-only permissions and cannot draft contracts.",
+        )
+        return redirect("contracts_list")
+
     if request.method == "POST":
         form = ContractCreateForm(request.POST)
         if form.is_valid():
@@ -144,10 +154,23 @@ def detail_view(request, contract_id):
     return render(request, "pages/contracts/detail.html", context)
 
 
+def _is_auditor(user):
+    role_code = getattr(user, "role_code", None) or (
+        user.role.code if getattr(user, "role", None) else None
+    )
+    return role_code == Role.AUDITOR
+
+
 @login_required(login_url="/login/")
 @require_POST
 def submit_legal_view(request, contract_id):
     contract = get_object_or_404(Contract, id=contract_id)
+    if _is_auditor(request.user):
+        messages.error(
+            request,
+            "Permission Denied: Compliance Auditors hold strictly read-only permissions and cannot modify contracts.",
+        )
+        return redirect("contract_detail", contract_id=contract.id)
     notes = request.POST.get("notes", "")
     try:
         submit_for_legal_review_service(contract=contract, user=request.user, notes=notes)
@@ -161,6 +184,12 @@ def submit_legal_view(request, contract_id):
 @require_POST
 def legal_approve_view(request, contract_id):
     contract = get_object_or_404(Contract, id=contract_id)
+    if _is_auditor(request.user):
+        messages.error(
+            request,
+            "Permission Denied: Compliance Auditors hold strictly read-only permissions and cannot approve contracts.",
+        )
+        return redirect("contract_detail", contract_id=contract.id)
     notes = request.POST.get("notes", "")
     try:
         approve_legal_review_service(contract=contract, user=request.user, notes=notes)
@@ -176,6 +205,12 @@ def legal_approve_view(request, contract_id):
 @require_POST
 def legal_reject_view(request, contract_id):
     contract = get_object_or_404(Contract, id=contract_id)
+    if _is_auditor(request.user):
+        messages.error(
+            request,
+            "Permission Denied: Compliance Auditors hold strictly read-only permissions and cannot reject contracts.",
+        )
+        return redirect("contract_detail", contract_id=contract.id)
     reason = request.POST.get("reason", "").strip()
     if not reason:
         messages.error(request, "Rejection reason is required.")
@@ -194,6 +229,12 @@ def legal_reject_view(request, contract_id):
 @require_POST
 def business_approve_view(request, contract_id):
     contract = get_object_or_404(Contract, id=contract_id)
+    if _is_auditor(request.user):
+        messages.error(
+            request,
+            "Permission Denied: Compliance Auditors hold strictly read-only permissions and cannot approve contracts.",
+        )
+        return redirect("contract_detail", contract_id=contract.id)
     notes = request.POST.get("notes", "")
     try:
         approve_business_service(contract=contract, user=request.user, notes=notes)
@@ -209,6 +250,12 @@ def business_approve_view(request, contract_id):
 @require_POST
 def amend_view(request, contract_id):
     contract = get_object_or_404(Contract, id=contract_id)
+    if _is_auditor(request.user):
+        messages.error(
+            request,
+            "Permission Denied: Compliance Auditors hold strictly read-only permissions and cannot amend contracts.",
+        )
+        return redirect("contract_detail", contract_id=contract.id)
     form = ContractAmendmentForm(request.POST)
     if form.is_valid():
         try:

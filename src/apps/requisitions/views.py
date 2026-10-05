@@ -26,7 +26,16 @@ def list_view(request):
 @login_required(login_url="/login/")
 def create_view(request):
     user = request.user
-    
+    role_code = getattr(user, "role_code", None) or (
+        user.role.code if hasattr(user, "role") and user.role else Role.SUPER_ADMIN
+    )
+    if role_code == Role.AUDITOR:
+        messages.error(
+            request,
+            "Permission Denied: Compliance Auditors hold strictly read-only permissions and cannot create purchase requisitions.",
+        )
+        return redirect("requisitions_list")
+
     if request.method == "POST":
         title = request.POST.get("title")
         justification = request.POST.get("justification")
@@ -34,7 +43,7 @@ def create_view(request):
         cost_center_id = request.POST.get("cost_center")
         requested_delivery_date = request.POST.get("requested_delivery_date")
         attachments = request.FILES.getlist("attachments")
-        
+
         # Simple validation
         if not (title and department_id and cost_center_id and requested_delivery_date):
             messages.error(request, "Please fill in all required fields.")

@@ -44,6 +44,19 @@ class SessionLoginView(views.APIView):
         csrf_token = get_token(request)
         serializer = UserSerializer(user)
 
+        from apps.audit.models import AuditLog
+        from apps.audit.services import create_audit_log_service
+
+        create_audit_log_service(
+            actor=user,
+            action=AuditLog.ACTION_LOGIN,
+            target_model="User",
+            target_object_id=str(user.id),
+            new_state={"email": user.email, "role": user.role_code if hasattr(user, "role_code") else None},
+            ip_address=request.META.get("REMOTE_ADDR"),
+            user_agent=request.META.get("HTTP_USER_AGENT", ""),
+        )
+
         return Response(
             {
                 "message": "Login successful.",
@@ -58,6 +71,21 @@ class SessionLogoutView(views.APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, *args, **kwargs):
+        user = request.user
+        if user and user.is_authenticated:
+            from apps.audit.models import AuditLog
+            from apps.audit.services import create_audit_log_service
+
+            create_audit_log_service(
+                actor=user,
+                action=AuditLog.ACTION_LOGOUT,
+                target_model="User",
+                target_object_id=str(user.id),
+                previous_state={"email": user.email},
+                ip_address=request.META.get("REMOTE_ADDR"),
+                user_agent=request.META.get("HTTP_USER_AGENT", ""),
+            )
+
         logout(request)
         return Response({"message": "Logout successful."}, status=status.HTTP_200_OK)
 
