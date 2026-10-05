@@ -1,4 +1,5 @@
 from decimal import Decimal
+
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
@@ -7,10 +8,67 @@ from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.dateparse import parse_date
 
-from apps.accounts.models import Role
 from apps.orders.models import PurchaseOrder
 from apps.receipts.models import GoodsReceipt
 from apps.receipts.services import create_goods_receipt_service, record_inspection_service
+
+
+def _filter_receipts_by_status(queryset, status_filter: str):
+    if status_filter == "PENDING":
+        return queryset.filter(lines__inspection__isnull=True).distinct()
+    if status_filter == "PASSED":
+        return (
+            queryset.exclude(lines__inspection__isnull=True)
+            .exclude(lines__inspection__passed=False)
+            .exclude(lines__quantity_rejected__gt=Decimal("0.00"))
+            .distinct()
+        )
+    if status_filter in ["FAILED", "REJECTED"]:
+        return queryset.filter(
+            Q(lines__inspection__passed=False)
+            | Q(lines__quantity_rejected__gt=Decimal("0.00"))
+            | Q(lines__rejections__isnull=False)
+        ).distinct()
+    if status_filter == "PARTIALLY_INSPECTED":
+        return (
+            queryset.filter(lines__inspection__isnull=False)
+            .filter(lines__inspection__isnull=True)
+            .distinct()
+        )
+    return queryset
+
+
+def _filter_receipts_queryset(
+    queryset,
+    *,
+    search_query: str,
+    status_filter: str,
+    po_filter: str,
+    date_from_str: str,
+    date_to_str: str,
+):
+    if search_query:
+        queryset = queryset.filter(
+            Q(grn_number__icontains=search_query)
+            | Q(po__po_number__icontains=search_query)
+            | Q(po__vendor__legal_name__icontains=search_query)
+            | Q(delivery_note_number__icontains=search_query)
+        )
+
+    if po_filter:
+        queryset = queryset.filter(Q(po__id=po_filter) | Q(po__po_number__iexact=po_filter))
+
+    if date_from_str:
+        parsed_from = parse_date(date_from_str)
+        if parsed_from:
+            queryset = queryset.filter(received_date__date__gte=parsed_from)
+
+    if date_to_str:
+        parsed_to = parse_date(date_to_str)
+        if parsed_to:
+            queryset = queryset.filter(received_date__date__lte=parsed_to)
+
+    return _filter_receipts_by_status(queryset, status_filter)
 
 
 @login_required(login_url="/login/")
@@ -21,64 +79,23 @@ def receipts_list_view(request):
     date_from_str = request.GET.get("date_from", "").strip()
     date_to_str = request.GET.get("date_to", "").strip()
 
-    receipts_qs = (
+    base_qs = (
         GoodsReceipt.objects.select_related("po__vendor", "received_by")
         .prefetch_related("lines__po_line", "lines__inspection", "lines__rejections")
         .order_by("-received_date")
     )
 
-    # 1. Search query (GRN Number, PO Number, Vendor Name, Delivery Note)
-    if search_query:
-        receipts_qs = receipts_qs.filter(
-            Q(grn_number__icontains=search_query)
-            | Q(po__po_number__icontains=search_query)
-            | Q(po__vendor__legal_name__icontains=search_query)
-            | Q(delivery_note_number__icontains=search_query)
-        )
-
-    # 2. PO Filter
-    if po_filter:
-        receipts_qs = receipts_qs.filter(
-            Q(po__id=po_filter) | Q(po__po_number__iexact=po_filter)
-        )
-
-    # 3. Date range filters
-    if date_from_str:
-        parsed_from = parse_date(date_from_str)
-        if parsed_from:
-            receipts_qs = receipts_qs.filter(received_date__date__gte=parsed_from)
-
-    if date_to_str:
-        parsed_to = parse_date(date_to_str)
-        if parsed_to:
-            receipts_qs = receipts_qs.filter(received_date__date__lte=parsed_to)
-
-    # 4. Inspection Status filter
-    if status_filter == "PENDING":
-        receipts_qs = receipts_qs.filter(lines__inspection__isnull=True).distinct()
-    elif status_filter == "PASSED":
-        receipts_qs = (
-            receipts_qs.exclude(lines__inspection__isnull=True)
-            .exclude(lines__inspection__passed=False)
-            .exclude(lines__quantity_rejected__gt=Decimal("0.00"))
-            .distinct()
-        )
-    elif status_filter in ["FAILED", "REJECTED"]:
-        receipts_qs = receipts_qs.filter(
-            Q(lines__inspection__passed=False)
-            | Q(lines__quantity_rejected__gt=Decimal("0.00"))
-            | Q(lines__rejections__isnull=False)
-        ).distinct()
-    elif status_filter == "PARTIALLY_INSPECTED":
-        receipts_qs = (
-            receipts_qs.filter(lines__inspection__isnull=False)
-            .filter(lines__inspection__isnull=True)
-            .distinct()
-        )
+    receipts_qs = _filter_receipts_queryset(
+        base_qs,
+        search_query=search_query,
+        status_filter=status_filter,
+        po_filter=po_filter,
+        date_from_str=date_from_str,
+        date_to_str=date_to_str,
+    )
 
     total_count = receipts_qs.count()
 
-    # 5. Server-side Pagination
     paginator = Paginator(receipts_qs, 10)
     page_number = request.GET.get("page", 1)
     try:
@@ -130,7 +147,6 @@ def receipts_list_view(request):
     )
 
 
-
 @login_required(login_url="/login/")
 def receipt_detail_view(request, grn_id):
     grn = get_object_or_404(
@@ -152,6 +168,66 @@ def receipt_detail_view(request, grn_id):
     )
 
 
+def _parse_single_inspection_line(request, line):
+    line_id_str = str(line.id)
+    passed_raw = request.POST.get(f"passed_{line_id_str}", "true").strip().lower()
+    passed = passed_raw in ["true", "1", "passed", "pass", "yes"]
+    notes = request.POST.get(f"inspection_notes_{line_id_str}", "").strip()
+    rejected_qty_raw = request.POST.get(f"rejected_quantity_{line_id_str}", "").strip()
+    rejection_reason = request.POST.get(f"rejection_reason_{line_id_str}", "").strip()
+    returned_to_vendor = request.POST.get(f"returned_to_vendor_{line_id_str}") in [
+        "on",
+        "true",
+        "1",
+        "yes",
+    ]
+
+    qty_rejected = Decimal("0.00")
+    if rejected_qty_raw:
+        try:
+            qty_rejected = Decimal(rejected_qty_raw)
+        except Exception:
+            return None, f"Invalid rejected quantity for '{line.po_line.item_description}'."
+
+        if qty_rejected < Decimal("0.00"):
+            return (
+                None,
+                f"Rejected quantity cannot be negative for '{line.po_line.item_description}'.",
+            )
+        if qty_rejected > line.quantity_received:
+            return None, (
+                f"Rejected quantity ({qty_rejected}) cannot exceed received quantity "
+                f"({line.quantity_received}) for '{line.po_line.item_description}'."
+            )
+    elif not passed:
+        qty_rejected = line.quantity_received
+
+    if qty_rejected > Decimal("0.00") and not rejection_reason:
+        rejection_reason = notes or f"Defective/Damaged items ({qty_rejected} rejected)"
+
+    item_data = {
+        "receipt_line_id": line_id_str,
+        "passed": passed and (qty_rejected == Decimal("0.00")),
+        "inspection_notes": notes,
+        "rejected_quantity": qty_rejected,
+        "rejection_reason": rejection_reason,
+        "returned_to_vendor": returned_to_vendor,
+    }
+    return item_data, None
+
+
+def _extract_inspection_form_data(request, lines):
+    inspection_items = []
+    validation_errors = []
+    for line in lines:
+        item_data, error = _parse_single_inspection_line(request, line)
+        if error:
+            validation_errors.append(error)
+        elif item_data:
+            inspection_items.append(item_data)
+    return inspection_items, validation_errors
+
+
 @login_required(login_url="/login/")
 def receipt_inspect_view(request, grn_id):
     grn = get_object_or_404(
@@ -165,59 +241,7 @@ def receipt_inspect_view(request, grn_id):
     lines = grn.lines.all()
 
     if request.method == "POST":
-        inspection_items = []
-        validation_errors = []
-
-        for line in lines:
-            line_id_str = str(line.id)
-            passed_raw = request.POST.get(f"passed_{line_id_str}", "true").strip().lower()
-            passed = passed_raw in ["true", "1", "passed", "pass", "yes"]
-            notes = request.POST.get(f"inspection_notes_{line_id_str}", "").strip()
-            rejected_qty_raw = request.POST.get(f"rejected_quantity_{line_id_str}", "").strip()
-            rejection_reason = request.POST.get(f"rejection_reason_{line_id_str}", "").strip()
-            returned_to_vendor = request.POST.get(f"returned_to_vendor_{line_id_str}") in [
-                "on",
-                "true",
-                "1",
-                "yes",
-            ]
-
-            qty_rejected = Decimal("0.00")
-            if rejected_qty_raw:
-                try:
-                    qty_rejected = Decimal(rejected_qty_raw)
-                except Exception:
-                    validation_errors.append(
-                        f"Invalid rejected quantity for '{line.po_line.item_description}'."
-                    )
-                    continue
-
-                if qty_rejected < Decimal("0.00"):
-                    validation_errors.append(
-                        f"Rejected quantity cannot be negative for '{line.po_line.item_description}'."
-                    )
-                    continue
-                if qty_rejected > line.quantity_received:
-                    validation_errors.append(
-                        f"Rejected quantity ({qty_rejected}) cannot exceed received quantity ({line.quantity_received}) for '{line.po_line.item_description}'."
-                    )
-                    continue
-            elif not passed:
-                qty_rejected = line.quantity_received
-
-            if qty_rejected > Decimal("0.00") and not rejection_reason:
-                rejection_reason = notes or f"Defective/Damaged items ({qty_rejected} rejected)"
-
-            inspection_items.append(
-                {
-                    "receipt_line_id": line_id_str,
-                    "passed": passed and (qty_rejected == Decimal("0.00")),
-                    "inspection_notes": notes,
-                    "rejected_quantity": qty_rejected,
-                    "rejection_reason": rejection_reason,
-                    "returned_to_vendor": returned_to_vendor,
-                }
-            )
+        inspection_items, validation_errors = _extract_inspection_form_data(request, lines)
 
         if validation_errors:
             for err in validation_errors:
@@ -225,11 +249,7 @@ def receipt_inspect_view(request, grn_id):
             return render(
                 request,
                 "receipts/receipt_inspect.html",
-                {
-                    "grn": grn,
-                    "po": grn.po,
-                    "lines": lines,
-                },
+                {"grn": grn, "po": grn.po, "lines": lines},
             )
 
         if not inspection_items:
@@ -237,11 +257,7 @@ def receipt_inspect_view(request, grn_id):
             return render(
                 request,
                 "receipts/receipt_inspect.html",
-                {
-                    "grn": grn,
-                    "po": grn.po,
-                    "lines": lines,
-                },
+                {"grn": grn, "po": grn.po, "lines": lines},
             )
 
         try:
@@ -261,34 +277,62 @@ def receipt_inspect_view(request, grn_id):
             return render(
                 request,
                 "receipts/receipt_inspect.html",
-                {
-                    "grn": grn,
-                    "po": grn.po,
-                    "lines": lines,
-                },
+                {"grn": grn, "po": grn.po, "lines": lines},
             )
         except Exception as e:
             messages.error(request, f"Error recording inspection: {str(e)}")
             return render(
                 request,
                 "receipts/receipt_inspect.html",
-                {
-                    "grn": grn,
-                    "po": grn.po,
-                    "lines": lines,
-                },
+                {"grn": grn, "po": grn.po, "lines": lines},
             )
 
     return render(
         request,
         "receipts/receipt_inspect.html",
-        {
-            "grn": grn,
-            "po": grn.po,
-            "lines": lines,
-        },
+        {"grn": grn, "po": grn.po, "lines": lines},
     )
 
+
+def _parse_single_receipt_line(request, line):
+    qty_recv_raw = request.POST.get(f"quantity_received_{line.id}", "").strip()
+    qty_acc_raw = request.POST.get(f"quantity_accepted_{line.id}", "").strip()
+    notes = request.POST.get(f"notes_{line.id}", "").strip()
+
+    if not qty_recv_raw:
+        return None, None
+
+    try:
+        qty_recv = Decimal(qty_recv_raw)
+    except Exception:
+        return None, f"Invalid quantity received value for '{line.item_description}'."
+
+    if qty_acc_raw:
+        try:
+            qty_acc = Decimal(qty_acc_raw)
+        except Exception:
+            return None, f"Invalid quantity accepted value for '{line.item_description}'."
+    else:
+        qty_acc = qty_recv
+
+    return {
+        "po_line_id": str(line.id),
+        "quantity_received": qty_recv,
+        "quantity_accepted": qty_acc,
+        "notes": notes,
+    }, None
+
+
+def _extract_receipt_form_data(request, lines):
+    receipt_items = []
+    validation_errors = []
+    for line in lines:
+        item_data, error = _parse_single_receipt_line(request, line)
+        if error:
+            validation_errors.append(error)
+        elif item_data:
+            receipt_items.append(item_data)
+    return receipt_items, validation_errors
 
 
 @login_required(login_url="/login/")
@@ -298,7 +342,6 @@ def receipt_create_view(request, po_id):
         id=po_id,
     )
 
-    # Server-side validation of eligible PO status
     eligible_statuses = [
         PurchaseOrder.STATUS_ISSUED,
         PurchaseOrder.STATUS_ACKNOWLEDGED,
@@ -317,42 +360,7 @@ def receipt_create_view(request, po_id):
         delivery_note_number = request.POST.get("delivery_note_number", "").strip()
         remarks = request.POST.get("remarks", "").strip()
 
-        receipt_items = []
-        validation_errors = []
-
-        for line in lines:
-            qty_recv_raw = request.POST.get(f"quantity_received_{line.id}", "").strip()
-            qty_acc_raw = request.POST.get(f"quantity_accepted_{line.id}", "").strip()
-            notes = request.POST.get(f"notes_{line.id}", "").strip()
-
-            if qty_recv_raw:
-                try:
-                    qty_recv = Decimal(qty_recv_raw)
-                except Exception:
-                    validation_errors.append(
-                        f"Invalid quantity received value for '{line.item_description}'."
-                    )
-                    continue
-
-                if qty_acc_raw:
-                    try:
-                        qty_acc = Decimal(qty_acc_raw)
-                    except Exception:
-                        validation_errors.append(
-                            f"Invalid quantity accepted value for '{line.item_description}'."
-                        )
-                        continue
-                else:
-                    qty_acc = qty_recv
-
-                receipt_items.append(
-                    {
-                        "po_line_id": str(line.id),
-                        "quantity_received": qty_recv,
-                        "quantity_accepted": qty_acc,
-                        "notes": notes,
-                    }
-                )
+        receipt_items, validation_errors = _extract_receipt_form_data(request, lines)
 
         if validation_errors:
             for err in validation_errors:
@@ -433,4 +441,3 @@ def receipt_create_view(request, po_id):
             "remarks": "",
         },
     )
-

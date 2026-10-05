@@ -112,7 +112,9 @@ class POAmendment(TimeStampedModel):
 
 
 class DeliverySchedule(TimeStampedModel):
-    po = models.ForeignKey(PurchaseOrder, on_delete=models.CASCADE, related_name="delivery_schedules")
+    po = models.ForeignKey(
+        PurchaseOrder, on_delete=models.CASCADE, related_name="delivery_schedules"
+    )
     po_line = models.ForeignKey(POLine, on_delete=models.CASCADE, related_name="schedules")
     expected_delivery_date = models.DateField()
     quantity_expected = models.DecimalField(max_digits=12, decimal_places=2)
@@ -121,4 +123,3 @@ class DeliverySchedule(TimeStampedModel):
 
     def __str__(self):
         return f"Delivery Schedule for {self.po.po_number} Line {self.po_line.id} on {self.expected_delivery_date}"
-

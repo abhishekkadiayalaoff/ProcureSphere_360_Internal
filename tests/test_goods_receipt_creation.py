@@ -1,11 +1,11 @@
 from decimal import Decimal
+
 import pytest
-from django.utils import timezone
 
 from apps.accounts.models import Role, User
 from apps.orders.models import POLine, PurchaseOrder
 from apps.organization.models import CostCenter, Department, Organization
-from apps.receipts.models import GoodsReceipt, ReceiptLine, RejectionRecord
+from apps.receipts.models import GoodsReceipt, RejectionRecord
 from apps.vendors.models import Vendor, VendorCategory
 
 
@@ -13,7 +13,9 @@ from apps.vendors.models import Vendor, VendorCategory
 def receiving_setup(db, db_roles):
     org = Organization.objects.create(name="HPE Tech", code="HPE-GRN-ORG")
     dept = Department.objects.create(organization=org, name="Logistics", code="DEPT-LOG-01")
-    cost_center = CostCenter.objects.create(department=dept, code="CC-LOG-01", name="Main Warehouse")
+    cost_center = CostCenter.objects.create(
+        department=dept, code="CC-LOG-01", name="Main Warehouse"
+    )
     category = VendorCategory.objects.create(name="Electronics", code="CAT-ELEC-01")
     vendor = Vendor.objects.create(
         legal_name="Cisco Global",
@@ -289,7 +291,7 @@ def test_cross_po_line_tampering_is_rejected(client, receiving_setup):
         f"quantity_accepted_{other_line.id}": "5.00",
     }
 
-    resp = client.post(f"/receipts/create/{po.id}/", post_data)
+    client.post(f"/receipts/create/{po.id}/", post_data)
     # Form ignores unknown lines or rejects if no matching line
     assert GoodsReceipt.objects.count() == 0
 

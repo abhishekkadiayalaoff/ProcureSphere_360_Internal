@@ -1,5 +1,7 @@
 from decimal import Decimal
+
 import pytest
+
 from apps.accounts.models import Role, User
 from apps.orders.models import POLine, PurchaseOrder
 from apps.organization.models import CostCenter, Department, Organization
@@ -23,35 +25,35 @@ def test_stores_receiver_po_list_filtering(client, db_roles):
     )
 
     # Create POs in various statuses
-    po_draft = PurchaseOrder.objects.create(
+    PurchaseOrder.objects.create(
         po_number="PO-TEST-DRAFT",
         vendor=vendor,
         cost_center=cost_center,
         status=PurchaseOrder.STATUS_DRAFT,
         total_amount=Decimal("1000.00"),
     )
-    po_issued = PurchaseOrder.objects.create(
+    PurchaseOrder.objects.create(
         po_number="PO-TEST-ISSUED",
         vendor=vendor,
         cost_center=cost_center,
         status=PurchaseOrder.STATUS_ISSUED,
         total_amount=Decimal("2000.00"),
     )
-    po_ack = PurchaseOrder.objects.create(
+    PurchaseOrder.objects.create(
         po_number="PO-TEST-ACK",
         vendor=vendor,
         cost_center=cost_center,
         status=PurchaseOrder.STATUS_ACKNOWLEDGED,
         total_amount=Decimal("3000.00"),
     )
-    po_partial = PurchaseOrder.objects.create(
+    PurchaseOrder.objects.create(
         po_number="PO-TEST-PARTIAL",
         vendor=vendor,
         cost_center=cost_center,
         status=PurchaseOrder.STATUS_PARTIAL_RECEIPT,
         total_amount=Decimal("4000.00"),
     )
-    po_completed = PurchaseOrder.objects.create(
+    PurchaseOrder.objects.create(
         po_number="PO-TEST-COMPLETED",
         vendor=vendor,
         cost_center=cost_center,

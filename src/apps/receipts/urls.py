@@ -1,4 +1,5 @@
 from django.urls import path
+
 from .views import (
     receipt_create_view,
     receipt_detail_view,
@@ -13,4 +14,3 @@ urlpatterns = [
     path("receipts/<uuid:grn_id>/", receipt_detail_view, name="receipt_detail"),
     path("receipts/<uuid:grn_id>/inspect/", receipt_inspect_view, name="receipt_inspect"),
 ]
-

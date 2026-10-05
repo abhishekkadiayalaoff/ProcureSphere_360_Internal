@@ -1,21 +1,26 @@
 from datetime import timedelta
 from decimal import Decimal
+
 import pytest
 from django.utils import timezone
 
 from apps.accounts.models import Role, User
 from apps.orders.models import POLine, PurchaseOrder
 from apps.organization.models import CostCenter, Department, Organization
-from apps.receipts.models import GoodsReceipt, InspectionRecord, ReceiptLine, RejectionRecord
-from apps.receipts.services import create_goods_receipt_service, record_inspection_service
+from apps.receipts.models import GoodsReceipt, ReceiptLine
+from apps.receipts.services import create_goods_receipt_service
 from apps.vendors.models import Vendor, VendorCategory
 
 
 @pytest.fixture
 def grn_history_setup(db, db_roles):
     org = Organization.objects.create(name="HPE Global", code="HPE-HIST-ORG")
-    dept = Department.objects.create(organization=org, name="Warehouse Operations", code="DEPT-WH-OPS")
-    cost_center = CostCenter.objects.create(department=dept, code="CC-HIST-01", name="Main Warehouse")
+    dept = Department.objects.create(
+        organization=org, name="Warehouse Operations", code="DEPT-WH-OPS"
+    )
+    cost_center = CostCenter.objects.create(
+        department=dept, code="CC-HIST-01", name="Main Warehouse"
+    )
     category = VendorCategory.objects.create(name="Hardware", code="CAT-HW-01")
 
     vendor1 = Vendor.objects.create(
@@ -167,52 +172,48 @@ def test_anonymous_user_is_redirected_to_login(client):
 def test_search_by_grn_number(client, grn_history_setup):
     receiver = grn_history_setup["receiver"]
     grn1 = grn_history_setup["grn1"]
-    grn2 = grn_history_setup["grn2"]
     client.force_login(receiver)
 
     response = client.get(f"/receipts/?q={grn1.grn_number}")
     assert response.status_code == 200
     assert grn1.grn_number.encode() in response.content
-    assert grn2.grn_number.encode() not in response.content
+    assert grn_history_setup["grn2"].grn_number.encode() not in response.content
 
 
 @pytest.mark.django_db
 def test_search_by_po_number(client, grn_history_setup):
     receiver = grn_history_setup["receiver"]
     grn1 = grn_history_setup["grn1"]
-    grn2 = grn_history_setup["grn2"]
     client.force_login(receiver)
 
     response = client.get("/receipts/?q=PO-2026-DELL-001")
     assert response.status_code == 200
     assert grn1.grn_number.encode() in response.content
-    assert grn2.grn_number.encode() not in response.content
+    assert grn_history_setup["grn2"].grn_number.encode() not in response.content
 
 
 @pytest.mark.django_db
 def test_search_by_vendor(client, grn_history_setup):
     receiver = grn_history_setup["receiver"]
     grn1 = grn_history_setup["grn1"]
-    grn2 = grn_history_setup["grn2"]
     client.force_login(receiver)
 
     response = client.get("/receipts/?q=Dell")
     assert response.status_code == 200
     assert grn1.grn_number.encode() in response.content
-    assert grn2.grn_number.encode() not in response.content
+    assert grn_history_setup["grn2"].grn_number.encode() not in response.content
 
 
 @pytest.mark.django_db
 def test_search_by_delivery_note(client, grn_history_setup):
     receiver = grn_history_setup["receiver"]
-    grn1 = grn_history_setup["grn1"]
     grn2 = grn_history_setup["grn2"]
     client.force_login(receiver)
 
     response = client.get("/receipts/?q=DN-LENOVO-8002")
     assert response.status_code == 200
     assert grn2.grn_number.encode() in response.content
-    assert grn1.grn_number.encode() not in response.content
+    assert grn_history_setup["grn1"].grn_number.encode() not in response.content
 
 
 @pytest.mark.django_db
@@ -248,15 +249,13 @@ def test_inspection_status_filtering(client, grn_history_setup):
 def test_po_filtering(client, grn_history_setup):
     receiver = grn_history_setup["receiver"]
     po1 = grn_history_setup["po1"]
-    po2 = grn_history_setup["po2"]
     grn1 = grn_history_setup["grn1"]
-    grn2 = grn_history_setup["grn2"]
     client.force_login(receiver)
 
     response = client.get(f"/receipts/?po={po1.id}")
     assert response.status_code == 200
     assert grn1.grn_number.encode() in response.content
-    assert grn2.grn_number.encode() not in response.content
+    assert grn_history_setup["grn2"].grn_number.encode() not in response.content
 
 
 @pytest.mark.django_db

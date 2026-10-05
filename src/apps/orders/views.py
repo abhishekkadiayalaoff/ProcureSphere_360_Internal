@@ -1,7 +1,7 @@
-from decimal import Decimal
-from django.shortcuts import render, get_object_or_404, redirect
-from django.contrib.auth.decorators import login_required
 from django.contrib import messages
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import get_object_or_404, redirect, render
+
 from apps.accounts.models import Role
 from apps.orders.models import PurchaseOrder
 
@@ -62,8 +62,9 @@ def detail_view(request, pk):
     )
 
     po = get_object_or_404(
-        PurchaseOrder.objects.select_related("vendor", "cost_center", "requisition", "acknowledged_by")
-        .prefetch_related("lines", "delivery_schedules", "amendments"),
+        PurchaseOrder.objects.select_related(
+            "vendor", "cost_center", "requisition", "acknowledged_by"
+        ).prefetch_related("lines", "delivery_schedules", "amendments"),
         pk=pk,
     )
 
@@ -76,7 +77,11 @@ def detail_view(request, pk):
         return redirect("orders_list")
 
     # Scoping check: Vendor portal user can only view their own POs
-    if role_code == Role.VENDOR_USER and getattr(user, "vendor", None) and po.vendor_id != user.vendor_id:
+    if (
+        role_code == Role.VENDOR_USER
+        and getattr(user, "vendor", None)
+        and po.vendor_id != user.vendor_id
+    ):
         messages.error(request, "You do not have permission to view this purchase order.")
         return redirect("orders_list")
 
@@ -95,4 +100,3 @@ def detail_view(request, pk):
             "is_receivable": po.status in RECEIVABLE_PO_STATUSES,
         },
     )
-

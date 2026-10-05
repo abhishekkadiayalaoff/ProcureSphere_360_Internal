@@ -1,4 +1,5 @@
 from decimal import Decimal
+
 import pytest
 from django.core.exceptions import ValidationError
 from django.utils import timezone
@@ -102,7 +103,10 @@ def test_authenticated_stores_receiver_can_open_grn_inspection_page(client, insp
     assert response.status_code == 200
     assert grn.grn_number.encode() in response.content
     assert inspection_setup["po"].po_number.encode() in response.content
-    assert b"Line Item Quality Inspection &amp; Rejection" in response.content or b"Line Item Quality Inspection" in response.content
+    assert (
+        b"Line Item Quality Inspection &amp; Rejection" in response.content
+        or b"Line Item Quality Inspection" in response.content
+    )
 
 
 @pytest.mark.django_db
@@ -323,7 +327,7 @@ def test_cross_grn_receipt_line_tampering_is_rejected(client, inspection_setup, 
                 }
             ],
         )
-    assert "does not belong to Goods Receipt" in str(exc.value)
+    assert "does not match Goods Receipt or PO reference" in str(exc.value)
 
 
 @pytest.mark.django_db
