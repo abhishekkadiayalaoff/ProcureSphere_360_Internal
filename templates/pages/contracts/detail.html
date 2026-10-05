@@ -162,13 +162,13 @@
                             {% if contract.sourcing_event %}
                             <tr>
                                 <th class="text-muted py-2">Linked RFQ/Sourcing</th>
-                                <td class="py-2"><a href="{% url 'sourcing_detail' pk=contract.sourcing_event.id %}" class="fw-semibold"><code>{{ contract.sourcing_event.event_number }}</code> - {{ contract.sourcing_event.title }}</a></td>
+                                <td class="py-2"><a href="{% url 'sourcing_detail' event_id=contract.sourcing_event.id %}" class="fw-semibold"><code>{{ contract.sourcing_event.event_number }}</code> - {{ contract.sourcing_event.title }}</a></td>
                             </tr>
                             {% endif %}
                             {% if contract.po %}
                             <tr>
                                 <th class="text-muted py-2">Linked Purchase Order</th>
-                                <td class="py-2"><a href="{% url 'po_detail' po_id=contract.po.id %}" class="fw-semibold"><code>{{ contract.po.po_number }}</code></a></td>
+                                <td class="py-2"><a href="/purchase-orders/" class="fw-semibold"><code>{{ contract.po.po_number }}</code></a></td>
                             </tr>
                             {% endif %}
                         </tbody>
