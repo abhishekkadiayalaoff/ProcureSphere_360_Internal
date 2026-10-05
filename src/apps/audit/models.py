@@ -51,6 +51,26 @@ class AuditLog(models.Model):
         actor_str = self.actor.email if self.actor else "System"
         return f"Audit {self.action} on {self.target_model}:{self.target_object_id} by {actor_str} at {self.timestamp}"
 
+    @property
+    def readable_target(self):
+        from django.apps import apps
+        try:
+            for app_config in apps.get_app_configs():
+                try:
+                    model = app_config.get_model(self.target_model)
+                    obj = model.objects.get(pk=self.target_object_id)
+                    return f"{self.target_model} {str(obj)}"
+                except LookupError:
+                    continue
+                except model.DoesNotExist:
+                    break
+        except Exception:
+            pass
+        
+        # Fallback: model name + first 8 characters of UUID
+        short_id = str(self.target_object_id)[:8]
+        return f"{self.target_model} #{short_id}"
+
     def save(self, *args, **kwargs):
         if self.pk and AuditLog.objects.filter(pk=self.pk).exists():
             raise PermissionError(

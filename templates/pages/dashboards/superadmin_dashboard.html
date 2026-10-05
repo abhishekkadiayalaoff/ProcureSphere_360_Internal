@@ -4,14 +4,11 @@
 
 {% block content %}
 <div class="row mb-4">
-    <div class="col-12 d-flex justify-content-between align-items-center">
+    <div class="col-12">
         <div>
             <h2 class="fw-bold text-dark mb-1">Super Admin Control Center</h2>
             <p class="text-muted mb-0">System configuration, master data, and global audit oversight.</p>
         </div>
-        <button class="btn btn-warning fw-bold rounded-pill shadow-sm px-4">
-            <i class="fa-solid fa-bolt me-2"></i> System Health: <span class="badge bg-success ms-1">Online</span>
-        </button>
     </div>
 </div>
 
@@ -19,52 +16,60 @@
     <!-- Key Metric Cards -->
     <div class="col-xl-3 col-md-6">
         <div class="card border-0 shadow-sm rounded-4 h-100 bg-white">
-            <div class="card-body p-4 position-relative overflow-hidden">
-                <div class="position-absolute top-0 end-0 p-3 opacity-10">
-                    <i class="fa-solid fa-users-gear fa-4x text-info"></i>
+            <div class="card-body p-4 d-flex align-items-center gap-3">
+                <div class="flex-shrink-0 bg-info bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center" style="width:56px;height:56px;">
+                    <i class="fa-solid fa-users-gear text-info fs-4"></i>
                 </div>
-                <h6 class="text-muted fw-bold text-uppercase small mb-2">Total Users</h6>
-                <h2 class="fw-bold text-dark mb-0">{{ metrics.total_vendors|default:"14" }}</h2>
-                <div class="mt-2 small text-success fw-bold"><i class="fa-solid fa-arrow-up me-1"></i> Active sessions</div>
-            </div>
-        </div>
-    </div>
-    
-    <div class="col-xl-3 col-md-6">
-        <div class="card border-0 shadow-sm rounded-4 h-100 bg-white">
-            <div class="card-body p-4 position-relative overflow-hidden">
-                <div class="position-absolute top-0 end-0 p-3 opacity-10">
-                    <i class="fa-solid fa-sack-dollar fa-4x text-warning"></i>
+                <div class="flex-grow-1 min-width-0">
+                    <h6 class="text-muted fw-bold text-uppercase small mb-1">Total Users</h6>
+                    <h3 class="fw-bold text-dark mb-0">{{ metrics.total_users }}</h3>
+                    <div class="mt-1 small text-success fw-semibold"><i class="fa-solid fa-arrow-up me-1"></i> Active sessions</div>
                 </div>
-                <h6 class="text-muted fw-bold text-uppercase small mb-2">Total Budget Allocated</h6>
-                <h2 class="fw-bold text-dark mb-0">${{ metrics.allocated_budget|floatformat:2 }}</h2>
-                <div class="mt-2 small text-secondary">Across all cost centers</div>
             </div>
         </div>
     </div>
 
     <div class="col-xl-3 col-md-6">
         <div class="card border-0 shadow-sm rounded-4 h-100 bg-white">
-            <div class="card-body p-4 position-relative overflow-hidden">
-                <div class="position-absolute top-0 end-0 p-3 opacity-10">
-                    <i class="fa-solid fa-code-branch fa-4x text-success"></i>
+            <div class="card-body p-4 d-flex align-items-center gap-3">
+                <div class="flex-shrink-0 bg-warning bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center" style="width:56px;height:56px;">
+                    <i class="fa-solid fa-sack-dollar text-warning fs-4"></i>
                 </div>
-                <h6 class="text-muted fw-bold text-uppercase small mb-2">Pending Transactions</h6>
-                <h2 class="fw-bold text-dark mb-0">{{ metrics.pending_pr_count }} PRs</h2>
-                <div class="mt-2 small text-danger"><i class="fa-solid fa-triangle-exclamation me-1"></i> {{ metrics.pending_exceptions }} Match Exceptions</div>
+                <div class="flex-grow-1 min-width-0">
+                    <h6 class="text-muted fw-bold text-uppercase small mb-1">Total Budget Allocated</h6>
+                    <h3 class="fw-bold text-dark mb-0" style="font-size:1.4rem;">${{ metrics.allocated_budget|floatformat:2 }}</h3>
+                    <div class="mt-1 small text-secondary">Across all cost centers</div>
+                </div>
             </div>
         </div>
     </div>
 
     <div class="col-xl-3 col-md-6">
         <div class="card border-0 shadow-sm rounded-4 h-100 bg-white">
-            <div class="card-body p-4 position-relative overflow-hidden">
-                <div class="position-absolute top-0 end-0 p-3 opacity-10">
-                    <i class="fa-solid fa-clock-rotate-left fa-4x text-danger"></i>
+            <div class="card-body p-4 d-flex align-items-center gap-3">
+                <div class="flex-shrink-0 bg-success bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center" style="width:56px;height:56px;">
+                    <i class="fa-solid fa-code-branch text-success fs-4"></i>
                 </div>
-                <h6 class="text-muted fw-bold text-uppercase small mb-2">Audit Logs Today</h6>
-                <h2 class="fw-bold text-dark mb-0">1,248</h2>
-                <div class="mt-2 small text-secondary">All actions recorded</div>
+                <div class="flex-grow-1 min-width-0">
+                    <h6 class="text-muted fw-bold text-uppercase small mb-1">Pending Transactions</h6>
+                    <h3 class="fw-bold text-dark mb-0">{{ metrics.pending_pr_count }} PRs</h3>
+                    <div class="mt-1 small text-danger"><i class="fa-solid fa-triangle-exclamation me-1"></i>{{ metrics.pending_exceptions }} Match Exceptions</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6">
+        <div class="card border-0 shadow-sm rounded-4 h-100 bg-white">
+            <div class="card-body p-4 d-flex align-items-center gap-3">
+                <div class="flex-shrink-0 bg-danger bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center" style="width:56px;height:56px;">
+                    <i class="fa-solid fa-clock-rotate-left text-danger fs-4"></i>
+                </div>
+                <div class="flex-grow-1 min-width-0">
+                    <h6 class="text-muted fw-bold text-uppercase small mb-1">Audit Logs Today</h6>
+                    <h3 class="fw-bold text-dark mb-0">{{ metrics.audits_today|default:"0" }}</h3>
+                    <div class="mt-1 small text-secondary">All actions recorded</div>
+                </div>
             </div>
         </div>
     </div>

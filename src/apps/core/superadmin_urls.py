@@ -20,4 +20,5 @@ urlpatterns = [
     path("policies/create/", superadmin_views.policy_create_view, name="policy_create"),
     path("policies/<uuid:policy_id>/edit/", superadmin_views.policy_edit_view, name="policy_edit"),
     path("audit/", superadmin_views.audit_list_view, name="audit"),
+    path("audit/export/", superadmin_views.audit_export_view, name="audit_export"),
 ]

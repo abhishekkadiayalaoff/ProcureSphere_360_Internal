@@ -1,4 +1,5 @@
 from django.conf import settings
+from django.utils import timezone
 from django.contrib.auth.decorators import login_required
 from django.db import connection
 from django.db.models import Avg, Count, Sum
@@ -8,6 +9,7 @@ from redis import Redis
 from rest_framework.permissions import AllowAny
 from rest_framework.views import APIView
 
+from django.contrib.auth import get_user_model
 from apps.accounts.models import Role
 from apps.audit.models import AuditLog
 from apps.budgets.models import Budget, SpendLedger
@@ -221,8 +223,10 @@ def home_view(request):
         return render(request, "pages/dashboards/auditor_dashboard.html", context)
 
     # 10. SUPER ADMIN / EXECUTIVE CONTROL CENTER
+    User = get_user_model()
     total_pr_count = PurchaseRequisition.objects.count()
     pending_pr_count = PurchaseRequisition.objects.filter(status__in=["SUBMITTED", "MANAGER_REVIEW", "BUDGET_REVIEW"]).count()
+    total_users = User.objects.count()
     total_vendors = Vendor.objects.count()
     active_vendors = Vendor.objects.filter(status="ACTIVE").count()
     kyc_review_vendors = Vendor.objects.filter(status="KYC_REVIEW").count()
@@ -235,6 +239,7 @@ def home_view(request):
     committed_spend = SpendLedger.objects.filter(entry_type=SpendLedger.ENTRY_COMMITMENT).aggregate(total=Sum("amount"))["total"] or 0
     actual_spend = SpendLedger.objects.filter(entry_type=SpendLedger.ENTRY_ACTUAL).aggregate(total=Sum("amount"))["total"] or 0
     avg_scorecard = VendorScorecard.objects.aggregate(avg=Avg("composite_score"))["avg"] or 0.0
+    audits_today = AuditLog.objects.filter(timestamp__date=timezone.now().date()).count()
 
     pr_data = get_pr_aging_report()
     spend_data = get_spend_analytics_report()
@@ -248,6 +253,7 @@ def home_view(request):
         "version": "1.0.0-DRAFT",
         "role_code": role_code,
         "metrics": {
+            "total_users": total_users,
             "total_pr_count": total_pr_count,
             "pending_pr_count": pending_pr_count,
             "total_vendors": total_vendors,
@@ -261,6 +267,7 @@ def home_view(request):
             "committed_spend": float(committed_spend),
             "actual_spend": float(actual_spend),
             "avg_scorecard": round(float(avg_scorecard), 1),
+            "audits_today": audits_today,
         },
         "dashboard_summary": {
             "total_prs": len(pr_data),
