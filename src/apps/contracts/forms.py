@@ -1,10 +1,10 @@
-from decimal import Decimal
 from django import forms
 
-from apps.vendors.models import Vendor
-from apps.sourcing.models import SourcingEvent
 from apps.orders.models import PurchaseOrder
-from .models import Contract, ContractMilestone, ContractObligation, ContractDocument
+from apps.sourcing.models import SourcingEvent
+from apps.vendors.models import Vendor
+
+from .models import Contract, ContractDocument, ContractMilestone, ContractObligation
 
 
 class ContractCreateForm(forms.ModelForm):
@@ -37,11 +37,20 @@ class ContractCreateForm(forms.ModelForm):
             "renewal_notice_days",
         ]
         widgets = {
-            "title": forms.TextInput(attrs={"class": "form-control", "placeholder": "e.g., Enterprise IT Infrastructure Maintenance SLA"}),
-            "contract_value": forms.NumberInput(attrs={"class": "form-control", "step": "0.01", "placeholder": "0.00"}),
+            "title": forms.TextInput(
+                attrs={
+                    "class": "form-control",
+                    "placeholder": "e.g., Enterprise IT Infrastructure Maintenance SLA",
+                }
+            ),
+            "contract_value": forms.NumberInput(
+                attrs={"class": "form-control", "step": "0.01", "placeholder": "0.00"}
+            ),
             "start_date": forms.DateInput(attrs={"class": "form-control", "type": "date"}),
             "end_date": forms.DateInput(attrs={"class": "form-control", "type": "date"}),
-            "renewal_notice_days": forms.NumberInput(attrs={"class": "form-control", "value": "30"}),
+            "renewal_notice_days": forms.NumberInput(
+                attrs={"class": "form-control", "value": "30"}
+            ),
         }
 
     def clean(self):
@@ -56,7 +65,13 @@ class ContractCreateForm(forms.ModelForm):
 
 class ContractAmendmentForm(forms.Form):
     amendment_summary = forms.CharField(
-        widget=forms.Textarea(attrs={"class": "form-control", "rows": 3, "placeholder": "State scope change, price adjustment, or term extension details..."}),
+        widget=forms.Textarea(
+            attrs={
+                "class": "form-control",
+                "rows": 3,
+                "placeholder": "State scope change, price adjustment, or term extension details...",
+            }
+        ),
         required=True,
     )
     contract_value = forms.DecimalField(
@@ -65,8 +80,12 @@ class ContractAmendmentForm(forms.Form):
         widget=forms.NumberInput(attrs={"class": "form-control", "step": "0.01"}),
         required=True,
     )
-    start_date = forms.DateField(widget=forms.DateInput(attrs={"class": "form-control", "type": "date"}), required=True)
-    end_date = forms.DateField(widget=forms.DateInput(attrs={"class": "form-control", "type": "date"}), required=True)
+    start_date = forms.DateField(
+        widget=forms.DateInput(attrs={"class": "form-control", "type": "date"}), required=True
+    )
+    end_date = forms.DateField(
+        widget=forms.DateInput(attrs={"class": "form-control", "type": "date"}), required=True
+    )
 
 
 class ContractMilestoneForm(forms.ModelForm):
@@ -74,7 +93,12 @@ class ContractMilestoneForm(forms.ModelForm):
         model = ContractMilestone
         fields = ["title", "due_date", "amount"]
         widgets = {
-            "title": forms.TextInput(attrs={"class": "form-control", "placeholder": "e.g., Phase 1 Implementation Acceptance"}),
+            "title": forms.TextInput(
+                attrs={
+                    "class": "form-control",
+                    "placeholder": "e.g., Phase 1 Implementation Acceptance",
+                }
+            ),
             "due_date": forms.DateInput(attrs={"class": "form-control", "type": "date"}),
             "amount": forms.NumberInput(attrs={"class": "form-control", "step": "0.01"}),
         }
@@ -85,8 +109,15 @@ class ContractObligationForm(forms.ModelForm):
         model = ContractObligation
         fields = ["title", "responsible_party", "due_date"]
         widgets = {
-            "title": forms.TextInput(attrs={"class": "form-control", "placeholder": "e.g., Monthly SLA Uptime Report Submission"}),
-            "responsible_party": forms.TextInput(attrs={"class": "form-control", "placeholder": "VENDOR / HPE LEGAL"}),
+            "title": forms.TextInput(
+                attrs={
+                    "class": "form-control",
+                    "placeholder": "e.g., Monthly SLA Uptime Report Submission",
+                }
+            ),
+            "responsible_party": forms.TextInput(
+                attrs={"class": "form-control", "placeholder": "VENDOR / HPE LEGAL"}
+            ),
             "due_date": forms.DateInput(attrs={"class": "form-control", "type": "date"}),
         }
 
@@ -96,13 +127,20 @@ class ContractDocumentForm(forms.ModelForm):
         model = ContractDocument
         fields = ["title", "file"]
         widgets = {
-            "title": forms.TextInput(attrs={"class": "form-control", "placeholder": "e.g., Executed Master Service Agreement PDF"}),
+            "title": forms.TextInput(
+                attrs={
+                    "class": "form-control",
+                    "placeholder": "e.g., Executed Master Service Agreement PDF",
+                }
+            ),
             "file": forms.FileInput(attrs={"class": "form-control"}),
         }
 
 
 class ContractRenewalForm(forms.Form):
-    new_end_date = forms.DateField(widget=forms.DateInput(attrs={"class": "form-control", "type": "date"}), required=True)
+    new_end_date = forms.DateField(
+        widget=forms.DateInput(attrs={"class": "form-control", "type": "date"}), required=True
+    )
     new_value = forms.DecimalField(
         max_digits=14,
         decimal_places=2,
@@ -110,6 +148,12 @@ class ContractRenewalForm(forms.Form):
         required=False,
     )
     notes = forms.CharField(
-        widget=forms.Textarea(attrs={"class": "form-control", "rows": 2, "placeholder": "Renewal terms & approval notes..."}),
+        widget=forms.Textarea(
+            attrs={
+                "class": "form-control",
+                "rows": 2,
+                "placeholder": "Renewal terms & approval notes...",
+            }
+        ),
         required=False,
     )

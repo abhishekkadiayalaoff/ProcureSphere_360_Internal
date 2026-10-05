@@ -175,9 +175,7 @@ def set_approval_delegate_service(
 
 
 @transaction.atomic
-def process_approval_action_service(
-    *, target_object, actor: User, action: str, comments: str = ""
-):
+def process_approval_action_service(*, target_object, actor: User, action: str, comments: str = ""):
     """
     Processes an approval action (APPROVE or REJECT) on a target object (e.g. PurchaseRequisition).
     """
@@ -208,9 +206,10 @@ def process_approval_action_service(
         target_object_id=target_object.id,
         target_model_name=target_object.__class__.__name__,
         actor=actor,
-        action=ApprovalAction.ACTION_APPROVE if act_str in ["APPROVE", "APPROVED"] else ApprovalAction.ACTION_REJECT,
+        action=ApprovalAction.ACTION_APPROVE
+        if act_str in ["APPROVE", "APPROVED"]
+        else ApprovalAction.ACTION_REJECT,
         previous_state=previous_state,
         new_state=new_state,
         comments=comments,
     )
-

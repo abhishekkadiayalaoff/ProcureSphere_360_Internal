@@ -2,6 +2,7 @@ from django.db.models import Q, Sum
 from django.utils import timezone
 
 from apps.accounts.models import Role
+
 from .models import Contract, ContractAlert, ContractMilestone, ContractObligation
 
 
@@ -9,9 +10,9 @@ def get_contracts_qs(user=None, status=None, search=None):
     """
     Returns filtered and scoped contracts QuerySet.
     """
-    qs = Contract.objects.select_related("vendor", "contract_owner", "sourcing_event", "po").prefetch_related(
-        "milestones", "obligations", "documents", "alerts", "versions"
-    )
+    qs = Contract.objects.select_related(
+        "vendor", "contract_owner", "sourcing_event", "po"
+    ).prefetch_related("milestones", "obligations", "documents", "alerts", "versions")
 
     if user:
         role_code = getattr(user, "role_code", None) or (
@@ -64,7 +65,10 @@ def get_expiring_contracts(days=30):
     future_date = today + timezone.timedelta(days=days)
     return (
         Contract.objects.select_related("vendor", "contract_owner")
-        .filter(status__in=[Contract.STATUS_ACTIVE, Contract.STATUS_RENEWAL_DUE], end_date__lte=future_date)
+        .filter(
+            status__in=[Contract.STATUS_ACTIVE, Contract.STATUS_RENEWAL_DUE],
+            end_date__lte=future_date,
+        )
         .order_by("end_date")
     )
 
@@ -96,7 +100,9 @@ def get_active_contract_alerts():
 def get_legal_dashboard_metrics():
     today = timezone.now().date()
     total_contracts = Contract.objects.count()
-    active_contracts = Contract.objects.filter(status__in=[Contract.STATUS_ACTIVE, Contract.STATUS_RENEWED]).count()
+    active_contracts = Contract.objects.filter(
+        status__in=[Contract.STATUS_ACTIVE, Contract.STATUS_RENEWED]
+    ).count()
     pending_legal_review = Contract.objects.filter(status=Contract.STATUS_LEGAL_REVIEW).count()
     expiring_soon = Contract.objects.filter(
         status__in=[Contract.STATUS_ACTIVE, Contract.STATUS_RENEWAL_DUE],

@@ -21,8 +21,12 @@ from apps.audit.services import get_transaction_lifecycle_service
 
 def _enforce_auditor_access(request):
     user = request.user
-    role_code = getattr(user, "role_code", None) or (user.role.code if getattr(user, "role", None) else None)
-    if not (user.is_superuser or role_code in [Role.AUDITOR, Role.SUPER_ADMIN, "AUDITOR", "SUPER_ADMIN"]):
+    role_code = getattr(user, "role_code", None) or (
+        user.role.code if getattr(user, "role", None) else None
+    )
+    if not (
+        user.is_superuser or role_code in [Role.AUDITOR, Role.SUPER_ADMIN, "AUDITOR", "SUPER_ADMIN"]
+    ):
         raise PermissionDenied("Access restricted to Compliance Auditor role.")
 
 
@@ -83,7 +87,9 @@ def audit_log_view(request):
     _enforce_auditor_access(request)
     action_filter = request.GET.get("action", "").strip()
     search_query = request.GET.get("q", "").strip() or request.GET.get("search", "").strip()
-    model_filter = request.GET.get("model", "").strip() or request.GET.get("target_model", "").strip()
+    model_filter = (
+        request.GET.get("model", "").strip() or request.GET.get("target_model", "").strip()
+    )
     page = int(request.GET.get("page", 1))
     limit = int(request.GET.get("limit", 50))
     offset = (page - 1) * limit

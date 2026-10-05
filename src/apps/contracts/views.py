@@ -6,6 +6,7 @@ from django.views.decorators.http import require_POST
 
 from apps.accounts.models import Role
 from apps.audit.models import AuditLog
+
 from .forms import (
     ContractAmendmentForm,
     ContractCreateForm,
@@ -21,7 +22,6 @@ from .selectors import (
     get_legal_dashboard_metrics,
 )
 from .services import (
-    activate_contract_service,
     add_contract_milestone_service,
     add_contract_obligation_service,
     approve_business_service,
@@ -174,7 +174,9 @@ def submit_legal_view(request, contract_id):
     notes = request.POST.get("notes", "")
     try:
         submit_for_legal_review_service(contract=contract, user=request.user, notes=notes)
-        messages.success(request, f"Contract '{contract.contract_number}' submitted for Legal Review.")
+        messages.success(
+            request, f"Contract '{contract.contract_number}' submitted for Legal Review."
+        )
     except ValidationError as e:
         messages.error(request, str(e))
     return redirect("contract_detail", contract_id=contract.id)
@@ -194,7 +196,8 @@ def legal_approve_view(request, contract_id):
     try:
         approve_legal_review_service(contract=contract, user=request.user, notes=notes)
         messages.success(
-            request, f"Contract '{contract.contract_number}' Legal Review APPROVED. Status moved to Business Approval."
+            request,
+            f"Contract '{contract.contract_number}' Legal Review APPROVED. Status moved to Business Approval.",
         )
     except ValidationError as e:
         messages.error(request, str(e))
@@ -218,7 +221,8 @@ def legal_reject_view(request, contract_id):
     try:
         reject_legal_review_service(contract=contract, user=request.user, reason=reason)
         messages.warning(
-            request, f"Contract '{contract.contract_number}' Legal Review REJECTED and returned to Draft."
+            request,
+            f"Contract '{contract.contract_number}' Legal Review REJECTED and returned to Draft.",
         )
     except ValidationError as e:
         messages.error(request, str(e))
@@ -239,7 +243,8 @@ def business_approve_view(request, contract_id):
     try:
         approve_business_service(contract=contract, user=request.user, notes=notes)
         messages.success(
-            request, f"Contract '{contract.contract_number}' Business Approval completed! Contract is now ACTIVE."
+            request,
+            f"Contract '{contract.contract_number}' Business Approval completed! Contract is now ACTIVE.",
         )
     except ValidationError as e:
         messages.error(request, str(e))
@@ -364,7 +369,9 @@ def renew_view(request, contract_id):
                 new_value=form.cleaned_data.get("new_value"),
                 notes=form.cleaned_data.get("notes", ""),
             )
-            messages.success(request, f"Contract '{contract.contract_number}' successfully RENEWED.")
+            messages.success(
+                request, f"Contract '{contract.contract_number}' successfully RENEWED."
+            )
         except ValidationError as e:
             messages.error(request, str(e))
     else:

@@ -63,6 +63,7 @@ def create_purchase_requisition_service(
 
     # Validate budget availability before saving PR to prevent draft creation on overspend
     from apps.budgets.services import validate_budget_availability_service
+
     validate_budget_availability_service(
         cost_center=cost_center,
         amount=total,
@@ -73,11 +74,10 @@ def create_purchase_requisition_service(
 
     if attachments:
         from .models import PRAttachment
+
         for uploaded_file in attachments:
             PRAttachment.objects.create(
-                requisition=pr,
-                title=uploaded_file.name,
-                file=uploaded_file
+                requisition=pr, title=uploaded_file.name, file=uploaded_file
             )
 
     AuditLog.objects.create(
@@ -117,7 +117,7 @@ def submit_purchase_requisition_service(
     check_and_reserve_budget_service(requisition=requisition, requested_by_user=user)
 
     # Evaluate approval policy
-    chain = evaluate_approval_chain(
+    evaluate_approval_chain(
         module=ApprovalPolicy.MODULE_PR,
         amount=requisition.total_amount,
         department=requisition.department,

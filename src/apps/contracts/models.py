@@ -127,8 +127,9 @@ class ContractDocument(TimeStampedModel):
     contract = models.ForeignKey(Contract, on_delete=models.CASCADE, related_name="documents")
     title = models.CharField(max_length=200)
     file = models.FileField(upload_to="contract_docs/%Y/%m/")
-    uploaded_by = models.ForeignKey("accounts.User", on_delete=models.PROTECT, related_name="uploaded_contract_docs")
+    uploaded_by = models.ForeignKey(
+        "accounts.User", on_delete=models.PROTECT, related_name="uploaded_contract_docs"
+    )
 
     def __str__(self):
         return f"Doc: {self.title} for {self.contract.contract_number}"
-

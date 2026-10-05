@@ -1,23 +1,24 @@
 from decimal import Decimal
+
 import pytest
-from django.utils import timezone
 from django.urls import reverse
+from django.utils import timezone
 
 from apps.accounts.models import Role, User
-from apps.contracts.models import Contract, ContractVersion, ContractMilestone, ContractObligation
+from apps.contracts.models import Contract, ContractVersion
 from apps.contracts.services import (
     activate_contract_service,
-    create_contract_service,
-    submit_for_legal_review_service,
-    approve_legal_review_service,
-    reject_legal_review_service,
-    approve_business_service,
-    create_contract_version_service,
     add_contract_milestone_service,
-    complete_contract_milestone_service,
     add_contract_obligation_service,
+    approve_business_service,
+    approve_legal_review_service,
+    complete_contract_milestone_service,
+    create_contract_service,
+    create_contract_version_service,
     fulfill_contract_obligation_service,
+    reject_legal_review_service,
     renew_contract_service,
+    submit_for_legal_review_service,
     terminate_contract_service,
 )
 from apps.vendors.models import VendorCategory
@@ -26,13 +27,25 @@ from apps.vendors.services import register_vendor_service
 
 @pytest.fixture
 def contract_setup(db):
-    legal_role, _ = Role.objects.get_or_create(code=Role.LEGAL_MGR, defaults={"name": "Legal Manager"})
-    proc_role, _ = Role.objects.get_or_create(code=Role.PROC_MGR, defaults={"name": "Procurement Manager"})
-    requester_role, _ = Role.objects.get_or_create(code=Role.REQUESTER, defaults={"name": "Requester"})
+    legal_role, _ = Role.objects.get_or_create(
+        code=Role.LEGAL_MGR, defaults={"name": "Legal Manager"}
+    )
+    proc_role, _ = Role.objects.get_or_create(
+        code=Role.PROC_MGR, defaults={"name": "Procurement Manager"}
+    )
+    requester_role, _ = Role.objects.get_or_create(
+        code=Role.REQUESTER, defaults={"name": "Requester"}
+    )
 
-    legal_user = User.objects.create_user(email="legal.mgr@hpe.com", password="Password123!", role=legal_role)
-    proc_user = User.objects.create_user(email="proc.mgr@hpe.com", password="Password123!", role=proc_role)
-    requester_user = User.objects.create_user(email="requester@hpe.com", password="Password123!", role=requester_role)
+    legal_user = User.objects.create_user(
+        email="legal.mgr@hpe.com", password="Password123!", role=legal_role
+    )
+    proc_user = User.objects.create_user(
+        email="proc.mgr@hpe.com", password="Password123!", role=proc_role
+    )
+    requester_user = User.objects.create_user(
+        email="requester@hpe.com", password="Password123!", role=requester_role
+    )
 
     category = VendorCategory.objects.create(name="IT Services", code="CAT-IT-01")
     vendor = register_vendor_service(
@@ -73,15 +86,21 @@ def test_contract_legal_and_business_approval_workflow(contract_setup):
     assert contract.version == 1
 
     # 1. Submit for Legal Review
-    contract = submit_for_legal_review_service(contract=contract, user=legal_user, notes="Urgent legal review required")
+    contract = submit_for_legal_review_service(
+        contract=contract, user=legal_user, notes="Urgent legal review required"
+    )
     assert contract.status == Contract.STATUS_LEGAL_REVIEW
 
     # 2. Approve Legal Review
-    contract = approve_legal_review_service(contract=contract, user=legal_user, notes="Terms and indemnity clauses verified")
+    contract = approve_legal_review_service(
+        contract=contract, user=legal_user, notes="Terms and indemnity clauses verified"
+    )
     assert contract.status == Contract.STATUS_BUSINESS_APPROVAL
 
     # 3. Approve Business & Activate
-    contract = approve_business_service(contract=contract, user=proc_user, notes="Budget allocated and signed off")
+    contract = approve_business_service(
+        contract=contract, user=proc_user, notes="Budget allocated and signed off"
+    )
     assert contract.status == Contract.STATUS_ACTIVE
 
 
@@ -93,7 +112,9 @@ def test_contract_legal_rejection_workflow(contract_setup):
     submit_for_legal_review_service(contract=contract, user=legal_user)
     assert contract.status == Contract.STATUS_LEGAL_REVIEW
 
-    contract = reject_legal_review_service(contract=contract, user=legal_user, reason="Missing compliance Annexure B")
+    contract = reject_legal_review_service(
+        contract=contract, user=legal_user, reason="Missing compliance Annexure B"
+    )
     assert contract.status == Contract.STATUS_DRAFT
 
 
@@ -173,7 +194,9 @@ def test_contract_renewal_and_termination(contract_setup):
     assert contract.contract_value == Decimal("500000.00")
 
     # Terminate
-    contract = terminate_contract_service(contract=contract, user=legal_user, reason="Convenience termination clause exercised")
+    contract = terminate_contract_service(
+        contract=contract, user=legal_user, reason="Convenience termination clause exercised"
+    )
     assert contract.status == Contract.STATUS_TERMINATED
 
 
@@ -187,7 +210,9 @@ def test_legal_manager_dashboard_and_views(client, contract_setup):
     # 1. Dashboard View
     response = client.get("/")
     assert response.status_code == 200
-    assert "Legal &amp; Contracts" in response.content.decode() or "Legal" in response.content.decode()
+    assert (
+        "Legal &amp; Contracts" in response.content.decode() or "Legal" in response.content.decode()
+    )
 
     # 2. Contract Register List View
     response = client.get(reverse("contracts_list"))

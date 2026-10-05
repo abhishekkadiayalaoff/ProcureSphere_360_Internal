@@ -2,31 +2,25 @@ import json
 import uuid
 from typing import Any, Dict, List, Optional
 
-from django.db import models
 from django.db.models import Q
 from django.utils import timezone
 
 from apps.accounts.models import User
 from apps.approvals.models import ApprovalAction
 from apps.audit.models import AuditLog
-from apps.budgets.models import BudgetReservation, SpendLedger
-from apps.contracts.models import Contract, ContractAlert, ContractMilestone, ContractObligation, ContractVersion
-from apps.core.middleware import get_client_ip, get_current_request_id, get_current_user
-from apps.invoices.models import MatchException, MatchResult, PaymentStatus, SupplierInvoice
-from apps.orders.models import DeliverySchedule, POAmendment, POLine, PurchaseOrder
-from apps.receipts.models import GoodsReceipt, InspectionRecord, ReceiptLine, RejectionRecord
-from apps.requisitions.models import PRLine, PurchaseRequisition
-from apps.scorecards.models import VendorScorecard
-from apps.sourcing.models import (
-    AwardDecision,
-    BidEvaluation,
-    BidInvite,
-    BidVersion,
-    Clarification,
-    SourcingEvent,
-    VendorBid,
+from apps.budgets.models import BudgetReservation
+from apps.contracts.models import (
+    Contract,
 )
-from apps.vendors.models import Vendor, VendorDocument, VendorRiskRecord
+from apps.core.middleware import get_client_ip, get_current_request_id, get_current_user
+from apps.invoices.models import SupplierInvoice
+from apps.orders.models import PurchaseOrder
+from apps.receipts.models import GoodsReceipt
+from apps.requisitions.models import PurchaseRequisition
+from apps.sourcing.models import (
+    SourcingEvent,
+)
+from apps.vendors.models import Vendor
 
 
 def create_audit_log_service(
@@ -165,9 +159,12 @@ def get_transaction_lifecycle_service(
         pr_query = Q(pr_number__iexact=raw_ident)
         if val_uuid:
             pr_query |= Q(id=val_uuid)
-        pr_obj = PurchaseRequisition.objects.filter(pr_query).select_related(
-            "requester", "department", "cost_center"
-        ).prefetch_related("lines", "attachments").first()
+        pr_obj = (
+            PurchaseRequisition.objects.filter(pr_query)
+            .select_related("requester", "department", "cost_center")
+            .prefetch_related("lines", "attachments")
+            .first()
+        )
         if pr_obj:
             lifecycle["is_found"] = True
             lifecycle["root_entity"] = f"Purchase Requisition ({pr_obj.pr_number})"
@@ -176,9 +173,14 @@ def get_transaction_lifecycle_service(
         po_query = Q(po_number__iexact=raw_ident)
         if val_uuid:
             po_query |= Q(id=val_uuid)
-        po_first = PurchaseOrder.objects.filter(po_query).select_related(
-            "vendor", "requisition", "sourcing_event", "cost_center", "acknowledged_by"
-        ).prefetch_related("lines", "amendments", "delivery_schedules").first()
+        po_first = (
+            PurchaseOrder.objects.filter(po_query)
+            .select_related(
+                "vendor", "requisition", "sourcing_event", "cost_center", "acknowledged_by"
+            )
+            .prefetch_related("lines", "amendments", "delivery_schedules")
+            .first()
+        )
         if po_first:
             lifecycle["is_found"] = True
             po_objs.append(po_first)
@@ -188,14 +190,19 @@ def get_transaction_lifecycle_service(
         src_query = Q(event_number__iexact=raw_ident)
         if val_uuid:
             src_query |= Q(id=val_uuid)
-        src_obj = SourcingEvent.objects.filter(src_query).select_related("requisition").prefetch_related(
-            "invitations__vendor",
-            "bids__vendor",
-            "bids__lines",
-            "bids__versions",
-            "evaluations__evaluator",
-            "clarifications__vendor",
-        ).first()
+        src_obj = (
+            SourcingEvent.objects.filter(src_query)
+            .select_related("requisition")
+            .prefetch_related(
+                "invitations__vendor",
+                "bids__vendor",
+                "bids__lines",
+                "bids__versions",
+                "evaluations__evaluator",
+                "clarifications__vendor",
+            )
+            .first()
+        )
         if src_obj:
             lifecycle["is_found"] = True
             lifecycle["root_entity"] = f"Sourcing Event ({src_obj.event_number})"
@@ -204,9 +211,12 @@ def get_transaction_lifecycle_service(
         inv_query = Q(invoice_number__iexact=raw_ident)
         if val_uuid:
             inv_query |= Q(id=val_uuid)
-        inv_first = SupplierInvoice.objects.filter(inv_query).select_related(
-            "vendor", "po", "po__requisition"
-        ).prefetch_related("lines", "exceptions__resolved_by", "match_results__performed_by").first()
+        inv_first = (
+            SupplierInvoice.objects.filter(inv_query)
+            .select_related("vendor", "po", "po__requisition")
+            .prefetch_related("lines", "exceptions__resolved_by", "match_results__performed_by")
+            .first()
+        )
         if inv_first:
             lifecycle["is_found"] = True
             inv_objs.append(inv_first)
@@ -216,9 +226,12 @@ def get_transaction_lifecycle_service(
         grn_query = Q(grn_number__iexact=raw_ident)
         if val_uuid:
             grn_query |= Q(id=val_uuid)
-        grn_first = GoodsReceipt.objects.filter(grn_query).select_related(
-            "po", "po__vendor", "received_by"
-        ).prefetch_related("lines__inspection", "lines__rejections").first()
+        grn_first = (
+            GoodsReceipt.objects.filter(grn_query)
+            .select_related("po", "po__vendor", "received_by")
+            .prefetch_related("lines__inspection", "lines__rejections")
+            .first()
+        )
         if grn_first:
             lifecycle["is_found"] = True
             grn_objs.append(grn_first)
@@ -228,21 +241,29 @@ def get_transaction_lifecycle_service(
         con_query = Q(contract_number__iexact=raw_ident)
         if val_uuid:
             con_query |= Q(id=val_uuid)
-        con_first = Contract.objects.filter(con_query).select_related(
-            "vendor", "sourcing_event", "po", "contract_owner"
-        ).prefetch_related("versions", "milestones", "alerts", "obligations", "documents").first()
+        con_first = (
+            Contract.objects.filter(con_query)
+            .select_related("vendor", "sourcing_event", "po", "contract_owner")
+            .prefetch_related("versions", "milestones", "alerts", "obligations", "documents")
+            .first()
+        )
         if con_first:
             lifecycle["is_found"] = True
             con_objs.append(con_first)
             lifecycle["root_entity"] = f"Contract ({con_first.contract_number})"
 
     elif entity_type == "VENDOR":
-        vend_query = Q(vendor_number__iexact=raw_ident) | Q(tax_identification_number__iexact=raw_ident)
+        vend_query = Q(vendor_number__iexact=raw_ident) | Q(
+            tax_identification_number__iexact=raw_ident
+        )
         if val_uuid:
             vend_query |= Q(id=val_uuid)
-        vendor_obj = Vendor.objects.filter(vend_query).select_related("category").prefetch_related(
-            "contacts", "documents", "risk_records", "scorecards"
-        ).first()
+        vendor_obj = (
+            Vendor.objects.filter(vend_query)
+            .select_related("category")
+            .prefetch_related("contacts", "documents", "risk_records", "scorecards")
+            .first()
+        )
         if vendor_obj:
             lifecycle["is_found"] = True
             lifecycle["root_entity"] = f"Vendor ({vendor_obj.legal_name})"
@@ -250,18 +271,30 @@ def get_transaction_lifecycle_service(
     # Fallback Universal Scan if entity type was UNKNOWN or not found yet
     if not lifecycle["is_found"]:
         # Try PR
-        pr_obj = PurchaseRequisition.objects.filter(
-            Q(pr_number__iexact=raw_ident) | (Q(id=val_uuid) if val_uuid else Q(pk__isnull=True))
-        ).select_related("requester", "department", "cost_center").prefetch_related("lines").first()
+        pr_obj = (
+            PurchaseRequisition.objects.filter(
+                Q(pr_number__iexact=raw_ident)
+                | (Q(id=val_uuid) if val_uuid else Q(pk__isnull=True))
+            )
+            .select_related("requester", "department", "cost_center")
+            .prefetch_related("lines")
+            .first()
+        )
         if pr_obj:
             lifecycle["is_found"] = True
             lifecycle["resolved_entity_type"] = "PR"
             lifecycle["root_entity"] = f"Purchase Requisition ({pr_obj.pr_number})"
 
         if not lifecycle["is_found"]:
-            po_first = PurchaseOrder.objects.filter(
-                Q(po_number__iexact=raw_ident) | (Q(id=val_uuid) if val_uuid else Q(pk__isnull=True))
-            ).select_related("vendor", "requisition", "sourcing_event").prefetch_related("lines").first()
+            po_first = (
+                PurchaseOrder.objects.filter(
+                    Q(po_number__iexact=raw_ident)
+                    | (Q(id=val_uuid) if val_uuid else Q(pk__isnull=True))
+                )
+                .select_related("vendor", "requisition", "sourcing_event")
+                .prefetch_related("lines")
+                .first()
+            )
             if po_first:
                 lifecycle["is_found"] = True
                 lifecycle["resolved_entity_type"] = "PO"
@@ -269,9 +302,15 @@ def get_transaction_lifecycle_service(
                 lifecycle["root_entity"] = f"Purchase Order ({po_first.po_number})"
 
         if not lifecycle["is_found"]:
-            inv_first = SupplierInvoice.objects.filter(
-                Q(invoice_number__iexact=raw_ident) | (Q(id=val_uuid) if val_uuid else Q(pk__isnull=True))
-            ).select_related("vendor", "po").prefetch_related("lines").first()
+            inv_first = (
+                SupplierInvoice.objects.filter(
+                    Q(invoice_number__iexact=raw_ident)
+                    | (Q(id=val_uuid) if val_uuid else Q(pk__isnull=True))
+                )
+                .select_related("vendor", "po")
+                .prefetch_related("lines")
+                .first()
+            )
             if inv_first:
                 lifecycle["is_found"] = True
                 lifecycle["resolved_entity_type"] = "INVOICE"
@@ -287,9 +326,14 @@ def get_transaction_lifecycle_service(
         # From Invoices -> PO & Vendor
         for inv in list(inv_objs):
             if inv.po_id and not any(p.id == inv.po_id for p in po_objs):
-                po = PurchaseOrder.objects.filter(id=inv.po_id).select_related(
-                    "vendor", "requisition", "sourcing_event", "cost_center", "acknowledged_by"
-                ).prefetch_related("lines", "amendments", "delivery_schedules").first()
+                po = (
+                    PurchaseOrder.objects.filter(id=inv.po_id)
+                    .select_related(
+                        "vendor", "requisition", "sourcing_event", "cost_center", "acknowledged_by"
+                    )
+                    .prefetch_related("lines", "amendments", "delivery_schedules")
+                    .first()
+                )
                 if po:
                     po_objs.append(po)
             if not vendor_obj and inv.vendor:
@@ -298,69 +342,129 @@ def get_transaction_lifecycle_service(
         # From Goods Receipts (GRN) -> PO
         for grn in list(grn_objs):
             if grn.po_id and not any(p.id == grn.po_id for p in po_objs):
-                po = PurchaseOrder.objects.filter(id=grn.po_id).select_related(
-                    "vendor", "requisition", "sourcing_event", "cost_center", "acknowledged_by"
-                ).prefetch_related("lines", "amendments", "delivery_schedules").first()
+                po = (
+                    PurchaseOrder.objects.filter(id=grn.po_id)
+                    .select_related(
+                        "vendor", "requisition", "sourcing_event", "cost_center", "acknowledged_by"
+                    )
+                    .prefetch_related("lines", "amendments", "delivery_schedules")
+                    .first()
+                )
                 if po:
                     po_objs.append(po)
 
         # From Contracts -> PO & Sourcing & Vendor
         for con in list(con_objs):
             if con.po_id and not any(p.id == con.po_id for p in po_objs):
-                po = PurchaseOrder.objects.filter(id=con.po_id).select_related(
-                    "vendor", "requisition", "sourcing_event", "cost_center", "acknowledged_by"
-                ).prefetch_related("lines", "amendments", "delivery_schedules").first()
+                po = (
+                    PurchaseOrder.objects.filter(id=con.po_id)
+                    .select_related(
+                        "vendor", "requisition", "sourcing_event", "cost_center", "acknowledged_by"
+                    )
+                    .prefetch_related("lines", "amendments", "delivery_schedules")
+                    .first()
+                )
                 if po:
                     po_objs.append(po)
             if not src_obj and con.sourcing_event_id:
-                src_obj = SourcingEvent.objects.filter(id=con.sourcing_event_id).select_related("requisition").prefetch_related("invitations", "bids", "evaluations").first()
+                src_obj = (
+                    SourcingEvent.objects.filter(id=con.sourcing_event_id)
+                    .select_related("requisition")
+                    .prefetch_related("invitations", "bids", "evaluations")
+                    .first()
+                )
             if not vendor_obj and con.vendor:
                 vendor_obj = con.vendor
 
         # From POs -> PR, Sourcing, Vendor, GRNs, Invoices, Contracts
         for po in list(po_objs):
             if not pr_obj and po.requisition_id:
-                pr_obj = PurchaseRequisition.objects.filter(id=po.requisition_id).select_related(
-                    "requester", "department", "cost_center"
-                ).prefetch_related("lines", "attachments").first()
+                pr_obj = (
+                    PurchaseRequisition.objects.filter(id=po.requisition_id)
+                    .select_related("requester", "department", "cost_center")
+                    .prefetch_related("lines", "attachments")
+                    .first()
+                )
             if not src_obj and po.sourcing_event_id:
-                src_obj = SourcingEvent.objects.filter(id=po.sourcing_event_id).select_related("requisition").prefetch_related("invitations", "bids", "evaluations").first()
+                src_obj = (
+                    SourcingEvent.objects.filter(id=po.sourcing_event_id)
+                    .select_related("requisition")
+                    .prefetch_related("invitations", "bids", "evaluations")
+                    .first()
+                )
             if not vendor_obj and po.vendor:
                 vendor_obj = po.vendor
 
             # Fetch GRNs for this PO
-            for grn in GoodsReceipt.objects.filter(po=po).select_related("received_by").prefetch_related("lines__inspection", "lines__rejections"):
+            for grn in (
+                GoodsReceipt.objects.filter(po=po)
+                .select_related("received_by")
+                .prefetch_related("lines__inspection", "lines__rejections")
+            ):
                 if not any(g.id == grn.id for g in grn_objs):
                     grn_objs.append(grn)
 
             # Fetch Invoices for this PO
-            for inv in SupplierInvoice.objects.filter(po=po).select_related("vendor").prefetch_related("lines", "exceptions", "match_results"):
+            for inv in (
+                SupplierInvoice.objects.filter(po=po)
+                .select_related("vendor")
+                .prefetch_related("lines", "exceptions", "match_results")
+            ):
                 if not any(i.id == inv.id for i in inv_objs):
                     inv_objs.append(inv)
 
             # Fetch Contracts linked to PO
-            for con in Contract.objects.filter(po=po).select_related("vendor", "contract_owner").prefetch_related("versions", "milestones", "obligations", "alerts"):
+            for con in (
+                Contract.objects.filter(po=po)
+                .select_related("vendor", "contract_owner")
+                .prefetch_related("versions", "milestones", "obligations", "alerts")
+            ):
                 if not any(c.id == con.id for c in con_objs):
                     con_objs.append(con)
 
         # From Sourcing -> PR, Bids, POs, Contracts
         if src_obj:
             if not pr_obj and src_obj.requisition_id:
-                pr_obj = PurchaseRequisition.objects.filter(id=src_obj.requisition_id).select_related(
-                    "requester", "department", "cost_center"
-                ).prefetch_related("lines", "attachments").first()
-            for po in PurchaseOrder.objects.filter(sourcing_event=src_obj).select_related("vendor", "cost_center").prefetch_related("lines", "amendments"):
+                pr_obj = (
+                    PurchaseRequisition.objects.filter(id=src_obj.requisition_id)
+                    .select_related("requester", "department", "cost_center")
+                    .prefetch_related("lines", "attachments")
+                    .first()
+                )
+            for po in (
+                PurchaseOrder.objects.filter(sourcing_event=src_obj)
+                .select_related("vendor", "cost_center")
+                .prefetch_related("lines", "amendments")
+            ):
                 if not any(p.id == po.id for p in po_objs):
                     po_objs.append(po)
-            for con in Contract.objects.filter(sourcing_event=src_obj).select_related("vendor").prefetch_related("versions", "milestones"):
+            for con in (
+                Contract.objects.filter(sourcing_event=src_obj)
+                .select_related("vendor")
+                .prefetch_related("versions", "milestones")
+            ):
                 if not any(c.id == con.id for c in con_objs):
                     con_objs.append(con)
 
         # From PR -> Sourcing, POs
         if pr_obj:
             if not src_obj:
-                src_obj = SourcingEvent.objects.filter(requisition=pr_obj).prefetch_related("invitations__vendor", "bids__vendor", "bids__versions", "evaluations", "clarifications").first()
-            for po in PurchaseOrder.objects.filter(requisition=pr_obj).select_related("vendor", "cost_center").prefetch_related("lines", "amendments"):
+                src_obj = (
+                    SourcingEvent.objects.filter(requisition=pr_obj)
+                    .prefetch_related(
+                        "invitations__vendor",
+                        "bids__vendor",
+                        "bids__versions",
+                        "evaluations",
+                        "clarifications",
+                    )
+                    .first()
+                )
+            for po in (
+                PurchaseOrder.objects.filter(requisition=pr_obj)
+                .select_related("vendor", "cost_center")
+                .prefetch_related("lines", "amendments")
+            ):
                 if not any(p.id == po.id for p in po_objs):
                     po_objs.append(po)
 
@@ -410,37 +514,52 @@ def get_transaction_lifecycle_service(
         }
 
         # Approvals for this PR
-        app_actions = ApprovalAction.objects.filter(target_object_id=pr_obj.id).select_related("actor", "policy_step").order_by("created_at")
+        app_actions = (
+            ApprovalAction.objects.filter(target_object_id=pr_obj.id)
+            .select_related("actor", "policy_step")
+            .order_by("created_at")
+        )
         for act in app_actions:
-            lifecycle["approvals"].append({
-                "id": str(act.id),
-                "actor": act.actor.email if act.actor else "System",
-                "action": act.action,
-                "comments": act.comments,
-                "previous_state": act.previous_state,
-                "new_state": act.new_state,
-                "step_description": act.policy_step.description if act.policy_step else None,
-                "timestamp": act.created_at.isoformat(),
-            })
+            lifecycle["approvals"].append(
+                {
+                    "id": str(act.id),
+                    "actor": act.actor.email if act.actor else "System",
+                    "action": act.action,
+                    "comments": act.comments,
+                    "previous_state": act.previous_state,
+                    "new_state": act.new_state,
+                    "step_description": act.policy_step.description if act.policy_step else None,
+                    "timestamp": act.created_at.isoformat(),
+                }
+            )
 
         if pr_obj.status in ["APPROVED", "SOURCING", "PO_ISSUED"]:
             lifecycle["stage_status"]["approval"] = "APPROVED"
         elif pr_obj.status == "REJECTED":
             lifecycle["stage_status"]["approval"] = "REJECTED"
-            lifecycle["flags"].append({"level": "WARNING", "message": f"Purchase Requisition {pr_obj.pr_number} was rejected."})
+            lifecycle["flags"].append(
+                {
+                    "level": "WARNING",
+                    "message": f"Purchase Requisition {pr_obj.pr_number} was rejected.",
+                }
+            )
         else:
             lifecycle["stage_status"]["approval"] = "IN_PROGRESS"
 
         # Budget reservations
-        for b_res in BudgetReservation.objects.filter(requisition=pr_obj).select_related("budget__cost_center", "budget__fiscal_period"):
-            lifecycle["budget_reservations"].append({
-                "id": str(b_res.id),
-                "amount": float(b_res.amount),
-                "status": b_res.status,
-                "cost_center": b_res.budget.cost_center.code,
-                "fiscal_period": b_res.budget.fiscal_period.name,
-                "created_at": b_res.created_at.isoformat(),
-            })
+        for b_res in BudgetReservation.objects.filter(requisition=pr_obj).select_related(
+            "budget__cost_center", "budget__fiscal_period"
+        ):
+            lifecycle["budget_reservations"].append(
+                {
+                    "id": str(b_res.id),
+                    "amount": float(b_res.amount),
+                    "status": b_res.status,
+                    "cost_center": b_res.budget.cost_center.code,
+                    "fiscal_period": b_res.budget.fiscal_period.name,
+                    "created_at": b_res.created_at.isoformat(),
+                }
+            )
 
     # B. Sourcing Event payload
     if src_obj:
@@ -462,16 +581,18 @@ def get_transaction_lifecycle_service(
         # Bids
         for bid in src_obj.bids.all().select_related("vendor"):
             tracked_object_ids.append(str(bid.id))
-            lifecycle["bids"].append({
-                "id": str(bid.id),
-                "bid_number": bid.bid_number,
-                "vendor": bid.vendor.legal_name,
-                "version": bid.version,
-                "status": bid.status,
-                "total_bid_amount": float(bid.total_bid_amount),
-                "submitted_at": bid.submitted_at.isoformat() if bid.submitted_at else None,
-                "versions_count": bid.versions.count(),
-            })
+            lifecycle["bids"].append(
+                {
+                    "id": str(bid.id),
+                    "bid_number": bid.bid_number,
+                    "vendor": bid.vendor.legal_name,
+                    "version": bid.version,
+                    "status": bid.status,
+                    "total_bid_amount": float(bid.total_bid_amount),
+                    "submitted_at": bid.submitted_at.isoformat() if bid.submitted_at else None,
+                    "versions_count": bid.versions.count(),
+                }
+            )
 
         # Award
         if award_obj:
@@ -540,22 +661,35 @@ def get_transaction_lifecycle_service(
                 if insp and not insp.passed:
                     all_passed = False
 
-                grn_dict["lines"].append({
-                    "item_description": r_line.po_line.item_description,
-                    "quantity_received": float(r_line.quantity_received),
-                    "quantity_accepted": float(r_line.quantity_accepted),
-                    "quantity_rejected": float(r_line.quantity_rejected),
-                    "inspection_status": "PASSED" if (insp and insp.passed) else ("FAILED" if insp else "PENDING"),
-                    "rejections": [
-                        {"qty": float(rj.rejected_quantity), "reason": rj.rejection_reason}
-                        for rj in rejs
-                    ],
-                })
+                grn_dict["lines"].append(
+                    {
+                        "item_description": r_line.po_line.item_description,
+                        "quantity_received": float(r_line.quantity_received),
+                        "quantity_accepted": float(r_line.quantity_accepted),
+                        "quantity_rejected": float(r_line.quantity_rejected),
+                        "inspection_status": "PASSED"
+                        if (insp and insp.passed)
+                        else ("FAILED" if insp else "PENDING"),
+                        "rejections": [
+                            {"qty": float(rj.rejected_quantity), "reason": rj.rejection_reason}
+                            for rj in rejs
+                        ],
+                    }
+                )
             lifecycle["receipts"].append(grn_dict)
 
-        lifecycle["stage_status"]["receipt"] = "COMPLETED" if (all_passed and not has_rejections) else ("EXCEPTION" if has_rejections else "PARTIAL")
+        lifecycle["stage_status"]["receipt"] = (
+            "COMPLETED"
+            if (all_passed and not has_rejections)
+            else ("EXCEPTION" if has_rejections else "PARTIAL")
+        )
         if has_rejections:
-            lifecycle["flags"].append({"level": "WARNING", "message": f"Goods Receipt records contain rejected quantities."})
+            lifecycle["flags"].append(
+                {
+                    "level": "WARNING",
+                    "message": "Goods Receipt records contain rejected quantities.",
+                }
+            )
 
     # E. Invoices, 3-Way Match & Payment payload
     if inv_objs:
@@ -564,10 +698,12 @@ def get_transaction_lifecycle_service(
             match_res = inv.match_results.order_by("-created_at").first()
             open_exceptions = inv.exceptions.filter(status="OPEN")
             if open_exceptions.exists():
-                lifecycle["flags"].append({
-                    "level": "CRITICAL",
-                    "message": f"Invoice {inv.invoice_number} has {open_exceptions.count()} open 3-Way Match exception(s).",
-                })
+                lifecycle["flags"].append(
+                    {
+                        "level": "CRITICAL",
+                        "message": f"Invoice {inv.invoice_number} has {open_exceptions.count()} open 3-Way Match exception(s).",
+                    }
+                )
 
             inv_dict = {
                 "id": str(inv.id),
@@ -576,7 +712,9 @@ def get_transaction_lifecycle_service(
                 "invoice_date": str(inv.invoice_date),
                 "due_date": str(inv.due_date),
                 "total_amount": float(inv.total_amount),
-                "match_status": "PASSED" if (match_res and match_res.is_matched) else ("FAILED" if match_res else "NOT_PERFORMED"),
+                "match_status": "PASSED"
+                if (match_res and match_res.is_matched)
+                else ("FAILED" if match_res else "NOT_PERFORMED"),
                 "exceptions": [
                     {
                         "type": exc.exception_type,
@@ -593,7 +731,9 @@ def get_transaction_lifecycle_service(
                     "amount_paid": float(pay_obj.amount_paid),
                     "method": pay_obj.payment_method,
                     "paid_by": pay_obj.paid_by.email if pay_obj.paid_by else None,
-                } if pay_obj else None,
+                }
+                if pay_obj
+                else None,
             }
             lifecycle["invoices"].append(inv_dict)
 
@@ -612,20 +752,22 @@ def get_transaction_lifecycle_service(
     if con_objs:
         for con in con_objs:
             lifecycle["stage_status"]["contract"] = con.status
-            lifecycle["contracts"].append({
-                "id": str(con.id),
-                "contract_number": con.contract_number,
-                "title": con.title,
-                "status": con.status,
-                "version": con.version,
-                "contract_value": float(con.contract_value),
-                "start_date": str(con.start_date),
-                "end_date": str(con.end_date),
-                "owner": con.contract_owner.email if con.contract_owner else None,
-                "milestones_count": con.milestones.count(),
-                "obligations_count": con.obligations.count(),
-                "alerts_count": con.alerts.filter(is_processed=False).count(),
-            })
+            lifecycle["contracts"].append(
+                {
+                    "id": str(con.id),
+                    "contract_number": con.contract_number,
+                    "title": con.title,
+                    "status": con.status,
+                    "version": con.version,
+                    "contract_value": float(con.contract_value),
+                    "start_date": str(con.start_date),
+                    "end_date": str(con.end_date),
+                    "owner": con.contract_owner.email if con.contract_owner else None,
+                    "milestones_count": con.milestones.count(),
+                    "obligations_count": con.obligations.count(),
+                    "alerts_count": con.alerts.filter(is_processed=False).count(),
+                }
+            )
 
     # G. Vendor Master payload
     if vendor_obj:
@@ -638,34 +780,44 @@ def get_transaction_lifecycle_service(
             "status": vendor_obj.status,
             "category": vendor_obj.category.name if vendor_obj.category else None,
             "email": vendor_obj.email,
-            "risk_level": vendor_obj.risk_records.order_by("-created_at").first().risk_level if vendor_obj.risk_records.exists() else "LOW",
-            "composite_score": float(latest_scorecard.composite_score) if latest_scorecard else None,
+            "risk_level": vendor_obj.risk_records.order_by("-created_at").first().risk_level
+            if vendor_obj.risk_records.exists()
+            else "LOW",
+            "composite_score": float(latest_scorecard.composite_score)
+            if latest_scorecard
+            else None,
             "kyc_documents_count": vendor_obj.documents.count(),
         }
 
         if vendor_obj.status in ["ON_HOLD", "SUSPENDED"]:
-            lifecycle["flags"].append({
-                "level": "CRITICAL",
-                "message": f"Vendor {vendor_obj.legal_name} is currently in {vendor_obj.status} status.",
-            })
+            lifecycle["flags"].append(
+                {
+                    "level": "CRITICAL",
+                    "message": f"Vendor {vendor_obj.legal_name} is currently in {vendor_obj.status} status.",
+                }
+            )
 
     # 4. Aggregated Chronological Audit Trail Across All Graph Nodes
     if tracked_object_ids:
         audit_query = Q(target_object_id__in=tracked_object_ids)
-        logs = AuditLog.objects.filter(audit_query).select_related("actor").order_by("timestamp")[:100]
+        logs = (
+            AuditLog.objects.filter(audit_query).select_related("actor").order_by("timestamp")[:100]
+        )
         for l in logs:
-            lifecycle["audit_logs"].append({
-                "id": str(l.id),
-                "timestamp": l.timestamp.isoformat(),
-                "actor": l.actor.email if l.actor else "System",
-                "action": l.action,
-                "target_model": l.target_model,
-                "target_object_id": l.target_object_id,
-                "ip_address": l.ip_address,
-                "request_id": l.request_id,
-                "previous_state": l.previous_state,
-                "new_state": l.new_state,
-            })
+            lifecycle["audit_logs"].append(
+                {
+                    "id": str(l.id),
+                    "timestamp": l.timestamp.isoformat(),
+                    "actor": l.actor.email if l.actor else "System",
+                    "action": l.action,
+                    "target_model": l.target_model,
+                    "target_object_id": l.target_object_id,
+                    "ip_address": l.ip_address,
+                    "request_id": l.request_id,
+                    "previous_state": l.previous_state,
+                    "new_state": l.new_state,
+                }
+            )
 
     return lifecycle
 
@@ -682,7 +834,7 @@ def export_auditor_data_service(
     """
     import csv
     import io
-    import json
+
     from .selectors import (
         get_approval_history_audit,
         get_audit_logs,
@@ -710,18 +862,29 @@ def export_auditor_data_service(
             search_term=filters.get("search"),
             limit=500,
         )
-        headers = ["ID", "Timestamp", "Actor", "Action", "Target Model", "Target ID", "IP Address", "Request ID"]
+        headers = [
+            "ID",
+            "Timestamp",
+            "Actor",
+            "Action",
+            "Target Model",
+            "Target ID",
+            "IP Address",
+            "Request ID",
+        ]
         for log in logs_res["logs"]:
-            data_payload.append({
-                "ID": str(log.id),
-                "Timestamp": log.timestamp.isoformat(),
-                "Actor": log.actor.email if log.actor else "System",
-                "Action": log.action,
-                "Target Model": log.target_model,
-                "Target ID": log.target_object_id,
-                "IP Address": log.ip_address,
-                "Request ID": log.request_id,
-            })
+            data_payload.append(
+                {
+                    "ID": str(log.id),
+                    "Timestamp": log.timestamp.isoformat(),
+                    "Actor": log.actor.email if log.actor else "System",
+                    "Action": log.action,
+                    "Target Model": log.target_model,
+                    "Target ID": log.target_object_id,
+                    "IP Address": log.ip_address,
+                    "Request ID": log.request_id,
+                }
+            )
 
     elif export_type == "vendor_compliance":
         vc_res = get_vendor_compliance_audit(
@@ -730,19 +893,31 @@ def export_auditor_data_service(
             search=filters.get("search"),
             limit=500,
         )
-        headers = ["Vendor Number", "Legal Name", "Category", "Status", "Tax ID", "Email", "Verified Docs", "Total Docs", "Active Contracts"]
+        headers = [
+            "Vendor Number",
+            "Legal Name",
+            "Category",
+            "Status",
+            "Tax ID",
+            "Email",
+            "Verified Docs",
+            "Total Docs",
+            "Active Contracts",
+        ]
         for item in vc_res["results"]:
-            data_payload.append({
-                "Vendor Number": item["vendor_number"],
-                "Legal Name": item["legal_name"],
-                "Category": item["category"] or "",
-                "Status": item["status"],
-                "Tax ID": item["tax_id"],
-                "Email": item["email"],
-                "Verified Docs": item["verified_documents"],
-                "Total Docs": item["total_documents"],
-                "Active Contracts": item["active_contracts_count"],
-            })
+            data_payload.append(
+                {
+                    "Vendor Number": item["vendor_number"],
+                    "Legal Name": item["legal_name"],
+                    "Category": item["category"] or "",
+                    "Status": item["status"],
+                    "Tax ID": item["tax_id"],
+                    "Email": item["email"],
+                    "Verified Docs": item["verified_documents"],
+                    "Total Docs": item["total_documents"],
+                    "Active Contracts": item["active_contracts_count"],
+                }
+            )
 
     elif export_type == "approval_history":
         app_res = get_approval_history_audit(
@@ -751,18 +926,29 @@ def export_auditor_data_service(
             search=filters.get("search"),
             limit=500,
         )
-        headers = ["Timestamp", "Target Model", "Target ID", "Action", "Actor", "Role", "Policy Step", "Comments"]
+        headers = [
+            "Timestamp",
+            "Target Model",
+            "Target ID",
+            "Action",
+            "Actor",
+            "Role",
+            "Policy Step",
+            "Comments",
+        ]
         for item in app_res["results"]:
-            data_payload.append({
-                "Timestamp": item["timestamp"],
-                "Target Model": item["target_model_name"],
-                "Target ID": item["target_object_id"],
-                "Action": item["action"],
-                "Actor": item["actor_email"],
-                "Role": item["actor_role"],
-                "Policy Step": item["policy_step"] or "",
-                "Comments": item["comments"] or "",
-            })
+            data_payload.append(
+                {
+                    "Timestamp": item["timestamp"],
+                    "Target Model": item["target_model_name"],
+                    "Target ID": item["target_object_id"],
+                    "Action": item["action"],
+                    "Actor": item["actor_email"],
+                    "Role": item["actor_role"],
+                    "Policy Step": item["policy_step"] or "",
+                    "Comments": item["comments"] or "",
+                }
+            )
 
     elif export_type == "sourcing_activity":
         src_res = get_sourcing_activity_audit(
@@ -771,19 +957,31 @@ def export_auditor_data_service(
             search=filters.get("search"),
             limit=500,
         )
-        headers = ["Event Number", "Title", "Type", "Status", "Is Sealed", "Total Bids", "Awarded Vendor", "Awarded Amount", "Bid End Date"]
+        headers = [
+            "Event Number",
+            "Title",
+            "Type",
+            "Status",
+            "Is Sealed",
+            "Total Bids",
+            "Awarded Vendor",
+            "Awarded Amount",
+            "Bid End Date",
+        ]
         for item in src_res["results"]:
-            data_payload.append({
-                "Event Number": item["event_number"],
-                "Title": item["title"],
-                "Type": item["event_type"],
-                "Status": item["status"],
-                "Is Sealed": item["is_sealed"],
-                "Total Bids": item["total_bids"],
-                "Awarded Vendor": item["awarded_vendor"] or "",
-                "Awarded Amount": item["awarded_amount"] or "",
-                "Bid End Date": item["bid_end_date"],
-            })
+            data_payload.append(
+                {
+                    "Event Number": item["event_number"],
+                    "Title": item["title"],
+                    "Type": item["event_type"],
+                    "Status": item["status"],
+                    "Is Sealed": item["is_sealed"],
+                    "Total Bids": item["total_bids"],
+                    "Awarded Vendor": item["awarded_vendor"] or "",
+                    "Awarded Amount": item["awarded_amount"] or "",
+                    "Bid End Date": item["bid_end_date"],
+                }
+            )
 
     elif export_type == "po_changes":
         po_res = get_po_changes_audit(
@@ -791,18 +989,29 @@ def export_auditor_data_service(
             search=filters.get("search"),
             limit=500,
         )
-        headers = ["PO Number", "Version", "Vendor", "Status", "Total Amount", "Cost Center", "Amendments Count", "Acknowledged At"]
+        headers = [
+            "PO Number",
+            "Version",
+            "Vendor",
+            "Status",
+            "Total Amount",
+            "Cost Center",
+            "Amendments Count",
+            "Acknowledged At",
+        ]
         for item in po_res["results"]:
-            data_payload.append({
-                "PO Number": item["po_number"],
-                "Version": item["version"],
-                "Vendor": item["vendor_name"] or "",
-                "Status": item["status"],
-                "Total Amount": item["total_amount"],
-                "Cost Center": item["cost_center"] or "",
-                "Amendments Count": item["amendments_count"],
-                "Acknowledged At": item["acknowledged_at"] or "",
-            })
+            data_payload.append(
+                {
+                    "PO Number": item["po_number"],
+                    "Version": item["version"],
+                    "Vendor": item["vendor_name"] or "",
+                    "Status": item["status"],
+                    "Total Amount": item["total_amount"],
+                    "Cost Center": item["cost_center"] or "",
+                    "Amendments Count": item["amendments_count"],
+                    "Acknowledged At": item["acknowledged_at"] or "",
+                }
+            )
 
     elif export_type == "invoice_exceptions":
         exc_res = get_invoice_exceptions_audit(
@@ -811,18 +1020,29 @@ def export_auditor_data_service(
             search=filters.get("search"),
             limit=500,
         )
-        headers = ["Invoice Number", "PO Number", "Vendor", "Exception Type", "Status", "Variance Amount", "Description", "Resolved By"]
+        headers = [
+            "Invoice Number",
+            "PO Number",
+            "Vendor",
+            "Exception Type",
+            "Status",
+            "Variance Amount",
+            "Description",
+            "Resolved By",
+        ]
         for item in exc_res["results"]:
-            data_payload.append({
-                "Invoice Number": item["invoice_number"] or "",
-                "PO Number": item["po_number"] or "",
-                "Vendor": item["vendor_name"] or "",
-                "Exception Type": item["exception_type_display"],
-                "Status": item["status"],
-                "Variance Amount": item["variance_amount"],
-                "Description": item["description"],
-                "Resolved By": item["resolved_by"] or "",
-            })
+            data_payload.append(
+                {
+                    "Invoice Number": item["invoice_number"] or "",
+                    "PO Number": item["po_number"] or "",
+                    "Vendor": item["vendor_name"] or "",
+                    "Exception Type": item["exception_type_display"],
+                    "Status": item["status"],
+                    "Variance Amount": item["variance_amount"],
+                    "Description": item["description"],
+                    "Resolved By": item["resolved_by"] or "",
+                }
+            )
 
     elif export_type == "contract_changes":
         con_res = get_contract_changes_audit(
@@ -830,20 +1050,33 @@ def export_auditor_data_service(
             search=filters.get("search"),
             limit=500,
         )
-        headers = ["Contract Number", "Title", "Version", "Vendor", "Status", "Value", "Start Date", "End Date", "Owner", "Overdue Obligations"]
+        headers = [
+            "Contract Number",
+            "Title",
+            "Version",
+            "Vendor",
+            "Status",
+            "Value",
+            "Start Date",
+            "End Date",
+            "Owner",
+            "Overdue Obligations",
+        ]
         for item in con_res["results"]:
-            data_payload.append({
-                "Contract Number": item["contract_number"],
-                "Title": item["title"],
-                "Version": item["version"],
-                "Vendor": item["vendor_name"] or "",
-                "Status": item["status"],
-                "Value": item["contract_value"],
-                "Start Date": item["start_date"],
-                "End Date": item["end_date"],
-                "Owner": item["owner_email"] or "",
-                "Overdue Obligations": item["overdue_obligations"],
-            })
+            data_payload.append(
+                {
+                    "Contract Number": item["contract_number"],
+                    "Title": item["title"],
+                    "Version": item["version"],
+                    "Vendor": item["vendor_name"] or "",
+                    "Status": item["status"],
+                    "Value": item["contract_value"],
+                    "Start Date": item["start_date"],
+                    "End Date": item["end_date"],
+                    "Owner": item["owner_email"] or "",
+                    "Overdue Obligations": item["overdue_obligations"],
+                }
+            )
 
     elif export_type == "security_events":
         sec_res = get_security_events_audit(
@@ -851,18 +1084,29 @@ def export_auditor_data_service(
             search=filters.get("search"),
             limit=500,
         )
-        headers = ["Timestamp", "Actor", "Role", "Action", "Target Model", "Target ID", "IP Address", "Request ID"]
+        headers = [
+            "Timestamp",
+            "Actor",
+            "Role",
+            "Action",
+            "Target Model",
+            "Target ID",
+            "IP Address",
+            "Request ID",
+        ]
         for item in sec_res["results"]:
-            data_payload.append({
-                "Timestamp": item["timestamp"],
-                "Actor": item["actor_email"],
-                "Role": item["actor_role"],
-                "Action": item["action"],
-                "Target Model": item["target_model"],
-                "Target ID": item["target_object_id"],
-                "IP Address": item["ip_address"] or "",
-                "Request ID": item["request_id"] or "",
-            })
+            data_payload.append(
+                {
+                    "Timestamp": item["timestamp"],
+                    "Actor": item["actor_email"],
+                    "Role": item["actor_role"],
+                    "Action": item["action"],
+                    "Target Model": item["target_model"],
+                    "Target ID": item["target_object_id"],
+                    "IP Address": item["ip_address"] or "",
+                    "Request ID": item["request_id"] or "",
+                }
+            )
 
     elif export_type == "lifecycle_trail":
         ident = filters.get("identifier", "")
@@ -870,17 +1114,27 @@ def export_auditor_data_service(
             entity_type=filters.get("entity_type", "AUTO"),
             entity_identifier=ident,
         )
-        headers = ["Timestamp", "Actor", "Action", "Target Model", "Target ID", "IP Address", "Request ID"]
+        headers = [
+            "Timestamp",
+            "Actor",
+            "Action",
+            "Target Model",
+            "Target ID",
+            "IP Address",
+            "Request ID",
+        ]
         for log in lifecycle_data.get("audit_logs", []):
-            data_payload.append({
-                "Timestamp": log["timestamp"],
-                "Actor": log["actor"],
-                "Action": log["action"],
-                "Target Model": log["target_model"],
-                "Target ID": log["target_object_id"],
-                "IP Address": log.get("ip_address") or "",
-                "Request ID": log.get("request_id") or "",
-            })
+            data_payload.append(
+                {
+                    "Timestamp": log["timestamp"],
+                    "Actor": log["actor"],
+                    "Action": log["action"],
+                    "Target Model": log["target_model"],
+                    "Target ID": log["target_object_id"],
+                    "IP Address": log.get("ip_address") or "",
+                    "Request ID": log.get("request_id") or "",
+                }
+            )
 
     # Render CSV / JSON
     if export_format in ["csv", "xlsx"]:
@@ -926,4 +1180,3 @@ def export_auditor_data_service(
         "content": content,
         "record_count": len(data_payload),
     }
-

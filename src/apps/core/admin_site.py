@@ -1,18 +1,38 @@
 from django.contrib import admin
 from django.contrib.admin.sites import AlreadyRegistered
-from apps.accounts.models import Role
 
+from apps.accounts.models import Role
 
 role_app_mapping = {
     Role.SUPER_ADMIN: [
-        "invoices", "budgets", "audit", "accounts", "receipts", "orders",
-        "vendors", "sourcing", "scorecards", "requisitions", "approvals",
-        "contracts", "organization", "notifications", "reports"
+        "invoices",
+        "budgets",
+        "audit",
+        "accounts",
+        "receipts",
+        "orders",
+        "vendors",
+        "sourcing",
+        "scorecards",
+        "requisitions",
+        "approvals",
+        "contracts",
+        "organization",
+        "notifications",
+        "reports",
     ],
     Role.FINANCE_AP: ["invoices", "budgets", "audit", "accounts", "orders"],
     Role.STORES_RECEIVER: ["receipts", "orders", "vendors", "accounts"],
     Role.PROC_EXEC: ["sourcing", "orders", "vendors", "scorecards", "requisitions", "accounts"],
-    Role.PROC_MGR: ["sourcing", "orders", "vendors", "scorecards", "requisitions", "approvals", "accounts"],
+    Role.PROC_MGR: [
+        "sourcing",
+        "orders",
+        "vendors",
+        "scorecards",
+        "requisitions",
+        "approvals",
+        "accounts",
+    ],
     Role.LEGAL_MGR: ["contracts", "vendors", "accounts"],
     Role.REQUESTER: ["requisitions", "organization", "accounts"],
     Role.DEPT_APPROVER: ["requisitions", "approvals", "organization", "accounts"],
@@ -63,7 +83,10 @@ class RoleBasedModelAdmin(admin.ModelAdmin):
     def has_module_permission(self, request):
         if not request.user or not request.user.is_authenticated or not request.user.is_staff:
             return False
-        if request.user.is_superuser or getattr(request.user, "role_code", None) == Role.SUPER_ADMIN:
+        if (
+            request.user.is_superuser
+            or getattr(request.user, "role_code", None) == Role.SUPER_ADMIN
+        ):
             return True
         role_code = getattr(request.user, "role_code", None)
         allowed_apps = role_app_mapping.get(role_code, [])

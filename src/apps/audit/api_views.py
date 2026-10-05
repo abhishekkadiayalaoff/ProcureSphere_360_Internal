@@ -5,7 +5,6 @@ from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from apps.accounts.permissions import IsAuditorReadOnly, IsSuperAdmin
 from apps.audit.models import AuditLog
 from apps.audit.permissions import AuditorReadOnlyPermission, IsAuditorOrSuperAdmin
 from apps.audit.selectors import (
@@ -74,16 +73,20 @@ class AuditLogViewSet(viewsets.ReadOnlyModelViewSet):
         )
 
         serializer = AuditLogListSerializer(result["logs"], many=True)
-        return Response({
-            "total_count": result["total_count"],
-            "limit": result["limit"],
-            "offset": result["offset"],
-            "results": serializer.data,
-        })
+        return Response(
+            {
+                "total_count": result["total_count"],
+                "limit": result["limit"],
+                "offset": result["offset"],
+                "results": serializer.data,
+            }
+        )
 
     @extend_schema(
         parameters=[
-            OpenApiParameter("period_days", int, description="Time window in days for metrics (default: 30)"),
+            OpenApiParameter(
+                "period_days", int, description="Time window in days for metrics (default: 30)"
+            ),
         ],
         description="Get statistical aggregations, action breakdown, and daily activity trends.",
     )
@@ -99,8 +102,17 @@ class AuditLogViewSet(viewsets.ReadOnlyModelViewSet):
 
     @extend_schema(
         parameters=[
-            OpenApiParameter("identifier", str, required=True, description="Document/Entity number or UUID (e.g. PR-2026-0001, PO-2026-0001, INV-2026-0001)"),
-            OpenApiParameter("entity_type", str, description="Optional entity domain code (PR, PO, SOURCING, INVOICE, CONTRACT, VENDOR, RECEIPT)"),
+            OpenApiParameter(
+                "identifier",
+                str,
+                required=True,
+                description="Document/Entity number or UUID (e.g. PR-2026-0001, PO-2026-0001, INV-2026-0001)",
+            ),
+            OpenApiParameter(
+                "entity_type",
+                str,
+                description="Optional entity domain code (PR, PO, SOURCING, INVOICE, CONTRACT, VENDOR, RECEIPT)",
+            ),
         ],
         description="Retrieve complete end-to-end Source-to-Pay transaction lifecycle graph and linked audit trail.",
     )
@@ -133,8 +145,18 @@ class AuditLogViewSet(viewsets.ReadOnlyModelViewSet):
 
     @extend_schema(
         parameters=[
-            OpenApiParameter("target_model", str, required=True, description="Name of the model (e.g. PurchaseRequisition, PurchaseOrder)"),
-            OpenApiParameter("target_object_id", str, required=True, description="UUID or ID of the target object"),
+            OpenApiParameter(
+                "target_model",
+                str,
+                required=True,
+                description="Name of the model (e.g. PurchaseRequisition, PurchaseOrder)",
+            ),
+            OpenApiParameter(
+                "target_object_id",
+                str,
+                required=True,
+                description="UUID or ID of the target object",
+            ),
         ],
         description="Retrieve all chronological audit log events and approval actions for a specific target entity.",
     )
@@ -152,25 +174,28 @@ class AuditLogViewSet(viewsets.ReadOnlyModelViewSet):
         )
 
         logs_serializer = AuditLogDetailSerializer(trail_data["logs"], many=True)
-        return Response({
-            "target_model": trail_data["target_model"],
-            "target_object_id": trail_data["target_object_id"],
-            "logs_count": trail_data["logs_count"],
-            "approvals_count": trail_data["approvals_count"],
-            "logs": logs_serializer.data,
-            "approvals": [
-                {
-                    "id": str(a.id),
-                    "actor": a.actor.email if a.actor else "System",
-                    "action": a.action,
-                    "comments": a.comments,
-                    "previous_state": a.previous_state,
-                    "new_state": a.new_state,
-                    "timestamp": a.created_at.isoformat(),
-                }
-                for a in trail_data["approvals"]
-            ],
-        }, status=status.HTTP_200_OK)
+        return Response(
+            {
+                "target_model": trail_data["target_model"],
+                "target_object_id": trail_data["target_object_id"],
+                "logs_count": trail_data["logs_count"],
+                "approvals_count": trail_data["approvals_count"],
+                "logs": logs_serializer.data,
+                "approvals": [
+                    {
+                        "id": str(a.id),
+                        "actor": a.actor.email if a.actor else "System",
+                        "action": a.action,
+                        "comments": a.comments,
+                        "previous_state": a.previous_state,
+                        "new_state": a.new_state,
+                        "timestamp": a.created_at.isoformat(),
+                    }
+                    for a in trail_data["approvals"]
+                ],
+            },
+            status=status.HTTP_200_OK,
+        )
 
     @action(detail=False, methods=["get"], url_path="dashboard-data")
     def dashboard_data(self, request):
@@ -380,6 +405,7 @@ class AuditLogViewSet(viewsets.ReadOnlyModelViewSet):
 
 # --- Direct Standalone Functional API Views matching project URL standards ---
 
+
 @api_view(["GET"])
 @permission_classes([IsAuthenticated, IsAuditorOrSuperAdmin])
 def auditor_dashboard_summary_api_view(request):
@@ -450,7 +476,9 @@ def auditor_dashboard_summary_api_view(request):
 def auditor_vendor_compliance_api_view(request):
     serializer = VendorComplianceQuerySerializer(data=request.query_params)
     serializer.is_valid(raise_exception=True)
-    return Response(get_vendor_compliance_audit(**serializer.validated_data), status=status.HTTP_200_OK)
+    return Response(
+        get_vendor_compliance_audit(**serializer.validated_data), status=status.HTTP_200_OK
+    )
 
 
 @api_view(["GET"])
@@ -469,7 +497,9 @@ def auditor_approval_history_api_view(request):
 def auditor_sourcing_activity_api_view(request):
     serializer = SourcingActivityQuerySerializer(data=request.query_params)
     serializer.is_valid(raise_exception=True)
-    return Response(get_sourcing_activity_audit(**serializer.validated_data), status=status.HTTP_200_OK)
+    return Response(
+        get_sourcing_activity_audit(**serializer.validated_data), status=status.HTTP_200_OK
+    )
 
 
 @api_view(["GET"])
@@ -485,7 +515,9 @@ def auditor_po_changes_api_view(request):
 def auditor_invoice_exceptions_api_view(request):
     serializer = InvoiceExceptionsQuerySerializer(data=request.query_params)
     serializer.is_valid(raise_exception=True)
-    return Response(get_invoice_exceptions_audit(**serializer.validated_data), status=status.HTTP_200_OK)
+    return Response(
+        get_invoice_exceptions_audit(**serializer.validated_data), status=status.HTTP_200_OK
+    )
 
 
 @api_view(["GET"])
@@ -493,7 +525,9 @@ def auditor_invoice_exceptions_api_view(request):
 def auditor_contract_changes_api_view(request):
     serializer = ContractChangesQuerySerializer(data=request.query_params)
     serializer.is_valid(raise_exception=True)
-    return Response(get_contract_changes_audit(**serializer.validated_data), status=status.HTTP_200_OK)
+    return Response(
+        get_contract_changes_audit(**serializer.validated_data), status=status.HTTP_200_OK
+    )
 
 
 @api_view(["GET"])
@@ -555,4 +589,3 @@ def auditor_export_api_view(request):
     )
     response["Content-Disposition"] = f'attachment; filename="{export_res["filename"]}"'
     return response
-

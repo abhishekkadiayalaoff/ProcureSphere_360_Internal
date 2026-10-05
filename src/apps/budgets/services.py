@@ -39,17 +39,15 @@ def validate_budget_availability_service(*, cost_center: CostCenter, amount: Dec
     """
     if not today:
         from django.utils import timezone
+
         today = timezone.now().date()
 
-    budget = (
-        Budget.objects.filter(
-            cost_center=cost_center,
-            fiscal_period__start_date__lte=today,
-            fiscal_period__end_date__gte=today,
-            fiscal_period__is_closed=False,
-        )
-        .first()
-    )
+    budget = Budget.objects.filter(
+        cost_center=cost_center,
+        fiscal_period__start_date__lte=today,
+        fiscal_period__end_date__gte=today,
+        fiscal_period__is_closed=False,
+    ).first()
 
     if not budget:
         raise ValidationError(

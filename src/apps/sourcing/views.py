@@ -1,6 +1,7 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect, render
+
 from .models import SourcingEvent, VendorBid
 from .selectors import get_all_sourcing_events, get_sealed_vendor_bids
 from .services import evaluate_and_award_sourcing_event_service
@@ -47,7 +48,10 @@ def sourcing_detail_view(request, event_id):
                 award_reason=comments,
                 approved_by_user=request.user,
             )
-            messages.success(request, f"Sourcing Event {event.event_number} awarded to {winning_bid.vendor.legal_name}!")
+            messages.success(
+                request,
+                f"Sourcing Event {event.event_number} awarded to {winning_bid.vendor.legal_name}!",
+            )
             return redirect(f"/sourcing-events/{event.id}/")
         except Exception as e:
             messages.error(request, f"Error awarding sourcing event: {str(e)}")
@@ -64,14 +68,16 @@ def sourcing_detail_view(request, event_id):
 
 
 @login_required
-
 def sourcing_create_view(request):
     """
     HTMX modal / page view to create a new Sourcing Event (RFQ/RFP).
     """
     from datetime import datetime
+
     from django.utils import timezone
+
     from apps.requisitions.models import PurchaseRequisition
+
     from .services import create_sourcing_event_service
 
     requisitions = PurchaseRequisition.objects.filter(status="APPROVED")
@@ -85,8 +91,16 @@ def sourcing_create_view(request):
         description = request.POST.get("description", "").strip()
 
         try:
-            bid_start_date = datetime.strptime(bid_start_str, "%Y-%m-%d").date() if bid_start_str else timezone.now().date()
-            bid_end_date = datetime.strptime(bid_end_str, "%Y-%m-%d").date() if bid_end_str else timezone.now().date() + timezone.timedelta(days=14)
+            bid_start_date = (
+                datetime.strptime(bid_start_str, "%Y-%m-%d").date()
+                if bid_start_str
+                else timezone.now().date()
+            )
+            bid_end_date = (
+                datetime.strptime(bid_end_str, "%Y-%m-%d").date()
+                if bid_end_str
+                else timezone.now().date() + timezone.timedelta(days=14)
+            )
         except ValueError:
             bid_start_date = timezone.now().date()
             bid_end_date = timezone.now().date() + timezone.timedelta(days=14)
@@ -103,7 +117,9 @@ def sourcing_create_view(request):
                 requisition=requisition,
                 created_by_user=request.user,
             )
-            messages.success(request, f"Sourcing Event {event.event_number} created successfully as DRAFT.")
+            messages.success(
+                request, f"Sourcing Event {event.event_number} created successfully as DRAFT."
+            )
             return redirect(f"/sourcing-events/{event.id}/")
         except Exception as e:
             messages.error(request, f"Error creating sourcing event: {str(e)}")
@@ -113,5 +129,3 @@ def sourcing_create_view(request):
         "sourcing/partials/sourcing_create_modal.html",
         {"requisitions": requisitions},
     )
-
-

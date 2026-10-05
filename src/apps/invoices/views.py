@@ -1,42 +1,48 @@
-from django.shortcuts import render, get_object_or_404, redirect
-from django.contrib.auth.decorators import login_required
+from decimal import Decimal
+
 from django.contrib import messages
-from apps.invoices.models import SupplierInvoice, MatchException
-from apps.invoices.services import resolve_match_exception_service
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import get_object_or_404, redirect, render
+
+from apps.invoices.models import MatchException, SupplierInvoice
+from apps.invoices.services import (
+    create_supplier_invoice_service,
+    mark_invoice_paid_service,
+    resolve_match_exception_service,
+    run_3_way_match_service,
+)
+from apps.orders.models import PurchaseOrder
+from apps.vendors.models import Vendor
+
 
 @login_required(login_url="/login/")
 def list_view(request):
     items = SupplierInvoice.objects.all().order_by("-created_at")
-    return render(
-        request,
-        "pages/invoices/list.html",
-        {"items": items}
-    )
+    return render(request, "pages/invoices/list.html", {"items": items})
+
 
 @login_required(login_url="/login/")
 def exceptions_list_view(request):
-    exceptions = MatchException.objects.filter(status=MatchException.STATUS_OPEN).order_by("-created_at")
-    return render(
-        request,
-        "pages/invoices/exceptions_list.html",
-        {"exceptions": exceptions}
+    exceptions = MatchException.objects.filter(status=MatchException.STATUS_OPEN).order_by(
+        "-created_at"
     )
+    return render(request, "pages/invoices/exceptions_list.html", {"exceptions": exceptions})
+
 
 @login_required(login_url="/login/")
 def exception_detail_view(request, exception_id):
     exception = get_object_or_404(MatchException, id=exception_id)
-    return render(
-        request,
-        "pages/invoices/exception_detail.html",
-        {"exception": exception}
-    )
+    return render(request, "pages/invoices/exception_detail.html", {"exception": exception})
+
 
 @login_required(login_url="/login/")
 def resolve_exception_view(request, exception_id):
     from apps.accounts.models import Role
 
     role_code = getattr(request.user, "role_code", None) or (
-        request.user.role.code if hasattr(request.user, "role") and request.user.role else Role.SUPER_ADMIN
+        request.user.role.code
+        if hasattr(request.user, "role") and request.user.role
+        else Role.SUPER_ADMIN
     )
     if role_code == Role.AUDITOR:
         messages.error(
@@ -63,16 +69,14 @@ def resolve_exception_view(request, exception_id):
 
     return redirect("exceptions_list")
 
+
 @login_required(login_url="/login/")
 def ready_for_payment_view(request):
-    invoices = SupplierInvoice.objects.filter(status=SupplierInvoice.STATUS_READY_FOR_PAYMENT).order_by("-created_at")
-    return render(
-        request,
-        "pages/invoices/ready_list.html",
-        {"invoices": invoices}
-    )
+    invoices = SupplierInvoice.objects.filter(
+        status=SupplierInvoice.STATUS_READY_FOR_PAYMENT
+    ).order_by("-created_at")
+    return render(request, "pages/invoices/ready_list.html", {"invoices": invoices})
 
-from apps.invoices.services import mark_invoice_paid_service
 
 @login_required(login_url="/login/")
 def pay_invoice_view(request, invoice_id):
@@ -80,16 +84,14 @@ def pay_invoice_view(request, invoice_id):
         invoice = get_object_or_404(SupplierInvoice, id=invoice_id)
         try:
             mark_invoice_paid_service(invoice=invoice, user=request.user)
-            messages.success(request, f"Invoice {invoice.invoice_number} successfully marked as PAID.")
+            messages.success(
+                request, f"Invoice {invoice.invoice_number} successfully marked as PAID."
+            )
         except Exception as e:
             messages.error(request, f"Error paying invoice: {str(e)}")
-            
+
     return redirect("ready_list")
 
-from apps.vendors.models import Vendor
-from apps.orders.models import PurchaseOrder
-from apps.invoices.services import create_supplier_invoice_service, run_3_way_match_service
-from decimal import Decimal
 
 @login_required(login_url="/login/")
 def create_invoice_view(request):
@@ -100,7 +102,7 @@ def create_invoice_view(request):
         invoice_date = request.POST.get("invoice_date")
         due_date = request.POST.get("due_date")
         notes = request.POST.get("notes", "")
-        
+
         quantity = Decimal(request.POST.get("quantity", "1.00"))
         unit_price = Decimal(request.POST.get("unit_price", "0.00"))
 
@@ -108,16 +110,16 @@ def create_invoice_view(request):
             vendor = get_object_or_404(Vendor, id=vendor_id)
             po = get_object_or_404(PurchaseOrder, id=po_id)
             po_line = po.lines.first()
-            
+
             line_items = [
                 {
                     "po_line": po_line,
                     "quantity": quantity,
                     "unit_price": unit_price,
-                    "item_description": "Manual Entry Item"
+                    "item_description": "Manual Entry Item",
                 }
             ]
-            
+
             invoice = create_supplier_invoice_service(
                 vendor=vendor,
                 po=po,
@@ -126,21 +128,17 @@ def create_invoice_view(request):
                 due_date=due_date,
                 line_items=line_items,
                 notes=notes,
-                created_by_user=request.user
+                created_by_user=request.user,
             )
-            
+
             run_3_way_match_service(invoice=invoice, user=request.user)
             messages.success(request, f"Invoice {invoice_number} successfully created and matched.")
             return redirect("invoices_list")
-            
+
         except Exception as e:
             messages.error(request, f"Error creating invoice: {str(e)}")
 
     vendors = Vendor.objects.filter(status="ACTIVE")
     pos = PurchaseOrder.objects.filter(status__in=["ISSUED", "PARTIAL_RECEIPT", "ACKNOWLEDGED"])
-    
-    return render(
-        request,
-        "pages/invoices/create.html",
-        {"vendors": vendors, "pos": pos}
-    )
+
+    return render(request, "pages/invoices/create.html", {"vendors": vendors, "pos": pos})

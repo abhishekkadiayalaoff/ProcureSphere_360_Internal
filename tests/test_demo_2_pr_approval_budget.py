@@ -171,7 +171,9 @@ def test_pr_creation_fails_when_budget_exceeded(db_roles):
         end_date=today + timedelta(days=60),
     )
     # Budget allocation: $50,000
-    allocate_budget_service(cost_center=cost_center, fiscal_period=period, allocated_amount=Decimal("50000.00"))
+    allocate_budget_service(
+        cost_center=cost_center, fiscal_period=period, allocated_amount=Decimal("50000.00")
+    )
 
     # Attempt to create PR totaling $80,000 (exceeds $50,000)
     line_items = [
@@ -196,4 +198,3 @@ def test_pr_creation_fails_when_budget_exceeded(db_roles):
 
     assert "Insufficient budget in Cost Center 'CC-IT-101'" in str(excinfo.value)
     assert PurchaseRequisition.objects.filter(title="Over-budget IT Hardware").count() == 0
-

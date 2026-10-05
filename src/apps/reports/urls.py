@@ -1,4 +1,5 @@
 from django.urls import path
+
 from .views import generate_view, reports_hub_view
 
 urlpatterns = [

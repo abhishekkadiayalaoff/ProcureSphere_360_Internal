@@ -230,7 +230,7 @@ def generate_export_job_service(export_job_id: int) -> ExportJob:
             data = [{"Message": "No data available for export."}]
         else:
             fieldnames = list(data[0].keys())
-            
+
         if job.export_format == "CSV":
             output = io.StringIO()
             writer = csv.DictWriter(output, fieldnames=fieldnames)
@@ -238,53 +238,62 @@ def generate_export_job_service(export_job_id: int) -> ExportJob:
             for row in data:
                 writer.writerow(row)
             filename = f"{job.report_type}_export_{job.id}.csv"
-            job.result_file.save(filename, ContentFile(output.getvalue().encode("utf-8")), save=False)
-            
+            job.result_file.save(
+                filename, ContentFile(output.getvalue().encode("utf-8")), save=False
+            )
+
         elif job.export_format == "XLSX":
-            import openpyxl
             from io import BytesIO
+
+            import openpyxl
+
             wb = openpyxl.Workbook()
             ws = wb.active
             ws.title = "Report Data"
             ws.append(fieldnames)
             for row in data:
                 ws.append([str(row.get(f, "")) for f in fieldnames])
-            
+
             output = BytesIO()
             wb.save(output)
             filename = f"{job.report_type}_export_{job.id}.xlsx"
             job.result_file.save(filename, ContentFile(output.getvalue()), save=False)
-            
+
         elif job.export_format == "PDF":
+            from io import BytesIO
+
+            from reportlab.lib import colors
             from reportlab.lib.pagesizes import landscape, letter
             from reportlab.platypus import SimpleDocTemplate, Table, TableStyle
-            from reportlab.lib import colors
-            from io import BytesIO
-            
+
             output = BytesIO()
             doc = SimpleDocTemplate(output, pagesize=landscape(letter))
-            
+
             # Prepare table data
             table_data = [fieldnames]
             for row in data:
                 table_data.append([str(row.get(f, "")) for f in fieldnames])
-            
+
             t = Table(table_data)
-            t.setStyle(TableStyle([
-                ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
-                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-                ('FONTSIZE', (0, 0), (-1, 0), 10),
-                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-                ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
-                ('GRID', (0, 0), (-1, -1), 1, colors.black),
-                ('FONTSIZE', (0, 1), (-1, -1), 8),
-            ]))
-            
+            t.setStyle(
+                TableStyle(
+                    [
+                        ("BACKGROUND", (0, 0), (-1, 0), colors.grey),
+                        ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
+                        ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                        ("FONTSIZE", (0, 0), (-1, 0), 10),
+                        ("BOTTOMPADDING", (0, 0), (-1, 0), 12),
+                        ("BACKGROUND", (0, 1), (-1, -1), colors.beige),
+                        ("GRID", (0, 0), (-1, -1), 1, colors.black),
+                        ("FONTSIZE", (0, 1), (-1, -1), 8),
+                    ]
+                )
+            )
+
             elements = [t]
             doc.build(elements)
-            
+
             filename = f"{job.report_type}_export_{job.id}.pdf"
             job.result_file.save(filename, ContentFile(output.getvalue()), save=False)
 

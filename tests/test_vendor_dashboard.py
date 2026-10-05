@@ -1,34 +1,32 @@
-import io
 from datetime import timedelta
 from decimal import Decimal
 
 import pytest
+from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.core.exceptions import PermissionDenied, ValidationError
 from django.utils import timezone
 
 from apps.accounts.models import Role, User
 from apps.audit.models import AuditLog
 from apps.notifications.models import Notification
-from apps.orders.models import PurchaseOrder, POLine
-from apps.orders.services import acknowledge_purchase_order_service
-from apps.organization.models import Organization, CostCenter, Department
-from apps.scorecards.models import VendorScorecard
-from apps.sourcing.models import SourcingEvent, BidInvite, VendorBid, BidVersion, BidAttachment, Clarification
+from apps.orders.models import POLine, PurchaseOrder
+from apps.organization.models import CostCenter, Department, Organization
+from apps.sourcing.models import (
+    BidVersion,
+    Clarification,
+    SourcingEvent,
+    VendorBid,
+)
 from apps.sourcing.services import (
     create_sourcing_event_service,
-    publish_sourcing_event_service,
     invite_vendors_to_event_service,
-    save_draft_bid_service,
-    validate_bid_service,
+    publish_sourcing_event_service,
     submit_vendor_bid_service,
-    amend_vendor_bid_service,
-    ask_clarification_service,
+    validate_bid_service,
 )
 from apps.vendors.models import Vendor, VendorCategory, VendorDocument
 from apps.vendors.services import (
     register_vendor_service,
-    update_vendor_profile_service,
     upload_vendor_document_service,
 )
 
@@ -102,6 +100,7 @@ def vendor_setup(db_roles):
 # 1. AUTHENTICATION & ACCESS CONTROL TESTS
 # ==============================================================================
 
+
 @pytest.mark.django_db
 def test_unauthenticated_user_redirected_from_vendor_dashboard(client):
     """Unauthenticated requests to /vendor/ are redirected to login."""
@@ -132,6 +131,7 @@ def test_authenticated_vendor_can_access_dashboard(client, vendor_setup):
 # ==============================================================================
 # 2. COMPANY PROFILE & KYC ISOLATION TESTS
 # ==============================================================================
+
 
 @pytest.mark.django_db
 def test_vendor_can_view_and_update_own_profile(client, vendor_setup):
@@ -185,6 +185,7 @@ def test_vendor_kyc_document_upload(client, vendor_setup):
 # 3. SOURCING & INVITATION LEVEL AUTHORIZATION (NO IDOR)
 # ==============================================================================
 
+
 @pytest.mark.django_db
 def test_vendor_only_sees_invited_sourcing_events(client, vendor_setup):
     """Vendor A sees only events where Vendor A is invited; uninvited events are hidden."""
@@ -201,7 +202,9 @@ def test_vendor_only_sees_invited_sourcing_events(client, vendor_setup):
         created_by_user=exec_user,
     )
     publish_sourcing_event_service(event=event_a, user=exec_user)
-    invite_vendors_to_event_service(event=event_a, vendor_ids=[vendor_setup["vendor_a"].id], invited_by=exec_user)
+    invite_vendors_to_event_service(
+        event=event_a, vendor_ids=[vendor_setup["vendor_a"].id], invited_by=exec_user
+    )
 
     # Event 2: Invited Vendor B ONLY
     event_b = create_sourcing_event_service(
@@ -213,7 +216,9 @@ def test_vendor_only_sees_invited_sourcing_events(client, vendor_setup):
         created_by_user=exec_user,
     )
     publish_sourcing_event_service(event=event_b, user=exec_user)
-    invite_vendors_to_event_service(event=event_b, vendor_ids=[vendor_setup["vendor_b"].id], invited_by=exec_user)
+    invite_vendors_to_event_service(
+        event=event_b, vendor_ids=[vendor_setup["vendor_b"].id], invited_by=exec_user
+    )
 
     # Vendor A accesses sourcing list
     client.force_login(vendor_setup["user_vendor_a"])
@@ -240,7 +245,9 @@ def test_vendor_uninvited_event_detail_rejected_with_403(client, vendor_setup):
         created_by_user=exec_user,
     )
     publish_sourcing_event_service(event=event_b, user=exec_user)
-    invite_vendors_to_event_service(event=event_b, vendor_ids=[vendor_setup["vendor_b"].id], invited_by=exec_user)
+    invite_vendors_to_event_service(
+        event=event_b, vendor_ids=[vendor_setup["vendor_b"].id], invited_by=exec_user
+    )
 
     # Vendor A tries to access event_b detail directly
     client.force_login(vendor_setup["user_vendor_a"])
@@ -251,6 +258,7 @@ def test_vendor_uninvited_event_detail_rejected_with_403(client, vendor_setup):
 # ==============================================================================
 # 4. BID LIFECYCLE, SEALED ENVELOPES & VALIDATION
 # ==============================================================================
+
 
 @pytest.mark.django_db
 def test_bid_draft_creation_and_save(client, vendor_setup):
@@ -267,7 +275,9 @@ def test_bid_draft_creation_and_save(client, vendor_setup):
         created_by_user=exec_user,
     )
     publish_sourcing_event_service(event=event, user=exec_user)
-    invite_vendors_to_event_service(event=event, vendor_ids=[vendor_setup["vendor_a"].id], invited_by=exec_user)
+    invite_vendors_to_event_service(
+        event=event, vendor_ids=[vendor_setup["vendor_a"].id], invited_by=exec_user
+    )
 
     client.force_login(vendor_setup["user_vendor_a"])
     res_get = client.get(f"/vendor/bids/create/{event.id}/")
@@ -345,7 +355,9 @@ def test_bid_submission_creates_v1_snapshot_and_audit(client, vendor_setup):
         created_by_user=exec_user,
     )
     publish_sourcing_event_service(event=event, user=exec_user)
-    invite_vendors_to_event_service(event=event, vendor_ids=[vendor_setup["vendor_a"].id], invited_by=exec_user)
+    invite_vendors_to_event_service(
+        event=event, vendor_ids=[vendor_setup["vendor_a"].id], invited_by=exec_user
+    )
 
     client.force_login(vendor_setup["user_vendor_a"])
 
@@ -383,6 +395,7 @@ def test_bid_submission_creates_v1_snapshot_and_audit(client, vendor_setup):
 # 5. SERVER-SIDE DEADLINE SECURITY TESTS
 # ==============================================================================
 
+
 @pytest.mark.django_db
 def test_bid_submission_rejected_after_deadline(vendor_setup):
     """Submissions attempted after the deadline are strictly rejected server-side."""
@@ -399,9 +412,17 @@ def test_bid_submission_rejected_after_deadline(vendor_setup):
         created_by_user=exec_user,
     )
     publish_sourcing_event_service(event=event, user=exec_user)
-    invite_vendors_to_event_service(event=event, vendor_ids=[vendor_setup["vendor_a"].id], invited_by=exec_user)
+    invite_vendors_to_event_service(
+        event=event, vendor_ids=[vendor_setup["vendor_a"].id], invited_by=exec_user
+    )
 
-    lines = [{"item_description": "Expired Node", "quantity": Decimal("1"), "quoted_unit_price": Decimal("100.00")}]
+    lines = [
+        {
+            "item_description": "Expired Node",
+            "quantity": Decimal("1"),
+            "quoted_unit_price": Decimal("100.00"),
+        }
+    ]
 
     with pytest.raises(ValidationError) as exc_info:
         submit_vendor_bid_service(
@@ -419,6 +440,7 @@ def test_bid_submission_rejected_after_deadline(vendor_setup):
 # ==============================================================================
 # 6. IMMUTABLE BID AMENDMENTS & VERSIONING TESTS
 # ==============================================================================
+
 
 @pytest.mark.django_db
 def test_bid_amendment_before_deadline_creates_v2_without_overwriting_v1(client, vendor_setup):
@@ -440,10 +462,18 @@ def test_bid_amendment_before_deadline_creates_v2_without_overwriting_v1(client,
         created_by_user=exec_user,
     )
     publish_sourcing_event_service(event=event, user=exec_user)
-    invite_vendors_to_event_service(event=event, vendor_ids=[vendor_setup["vendor_a"].id], invited_by=exec_user)
+    invite_vendors_to_event_service(
+        event=event, vendor_ids=[vendor_setup["vendor_a"].id], invited_by=exec_user
+    )
 
     # Initial submission (V1)
-    v1_lines = [{"item_description": "Core Switch 100G", "quantity": Decimal("2"), "quoted_unit_price": Decimal("20000.00")}]
+    v1_lines = [
+        {
+            "item_description": "Core Switch 100G",
+            "quantity": Decimal("2"),
+            "quoted_unit_price": Decimal("20000.00"),
+        }
+    ]
     bid = submit_vendor_bid_service(
         event=event,
         vendor=vendor_setup["vendor_a"],
@@ -500,9 +530,17 @@ def test_bid_amendment_rejected_after_deadline(client, vendor_setup):
         created_by_user=exec_user,
     )
     publish_sourcing_event_service(event=event, user=exec_user)
-    invite_vendors_to_event_service(event=event, vendor_ids=[vendor_setup["vendor_a"].id], invited_by=exec_user)
+    invite_vendors_to_event_service(
+        event=event, vendor_ids=[vendor_setup["vendor_a"].id], invited_by=exec_user
+    )
 
-    v1_lines = [{"item_description": "Router", "quantity": Decimal("1"), "quoted_unit_price": Decimal("5000.00")}]
+    v1_lines = [
+        {
+            "item_description": "Router",
+            "quantity": Decimal("1"),
+            "quoted_unit_price": Decimal("5000.00"),
+        }
+    ]
     bid = submit_vendor_bid_service(
         event=event,
         vendor=vendor_setup["vendor_a"],
@@ -536,6 +574,7 @@ def test_bid_amendment_rejected_after_deadline(client, vendor_setup):
 # 7. CROSS-VENDOR IDOR / BOLA PROTECTION TESTS
 # ==============================================================================
 
+
 @pytest.mark.django_db
 def test_vendor_cannot_view_or_amend_another_vendors_bid(client, vendor_setup):
     """
@@ -554,11 +593,19 @@ def test_vendor_cannot_view_or_amend_another_vendors_bid(client, vendor_setup):
     )
     publish_sourcing_event_service(event=event, user=exec_user)
     invite_vendors_to_event_service(
-        event=event, vendor_ids=[vendor_setup["vendor_a"].id, vendor_setup["vendor_b"].id], invited_by=exec_user
+        event=event,
+        vendor_ids=[vendor_setup["vendor_a"].id, vendor_setup["vendor_b"].id],
+        invited_by=exec_user,
     )
 
     # Vendor A submits bid
-    v1_lines = [{"item_description": "Blade Node", "quantity": Decimal("10"), "quoted_unit_price": Decimal("8000.00")}]
+    v1_lines = [
+        {
+            "item_description": "Blade Node",
+            "quantity": Decimal("10"),
+            "quoted_unit_price": Decimal("8000.00"),
+        }
+    ]
     bid_a = submit_vendor_bid_service(
         event=event,
         vendor=vendor_setup["vendor_a"],
@@ -577,7 +624,12 @@ def test_vendor_cannot_view_or_amend_another_vendors_bid(client, vendor_setup):
     # Vendor B attempts direct POST amendment to bid_a
     res_amend = client.post(
         f"/vendor/bids/{bid_a.id}/amend/",
-        {"amendment_reason": "Malicious tampering", "line_description[]": ["Hack"], "line_quantity[]": ["1"], "line_price[]": ["1.00"]},
+        {
+            "amendment_reason": "Malicious tampering",
+            "line_description[]": ["Hack"],
+            "line_quantity[]": ["1"],
+            "line_price[]": ["1.00"],
+        },
     )
     assert res_amend.status_code == 403
 
@@ -585,6 +637,7 @@ def test_vendor_cannot_view_or_amend_another_vendors_bid(client, vendor_setup):
 # ==============================================================================
 # 8. PURCHASE ORDER REVIEW & ACKNOWLEDGEMENT TESTS
 # ==============================================================================
+
 
 @pytest.mark.django_db
 def test_vendor_can_view_and_acknowledge_own_po(client, vendor_setup):
@@ -650,13 +703,16 @@ def test_vendor_cannot_view_or_acknowledge_other_vendors_po(client, vendor_setup
     assert res_get.status_code == 403
 
     # Attempt POST Acknowledgement
-    res_post = client.post(f"/vendor/purchase-orders/{po.id}/acknowledge/", {"acknowledgement_notes": "Fake ack"})
+    res_post = client.post(
+        f"/vendor/purchase-orders/{po.id}/acknowledge/", {"acknowledgement_notes": "Fake ack"}
+    )
     assert res_post.status_code == 403
 
 
 # ==============================================================================
 # 9. CLARIFICATIONS MODULE TESTS
 # ==============================================================================
+
 
 @pytest.mark.django_db
 def test_clarifications_ask_and_view(client, vendor_setup):
@@ -673,7 +729,9 @@ def test_clarifications_ask_and_view(client, vendor_setup):
         created_by_user=exec_user,
     )
     publish_sourcing_event_service(event=event, user=exec_user)
-    invite_vendors_to_event_service(event=event, vendor_ids=[vendor_setup["vendor_a"].id], invited_by=exec_user)
+    invite_vendors_to_event_service(
+        event=event, vendor_ids=[vendor_setup["vendor_a"].id], invited_by=exec_user
+    )
 
     client.force_login(vendor_setup["user_vendor_a"])
     post_data = {
@@ -691,6 +749,7 @@ def test_clarifications_ask_and_view(client, vendor_setup):
 # ==============================================================================
 # 10. SECURE DOCUMENT VAULT TESTS
 # ==============================================================================
+
 
 @pytest.mark.django_db
 def test_secure_document_download_authorization(client, vendor_setup):
@@ -720,6 +779,7 @@ def test_secure_document_download_authorization(client, vendor_setup):
 # ==============================================================================
 # 11. NOTIFICATIONS & REPORTS
 # ==============================================================================
+
 
 @pytest.mark.django_db
 def test_notifications_and_reports_render(client, vendor_setup):

@@ -222,10 +222,17 @@ def update_vendor_profile_service(
     if "bank_routing_code" in data:
         vendor.bank_routing_code = data["bank_routing_code"]
 
-    vendor.save(update_fields=[
-        "trade_name", "address", "phone", "bank_name",
-        "bank_account_number", "bank_routing_code", "updated_at"
-    ])
+    vendor.save(
+        update_fields=[
+            "trade_name",
+            "address",
+            "phone",
+            "bank_name",
+            "bank_account_number",
+            "bank_routing_code",
+            "updated_at",
+        ]
+    )
 
     AuditLog.objects.create(
         actor=user,

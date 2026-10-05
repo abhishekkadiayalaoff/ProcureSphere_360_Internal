@@ -121,7 +121,11 @@ class AuditLog(models.Model):
             status = self.new_state.get("status")
             if status:
                 return f"Status transitioned to {status}"
-            title = self.new_state.get("title") or self.new_state.get("legal_name") or self.new_state.get("number")
+            title = (
+                self.new_state.get("title")
+                or self.new_state.get("legal_name")
+                or self.new_state.get("number")
+            )
             if title:
                 return f"{self.action} on {title}"
         return f"{self.get_action_display()} on {self.target_model}"

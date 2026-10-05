@@ -1,4 +1,5 @@
 from django.contrib import admin
+
 from .models import CostCenter, Department, FiscalPeriod, Organization
 
 
@@ -24,5 +25,13 @@ class CostCenterAdmin(admin.ModelAdmin):
 
 @admin.register(FiscalPeriod)
 class FiscalPeriodAdmin(admin.ModelAdmin):
-    list_display = ("name", "organization", "year", "period_number", "start_date", "end_date", "is_closed")
+    list_display = (
+        "name",
+        "organization",
+        "year",
+        "period_number",
+        "start_date",
+        "end_date",
+        "is_closed",
+    )
     list_filter = ("organization", "year", "is_closed")
