@@ -4,6 +4,7 @@ from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
 
 ALLOWED_EXTENSIONS = {"pdf", "png", "jpg", "jpeg", "doc", "docx", "xlsx", "csv"}
+PR_ATTACHMENT_EXTENSIONS = {"pdf", "doc", "docx"}
 MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024  # 10MB
 
 
@@ -20,5 +21,21 @@ def validate_file_upload(file):
             _(
                 f"File extension '.{ext}' is not permitted. Allowed: {', '.join(sorted(ALLOWED_EXTENSIONS))}"
             )
+        )
+    return file
+
+
+def validate_pr_attachment(file):
+    """
+    Validates PR attachments: only PDF and Word documents (DOC/DOCX) are allowed.
+    Max size: 10MB.
+    """
+    if file.size > MAX_FILE_SIZE_BYTES:
+        raise ValidationError(_("File size exceeds the maximum allowed limit of 10MB."))
+
+    ext = os.path.splitext(file.name)[1][1:].lower()
+    if ext not in PR_ATTACHMENT_EXTENSIONS:
+        raise ValidationError(
+            _("Only PDF and Word documents (DOC, DOCX) are allowed as PR attachments.")
         )
     return file

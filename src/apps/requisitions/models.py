@@ -3,7 +3,7 @@ from decimal import Decimal
 from django.db import models
 
 from apps.core.models import TimeStampedModel
-from apps.core.validators import validate_file_upload
+from apps.core.validators import validate_pr_attachment
 
 
 class PurchaseRequisition(TimeStampedModel):
@@ -76,8 +76,38 @@ class PRAttachment(TimeStampedModel):
     requisition = models.ForeignKey(
         PurchaseRequisition, on_delete=models.CASCADE, related_name="attachments"
     )
+    uploaded_by = models.ForeignKey(
+        "accounts.User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="pr_attachments_uploaded",
+    )
     title = models.CharField(max_length=200)
-    file = models.FileField(upload_to="pr_attachments/%Y/%m/", validators=[validate_file_upload])
+    file = models.FileField(
+        upload_to="pr_attachments/%Y/%m/",
+        validators=[validate_pr_attachment],
+    )
+    file_size = models.PositiveIntegerField(default=0, help_text="File size in bytes")
+
+    def save(self, *args, **kwargs):
+        if self.file and hasattr(self.file, "size"):
+            self.file_size = self.file.size
+        super().save(*args, **kwargs)
+
+    @property
+    def file_extension(self):
+        import os
+
+        return os.path.splitext(self.file.name)[1][1:].lower() if self.file else ""
+
+    @property
+    def file_size_display(self):
+        if self.file_size < 1024:
+            return f"{self.file_size} B"
+        elif self.file_size < 1024 * 1024:
+            return f"{self.file_size / 1024:.1f} KB"
+        return f"{self.file_size / (1024 * 1024):.1f} MB"
 
     def __str__(self):
         return f"{self.title} - {self.requisition.pr_number}"

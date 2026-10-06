@@ -491,9 +491,9 @@ def get_sourcing_activity_audit(
                 "is_window_open": is_window_open,
                 "pr_number": e.requisition.pr_number if e.requisition else None,
                 "total_bids": total_bids,
-                "awarded_vendor": awarded_bid.vendor.legal_name
-                if awarded_bid and awarded_bid.vendor
-                else None,
+                "awarded_vendor": (
+                    awarded_bid.vendor.legal_name if awarded_bid and awarded_bid.vendor else None
+                ),
                 "awarded_amount": float(awarded_bid.total_bid_amount) if awarded_bid else None,
                 "created_at": e.created_at.isoformat(),
             }
@@ -657,9 +657,9 @@ def get_invoice_exceptions_audit(
                 "id": str(exc.id),
                 "invoice_number": exc.invoice.invoice_number if exc.invoice else None,
                 "po_number": exc.invoice.po.po_number if exc.invoice and exc.invoice.po else None,
-                "vendor_name": exc.invoice.vendor.legal_name
-                if exc.invoice and exc.invoice.vendor
-                else None,
+                "vendor_name": (
+                    exc.invoice.vendor.legal_name if exc.invoice and exc.invoice.vendor else None
+                ),
                 "invoice_total": float(exc.invoice.total_amount) if exc.invoice else 0.0,
                 "exception_type": exc.exception_type,
                 "exception_type_display": exc.get_exception_type_display(),
