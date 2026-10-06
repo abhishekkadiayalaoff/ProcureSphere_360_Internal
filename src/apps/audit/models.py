@@ -123,17 +123,7 @@ class AuditLog(models.Model):
             return self.actor.role_code
         return "SYSTEM"
 
-    @property
-    def created_at(self):
-        return self.timestamp
 
-    @property
-    def entity_name(self):
-        return self.target_model
-
-    @property
-    def entity_id(self):
-        return self.target_object_id
 
     @property
     def summary(self):

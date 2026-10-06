@@ -2,6 +2,7 @@ import csv
 
 import openpyxl
 from django.contrib.auth.decorators import login_required
+from django.core.paginator import Paginator
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, render
 
@@ -100,7 +101,6 @@ def policy_list_view(request):
     return render(request, "pages/dashboards/superadmin/policies.html", {"policies": policies})
 
 
-from django.core.paginator import Paginator
 
 
 @login_required

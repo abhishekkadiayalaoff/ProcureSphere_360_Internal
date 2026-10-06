@@ -1,6 +1,3 @@
-Replace `src/apps/accounts/admin.py` with:
-
-```python
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 
@@ -63,6 +60,3 @@ class UserAdmin(BaseUserAdmin):
             {"fields": ("last_login", "date_joined")},
         ),
     )
-```
-
-Paste this into **GitHub’s conflict editor**, then click **Mark as resolved**.

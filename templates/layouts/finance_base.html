@@ -63,6 +63,11 @@
                     </a>
                 </li>
                 <li class="nav-item">
+                    <a href="/budgets/exceptions/" class="nav-link rounded sidebar-link {% if request.path == '/budgets/exceptions/' %}active bg-danger fw-bold text-white border-start border-3 border-light{% else %}text-light{% endif %}">
+                        <i class="fa-solid fa-scale-unbalanced me-2 {% if request.path == '/budgets/exceptions/' %}text-white{% else %}text-danger{% endif %} w-20px text-center"></i> Budget Exceptions
+                    </a>
+                </li>
+                <li class="nav-item">
                     <a href="/budgets/ledger/" class="nav-link rounded sidebar-link {% if request.path == '/budgets/ledger/' %}active bg-danger fw-bold text-white border-start border-3 border-light{% else %}text-light{% endif %}">
                         <i class="fa-solid fa-book-journal-whills me-2 {% if request.path == '/budgets/ledger/' %}text-white{% else %}text-secondary{% endif %} w-20px text-center"></i> Spend Ledger
                     </a>
@@ -72,6 +77,13 @@
                     <div class="text-uppercase text-secondary fw-bold mb-2 small px-2">Analytics</div>
                     <a href="/reports/" class="nav-link rounded sidebar-link {% if request.path == '/reports/' %}active bg-danger fw-bold text-white border-start border-3 border-light{% else %}text-light{% endif %}">
                         <i class="fa-solid fa-chart-line me-2 {% if request.path == '/reports/' %}text-white{% else %}text-success{% endif %} w-20px text-center"></i> Reports & Exports
+                    </a>
+                </li>
+
+                <li class="nav-item mt-2">
+                    <div class="text-uppercase text-secondary fw-bold mb-2 small px-2">Settings</div>
+                    <a href="/invoices/settings/tolerances/" class="nav-link rounded sidebar-link {% if request.path == '/invoices/settings/tolerances/' %}active bg-danger fw-bold text-white border-start border-3 border-light{% else %}text-light{% endif %}">
+                        <i class="fa-solid fa-gear me-2 {% if request.path == '/invoices/settings/tolerances/' %}text-white{% else %}text-light{% endif %} w-20px text-center"></i> System Settings
                     </a>
                 </li>
             </ul>

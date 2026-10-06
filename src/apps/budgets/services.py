@@ -9,6 +9,15 @@ from apps.organization.models import CostCenter, FiscalPeriod
 from .models import Budget, BudgetReservation, SpendLedger
 
 
+class BudgetOverrunException(Exception):
+    def __init__(self, message, budget=None, requested_amount=None):
+        self.message = message
+        self.budget = budget
+        self.requested_amount = requested_amount
+        super().__init__(self.message)
+
+
+
 @transaction.atomic
 def allocate_budget_service(
     *,
@@ -64,10 +73,11 @@ def validate_budget_availability_service(*, cost_center: CostCenter, amount: Dec
 
 
 @transaction.atomic
-def check_and_reserve_budget_service(*, requisition, requested_by_user) -> BudgetReservation:
+def check_and_reserve_budget_service(*, requisition, requested_by_user, force_overrun=False) -> BudgetReservation:
     """
     Checks available budget for a PurchaseRequisition's cost center.
-    If available, locks a BudgetReservation in RESERVED status and writes a SpendLedger entry.
+    If available (or forced), locks a BudgetReservation in RESERVED status and writes a SpendLedger entry.
+    Raises BudgetOverrunException if insufficient funds.
     """
     cost_center = requisition.cost_center
     today = (
@@ -93,10 +103,12 @@ def check_and_reserve_budget_service(*, requisition, requested_by_user) -> Budge
         )
 
     amount = requisition.total_amount
-    if amount > budget.available_amount and not budget.allow_overspend:
-        raise ValidationError(
+    if amount > budget.available_amount and not budget.allow_overspend and not force_overrun:
+        raise BudgetOverrunException(
             f"Insufficient budget in Cost Center '{cost_center.code}'. "
-            f"Requested: ${amount:,.2f}, Available: ${budget.available_amount:,.2f}."
+            f"Requested: ${amount:,.2f}, Available: ${budget.available_amount:,.2f}.",
+            budget=budget,
+            requested_amount=amount
         )
 
     # Update reserved amount on budget
