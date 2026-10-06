@@ -2,15 +2,18 @@
 
 {% block title %}{% block legal_title %}Legal & Governance Workspace{% endblock %} — ProcureSphere 360{% endblock %}
 
+{% block navbar %}{% endblock navbar %}
+
 {% block layout %}
 <style>
-    /* Scope Legal Manager Workspace styling & compact high-density scaling at default 100% zoom */
+    /* Scope Legal Manager Workspace styling & default 100% zoom compact 75% scale */
     .legal-layout-container {
         display: flex;
         min-height: 100vh;
         width: 100vw;
         overflow-x: hidden;
         background-color: #F8FAFC;
+        zoom: 0.82; /* Renders default 100% screen size with exact 75% compact executive density */
     }
 
     /* Legal Dedicated Sidebar */
