@@ -393,3 +393,37 @@ def terminate_view(request, contract_id):
     except ValidationError as e:
         messages.error(request, str(e))
     return redirect("contract_detail", contract_id=contract.id)
+
+
+@login_required(login_url="/login/")
+def dashboard_view(request):
+    """
+    Legal & SLA Governance Desk Dashboard View for Legal Managers.
+    """
+    from .selectors import (
+        get_active_contract_alerts,
+        get_contracts_pending_legal_review,
+        get_expiring_contracts,
+        get_legal_dashboard_metrics,
+        get_pending_obligations,
+    )
+
+    active_contracts = Contract.objects.filter(
+        status__in=[Contract.STATUS_ACTIVE, Contract.STATUS_RENEWED]
+    ).order_by("end_date")
+    pending_legal = get_contracts_pending_legal_review()
+    expiring_contracts = get_expiring_contracts(days=30)
+    pending_obligations = get_pending_obligations()
+    active_alerts = get_active_contract_alerts()
+    metrics = get_legal_dashboard_metrics()
+
+    context = {
+        "metrics": metrics,
+        "active_contracts_list": active_contracts[:10],
+        "pending_legal_list": pending_legal[:10],
+        "expiring_contracts_list": expiring_contracts[:10],
+        "pending_obligations_list": pending_obligations[:10],
+        "active_alerts_list": active_alerts[:10],
+    }
+    return render(request, "pages/dashboards/legal_dashboard.html", context)
+
