@@ -137,6 +137,25 @@ def submit_purchase_requisition_service(
         comments="PR submitted for approval workflow.",
     )
 
+    # Notify Department Approvers via Notification model
+    from apps.notifications.models import Notification
+    from apps.accounts.models import Role, User
+
+    approvers = User.objects.filter(role__code=Role.DEPT_APPROVER)
+    if requisition.department:
+        dept_approvers = approvers.filter(department=requisition.department)
+        if dept_approvers.exists():
+            approvers = dept_approvers
+
+    for approver in approvers:
+        Notification.objects.create(
+            recipient=approver,
+            notification_type=Notification.TYPE_APPROVAL_REQUIRED,
+            title=f"New PR Approval Request: {requisition.pr_number}",
+            message=f"Requisition {requisition.pr_number} ({requisition.title}) amounting to ${requisition.total_amount} requires your department approval review.",
+            target_url=f"/requisitions/{requisition.id}/",
+        )
+
     return requisition
 
 

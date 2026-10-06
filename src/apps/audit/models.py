@@ -47,6 +47,26 @@ class AuditLog(models.Model):
     class Meta:
         ordering = ["-timestamp"]
 
+    @property
+    def created_at(self):
+        return self.timestamp
+
+    @property
+    def entity_name(self):
+        return self.target_model
+
+    @property
+    def entity_id(self):
+        return self.target_object_id
+
+    @property
+    def changes_summary(self):
+        if self.new_state:
+            return str(self.new_state)
+        if self.previous_state:
+            return str(self.previous_state)
+        return ""
+
     def __str__(self):
         actor_str = self.actor.email if self.actor else "System"
         return f"Audit {self.action} on {self.target_model}:{self.target_object_id} by {actor_str} at {self.timestamp}"

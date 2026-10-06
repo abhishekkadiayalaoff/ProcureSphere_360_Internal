@@ -24,6 +24,8 @@ def approvals_inbox_view(request):
 
         try:
             pr = PurchaseRequisition.objects.get(id=pr_id)
+            if action in ["REJECT", "REJECTED"] and not comments:
+                comments = "Rejected by Department Approver."
             process_approval_action_service(
                 target_object=pr,
                 actor=request.user,
@@ -31,6 +33,9 @@ def approvals_inbox_view(request):
                 comments=comments,
             )
             messages.success(request, f"Requisition {pr.pr_number} successfully {action.lower()}!")
+            referer = request.META.get("HTTP_REFERER")
+            if referer:
+                return redirect(referer)
             return redirect("approvals_inbox")
         except Exception as e:
             messages.error(request, f"Error processing approval action: {str(e)}")
@@ -45,9 +50,16 @@ def approvals_inbox_view(request):
             status__in=["SUBMITTED", "MANAGER_REVIEW", "BUDGET_REVIEW"]
         ).order_by("-updated_at")
 
+    base_layout = (
+        "layouts/approver_base.html"
+        if role_code in [Role.DEPT_APPROVER, Role.PROC_MGR]
+        else "layouts/requester_base.html"
+    )
+
     context = {
         "pending_prs": pending_prs,
         "role_code": role_code,
+        "base_layout": base_layout,
     }
     return render(request, "pages/approvals/inbox.html", context)
 

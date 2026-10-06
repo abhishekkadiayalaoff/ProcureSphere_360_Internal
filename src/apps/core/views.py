@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.db import connection
@@ -91,16 +93,40 @@ def home_view(request):
 
     # 2. DEPARTMENT APPROVER ROLE DASHBOARD
     elif role_code == Role.DEPT_APPROVER:
-        pending_prs = PurchaseRequisition.objects.filter(status__in=["SUBMITTED", "MANAGER_REVIEW", "BUDGET_REVIEW"]).order_by("-updated_at")
-        approved_prs_count = PurchaseRequisition.objects.filter(status="APPROVED").count()
-        rejected_prs_count = PurchaseRequisition.objects.filter(status="REJECTED").count()
+        user_dept = getattr(user, "department", None)
+        if user_dept:
+            pending_prs = PurchaseRequisition.objects.filter(department=user_dept, status__in=["SUBMITTED", "MANAGER_REVIEW", "BUDGET_REVIEW"]).order_by("-updated_at")
+            if not pending_prs.exists():
+                pending_prs = PurchaseRequisition.objects.filter(status__in=["SUBMITTED", "MANAGER_REVIEW", "BUDGET_REVIEW"]).order_by("-updated_at")
+            approved_prs_count = PurchaseRequisition.objects.filter(department=user_dept, status="APPROVED").count()
+            rejected_prs_count = PurchaseRequisition.objects.filter(department=user_dept, status="REJECTED").count()
+            department_budgets = Budget.objects.filter(cost_center__department=user_dept)
+        else:
+            pending_prs = PurchaseRequisition.objects.filter(status__in=["SUBMITTED", "MANAGER_REVIEW", "BUDGET_REVIEW"]).order_by("-updated_at")
+            approved_prs_count = PurchaseRequisition.objects.filter(status="APPROVED").count()
+            rejected_prs_count = PurchaseRequisition.objects.filter(status="REJECTED").count()
+            department_budgets = Budget.objects.all()
+
+        total_allocated = sum(b.allocated_amount for b in department_budgets) if department_budgets else Decimal("0.00")
+        total_reserved = sum(b.reserved_amount for b in department_budgets) if department_budgets else Decimal("0.00")
+        total_committed = sum(b.committed_amount for b in department_budgets) if department_budgets else Decimal("0.00")
+        total_actual = sum(b.actual_amount for b in department_budgets) if department_budgets else Decimal("0.00")
+        total_available = total_allocated - (total_reserved + total_committed + total_actual)
+
         context = {
             "metrics": {
                 "pending_count": pending_prs.count(),
                 "approved_count": approved_prs_count,
                 "rejected_count": rejected_prs_count,
+                "total_prs_count": pending_prs.count() + approved_prs_count + rejected_prs_count,
+                "allocated_budget": float(total_allocated),
+                "reserved_spend": float(total_reserved),
+                "committed_spend": float(total_committed),
+                "actual_spend": float(total_actual),
+                "available_budget": float(total_available),
             },
             "pending_prs": pending_prs,
+            "user_department": user_dept,
         }
         return render(request, "pages/dashboards/approver_dashboard.html", context)
 

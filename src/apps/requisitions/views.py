@@ -13,14 +13,21 @@ def list_view(request):
     
     if role_code == Role.REQUESTER:
         items = PurchaseRequisition.objects.filter(requester=user).order_by("-created_at")
+    elif role_code == Role.DEPT_APPROVER and getattr(user, "department", None):
+        items = PurchaseRequisition.objects.filter(department=user.department).order_by("-created_at")
     else:
-        # Other roles might see more, but for now we'll scope it to all if not requester
         items = PurchaseRequisition.objects.all().order_by("-created_at")
+        
+    base_layout = (
+        "layouts/approver_base.html"
+        if role_code in [Role.DEPT_APPROVER, Role.PROC_MGR]
+        else "layouts/requester_base.html"
+    )
         
     return render(
         request,
         "pages/requisitions/list.html",
-        {"items": items, "role_code": role_code}
+        {"items": items, "role_code": role_code, "base_layout": base_layout}
     )
 
 @login_required(login_url="/login/")
@@ -74,7 +81,14 @@ def create_view(request):
                 attachments=attachments
             )
                 
-            messages.success(request, f"Requisition {pr.pr_number} created successfully as Draft.")
+            submit_action = request.POST.get("submit_action", "draft")
+            if submit_action == "submit":
+                from apps.requisitions.services import submit_purchase_requisition_service
+                submit_purchase_requisition_service(requisition=pr, user=user)
+                messages.success(request, f"Requisition {pr.pr_number} created and submitted for Department Approval!")
+            else:
+                messages.success(request, f"Requisition {pr.pr_number} created successfully as Draft.")
+
             return redirect("requisition_detail", pk=pr.pk)
         except Exception as e:
             messages.error(request, f"Error creating requisition: {str(e)}")
@@ -238,6 +252,12 @@ def detail_view(request, pk):
     ).first()
     available_budget = active_budget.available_amount if active_budget else None
         
+    base_layout = (
+        "layouts/approver_base.html"
+        if role_code in [Role.DEPT_APPROVER, Role.PROC_MGR]
+        else "layouts/requester_base.html"
+    )
+
     return render(
         request,
         "pages/requisitions/detail.html",
@@ -246,6 +266,7 @@ def detail_view(request, pk):
             "role_code": role_code,
             "approval_history": approval_history,
             "available_budget": available_budget,
+            "base_layout": base_layout,
         }
     )
 

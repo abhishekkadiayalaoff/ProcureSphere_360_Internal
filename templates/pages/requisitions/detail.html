@@ -1,4 +1,4 @@
-{% extends 'layouts/requester_base.html' %}
+{% extends base_layout|default:'layouts/requester_base.html' %}
 
 {% block title %}PR {{ pr.pr_number }} — ProcureSphere 360{% endblock %}
 
@@ -28,6 +28,18 @@
         <button type="button" class="btn btn-outline-danger rounded-pill px-4 fw-semibold" data-bs-toggle="modal" data-bs-target="#cancelConfirmModal">
             <i class="fa-solid fa-ban me-2"></i>Cancel PR
         </button>
+        {% endif %}
+        {% if pr.status in 'SUBMITTED,MANAGER_REVIEW,BUDGET_REVIEW' %}
+        <form method="POST" action="/approvals/inbox/" class="d-inline-flex gap-2">
+            {% csrf_token %}
+            <input type="hidden" name="pr_id" value="{{ pr.id }}">
+            <button type="submit" name="action" value="APPROVED" class="btn btn-success rounded-pill shadow-sm px-4 fw-bold">
+                <i class="fa-solid fa-check me-2"></i>Approve PR
+            </button>
+            <button type="submit" name="action" value="REJECTED" class="btn btn-outline-danger rounded-pill shadow-sm px-4 fw-bold">
+                <i class="fa-solid fa-times me-2"></i>Reject PR
+            </button>
+        </form>
         {% endif %}
     </div>
 </div>
@@ -301,6 +313,35 @@
                 {% endif %}
             </div>
         </div>
+        
+        <!-- Approval Action Decision Card -->
+        {% if pr.status in 'SUBMITTED,MANAGER_REVIEW,BUDGET_REVIEW' %}
+        <div class="card border-warning border-2 shadow-sm rounded-4 mb-4 bg-warning bg-opacity-10">
+            <div class="card-body p-4">
+                <h6 class="fw-bold text-dark mb-2">
+                    <i class="fa-solid fa-stamp text-warning me-2"></i>Approval Action Decision
+                </h6>
+                <p class="small text-muted mb-3">Review business justification and budget impact, then record your decision.</p>
+
+                <form method="POST" action="/approvals/inbox/">
+                    {% csrf_token %}
+                    <input type="hidden" name="pr_id" value="{{ pr.id }}">
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold text-dark">Decision Comments</label>
+                        <textarea name="comments" class="form-control form-control-sm" rows="2" placeholder="Optional comments or notes..."></textarea>
+                    </div>
+                    <div class="d-grid gap-2">
+                        <button type="submit" name="action" value="APPROVED" class="btn btn-success fw-bold shadow-sm rounded-pill py-2">
+                            <i class="fa-solid fa-check me-2"></i> Approve Requisition
+                        </button>
+                        <button type="submit" name="action" value="REJECTED" class="btn btn-outline-danger fw-bold rounded-pill py-2">
+                            <i class="fa-solid fa-xmark me-2"></i> Reject Requisition
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        {% endif %}
         
         <!-- PO Tracking -->
         {% if pr.purchase_orders.exists %}

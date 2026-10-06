@@ -3,59 +3,93 @@
 {% block title %}Department Approver Dashboard — ProcureSphere 360{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
+<!-- Dashboard Header -->
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 gap-3">
     <div>
-        <h2 class="fw-bold text-dark mb-1">Department Approver Dashboard</h2>
-        <p class="text-muted mb-0">Review departmental requests and manage budget approvals.</p>
+        <div class="d-flex align-items-center gap-2 mb-1">
+            <h2 class="fw-bold text-dark mb-0">Department Approver Dashboard</h2>
+            {% if user_department %}
+                <span class="badge bg-primary text-white rounded-pill px-3 py-1">{{ user_department.name }}</span>
+            {% endif %}
+        </div>
+        <p class="text-muted mb-0">Review departmental purchase requests, verify budget allocations, and process authorization decisions.</p>
     </div>
-    <a href="/approvals/inbox/" class="btn btn-primary rounded-pill shadow-sm px-4 fw-semibold">
-        <i class="fa-solid fa-inbox me-2"></i>Open Inbox
-    </a>
+    <div class="d-flex gap-2">
+        <a href="/approvals/inbox/" class="btn btn-primary rounded-pill shadow-sm px-4 fw-semibold">
+            <i class="fa-solid fa-inbox me-2"></i>Open Inbox ({{ metrics.pending_count }})
+        </a>
+    </div>
 </div>
 
+<!-- Messages Alert -->
+{% if messages %}
+    {% for message in messages %}
+        <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %} alert-dismissible fade show rounded-3 small mb-4" role="alert">
+            <i class="fa-solid {% if message.tags == 'error' %}fa-triangle-exclamation{% else %}fa-circle-check{% endif %} me-2"></i> {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    {% endfor %}
+{% endif %}
+
+<!-- Metrics Cards & Budget Summary Row -->
 <div class="row g-4 mb-4">
-    <div class="col-md-4">
+    <div class="col-sm-6 col-xl-3">
         <div class="card border-0 shadow-sm rounded-4 overflow-hidden h-100">
             <div class="card-body p-4 d-flex align-items-center justify-content-between">
                 <div>
                     <h6 class="text-uppercase text-muted fw-bold mb-2 small">Total PRs</h6>
-                    <h2 class="fw-bold mb-0 text-dark">{{ metrics.pending_count|add:metrics.approved_count|add:metrics.rejected_count }}</h2>
+                    <h2 class="fw-bold mb-0 text-dark">{{ metrics.total_prs_count }}</h2>
                 </div>
-                <div class="bg-primary bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
-                    <i class="fa-solid fa-chart-pie fs-3 text-primary"></i>
+                <div class="bg-primary bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center" style="width: 56px; height: 56px;">
+                    <i class="fa-solid fa-chart-pie fs-4 text-primary"></i>
                 </div>
             </div>
             <div class="bg-primary text-white text-center py-1" style="font-size: 0.75rem; letter-spacing: 1px;">ALL TIME</div>
         </div>
     </div>
     
-    <div class="col-md-4">
+    <div class="col-sm-6 col-xl-3">
         <div class="card border-0 shadow-sm rounded-4 overflow-hidden h-100">
             <div class="card-body p-4 d-flex align-items-center justify-content-between">
                 <div>
                     <h6 class="text-uppercase text-muted fw-bold mb-2 small">Pending Actions</h6>
-                    <h2 class="fw-bold mb-0 text-warning">{{ metrics.pending_count|default:0 }}</h2>
+                    <h2 class="fw-bold mb-0 text-warning">{{ metrics.pending_count }}</h2>
                 </div>
-                <div class="bg-warning bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
-                    <i class="fa-solid fa-list-check fs-3 text-warning"></i>
+                <div class="bg-warning bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center" style="width: 56px; height: 56px;">
+                    <i class="fa-solid fa-list-check fs-4 text-warning"></i>
                 </div>
             </div>
             <div class="bg-warning text-dark text-center py-1 fw-bold" style="font-size: 0.75rem; letter-spacing: 1px;">ACTION REQUIRED</div>
         </div>
     </div>
 
-    <div class="col-md-4">
+    <div class="col-sm-6 col-xl-3">
         <div class="card border-0 shadow-sm rounded-4 overflow-hidden h-100">
             <div class="card-body p-4 d-flex align-items-center justify-content-between">
                 <div>
                     <h6 class="text-uppercase text-muted fw-bold mb-2 small">Approved PRs</h6>
-                    <h2 class="fw-bold mb-0 text-success">{{ metrics.approved_count|default:0 }}</h2>
+                    <h2 class="fw-bold mb-0 text-success">{{ metrics.approved_count }}</h2>
                 </div>
-                <div class="bg-success bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
-                    <i class="fa-solid fa-clock-rotate-left fs-3 text-success"></i>
+                <div class="bg-success bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center" style="width: 56px; height: 56px;">
+                    <i class="fa-solid fa-check-double fs-4 text-success"></i>
                 </div>
             </div>
             <div class="bg-success text-white text-center py-1" style="font-size: 0.75rem; letter-spacing: 1px;">PROCESSED</div>
+        </div>
+    </div>
+
+    <div class="col-sm-6 col-xl-3">
+        <div class="card border-0 shadow-sm rounded-4 overflow-hidden h-100">
+            <div class="card-body p-4 d-flex align-items-center justify-content-between">
+                <div>
+                    <h6 class="text-uppercase text-muted fw-bold mb-2 small">Available Budget</h6>
+                    <h2 class="fw-bold mb-0 text-info">${{ metrics.available_budget|floatformat:2 }}</h2>
+                </div>
+                <div class="bg-info bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center" style="width: 56px; height: 56px;">
+                    <i class="fa-solid fa-vault fs-4 text-info"></i>
+                </div>
+            </div>
+            <div class="bg-info text-dark text-center py-1 fw-semibold" style="font-size: 0.75rem; letter-spacing: 1px;">COST CENTER FUNDS</div>
         </div>
     </div>
 </div>
@@ -67,6 +101,7 @@
         <span class="badge bg-light text-dark border">Server-Side Policy Evaluated</span>
     </div>
     <div class="card-body p-4">
+        {% if pending_prs %}
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0">
                 <thead class="table-light">
@@ -74,8 +109,9 @@
                         <th class="ps-4">PR Number & Title</th>
                         <th>Requester</th>
                         <th>Department</th>
-                        <th>Total Amount</th>
-                        <th class="text-end pe-4">Approval Decision</th>
+                        <th class="text-end">Total Amount</th>
+                        <th class="text-center">Current Status</th>
+                        <th class="text-end pe-4">Approval Action</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -83,40 +119,48 @@
                         <tr>
                             <td class="ps-4">
                                 <div class="fw-bold text-dark"><a href="/requisitions/{{ pr.id }}/" class="text-decoration-none text-navy">{{ pr.title }}</a></div>
-                                <div class="text-muted small"><code>{{ pr.pr_number }}</code> &bull; Submitted {{ pr.updated_at|date:"M d, H:i" }}</div>
+                                <div class="text-muted small"><code>{{ pr.pr_number }}</code> &bull; Submitted {{ pr.created_at|date:"M d, Y" }}</div>
                             </td>
                             <td>
-                                <div class="fw-semibold text-dark">{{ pr.requester.email }}</div>
+                                <div class="fw-semibold text-dark small">{{ pr.requester.email }}</div>
                             </td>
                             <td><span class="badge bg-light text-dark border">{{ pr.department.name }}</span></td>
-                            <td class="fw-bold text-navy">${{ pr.total_amount|floatformat:2 }}</td>
+                            <td class="fw-bold text-navy text-end">${{ pr.total_amount|floatformat:2 }}</td>
+                            <td class="text-center">
+                                <span class="badge bg-warning text-dark rounded-pill px-3 py-1">
+                                    <i class="fa-solid fa-clock me-1"></i> Pending Review
+                                </span>
+                            </td>
                             <td class="text-end pe-4">
-                                <form method="POST" action="/approvals/inbox/" class="d-inline-flex gap-2">
+                                <form method="POST" action="/approvals/inbox/" class="d-inline-flex flex-wrap justify-content-end gap-2">
                                     {% csrf_token %}
                                     <input type="hidden" name="pr_id" value="{{ pr.id }}">
-                                    <button type="submit" name="action" value="APPROVED" class="btn btn-success btn-sm rounded-pill px-3 fw-bold">
+                                    <input type="text" name="comments" class="form-control form-control-sm d-none d-lg-inline-block" style="width: 140px;" placeholder="Optional comment...">
+                                    <button type="submit" name="action" value="APPROVED" class="btn btn-success btn-sm rounded-pill px-3 fw-bold shadow-sm">
                                         <i class="fa-solid fa-check me-1"></i> Approve
                                     </button>
                                     <button type="submit" name="action" value="REJECTED" class="btn btn-outline-danger btn-sm rounded-pill px-3">
                                         Reject
                                     </button>
+                                    <a href="/requisitions/{{ pr.id }}/" class="btn btn-sm btn-light rounded-pill px-3 text-secondary border">
+                                        <i class="fa-solid fa-eye me-1"></i> Inspect
+                                    </a>
                                 </form>
-                            </td>
-                        </tr>
-                    {% empty %}
-                        <tr>
-                            <td colspan="5" class="text-center py-5 text-muted">
-                                <div class="bg-light rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 80px; height: 80px;">
-                                    <i class="fa-solid fa-check-circle text-success fs-1"></i>
-                                </div>
-                                <h5 class="text-muted fw-bold">Your approval inbox is completely clear!</h5>
-                                <p class="text-secondary mb-0">All department purchase requisitions have been processed.</p>
                             </td>
                         </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
+        {% else %}
+        <div class="text-center py-5">
+            <div class="bg-light rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 80px; height: 80px;">
+                <i class="fa-solid fa-check-circle text-success fs-1"></i>
+            </div>
+            <h5 class="text-muted fw-bold">Your approval inbox is completely clear!</h5>
+            <p class="text-secondary mb-0">All department purchase requisitions have been evaluated and processed.</p>
+        </div>
+        {% endif %}
     </div>
 </div>
 {% endblock %}
