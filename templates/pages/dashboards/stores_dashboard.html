@@ -1,125 +1,285 @@
 {% extends 'base.html' %}
 
-{% block title %}Stores & Goods Receiving Desk - ProcureSphere 360{% endblock %}
+{% block title %}Stores & Receiving Desk — ProcureSphere 360{% endblock %}
 
 {% block content %}
-<div class="container-fluid py-4">
-    <!-- Header -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <span class="badge bg-secondary px-3 py-2 text-uppercase mb-2"><i class="bi bi-box-seam me-1"></i> Stores & Receiving Workspace</span>
-            <h2 class="h3 fw-bold mb-1">Goods Receipt & Warehouse Inspection Desk</h2>
-            <p class="text-muted mb-0">Record physical goods receipts, conduct quality inspection, and manage vendor returns.</p>
-        </div>
-        <div class="d-flex gap-2">
-            <a href="/receipts/" class="btn btn-primary shadow-sm"><i class="bi bi-plus-circle me-1"></i> Record Goods Receipt (GRN)</a>
-            <a href="/orders/" class="btn btn-outline-secondary"><i class="bi bi-list-task me-1"></i> Pending PO Deliveries</a>
+<style>
+    .kpi-card-link {
+        text-decoration: none;
+        color: inherit;
+        display: block;
+        height: 100%;
+        transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .kpi-card-link:hover .kpi-card {
+        transform: translateY(-4px);
+        box-shadow: 0 12px 24px -4px rgba(15, 23, 42, 0.12) !important;
+        border-color: rgba(13, 110, 253, 0.4) !important;
+    }
+    .workflow-card-link {
+        text-decoration: none;
+        color: inherit;
+        display: block;
+        height: 100%;
+        transition: all 0.2s ease-in-out;
+    }
+    .workflow-card-link:hover .workflow-card {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 20px -2px rgba(15, 23, 42, 0.1) !important;
+        border-color: #0d6efd !important;
+    }
+</style>
+
+<div class="container-fluid p-0">
+    <!-- Header Banner -->
+    <div class="card border-0 shadow-sm rounded-4 mb-4 bg-white">
+        <div class="card-body p-3 p-md-4">
+            <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
+                <div>
+                    <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+                        <span class="badge bg-primary bg-opacity-10 text-primary px-3 py-2 text-uppercase fw-bold rounded-pill border border-primary border-opacity-25" style="font-size: 0.72rem;">
+                            <i class="fa-solid fa-warehouse me-1"></i> Warehouse & Receiving Hub
+                        </span>
+                        <span class="badge bg-success bg-opacity-10 text-success px-2 py-1 rounded-pill border border-success border-opacity-25" style="font-size: 0.72rem;">
+                            <i class="fa-solid fa-circle me-1" style="font-size: 0.5rem;"></i> Active Shift
+                        </span>
+                    </div>
+                    <h2 class="h3 fw-bold mb-1 text-dark">Goods Receipt & Warehouse Inspection Desk</h2>
+                    <p class="text-muted mb-0 small">Physical shipment intake, PO line verification, quality inspection gates, and inventory stock handoff.</p>
+                </div>
+                <div class="d-flex flex-wrap align-items-center gap-2">
+                    <a href="{% url 'orders_list' %}" class="btn btn-outline-secondary px-3 py-2 rounded-3 fw-semibold d-flex align-items-center">
+                        <i class="fa-solid fa-truck-ramp-box me-2"></i> Pending Deliveries
+                    </a>
+                    <a href="{% url 'receipts_list' %}" class="btn btn-outline-primary px-3 py-2 rounded-3 fw-semibold d-flex align-items-center">
+                        <i class="fa-solid fa-boxes-stacked me-2"></i> GRN History
+                    </a>
+                </div>
+            </div>
         </div>
     </div>
 
-    <!-- Metrics Cards -->
-    <div class="row g-3 mb-4">
-        <div class="col-md-3">
-            <div class="card border-0 shadow-sm rounded-3 h-100">
-                <div class="card-body p-3">
-                    <div class="d-flex align-items-center justify-content-between">
-                        <div>
-                            <span class="text-muted small fw-semibold text-uppercase">Total GRNs Issued</span>
-                            <h3 class="fw-bold mb-0 text-dark mt-1">{{ metrics.total_grns }}</h3>
-                        </div>
-                        <div class="p-3 bg-primary bg-opacity-10 text-primary rounded-3">
-                            <i class="bi bi-receipt fs-4"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-md-3">
-            <div class="card border-0 shadow-sm rounded-3 h-100">
-                <div class="card-body p-3">
-                    <div class="d-flex align-items-center justify-content-between">
-                        <div>
-                            <span class="text-muted small fw-semibold text-uppercase">Pending Deliveries</span>
-                            <h3 class="fw-bold mb-0 text-warning mt-1">{{ metrics.pending_deliveries }}</h3>
-                        </div>
-                        <div class="p-3 bg-warning bg-opacity-10 text-warning rounded-3">
-                            <i class="bi bi-truck fs-4"></i>
+    <!-- KPI Metric Cards Grid -->
+    <div class="row g-3 g-md-4 mb-4">
+        <!-- 1. Total GRNs Issued -->
+        <div class="col-12 col-sm-6 col-xl-3">
+            <a href="{% url 'receipts_list' %}" class="kpi-card-link" title="View all Goods Receipt Notes">
+                <div class="card kpi-card border-0 shadow-sm rounded-4 h-100 bg-white border-start border-4 border-primary">
+                    <div class="card-body p-3 p-md-4">
+                        <div class="d-flex align-items-center justify-content-between">
+                            <div>
+                                <span class="text-muted small fw-bold text-uppercase" style="letter-spacing: 0.05em; font-size: 0.72rem;">Total GRNs Issued</span>
+                                <h3 class="fw-bold mb-0 text-dark mt-1">{{ metrics.total_grns }}</h3>
+                                <div class="text-primary mt-2 fw-semibold small d-flex align-items-center">
+                                    <span>View All GRNs</span>
+                                    <i class="fa-solid fa-arrow-right ms-1" style="font-size: 0.75rem;"></i>
+                                </div>
+                            </div>
+                            <div class="p-3 bg-primary bg-opacity-10 text-primary rounded-4">
+                                <i class="fa-solid fa-clipboard-list fs-4"></i>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
+            </a>
         </div>
 
-        <div class="col-md-3">
-            <div class="card border-0 shadow-sm rounded-3 h-100">
-                <div class="card-body p-3">
-                    <div class="d-flex align-items-center justify-content-between">
-                        <div>
-                            <span class="text-muted small fw-semibold text-uppercase">Quality Inspections</span>
-                            <h3 class="fw-bold mb-0 text-success mt-1">{{ metrics.total_inspections }}</h3>
-                        </div>
-                        <div class="p-3 bg-success bg-opacity-10 text-success rounded-3">
-                            <i class="bi bi-check-circle fs-4"></i>
+        <!-- 2. Pending Deliveries -->
+        <div class="col-12 col-sm-6 col-xl-3">
+            <a href="{% url 'orders_list' %}" class="kpi-card-link" title="View pending purchase order deliveries">
+                <div class="card kpi-card border-0 shadow-sm rounded-4 h-100 bg-white border-start border-4 border-warning">
+                    <div class="card-body p-3 p-md-4">
+                        <div class="d-flex align-items-center justify-content-between">
+                            <div>
+                                <span class="text-muted small fw-bold text-uppercase" style="letter-spacing: 0.05em; font-size: 0.72rem;">Pending Deliveries</span>
+                                <h3 class="fw-bold mb-0 text-warning mt-1">{{ metrics.pending_deliveries }}</h3>
+                                <div class="text-warning mt-2 fw-semibold small d-flex align-items-center">
+                                    <span>View Deliveries</span>
+                                    <i class="fa-solid fa-arrow-right ms-1" style="font-size: 0.75rem;"></i>
+                                </div>
+                            </div>
+                            <div class="p-3 bg-warning bg-opacity-10 text-warning rounded-4">
+                                <i class="fa-solid fa-truck-ramp-box fs-4"></i>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
+            </a>
         </div>
 
-        <div class="col-md-3">
-            <div class="card border-0 shadow-sm rounded-3 h-100">
-                <div class="card-body p-3">
-                    <div class="d-flex align-items-center justify-content-between">
-                        <div>
-                            <span class="text-muted small fw-semibold text-uppercase">Rejections / Returns</span>
-                            <h3 class="fw-bold mb-0 text-danger mt-1">{{ metrics.total_rejections }}</h3>
-                        </div>
-                        <div class="p-3 bg-danger bg-opacity-10 text-danger rounded-3">
-                            <i class="bi bi-x-circle fs-4"></i>
+        <!-- 3. Quality Inspections -->
+        <div class="col-12 col-sm-6 col-xl-3">
+            <a href="{% url 'receipts_list' %}?status=PASSED" class="kpi-card-link" title="View passed quality inspections">
+                <div class="card kpi-card border-0 shadow-sm rounded-4 h-100 bg-white border-start border-4 border-success">
+                    <div class="card-body p-3 p-md-4">
+                        <div class="d-flex align-items-center justify-content-between">
+                            <div>
+                                <span class="text-muted small fw-bold text-uppercase" style="letter-spacing: 0.05em; font-size: 0.72rem;">Quality Inspections</span>
+                                <h3 class="fw-bold mb-0 text-success mt-1">{{ metrics.total_inspections }}</h3>
+                                <div class="text-success mt-2 fw-semibold small d-flex align-items-center">
+                                    <span>View Inspections</span>
+                                    <i class="fa-solid fa-arrow-right ms-1" style="font-size: 0.75rem;"></i>
+                                </div>
+                            </div>
+                            <div class="p-3 bg-success bg-opacity-10 text-success rounded-4">
+                                <i class="fa-solid fa-circle-check fs-4"></i>
+                            </div>
                         </div>
                     </div>
+                </div>
+            </a>
+        </div>
+
+        <!-- 4. Rejections / Returns -->
+        <div class="col-12 col-sm-6 col-xl-3">
+            <a href="{% url 'receipts_list' %}?status=FAILED" class="kpi-card-link" title="View rejected and returned shipments">
+                <div class="card kpi-card border-0 shadow-sm rounded-4 h-100 bg-white border-start border-4 border-danger">
+                    <div class="card-body p-3 p-md-4">
+                        <div class="d-flex align-items-center justify-content-between">
+                            <div>
+                                <span class="text-muted small fw-bold text-uppercase" style="letter-spacing: 0.05em; font-size: 0.72rem;">Rejections / Returns</span>
+                                <h3 class="fw-bold mb-0 text-danger mt-1">{{ metrics.total_rejections }}</h3>
+                                <div class="text-danger mt-2 fw-semibold small d-flex align-items-center">
+                                    <span>View Rejections</span>
+                                    <i class="fa-solid fa-arrow-right ms-1" style="font-size: 0.75rem;"></i>
+                                </div>
+                            </div>
+                            <div class="p-3 bg-danger bg-opacity-10 text-danger rounded-4">
+                                <i class="fa-solid fa-circle-xmark fs-4"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </a>
+        </div>
+    </div>
+
+    <!-- Quick Receiving Lifecycle Workflow Hub -->
+    <div class="card border-0 shadow-sm rounded-4 mb-4 bg-white">
+        <div class="card-header bg-white border-bottom-0 pt-3 pb-2 px-4 d-flex justify-content-between align-items-center">
+            <h6 class="fw-bold text-dark mb-0">
+                <i class="fa-solid fa-diagram-project text-primary me-2"></i> Receiving Lifecycle Hub
+            </h6>
+            <span class="badge bg-light text-secondary border small">Operational Workflow</span>
+        </div>
+        <div class="card-body p-3 p-md-4 pt-1">
+            <div class="row g-3">
+                <div class="col-12 col-sm-6 col-lg-3">
+                    <a href="{% url 'orders_list' %}" class="workflow-card-link">
+                        <div class="card workflow-card border rounded-3 p-3 h-100 bg-light bg-opacity-50">
+                            <div class="d-flex align-items-center mb-2">
+                                <span class="badge bg-primary text-white rounded-circle p-2 me-2 d-flex align-items-center justify-content-center" style="width: 28px; height: 28px;">1</span>
+                                <span class="fw-bold text-dark small">Physical Receipt</span>
+                            </div>
+                            <p class="text-muted small mb-0">Verify supplier shipment against issued PO lines and log GRN.</p>
+                        </div>
+                    </a>
+                </div>
+                <div class="col-12 col-sm-6 col-lg-3">
+                    <a href="{% url 'receipts_list' %}?status=PENDING" class="workflow-card-link">
+                        <div class="card workflow-card border rounded-3 p-3 h-100 bg-light bg-opacity-50">
+                            <div class="d-flex align-items-center mb-2">
+                                <span class="badge bg-warning text-dark rounded-circle p-2 me-2 d-flex align-items-center justify-content-center" style="width: 28px; height: 28px;">2</span>
+                                <span class="fw-bold text-dark small">Quality Inspection</span>
+                            </div>
+                            <p class="text-muted small mb-0">Inspect delivered items for specs, damages, and packaging integrity.</p>
+                        </div>
+                    </a>
+                </div>
+                <div class="col-12 col-sm-6 col-lg-3">
+                    <a href="{% url 'receipts_list' %}?status=PASSED" class="workflow-card-link">
+                        <div class="card workflow-card border rounded-3 p-3 h-100 bg-light bg-opacity-50">
+                            <div class="d-flex align-items-center mb-2">
+                                <span class="badge bg-success text-white rounded-circle p-2 me-2 d-flex align-items-center justify-content-center" style="width: 28px; height: 28px;">3</span>
+                                <span class="fw-bold text-dark small">Stock Handoff</span>
+                            </div>
+                            <p class="text-muted small mb-0">Transfer accepted quantities into active warehouse inventory.</p>
+                        </div>
+                    </a>
+                </div>
+                <div class="col-12 col-sm-6 col-lg-3">
+                    <a href="{% url 'receipts_list' %}?status=FAILED" class="workflow-card-link">
+                        <div class="card workflow-card border rounded-3 p-3 h-100 bg-light bg-opacity-50">
+                            <div class="d-flex align-items-center mb-2">
+                                <span class="badge bg-danger text-white rounded-circle p-2 me-2 d-flex align-items-center justify-content-center" style="width: 28px; height: 28px;">4</span>
+                                <span class="fw-bold text-dark small">Vendor Returns (RTV)</span>
+                            </div>
+                            <p class="text-muted small mb-0">Generate RMA rejection reports for damaged or rejected items.</p>
+                        </div>
+                    </a>
                 </div>
             </div>
         </div>
     </div>
 
     <!-- Recent Goods Receipts Table -->
-    <div class="card border-0 shadow-sm rounded-3">
-        <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-            <h5 class="fw-bold mb-0 text-dark"><i class="bi bi-clock-history me-2 text-primary"></i> Recent Goods Receipt Notes (GRN)</h5>
-            <a href="/receipts/" class="btn btn-sm btn-outline-primary">View All Receipts</a>
+    <div class="card border-0 shadow-sm rounded-4 bg-white overflow-hidden">
+        <div class="card-header bg-white py-3 px-4 d-flex flex-wrap justify-content-between align-items-center gap-2 border-bottom">
+            <div class="d-flex align-items-center gap-2">
+                <h5 class="fw-bold mb-0 text-dark">
+                    <i class="fa-solid fa-clock-rotate-left text-primary me-2"></i> Recent Goods Receipt Notes (GRN)
+                </h5>
+                <span class="badge bg-light text-dark border rounded-pill">{{ recent_grns|length }} Recent</span>
+            </div>
+            <a href="{% url 'receipts_list' %}" class="btn btn-sm btn-outline-primary rounded-pill px-3 fw-semibold">
+                <i class="fa-solid fa-list me-1"></i> View Full GRN History
+            </a>
         </div>
         <div class="card-body p-0">
             <div class="table-responsive">
                 <table class="table table-hover align-middle mb-0">
                     <thead class="table-light">
                         <tr>
-                            <th class="ps-3">GRN Number</th>
-                            <th>PO Reference</th>
-                            <th>Delivery Note #</th>
-                            <th>Received Date</th>
-                            <th>Received By</th>
-                            <th class="text-end pe-3">Action</th>
+                            <th class="ps-4 py-3 text-secondary small text-uppercase fw-bold" style="letter-spacing: 0.05em;">GRN Number</th>
+                            <th class="py-3 text-secondary small text-uppercase fw-bold" style="letter-spacing: 0.05em;">PO Reference</th>
+                            <th class="py-3 text-secondary small text-uppercase fw-bold" style="letter-spacing: 0.05em;">Delivery Note #</th>
+                            <th class="py-3 text-secondary small text-uppercase fw-bold" style="letter-spacing: 0.05em;">Received Date</th>
+                            <th class="py-3 text-secondary small text-uppercase fw-bold" style="letter-spacing: 0.05em;">Received By</th>
+                            <th class="text-end pe-4 py-3 text-secondary small text-uppercase fw-bold" style="letter-spacing: 0.05em;">Action</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for grn in recent_grns %}
                         <tr>
-                            <td class="ps-3 fw-semibold text-primary">{{ grn.grn_number }}</td>
-                            <td><span class="badge bg-light text-dark border">{{ grn.po.po_number }}</span></td>
-                            <td>{{ grn.delivery_note_number|default:"N/A" }}</td>
-                            <td>{{ grn.received_date|date:"Y-m-d H:i" }}</td>
-                            <td><small class="text-muted">{{ grn.received_by.get_full_name|default:grn.received_by.email }}</small></td>
-                            <td class="text-end pe-3">
-                                <a href="/receipts/" class="btn btn-sm btn-outline-secondary">Inspect</a>
+                            <td class="ps-4 py-3">
+                                <a href="{% url 'receipt_detail' grn.id %}" class="fw-bold text-primary text-decoration-none">
+                                    {{ grn.grn_number }}
+                                </a>
+                            </td>
+                            <td class="py-3">
+                                <span class="badge bg-light text-dark border px-2 py-1 font-monospace">{{ grn.po.po_number }}</span>
+                            </td>
+                            <td class="py-3 text-muted">
+                                {{ grn.delivery_note_number|default:"N/A" }}
+                            </td>
+                            <td class="py-3 text-muted small">
+                                <i class="fa-regular fa-calendar me-1"></i> {{ grn.received_date|date:"M d, Y H:i" }}
+                            </td>
+                            <td class="py-3">
+                                <div class="d-flex align-items-center">
+                                    <div class="avatar-circle bg-secondary bg-opacity-10 text-secondary rounded-circle d-flex align-items-center justify-content-center me-2" style="width: 26px; height: 26px; font-size: 0.75rem;">
+                                        <i class="fa-solid fa-user"></i>
+                                    </div>
+                                    <small class="text-dark fw-semibold">{{ grn.received_by.get_full_name|default:grn.received_by.email }}</small>
+                                </div>
+                            </td>
+                            <td class="text-end pe-4 py-3">
+                                <a href="{% url 'receipt_detail' grn.id %}" class="btn btn-sm btn-outline-secondary rounded-pill px-3 fw-semibold">
+                                    <i class="fa-regular fa-eye me-1"></i> View Details
+                                </a>
                             </td>
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="6" class="text-center py-4 text-muted">
-                                <i class="bi bi-inbox fs-3 d-block mb-2 text-secondary"></i>
-                                No goods receipts recorded yet. Click <strong>Record Goods Receipt</strong> above to receive shipments.
+                            <td colspan="6" class="text-center py-5 text-muted">
+                                <div class="py-3">
+                                    <i class="fa-solid fa-boxes-stacked text-secondary fs-1 mb-3 d-block opacity-50"></i>
+                                    <h6 class="fw-bold text-dark mb-1">No goods receipts recorded yet</h6>
+                                    <p class="text-muted small mb-3">Click below to start receiving incoming supplier deliveries.</p>
+                                    <a href="{% url 'orders_list' %}" class="btn btn-sm btn-primary rounded-pill px-4 fw-semibold shadow-sm">
+                                        <i class="fa-solid fa-plus-circle me-1"></i> Record Goods Receipt
+                                    </a>
+                                </div>
                             </td>
                         </tr>
                         {% endfor %}
@@ -130,3 +290,4 @@
     </div>
 </div>
 {% endblock %}
+
