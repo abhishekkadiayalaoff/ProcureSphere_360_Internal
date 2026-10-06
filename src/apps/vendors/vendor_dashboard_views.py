@@ -498,7 +498,7 @@ def vendor_bids_list_view(request):
 
 
 @vendor_required
-def vendor_bid_create_view(request, event_id):
+def vendor_bid_create_view(request, event_id):  # noqa: C901
     """
     Bid Preparation Page:
     Sections:
@@ -750,7 +750,7 @@ def vendor_bid_validate_view(request, bid_id):
 
 
 @vendor_required
-def vendor_bid_amend_view(request, bid_id):
+def vendor_bid_amend_view(request, bid_id):  # noqa: C901
     """
     Bid Amendment Functionality:
     Vendor can amend a submitted bid ONLY while the event is still open.

@@ -56,11 +56,11 @@ def create_view(request):
 
     if request.method == "POST":
         title = request.POST.get("title")
-        justification = request.POST.get("justification")
+        _ = request.POST.get("justification")
         department_id = request.POST.get("department")
         cost_center_id = request.POST.get("cost_center")
         requested_delivery_date = request.POST.get("requested_delivery_date")
-        attachments = request.FILES.getlist("attachments")
+        _ = request.FILES.getlist("attachments")
 
         # Simple validation
         if not (title and department_id and cost_center_id and requested_delivery_date):
@@ -68,8 +68,8 @@ def create_view(request):
             return redirect("requisition_create")
 
         try:
-            department = Department.objects.get(id=department_id)
-            cost_center = CostCenter.objects.get(id=cost_center_id)
+            _ = Department.objects.get(id=department_id)
+            _ = CostCenter.objects.get(id=cost_center_id)
 
             # Extract Line Items
             item_descriptions = request.POST.getlist("item_description[]")

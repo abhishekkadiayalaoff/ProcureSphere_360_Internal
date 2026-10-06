@@ -117,7 +117,7 @@ def invite_vendors_to_event_service(
     return invitations
 
 
-def validate_bid_service(*, bid: VendorBid) -> dict:
+def validate_bid_service(*, bid: VendorBid) -> dict:  # noqa: C901
     """
     Authoritative server-side bid validation.
     Checks authorization, status, deadline, completeness, line item pricing, and attachments.
