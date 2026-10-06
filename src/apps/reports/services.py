@@ -161,6 +161,11 @@ def get_contract_expiry_report():
     return report_data
 
 
+def _score(value):
+    """Scorecard indicators are NULL when no transactional data exists."""
+    return None if value is None else float(value)
+
+
 def get_supplier_performance_report():
     """8. Supplier performance scorecard and trend"""
     scorecards = VendorScorecard.objects.select_related("vendor", "evaluated_by").all()
@@ -170,11 +175,13 @@ def get_supplier_performance_report():
             {
                 "vendor": sc.vendor.legal_name,
                 "period": sc.evaluation_period,
-                "delivery_score": float(sc.delivery_score),
-                "quality_score": float(sc.quality_score),
-                "price_score": float(sc.price_score),
-                "compliance_score": float(sc.compliance_score),
-                "composite_score": float(sc.composite_score),
+                "delivery_score": _score(sc.delivery_score),
+                "quality_score": _score(sc.quality_score),
+                "price_score": _score(sc.price_score),
+                "responsiveness_score": _score(sc.responsiveness_score),
+                "compliance_score": _score(sc.compliance_score),
+                "sla_score": _score(sc.sla_score),
+                "composite_score": _score(sc.composite_score),
                 "evaluated_by": sc.evaluated_by.email,
             }
         )

@@ -210,6 +210,10 @@ CELERY_BEAT_SCHEDULE = {
         "task": "apps.notifications.tasks.test_celery_beat_task",
         "schedule": 60.0,  # every 60 seconds
     },
+    "sync-sourcing-bid-windows": {
+        "task": "apps.sourcing.tasks.sync_sourcing_bid_windows_task",
+        "schedule": 300.0,  # every 5 minutes; views/services also sync on access
+    },
 }
 # Login Throttling (django-axes) & Redirects
 AXES_FAILURE_LIMIT = 5

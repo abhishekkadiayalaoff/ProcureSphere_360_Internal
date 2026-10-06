@@ -38,7 +38,12 @@ class RequestIDMiddleware:
             ip = request.META.get("REMOTE_ADDR")
         _request_context.client_ip = ip
 
-        response = self.get_response(request)
+        try:
+            response = self.get_response(request)
+        finally:
+            # Never leak request context into later work on the same thread.
+            _request_context.request_id = None
+            _request_context.client_ip = None
         response["X-Request-ID"] = request_id
         return response
 
@@ -57,4 +62,7 @@ class AuditContextMiddleware:
         else:
             _request_context.user = None
 
-        return self.get_response(request)
+        try:
+            return self.get_response(request)
+        finally:
+            _request_context.user = None

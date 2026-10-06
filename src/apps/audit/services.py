@@ -792,7 +792,9 @@ def get_transaction_lifecycle_service(  # noqa: C901
                 else "LOW"
             ),
             "composite_score": (
-                float(latest_scorecard.composite_score) if latest_scorecard else None
+                float(latest_scorecard.composite_score)
+                if latest_scorecard and latest_scorecard.composite_score is not None
+                else None
             ),
             "kyc_documents_count": vendor_obj.documents.count(),
         }

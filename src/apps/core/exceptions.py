@@ -1,3 +1,5 @@
+from django.core.exceptions import ValidationError as DjangoValidationError
+from rest_framework.exceptions import ValidationError as DRFValidationError
 from rest_framework.response import Response
 from rest_framework.views import exception_handler
 
@@ -13,6 +15,11 @@ def custom_exception_handler(exc, context):
         }
     }
     """
+    if isinstance(exc, DjangoValidationError):
+        # Domain/service-layer validation errors -> structured 400 instead of a 500.
+        detail = exc.message_dict if hasattr(exc, "error_dict") else exc.messages
+        exc = DRFValidationError(detail=detail)
+
     response = exception_handler(exc, context)
 
     if response is not None:
