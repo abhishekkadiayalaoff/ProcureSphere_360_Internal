@@ -315,6 +315,62 @@ h1, h2, h3, h4, h5, h6, .font-heading {
     background: #94A3B8;
 }
 
+.icon-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+}
+
+.icon-avatar-primary {
+    background: rgba(0, 43, 73, 0.08);
+    color: var(--hpe-navy);
+}
+
+.icon-avatar-success {
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--hpe-emerald);
+}
+
+.icon-avatar-warning {
+    background: rgba(245, 158, 11, 0.1);
+    color: var(--hpe-amber);
+}
+
+.icon-avatar-info {
+    background: rgba(0, 176, 185, 0.1);
+    color: var(--hpe-cyan);
+}
+
+.icon-avatar-danger {
+    background: rgba(244, 63, 94, 0.1);
+    color: var(--hpe-rose);
+}
+
+/* Executive Stat Card Gradient Variants */
+.stat-card-gradient-warning {
+    background: linear-gradient(135deg, #FFFBEB 0%, #FFFFFF 100%);
+    border: 1px solid #FDE68A;
+}
+
+.stat-card-gradient-primary {
+    background: linear-gradient(135deg, #F0F9FF 0%, #FFFFFF 100%);
+    border: 1px solid #BAE6FD;
+}
+
+.stat-card-gradient-danger {
+    background: linear-gradient(135deg, #FFF1F2 0%, #FFFFFF 100%);
+    border: 1px solid #FECDD3;
+}
+
+.stat-card-gradient-success {
+    background: linear-gradient(135deg, #ECFDF5 0%, #FFFFFF 100%);
+    border: 1px solid #A7F3D0;
+}
+
 /* Mobile & Tablet Responsive Media Queries */
 @media (max-width: 991.98px) {
     .app-sidebar {
@@ -353,4 +409,5 @@ h1, h2, h3, h4, h5, h6, .font-heading {
         display: block;
     }
 }
+
 

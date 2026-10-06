@@ -9,7 +9,7 @@ def scorecard_list_view(request):
     """
     Supplier Performance Scorecard leaderboard view.
     """
-    scorecards = VendorScorecard.objects.select_related("vendor").order_by("-overall_score")
+    scorecards = VendorScorecard.objects.select_related("vendor").order_by("-composite_score")
 
     return render(
         request,

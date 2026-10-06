@@ -132,12 +132,14 @@
                             <span>Reports & Analytics</span>
                         </a>
                     </li>
+                    {% if user.role_code == 'COMPLIANCE_AUDITOR' or user.role_code == 'SUPER_ADMIN' or user.is_superuser %}
                     <li class="sidebar-nav-item">
                         <a href="/audit/logs/" class="sidebar-nav-link {% if '/audit/' in request.path %}active{% endif %}">
                             <i class="fa-solid fa-shield-halved"></i>
                             <span>Audit Trail Logs</span>
                         </a>
                     </li>
+                    {% endif %}
                     <li class="sidebar-nav-item">
                         <a href="/api/docs/" class="sidebar-nav-link" target="_blank">
                             <i class="fa-solid fa-code"></i>
