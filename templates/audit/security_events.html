@@ -85,13 +85,16 @@
             <tbody>
                 {% for s in security_events %}
                     <tr>
-                        <td class="ps-4 text-dark small">{{ s.timestamp }}</td>
-                        <td><strong>{{ s.actor_email|default:"User" }}</strong></td>
-                        <td><span class="badge bg-dark text-cyan fw-bold">{{ s.action }}</span></td>
-                        <td><code>{{ s.ip_address|default:"127.0.0.1" }}</code></td>
-                        <td><code>{{ s.request_id|default:"SEC-LOG" }}</code></td>
+                        <td class="ps-4">
+                            <div class="fw-bold text-dark">{{ s.timestamp|slice:":10" }}</div>
+                            <div class="text-muted small"><i class="fa-regular fa-clock me-1 text-cyan"></i>{{ s.timestamp|slice:"11:19" }}</div>
+                        </td>
+                        <td><strong class="text-dark">{{ s.actor_email|default:"User" }}</strong></td>
+                        <td><span class="badge bg-dark text-cyan rounded-pill fw-bold">{{ s.action }}</span></td>
+                        <td><code class="text-dark bg-light px-2 py-1 rounded border">{{ s.ip_address|default:"127.0.0.1" }}</code></td>
+                        <td><code class="text-muted bg-light px-2 py-1 rounded border">{{ s.request_id|default:"SEC-LOG"|truncatechars:16 }}</code></td>
                         <td class="text-end pe-4">
-                            <button type="button" class="btn btn-outline-info btn-sm rounded-pill px-3" onclick="showLogDetail('{{ s.id }}')">
+                            <button type="button" class="btn btn-outline-info btn-sm rounded-pill px-3 shadow-2xs" onclick="showLogDetail('{{ s.id }}')">
                                 <i class="fa-solid fa-code-compare me-1"></i> Diff
                             </button>
                         </td>
