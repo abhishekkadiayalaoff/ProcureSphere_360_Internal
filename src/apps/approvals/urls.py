@@ -1,4 +1,5 @@
 from django.urls import path
+
 from .views import approvals_inbox_view
 
 urlpatterns = [

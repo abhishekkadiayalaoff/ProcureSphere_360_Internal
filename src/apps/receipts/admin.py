@@ -1,6 +1,7 @@
 from django.contrib import admin
-from apps.receipts.models import GoodsReceipt, InspectionRecord, ReceiptLine, RejectionRecord
+
 from apps.core.admin_site import RoleBasedModelAdmin, register_model
+from apps.receipts.models import GoodsReceipt, InspectionRecord, ReceiptLine, RejectionRecord
 
 
 class ReceiptLineInline(admin.TabularInline):

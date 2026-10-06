@@ -1,5 +1,5 @@
 from datetime import timedelta
-from django.db.models import Q
+
 from django.utils import timezone
 
 from .models import Vendor, VendorDocument
@@ -131,4 +131,3 @@ def get_vendor_dashboard_metrics(vendor, user=None):
         "kyc_compliance_status": vendor.status,
         "unread_notifications": unread_notifications,
     }
-

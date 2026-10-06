@@ -2,6 +2,8 @@ from rest_framework import serializers, viewsets
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.routers import DefaultRouter
 
+from apps.audit.permissions import AuditorReadOnlyPermission
+
 from .models import POAmendment, POLine, PurchaseOrder
 
 
@@ -34,7 +36,7 @@ class PurchaseOrderViewSet(viewsets.ModelViewSet):
         .all()
     )
     serializer_class = PurchaseOrderSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, AuditorReadOnlyPermission]
 
     def get_queryset(self):
         user = self.request.user

@@ -1,24 +1,23 @@
-{% extends 'base.html' %}
+{% extends 'layouts/finance_base.html' %}
 
-{% block title %}Finance & AP Control Desk — ProcureSphere 360 ERP{% endblock %}
+{% block title %}Finance & AP Workspace — ProcureSphere 360{% endblock %}
 
 {% block content %}
-<!-- Finance Banner -->
+<!-- Welcome Banner -->
 <div class="row mb-4">
     <div class="col-12">
-        <div class="glass-card-dark p-4 position-relative overflow-hidden">
+        <div class="glass-card-dark p-4 position-relative overflow-hidden" style="background: linear-gradient(135deg, #1e293b, #0f172a); border-radius: 12px;">
             <div class="row align-items-center">
                 <div class="col-lg-8">
                     <div class="d-flex align-items-center mb-2">
-                        <span class="badge bg-danger text-white rounded-pill fw-bold px-3 py-1 me-2"><i class="fa-solid fa-building-columns me-1"></i> FINANCE & AP DESK</span>
-                        <span class="text-white-50 small"><i class="fa-solid fa-calculator me-1"></i> {{ user.email }} &bull; 3-Way Match Engine</span>
+                        <span class="badge bg-danger text-white rounded-pill fw-bold px-3 py-1 me-2"><i class="fa-solid fa-building-columns me-1"></i> FINANCE & AP</span>
                     </div>
-                    <h1 class="fw-bold text-white mb-2 display-6">Accounts Payable & Budget Spend Center</h1>
-                    <p class="text-white-50 mb-0">Resolve 3-Way Match price/quantity variance exceptions, authorize payments, and track fiscal period ledger commitments.</p>
+                    <h1 class="fw-bold text-white mb-2 display-6">Accounts Payable Workspace</h1>
+                    <p class="text-white-50 mb-0">Monitor invoice match exceptions, manage budget spend, and review payments ready for disbursement.</p>
                 </div>
                 <div class="col-lg-4 text-lg-end mt-3 mt-lg-0">
                     <a href="/invoices/exceptions/" class="btn btn-warning btn-lg rounded-pill fw-bold px-4 shadow-sm">
-                        <i class="fa-solid fa-triangle-exclamation me-1"></i> Exception Desk ({{ metrics.pending_exceptions }})
+                        <i class="fa-solid fa-triangle-exclamation me-1"></i> Resolve Exceptions
                     </a>
                 </div>
             </div>
@@ -26,91 +25,126 @@
     </div>
 </div>
 
-<!-- Stat Cards -->
+<!-- Key Metrics Row -->
 <div class="row g-4 mb-4">
     <div class="col-md-3">
-        <div class="stat-card hover-elevate shadow-sm h-100 border-start border-danger border-4">
-            <div class="d-flex align-items-center justify-content-between mb-2">
-                <span class="text-muted small fw-semibold">MATCH EXCEPTIONS</span>
-                <i class="fa-solid fa-scale-unbalanced text-danger fs-4"></i>
+        <div class="card h-100 border-0 shadow-sm rounded-4 hover-elevate border-start border-warning border-4">
+            <div class="card-body p-4">
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                    <h6 class="text-muted fw-bold mb-0 text-uppercase small">Open Exceptions</h6>
+                    <div class="bg-warning bg-opacity-10 p-2 rounded-circle">
+                        <i class="fa-solid fa-triangle-exclamation text-warning fs-5"></i>
+                    </div>
+                </div>
+                <h3 class="fw-bold mb-1 text-dark">{{ metrics.pending_exceptions }}</h3>
+                <p class="text-muted small mb-0">Invoices requiring manual match review</p>
             </div>
-            <div class="metric-value text-danger">{{ metrics.pending_exceptions }}</div>
-            <div class="text-muted small mt-1">Price / Qty variances exceeding tolerance</div>
         </div>
     </div>
+    
     <div class="col-md-3">
-        <div class="stat-card hover-elevate shadow-sm h-100 border-start border-success border-4">
-            <div class="d-flex align-items-center justify-content-between mb-2">
-                <span class="text-muted small fw-semibold">READY FOR PAYMENT</span>
-                <i class="fa-solid fa-money-check-dollar text-success fs-4"></i>
+        <div class="card h-100 border-0 shadow-sm rounded-4 hover-elevate border-start border-success border-4">
+            <div class="card-body p-4">
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                    <h6 class="text-muted fw-bold mb-0 text-uppercase small">Ready For Payment</h6>
+                    <div class="bg-success bg-opacity-10 p-2 rounded-circle">
+                        <i class="fa-solid fa-money-check-dollar text-success fs-5"></i>
+                    </div>
+                </div>
+                <h3 class="fw-bold mb-1 text-dark">{{ metrics.ready_for_payment }}</h3>
+                <p class="text-muted small mb-0">Approved and matched invoices</p>
             </div>
-            <div class="metric-value text-success">{{ metrics.ready_for_payment }}</div>
-            <div class="text-muted small mt-1">Invoices passed 3-Way Match</div>
         </div>
     </div>
+
     <div class="col-md-3">
-        <div class="stat-card hover-elevate shadow-sm h-100 border-start border-primary border-4">
-            <div class="d-flex align-items-center justify-content-between mb-2">
-                <span class="text-muted small fw-semibold">COMMITTED SPEND (POs)</span>
-                <i class="fa-solid fa-file-signature text-primary fs-4"></i>
+        <div class="card h-100 border-0 shadow-sm rounded-4 hover-elevate border-start border-primary border-4">
+            <div class="card-body p-4">
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                    <h6 class="text-muted fw-bold mb-0 text-uppercase small">Committed Spend</h6>
+                    <div class="bg-primary bg-opacity-10 p-2 rounded-circle">
+                        <i class="fa-solid fa-lock text-primary fs-5"></i>
+                    </div>
+                </div>
+                <h3 class="fw-bold mb-1 text-dark">${{ metrics.committed_spend|floatformat:2 }}</h3>
+                <p class="text-muted small mb-0">Locked PO funds awaiting invoice</p>
             </div>
-            <div class="metric-value text-navy">${{ metrics.committed_spend|floatformat:2 }}</div>
-            <div class="text-muted small mt-1">SpendLedger PO Commitments</div>
         </div>
     </div>
+
     <div class="col-md-3">
-        <div class="stat-card hover-elevate shadow-sm h-100 border-start border-info border-4">
-            <div class="d-flex align-items-center justify-content-between mb-2">
-                <span class="text-muted small fw-semibold">ACTUAL SPEND (PAID)</span>
-                <i class="fa-solid fa-receipt text-info fs-4"></i>
+        <div class="card h-100 border-0 shadow-sm rounded-4 hover-elevate border-start border-danger border-4">
+            <div class="card-body p-4">
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                    <h6 class="text-muted fw-bold mb-0 text-uppercase small">Actual Spend</h6>
+                    <div class="bg-danger bg-opacity-10 p-2 rounded-circle">
+                        <i class="fa-solid fa-money-bill-transfer text-danger fs-5"></i>
+                    </div>
+                </div>
+                <h3 class="fw-bold mb-1 text-dark">${{ metrics.actual_spend|floatformat:2 }}</h3>
+                <p class="text-muted small mb-0">Total paid or payable invoices</p>
             </div>
-            <div class="metric-value text-dark">${{ metrics.actual_spend|floatformat:2 }}</div>
-            <div class="text-muted small mt-1">Disbursed supplier funds</div>
         </div>
     </div>
 </div>
 
-<!-- 3-Way Match Exception Queue -->
-<div class="glass-card p-4 shadow-sm">
-    <div class="d-flex align-items-center justify-content-between mb-3">
-        <h5 class="fw-bold text-dark mb-0"><i class="fa-solid fa-triangle-exclamation text-danger me-2"></i> Match Exception Resolution Desk</h5>
-        <a href="/invoices/create/" class="btn btn-outline-danger btn-sm rounded-pill px-3">Submit New Supplier Invoice</a>
-    </div>
-    <div class="table-responsive">
-        <table class="table table-hover align-middle mb-0">
-            <thead class="table-light">
-                <tr class="small text-uppercase text-muted">
-                    <th class="ps-4">Invoice & Vendor</th>
-                    <th>Exception Type</th>
-                    <th>Variance Amount</th>
-                    <th>Description</th>
-                    <th class="text-end pe-4">Action</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for exc in open_exceptions %}
-                    <tr>
-                        <td class="ps-4">
-                            <div class="fw-bold text-dark"><code>{{ exc.invoice.invoice_number }}</code></div>
-                            <div class="text-muted small">{{ exc.invoice.vendor.legal_name }}</div>
-                        </td>
-                        <td><span class="badge bg-danger text-white border">{{ exc.get_exception_type_display|default:exc.exception_type }}</span></td>
-                        <td class="fw-bold text-danger">${{ exc.variance_amount|floatformat:2 }}</td>
-                        <td class="text-muted small">{{ exc.description|truncatechars:60 }}</td>
-                        <td class="text-end pe-4">
-                            <a href="/invoices/exceptions/" class="btn btn-danger btn-sm rounded-pill px-3 fw-bold">Resolve Desk</a>
-                        </td>
-                    </tr>
-                {% empty %}
-                    <tr>
-                        <td colspan="5" class="text-center py-4 text-muted">
-                            <i class="fa-solid fa-circle-check fa-2x mb-2 text-success"></i>
-                            <div>No open 3-Way Match exceptions detected! Accounts Payable clean.</div>
-                        </td>
-                    </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+<div class="row g-4">
+    <!-- Invoice Match Exceptions -->
+    <div class="col-12">
+        <div class="card border-0 shadow-sm rounded-4">
+            <div class="card-header bg-white border-bottom-0 pt-4 pb-0 px-4 d-flex justify-content-between align-items-center">
+                <h5 class="fw-bold mb-0"><i class="fa-solid fa-triangle-exclamation text-warning me-2"></i> Pending Match Exceptions</h5>
+                <a href="/invoices/exceptions/" class="btn btn-sm btn-outline-secondary rounded-pill px-3">View All Exceptions</a>
+            </div>
+            <div class="card-body p-4">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light text-muted small text-uppercase">
+                            <tr>
+                                <th class="ps-3 rounded-start">Exception Type</th>
+                                <th>Invoice Ref</th>
+                                <th>Supplier</th>
+                                <th>Variance</th>
+                                <th>Date Flagged</th>
+                                <th class="text-end pe-3 rounded-end">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for exception in open_exceptions %}
+                            <tr>
+                                <td class="ps-3">
+                                    <span class="badge bg-warning text-dark px-2 py-1 rounded-pill"><i class="fa-solid fa-bolt me-1"></i> {{ exception.get_exception_type_display }}</span>
+                                </td>
+                                <td>
+                                    <div class="fw-bold text-dark">{{ exception.invoice.invoice_number }}</div>
+                                </td>
+                                <td>{{ exception.invoice.vendor.legal_name }}</td>
+                                <td>
+                                    {% if exception.variance_amount > 0 %}
+                                        <span class="text-danger fw-bold">+${{ exception.variance_amount|floatformat:2 }}</span>
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-muted small">{{ exception.created_at|date:"M d, Y" }}</td>
+                                <td class="text-end pe-3">
+                                    <a href="{% url 'exception_detail' exception.id %}" class="btn btn-sm btn-primary rounded-pill px-3">Review</a>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="6" class="text-center py-5 text-muted">
+                                    <div class="mb-3"><i class="fa-solid fa-check-circle text-success fs-1 opacity-50"></i></div>
+                                    <h6>All Clear!</h6>
+                                    <p class="mb-0 small">There are currently no open invoice match exceptions.</p>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
-{% endblock %}
+{% endblock content %}

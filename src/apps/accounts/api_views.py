@@ -2,8 +2,7 @@ from django.contrib.auth import authenticate, login, logout
 from django.middleware.csrf import get_token
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import ensure_csrf_cookie
-from rest_framework import status, views
-from rest_framework import mixins, viewsets
+from rest_framework import mixins, status, views, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
@@ -23,14 +22,24 @@ class SessionLoginView(views.APIView):
 
         if not email or not password:
             return Response(
-                {"error": {"code": "VALIDATION_ERROR", "message": "Email and password are required."}},
+                {
+                    "error": {
+                        "code": "VALIDATION_ERROR",
+                        "message": "Email and password are required.",
+                    }
+                },
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
         user = authenticate(request, username=email, password=password)
         if user is None:
             return Response(
-                {"error": {"code": "AUTHENTICATION_FAILED", "message": "Invalid email or password."}},
+                {
+                    "error": {
+                        "code": "AUTHENTICATION_FAILED",
+                        "message": "Invalid email or password.",
+                    }
+                },
                 status=status.HTTP_401_UNAUTHORIZED,
             )
 
@@ -43,6 +52,22 @@ class SessionLoginView(views.APIView):
         login(request, user)
         csrf_token = get_token(request)
         serializer = UserSerializer(user)
+
+        from apps.audit.models import AuditLog
+        from apps.audit.services import create_audit_log_service
+
+        create_audit_log_service(
+            actor=user,
+            action=AuditLog.ACTION_LOGIN,
+            target_model="User",
+            target_object_id=str(user.id),
+            new_state={
+                "email": user.email,
+                "role": user.role_code if hasattr(user, "role_code") else None,
+            },
+            ip_address=request.META.get("REMOTE_ADDR"),
+            user_agent=request.META.get("HTTP_USER_AGENT", ""),
+        )
 
         return Response(
             {
@@ -58,6 +83,21 @@ class SessionLogoutView(views.APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, *args, **kwargs):
+        user = request.user
+        if user and user.is_authenticated:
+            from apps.audit.models import AuditLog
+            from apps.audit.services import create_audit_log_service
+
+            create_audit_log_service(
+                actor=user,
+                action=AuditLog.ACTION_LOGOUT,
+                target_model="User",
+                target_object_id=str(user.id),
+                previous_state={"email": user.email},
+                ip_address=request.META.get("REMOTE_ADDR"),
+                user_agent=request.META.get("HTTP_USER_AGENT", ""),
+            )
+
         logout(request)
         return Response({"message": "Logout successful."}, status=status.HTTP_200_OK)
 
@@ -88,4 +128,3 @@ class RoleViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.Gen
 
     def get_queryset(self):
         return get_all_roles()
-

@@ -6,6 +6,7 @@ from django.views.decorators.http import require_POST
 
 from apps.accounts.models import Role
 from apps.audit.models import AuditLog
+
 from .forms import (
     ContractAmendmentForm,
     ContractCreateForm,
@@ -21,7 +22,6 @@ from .selectors import (
     get_legal_dashboard_metrics,
 )
 from .services import (
-    activate_contract_service,
     add_contract_milestone_service,
     add_contract_obligation_service,
     approve_business_service,
@@ -64,6 +64,16 @@ def create_view(request):
     """
     Creates a new Contract in DRAFT state.
     """
+    role_code = getattr(request.user, "role_code", None) or (
+        request.user.role.code if getattr(request.user, "role", None) else None
+    )
+    if role_code == Role.AUDITOR:
+        messages.error(
+            request,
+            "Permission Denied: Compliance Auditors hold strictly read-only permissions and cannot draft contracts.",
+        )
+        return redirect("contracts_list")
+
     if request.method == "POST":
         form = ContractCreateForm(request.POST)
         if form.is_valid():
@@ -144,14 +154,29 @@ def detail_view(request, contract_id):
     return render(request, "pages/contracts/detail.html", context)
 
 
+def _is_auditor(user):
+    role_code = getattr(user, "role_code", None) or (
+        user.role.code if getattr(user, "role", None) else None
+    )
+    return role_code == Role.AUDITOR
+
+
 @login_required(login_url="/login/")
 @require_POST
 def submit_legal_view(request, contract_id):
     contract = get_object_or_404(Contract, id=contract_id)
+    if _is_auditor(request.user):
+        messages.error(
+            request,
+            "Permission Denied: Compliance Auditors hold strictly read-only permissions and cannot modify contracts.",
+        )
+        return redirect("contract_detail", contract_id=contract.id)
     notes = request.POST.get("notes", "")
     try:
         submit_for_legal_review_service(contract=contract, user=request.user, notes=notes)
-        messages.success(request, f"Contract '{contract.contract_number}' submitted for Legal Review.")
+        messages.success(
+            request, f"Contract '{contract.contract_number}' submitted for Legal Review."
+        )
     except ValidationError as e:
         messages.error(request, str(e))
     return redirect("contract_detail", contract_id=contract.id)
@@ -161,11 +186,18 @@ def submit_legal_view(request, contract_id):
 @require_POST
 def legal_approve_view(request, contract_id):
     contract = get_object_or_404(Contract, id=contract_id)
+    if _is_auditor(request.user):
+        messages.error(
+            request,
+            "Permission Denied: Compliance Auditors hold strictly read-only permissions and cannot approve contracts.",
+        )
+        return redirect("contract_detail", contract_id=contract.id)
     notes = request.POST.get("notes", "")
     try:
         approve_legal_review_service(contract=contract, user=request.user, notes=notes)
         messages.success(
-            request, f"Contract '{contract.contract_number}' Legal Review APPROVED. Status moved to Business Approval."
+            request,
+            f"Contract '{contract.contract_number}' Legal Review APPROVED. Status moved to Business Approval.",
         )
     except ValidationError as e:
         messages.error(request, str(e))
@@ -176,6 +208,12 @@ def legal_approve_view(request, contract_id):
 @require_POST
 def legal_reject_view(request, contract_id):
     contract = get_object_or_404(Contract, id=contract_id)
+    if _is_auditor(request.user):
+        messages.error(
+            request,
+            "Permission Denied: Compliance Auditors hold strictly read-only permissions and cannot reject contracts.",
+        )
+        return redirect("contract_detail", contract_id=contract.id)
     reason = request.POST.get("reason", "").strip()
     if not reason:
         messages.error(request, "Rejection reason is required.")
@@ -183,7 +221,8 @@ def legal_reject_view(request, contract_id):
     try:
         reject_legal_review_service(contract=contract, user=request.user, reason=reason)
         messages.warning(
-            request, f"Contract '{contract.contract_number}' Legal Review REJECTED and returned to Draft."
+            request,
+            f"Contract '{contract.contract_number}' Legal Review REJECTED and returned to Draft.",
         )
     except ValidationError as e:
         messages.error(request, str(e))
@@ -194,11 +233,18 @@ def legal_reject_view(request, contract_id):
 @require_POST
 def business_approve_view(request, contract_id):
     contract = get_object_or_404(Contract, id=contract_id)
+    if _is_auditor(request.user):
+        messages.error(
+            request,
+            "Permission Denied: Compliance Auditors hold strictly read-only permissions and cannot approve contracts.",
+        )
+        return redirect("contract_detail", contract_id=contract.id)
     notes = request.POST.get("notes", "")
     try:
         approve_business_service(contract=contract, user=request.user, notes=notes)
         messages.success(
-            request, f"Contract '{contract.contract_number}' Business Approval completed! Contract is now ACTIVE."
+            request,
+            f"Contract '{contract.contract_number}' Business Approval completed! Contract is now ACTIVE.",
         )
     except ValidationError as e:
         messages.error(request, str(e))
@@ -209,6 +255,12 @@ def business_approve_view(request, contract_id):
 @require_POST
 def amend_view(request, contract_id):
     contract = get_object_or_404(Contract, id=contract_id)
+    if _is_auditor(request.user):
+        messages.error(
+            request,
+            "Permission Denied: Compliance Auditors hold strictly read-only permissions and cannot amend contracts.",
+        )
+        return redirect("contract_detail", contract_id=contract.id)
     form = ContractAmendmentForm(request.POST)
     if form.is_valid():
         try:
@@ -317,7 +369,9 @@ def renew_view(request, contract_id):
                 new_value=form.cleaned_data.get("new_value"),
                 notes=form.cleaned_data.get("notes", ""),
             )
-            messages.success(request, f"Contract '{contract.contract_number}' successfully RENEWED.")
+            messages.success(
+                request, f"Contract '{contract.contract_number}' successfully RENEWED."
+            )
         except ValidationError as e:
             messages.error(request, str(e))
     else:

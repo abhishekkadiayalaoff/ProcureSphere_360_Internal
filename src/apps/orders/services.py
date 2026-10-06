@@ -115,7 +115,15 @@ def acknowledge_purchase_order_service(
     po.acknowledged_at = timezone.now()
     po.acknowledged_by = vendor_user
     po.acknowledgement_notes = acknowledgement_notes or po.acknowledgement_notes
-    po.save(update_fields=["status", "acknowledged_at", "acknowledged_by", "acknowledgement_notes", "updated_at"])
+    po.save(
+        update_fields=[
+            "status",
+            "acknowledged_at",
+            "acknowledged_by",
+            "acknowledgement_notes",
+            "updated_at",
+        ]
+    )
 
     AuditLog.objects.create(
         actor=vendor_user,

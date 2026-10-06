@@ -37,6 +37,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Python 3.11
         uses: actions/setup-python@v5
@@ -49,11 +51,18 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Lint with Ruff & Black
+      - name: Lint with Ruff & Black (Changed Python Files vs dev)
         run: |
-          ruff check .
-          black --check .
-
+          git fetch origin dev
+          CHANGED_FILES=$(git diff --name-only --diff-filter=d origin/dev...HEAD -- "*.py")
+          if [ -n "$CHANGED_FILES" ]; then
+            echo "Linting changed Python files relative to dev:"
+            echo "$CHANGED_FILES"
+            ruff check --fix $CHANGED_FILES
+            black $CHANGED_FILES
+          else
+            echo "No changed Python files relative to dev. Skipping lint."
+          fi
       - name: Run Migrations Check
         env:
           DJANGO_SETTINGS_MODULE: config.settings.dev

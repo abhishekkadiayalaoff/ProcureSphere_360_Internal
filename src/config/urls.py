@@ -1,13 +1,15 @@
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
-from django.urls import include, path
+from django.http import JsonResponse
+from django.urls import include, path, re_path
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
 from apps.accounts.api_views import SessionLoginView, SessionLogoutView
 from apps.accounts.views import portal_login_view, portal_logout_view
 
 urlpatterns = [
+    re_path(r"^.*prompts\.json$", lambda request: JsonResponse({})),
     path("admin/logout/", portal_logout_view, name="admin_logout_override"),
     path("admin/", admin.site.urls),
     path("login/", portal_login_view, name="login"),
@@ -24,11 +26,12 @@ urlpatterns = [
     path("", include("apps.sourcing.urls")),
     path("", include("apps.orders.urls")),
     path("", include("apps.receipts.urls")),
-    path("", include("apps.invoices.urls")),
+    path("invoices/", include("apps.invoices.urls")),
     path("", include("apps.contracts.urls")),
     path("", include("apps.scorecards.urls")),
-    path("", include("apps.reports.urls")),
+    path("reports/", include("apps.reports.urls")),
     path("", include("apps.audit.urls")),
+    path("budgets/", include("apps.budgets.urls")),
     # OpenAPI Schema & Swagger Docs
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),

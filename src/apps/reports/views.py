@@ -7,90 +7,57 @@ from apps.reports.services import generate_export_job_service
 
 
 @login_required(login_url="/login/")
-def reports_hub_view(request):
-    """
-    Analytics Reports Hub & Audited Export Generator view.
-    """
-    export_jobs = ExportJob.objects.filter(requested_by=request.user).order_by("-created_at")[:15]
+def dashboard_view(request):
+    jobs = ExportJob.objects.filter(requested_by=request.user).order_by("-created_at")[:20]
 
-    reports_catalog = [
+    reports = [
         {
-            "id": "spend_by_category",
-            "title": "Spend by Category & Department",
-            "desc": "Aggregated spend breakdown across cost centers and categories.",
-            "icon": "fa-chart-pie",
-            "color": "primary",
+            "id": "spend_analytics",
+            "name": "Spend Analytics",
+            "desc": "Spend by cost center and period",
         },
         {
             "id": "pr_aging",
-            "title": "PR Approval Aging & Bottlenecks",
-            "desc": "Requisition cycle times and pending approver bottlenecks.",
-            "icon": "fa-clock",
-            "color": "warning",
+            "name": "PR Approval Aging",
+            "desc": "Requisition cycle times and pending approver bottlenecks",
         },
         {
             "id": "sourcing_cycle",
-            "title": "Sourcing Cycle Time & Bid Metrics",
-            "desc": "RFQ/RFP duration and supplier participation statistics.",
-            "icon": "fa-gavel",
-            "color": "info",
+            "name": "Sourcing Cycle Time",
+            "desc": "RFQ/RFP duration and supplier participation",
         },
         {
-            "id": "invoice_aging",
-            "title": "Invoice Match Exception Aging",
-            "desc": "Open AP match exceptions and price variance aging.",
-            "icon": "fa-receipt",
-            "color": "danger",
+            "id": "invoice_exception_aging",
+            "name": "Match Exception Aging",
+            "desc": "Aging report of open 3-way match exceptions",
         },
         {
             "id": "contract_expiry",
-            "title": "Contract Expiry & Renewal Pipeline",
-            "desc": "Upcoming contract expirations within 30/60/90 days.",
-            "icon": "fa-file-contract",
-            "color": "dark",
+            "name": "Contract Expiry Pipeline",
+            "desc": "Upcoming contract expirations within 30/60/90 days",
         },
         {
             "id": "supplier_scorecard",
-            "title": "Supplier Performance Scorecard Export",
-            "desc": "Comprehensive weighted scorecards export for vendor review.",
-            "icon": "fa-award",
-            "color": "success",
+            "name": "Supplier Scorecard Export",
+            "desc": "Comprehensive weighted scorecards for vendor review",
         },
     ]
 
-    try:
-        return render(
-            request,
-            "reports/reports_hub.html",
-            {
-                "reports_catalog": reports_catalog,
-                "export_jobs": export_jobs,
-            },
-        )
-    except Exception:
-        return render(
-            request,
-            "pages/reports/dashboard.html",
-            {
-                "reports": reports_catalog,
-                "jobs": export_jobs,
-            },
-        )
+    return render(request, "pages/reports/dashboard.html", {"jobs": jobs, "reports": reports})
 
 
-dashboard_view = reports_hub_view
+# Aliases so both URL names work
+reports_hub_view = dashboard_view
 
 
 @login_required(login_url="/login/")
 def generate_view(request):
     if request.method == "POST":
-        report_type = request.POST.get("report_type", "spend_analytics")
+        report_type = request.POST.get("report_type")
         format_type = request.POST.get("format_type", "CSV")
 
         job = ExportJob.objects.create(
-            report_type=report_type,
-            export_format=format_type,
-            requested_by=request.user,
+            report_type=report_type, export_format=format_type, requested_by=request.user
         )
 
         try:

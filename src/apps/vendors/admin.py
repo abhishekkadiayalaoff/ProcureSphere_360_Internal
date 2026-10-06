@@ -1,4 +1,5 @@
 from django.contrib import admin
+
 from .models import Vendor, VendorCategory, VendorContact, VendorDocument, VendorRiskRecord
 
 
@@ -46,7 +47,13 @@ class VendorAdmin(admin.ModelAdmin):
         "created_at",
     )
     list_filter = ("status", "category")
-    search_fields = ("legal_name", "trade_name", "vendor_number", "tax_identification_number", "email")
+    search_fields = (
+        "legal_name",
+        "trade_name",
+        "vendor_number",
+        "tax_identification_number",
+        "email",
+    )
     inlines = [VendorContactInline, VendorDocumentInline, VendorRiskRecordInline]
     readonly_fields = ("created_at", "updated_at")
 
