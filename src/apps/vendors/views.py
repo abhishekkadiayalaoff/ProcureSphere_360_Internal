@@ -4,7 +4,7 @@ from django.shortcuts import render
 from .models import Vendor
 
 
-@login_required(login_url="/admin/login/")
+@login_required(login_url="/login/")
 def vendor_list_view(request):
     """
     Renders the Vendor Master list page.
