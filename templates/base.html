@@ -3,16 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ProcureSphere 360 - {% block title %}Enterprise Procurement ERP{% endblock %}</title>
-    
-    <!-- Google Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+    <title>ProcureSphere 360 - {% block title %}ERP Dashboard{% endblock %}</title>
     
     <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Font Awesome 6 -->
+    <!-- Font Awesome -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
     <!-- Bootstrap Icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
@@ -23,226 +18,225 @@
     <!-- Chart.js 4.4 JS -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
-<body class="app-body">
-
-    <div class="app-wrapper">
-        <!-- Mobile Drawer Backdrop -->
-        <div id="mobileBackdrop" class="mobile-backdrop" onclick="toggleSidebar()"></div>
-
-        {% block sidebar %}
-        <!-- Enterprise Sidebar Navigation -->
-        <aside id="appSidebar" class="app-sidebar">
-            <!-- Sidebar Header Brand -->
-            <div class="app-sidebar-header">
-                <a href="/" class="d-flex align-items-center text-decoration-none">
-                    <div class="brand-icon-box me-2">
-                        <i class="fa-solid fa-cubes-stacked text-cyan fs-5"></i>
-                    </div>
-                    <div>
-                        <div class="fw-bold text-white fs-6 leading-none">ProcureSphere 360</div>
-                        <div class="text-cyan small fw-semibold" style="font-size: 0.65rem; letter-spacing: 0.05em;">ENTERPRISE ERP</div>
-                    </div>
+<body class="bg-light">
+    {% block navbar %}
+    {% if user.is_authenticated and user.role_code == 'STORES_RECEIVER' %}
+    <!-- Stores Receiver Top Header Bar -->
+    <nav class="navbar navbar-dark bg-dark shadow-sm py-2 sticky-top border-bottom border-secondary border-opacity-25">
+        <div class="container-fluid px-3 px-lg-4">
+            <div class="d-flex align-items-center">
+                <!-- Mobile / Tablet Hamburger Button -->
+                <button class="btn btn-outline-light btn-sm d-lg-none me-2 rounded-2" type="button" data-bs-toggle="offcanvas" data-bs-target="#storesSidebar" aria-controls="storesSidebar" title="Toggle Navigation">
+                    <i class="fa-solid fa-bars-staggered"></i>
+                </button>
+                <a href="/" class="navbar-brand d-flex align-items-center text-white me-2 mb-0">
+                    <i class="fa-solid fa-layer-group text-primary fa-xl me-2"></i>
+                    <span class="fs-5 fw-bold">ProcureSphere <span class="text-primary fw-light">360</span></span>
                 </a>
-                <button type="button" class="btn-close btn-close-white d-lg-none" onclick="toggleSidebar()" aria-label="Close"></button>
+                <span class="badge bg-secondary bg-opacity-25 text-white border border-secondary border-opacity-50 px-2 py-1 rounded-pill d-none d-sm-inline-flex align-items-center ms-2" style="font-size: 0.75rem;">
+                    <i class="fa-solid fa-warehouse text-info me-1"></i> Stores & Receiving Desk
+                </span>
             </div>
 
-            <!-- Sidebar Navigation Body -->
-            <div class="app-sidebar-body">
-                <!-- Main Workspace -->
-                <div class="sidebar-section-title">MAIN WORKSPACE</div>
-                <ul class="sidebar-nav">
-                    <li class="sidebar-nav-item">
-                        <a href="/" class="sidebar-nav-link {% if request.path == '/' %}active{% endif %}">
-                            <i class="fa-solid fa-chart-pie"></i>
-                            <span>Dashboard Overview</span>
-                        </a>
-                    </li>
-                    <li class="sidebar-nav-item">
-                        <a href="/approvals/inbox/" class="sidebar-nav-link {% if '/approvals/' in request.path %}active{% endif %}">
-                            <i class="fa-solid fa-square-check"></i>
-                            <span>Approvals Inbox</span>
-                        </a>
-                    </li>
-                </ul>
-
-                <!-- Legal & Governance Workspace -->
-                <div class="sidebar-section-title">LEGAL & GOVERNANCE</div>
-                <ul class="sidebar-nav">
-                    <li class="sidebar-nav-item">
-                        <a href="/contracts/" class="sidebar-nav-link {% if '/contracts/' in request.path and '/create' not in request.path %}active{% endif %}">
-                            <i class="fa-solid fa-scale-balanced"></i>
-                            <span>Contract Register</span>
-                        </a>
-                    </li>
-                    <li class="sidebar-nav-item">
-                        <a href="/contracts/create/" class="sidebar-nav-link {% if '/contracts/create/' in request.path %}active{% endif %}">
-                            <i class="fa-solid fa-plus-circle"></i>
-                            <span>New Contract Draft</span>
-                        </a>
-                    </li>
-                </ul>
-
-                <!-- Core ERP Modules -->
-                <div class="sidebar-section-title">ERP MODULES</div>
-                <ul class="sidebar-nav">
-                    <li class="sidebar-nav-item">
-                        <a href="/requisitions/" class="sidebar-nav-link {% if '/requisitions/' in request.path %}active{% endif %}">
-                            <i class="fa-solid fa-file-invoice-dollar"></i>
-                            <span>Requisitions (PR)</span>
-                        </a>
-                    </li>
-                    <li class="sidebar-nav-item">
-                        <a href="/sourcing-events/" class="sidebar-nav-link {% if '/sourcing' in request.path %}active{% endif %}">
-                            <i class="fa-solid fa-gavel"></i>
-                            <span>Sourcing (RFQ/RFP)</span>
-                        </a>
-                    </li>
-                    <li class="sidebar-nav-item">
-                        <a href="/vendors/" class="sidebar-nav-link {% if '/vendors/' in request.path %}active{% endif %}">
-                            <i class="fa-solid fa-building-user"></i>
-                            <span>Vendor Governance</span>
-                        </a>
-                    </li>
-                    <li class="sidebar-nav-item">
-                        <a href="/purchase-orders/" class="sidebar-nav-link {% if '/purchase-orders/' in request.path %}active{% endif %}">
-                            <i class="fa-solid fa-cart-shopping"></i>
-                            <span>Purchase Orders (PO)</span>
-                        </a>
-                    </li>
-                    <li class="sidebar-nav-item">
-                        <a href="/invoices/" class="sidebar-nav-link {% if '/invoices/' in request.path %}active{% endif %}">
-                            <i class="fa-solid fa-receipt"></i>
-                            <span>Invoices & 3-Way Match</span>
-                        </a>
-                    </li>
-                    <li class="sidebar-nav-item">
-                        <a href="/scorecards/" class="sidebar-nav-link {% if '/scorecards/' in request.path %}active{% endif %}">
-                            <i class="fa-solid fa-award"></i>
-                            <span>Vendor Scorecards</span>
-                        </a>
-                    </li>
-                </ul>
-
-                <!-- Reports & Audit Trail -->
-                <div class="sidebar-section-title">ANALYTICS & SYSTEM</div>
-                <ul class="sidebar-nav">
-                    <li class="sidebar-nav-item">
-                        <a href="/reports/hub/" class="sidebar-nav-link {% if '/reports/' in request.path %}active{% endif %}">
-                            <i class="fa-solid fa-chart-line"></i>
-                            <span>Reports & Analytics</span>
-                        </a>
-                    </li>
-                    {% if user.role_code == 'COMPLIANCE_AUDITOR' or user.role_code == 'SUPER_ADMIN' or user.is_superuser %}
-                    <li class="sidebar-nav-item">
-                        <a href="/audit/logs/" class="sidebar-nav-link {% if '/audit/' in request.path %}active{% endif %}">
-                            <i class="fa-solid fa-shield-halved"></i>
-                            <span>Audit Trail Logs</span>
-                        </a>
-                    </li>
-                    {% endif %}
-                    <li class="sidebar-nav-item">
-                        <a href="/api/docs/" class="sidebar-nav-link" target="_blank">
-                            <i class="fa-solid fa-code"></i>
-                            <span>OpenAPI Docs</span>
-                        </a>
-                    </li>
-                    <li class="sidebar-nav-item">
-                        <a href="/health/" class="sidebar-nav-link" target="_blank">
-                            <i class="fa-solid fa-heart-pulse"></i>
-                            <span>System Health</span>
-                        </a>
-                    </li>
-                </ul>
-            </div>
-
-            <!-- Sidebar User Profile Footer -->
-            <div class="app-sidebar-footer">
-                {% if user.is_authenticated %}
-                <div class="user-profile-mini">
-                    <div class="user-avatar me-2">
-                        {{ user.email|slice:":1"|upper }}
+            <div class="d-flex align-items-center gap-2">
+                <a href="{% url 'orders_list' %}" class="btn btn-primary btn-sm rounded-pill px-3 fw-semibold d-none d-md-inline-flex align-items-center shadow-sm">
+                    <i class="fa-solid fa-plus-circle me-1"></i> Record GRN
+                </a>
+                <div class="d-flex align-items-center px-2 px-sm-3 py-1 bg-secondary bg-opacity-25 rounded-pill border border-secondary border-opacity-50 text-white">
+                    <i class="fa-solid fa-circle-user text-info me-2 fs-5"></i>
+                    <div class="text-start leading-tight me-2 d-none d-sm-block">
+                        <div class="fw-semibold text-white small text-truncate" style="max-width: 150px;">{{ user.email }}</div>
+                        <div class="badge bg-info text-dark rounded-pill" style="font-size: 0.65rem;">STORES_RECEIVER</div>
                     </div>
-                    <div class="overflow-hidden me-auto">
-                        <div class="fw-bold text-white small text-truncate" style="max-width: 130px;">{{ user.email }}</div>
-                        <span class="badge bg-cyan text-dark rounded-pill" style="font-size: 0.65rem;">
-                            {{ user.role_code|default:"SUPER_ADMIN" }}
-                        </span>
-                    </div>
-                    <a href="/logout/" class="btn btn-sm btn-link text-white-50 p-1" title="Sign Out">
-                        <i class="fa-solid fa-arrow-right-from-bracket fs-6"></i>
-                    </a>
                 </div>
-                {% else %}
-                <a href="/login/" class="btn btn-cyan w-100 fw-bold btn-sm py-2 rounded-3">
-                    <i class="fa-solid fa-key me-1"></i> Sign In
+                <a href="/logout/" class="btn btn-outline-light btn-sm rounded-pill px-3" title="Sign Out">
+                    <i class="fa-solid fa-arrow-right-from-bracket me-1"></i> <span class="d-none d-sm-inline">Sign Out</span>
                 </a>
-                {% endif %}
+            </div>
+        </div>
+    </nav>
+    {% else %}
+    <!-- Top Navigation Bar for other roles -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm py-2">
+        <div class="container-fluid px-4">
+            <a href="/" class="navbar-brand d-flex align-items-center text-white me-4">
+                <i class="fa-solid fa-layer-group text-primary fa-xl me-2"></i>
+                <span class="fs-5 fw-bold">ProcureSphere 360</span>
+            </a>
+            <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto ms-lg-2">
+                    <li class="nav-item">
+                        <a class="nav-link px-3 active d-flex align-items-center" href="/">
+                            <i class="fa-solid fa-chart-pie me-2"></i> Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle px-3 d-flex align-items-center text-white" href="#" role="button" data-bs-toggle="dropdown">
+                            <i class="fa-solid fa-cubes me-2"></i> ERP Modules
+                        </a>
+                        <ul class="dropdown-menu shadow-lg border-0">
+                            <li><a class="dropdown-item py-2" href="/requisitions/"><i class="fa-solid fa-file-invoice-dollar text-primary me-2"></i> Requisitions (PR)</a></li>
+                            <li><a class="dropdown-item py-2" href="/approvals/inbox/"><i class="fa-solid fa-square-check text-warning me-2"></i> Approvals Inbox</a></li>
+                            <li><a class="dropdown-item py-2" href="/sourcing-events/"><i class="fa-solid fa-gavel text-info me-2"></i> Sourcing (RFQ/RFP)</a></li>
+                            <li><a class="dropdown-item py-2" href="/vendors/"><i class="fa-solid fa-building-user text-success me-2"></i> Vendor Governance</a></li>
+                            <li><a class="dropdown-item py-2" href="/purchase-orders/"><i class="fa-solid fa-cart-shopping text-cyan me-2"></i> Purchase Orders (PO)</a></li>
+                            <li><a class="dropdown-item py-2" href="/invoices/"><i class="fa-solid fa-receipt text-danger me-2"></i> Invoices & 3-Way Match</a></li>
+                            <li><a class="dropdown-item py-2" href="/contracts/"><i class="fa-solid fa-file-contract text-secondary me-2"></i> Contracts & SLA</a></li>
+                            <li><a class="dropdown-item py-2" href="/scorecards/"><i class="fa-solid fa-award text-success me-2"></i> Vendor Scorecards</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item py-2" href="/reports/hub/"><i class="fa-solid fa-chart-line text-primary me-2"></i> Reports & Analytics</a></li>
+                            <li><a class="dropdown-item py-2" href="/audit/logs/"><i class="fa-solid fa-shield-halved text-dark me-2"></i> Audit Trail Log</a></li>
+                        </ul>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link px-3 d-flex align-items-center text-white" href="/api/docs/">
+                            <i class="fa-solid fa-code me-2"></i> OpenAPI
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link px-3 d-flex align-items-center text-white" href="/health/">
+                            <i class="fa-solid fa-heart-pulse me-2"></i> Health
+                        </a>
+                    </li>
+                </ul>
+
+                <div class="d-flex align-items-center">
+                    {% if user.is_authenticated %}
+                        <div class="me-3 d-flex align-items-center px-3 py-1 bg-secondary bg-opacity-25 rounded-pill border border-secondary text-white">
+                            <i class="fa-solid fa-circle-user text-info me-2 fs-5"></i>
+                            <div class="text-start leading-tight me-2">
+                                <div class="fw-semibold text-white small">{{ user.email }}</div>
+                                <div class="badge bg-info text-dark rounded-pill" style="font-size: 0.65rem;">{{ user.role_code|default:"SUPER_ADMIN" }}</div>
+                            </div>
+                        </div>
+                        <a href="/logout/" class="btn btn-outline-light btn-sm rounded-pill px-3">
+                            <i class="fa-solid fa-arrow-right-from-bracket me-1"></i> Sign Out
+                        </a>
+                    {% else %}
+                        <a href="/login/" class="btn btn-primary btn-sm rounded-pill px-4 fw-semibold">
+                            <i class="fa-solid fa-key me-1"></i> Sign In
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </nav>
+    {% endif %}
+    {% endblock navbar %}
+
+    {% block layout %}
+    <div class="{% if user.is_authenticated and user.role_code == 'STORES_RECEIVER' %}d-flex min-vh-100 position-relative{% else %}container-fluid p-0{% endif %}">
+        {% if user.is_authenticated and user.role_code == 'STORES_RECEIVER' %}
+        <!-- Stores Receiver Desktop Sidebar (>= 992px) -->
+        <aside class="stores-sidebar bg-dark text-white d-none d-lg-flex flex-column border-end border-secondary border-opacity-25 shadow-sm" style="width: 260px; flex-shrink: 0; min-height: calc(100vh - 56px);">
+            <div class="d-flex flex-column flex-grow-1 px-3 pt-3 text-white">
+                <ul class="nav nav-pills flex-column gap-1 w-100" id="storesSidebarMenu">
+                    <li class="nav-item">
+                        <div class="text-uppercase text-secondary text-opacity-75 fw-bold px-2 pt-2 pb-1" style="font-size: 0.68rem; letter-spacing: 0.08em;">Workspace</div>
+                        <a href="/" class="nav-link rounded-3 d-flex align-items-center py-2 px-3 {% if request.path == '/' %}active bg-primary text-white fw-bold shadow-sm{% else %}text-light text-opacity-75 hover-link{% endif %}">
+                            <i class="fa-solid fa-chart-pie me-2 text-center" style="width: 20px;"></i> Dashboard
+                        </a>
+                    </li>
+
+                    <li class="nav-item mt-2">
+                        <div class="text-uppercase text-secondary text-opacity-75 fw-bold px-2 pt-2 pb-1" style="font-size: 0.68rem; letter-spacing: 0.08em;">Receiving Operations</div>
+                        <a href="{% url 'orders_list' %}" class="nav-link rounded-3 d-flex align-items-center py-2 px-3 mb-1 {% if '/purchase-orders/' in request.path %}active bg-primary text-white fw-bold shadow-sm{% else %}text-light text-opacity-75 hover-link{% endif %}">
+                            <i class="fa-solid fa-truck-ramp-box me-2 text-center" style="width: 20px;"></i> Pending Deliveries
+                        </a>
+                        <a href="{% url 'receipts_list' %}" class="nav-link rounded-3 d-flex align-items-center py-2 px-3 {% if '/receipts/' in request.path and not 'status=' in request.get_full_path %}active bg-primary text-white fw-bold shadow-sm{% else %}text-light text-opacity-75 hover-link{% endif %}">
+                            <i class="fa-solid fa-boxes-stacked me-2 text-center" style="width: 20px;"></i> Goods Receipts (GRN)
+                        </a>
+                    </li>
+
+                    <li class="nav-item mt-2">
+                        <div class="text-uppercase text-secondary text-opacity-75 fw-bold px-2 pt-2 pb-1" style="font-size: 0.68rem; letter-spacing: 0.08em;">Quality & Inventory</div>
+                        <a href="{% url 'receipts_list' %}?status=PENDING" class="nav-link rounded-3 d-flex align-items-center py-2 px-3 mb-1 {% if 'status=PENDING' in request.get_full_path %}active bg-warning text-dark fw-bold shadow-sm{% else %}text-light text-opacity-75 hover-link{% endif %}">
+                            <i class="fa-solid fa-microscope me-2 text-warning text-center" style="width: 20px;"></i> Quality Inspection
+                        </a>
+                        <a href="{% url 'receipts_list' %}?status=PASSED" class="nav-link rounded-3 d-flex align-items-center py-2 px-3 mb-1 {% if 'status=PASSED' in request.get_full_path %}active bg-success text-white fw-bold shadow-sm{% else %}text-light text-opacity-75 hover-link{% endif %}">
+                            <i class="fa-solid fa-dolly me-2 text-success text-center" style="width: 20px;"></i> Stock Handoff
+                        </a>
+                        <a href="{% url 'receipts_list' %}?status=FAILED" class="nav-link rounded-3 d-flex align-items-center py-2 px-3 {% if 'status=FAILED' in request.get_full_path %}active bg-danger text-white fw-bold shadow-sm{% else %}text-light text-opacity-75 hover-link{% endif %}">
+                            <i class="fa-solid fa-ban me-2 text-danger text-center" style="width: 20px;"></i> Rejections & Returns
+                        </a>
+                    </li>
+                </ul>
+
+                <div class="mt-auto pt-4 pb-3 border-top border-secondary border-opacity-25">
+                    <div class="d-flex align-items-center px-2 py-1 text-secondary small">
+                        <i class="fa-solid fa-circle-check text-success me-2"></i>
+                        <span>Receiving Station Active</span>
+                    </div>
+                </div>
             </div>
         </aside>
-        {% endblock sidebar %}
 
-        <!-- Main Wrapper (Topbar + Page Content) -->
-        <div class="app-main-wrapper">
-            <!-- Top Action Bar -->
-            <header class="app-topbar">
-                <div class="d-flex align-items-center">
-                    <button type="button" class="topbar-toggle-btn me-3" onclick="toggleSidebar()" title="Toggle Menu">
-                        <i class="fa-solid fa-bars fs-5"></i>
-                    </button>
-                    <div>
-                        <h5 class="fw-bold text-dark mb-0 font-heading">{% block page_heading %}Legal & Governance Workspace{% endblock %}</h5>
-                        <div class="text-muted small d-none d-md-block" style="font-size: 0.75rem;">
-                            ProcureSphere 360 &bull; Enterprise Source-to-Pay Platform
+        <!-- Stores Receiver Offcanvas Mobile Sidebar (< 992px) -->
+        <div class="offcanvas offcanvas-start bg-dark text-white d-lg-none" tabindex="-1" id="storesSidebar" aria-labelledby="storesSidebarLabel" style="width: 280px;">
+            <div class="offcanvas-header border-bottom border-secondary border-opacity-25 py-3">
+                <div class="d-flex align-items-center" id="storesSidebarLabel">
+                    <i class="fa-solid fa-layer-group text-primary fa-xl me-2"></i>
+                    <span class="fs-6 fw-bold text-white">ProcureSphere <span class="text-primary fw-light">360</span></span>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+            </div>
+            <div class="offcanvas-body p-3 d-flex flex-column">
+                <ul class="nav nav-pills flex-column gap-1 w-100">
+                    <li class="nav-item">
+                        <div class="text-uppercase text-secondary text-opacity-75 fw-bold px-2 pt-1 pb-1" style="font-size: 0.68rem; letter-spacing: 0.08em;">Workspace</div>
+                        <a href="/" class="nav-link rounded-3 d-flex align-items-center py-2 px-3 {% if request.path == '/' %}active bg-primary text-white fw-bold{% else %}text-light text-opacity-75{% endif %}">
+                            <i class="fa-solid fa-chart-pie me-2 text-center" style="width: 20px;"></i> Dashboard
+                        </a>
+                    </li>
+
+                    <li class="nav-item mt-2">
+                        <div class="text-uppercase text-secondary text-opacity-75 fw-bold px-2 pt-1 pb-1" style="font-size: 0.68rem; letter-spacing: 0.08em;">Receiving Operations</div>
+                        <a href="{% url 'orders_list' %}" class="nav-link rounded-3 d-flex align-items-center py-2 px-3 mb-1 {% if '/purchase-orders/' in request.path %}active bg-primary text-white fw-bold{% else %}text-light text-opacity-75{% endif %}">
+                            <i class="fa-solid fa-truck-ramp-box me-2 text-center" style="width: 20px;"></i> Pending Deliveries
+                        </a>
+                        <a href="{% url 'receipts_list' %}" class="nav-link rounded-3 d-flex align-items-center py-2 px-3 {% if '/receipts/' in request.path and not 'status=' in request.get_full_path %}active bg-primary text-white fw-bold{% else %}text-light text-opacity-75{% endif %}">
+                            <i class="fa-solid fa-boxes-stacked me-2 text-center" style="width: 20px;"></i> Goods Receipts (GRN)
+                        </a>
+                    </li>
+
+                    <li class="nav-item mt-2">
+                        <div class="text-uppercase text-secondary text-opacity-75 fw-bold px-2 pt-1 pb-1" style="font-size: 0.68rem; letter-spacing: 0.08em;">Quality & Inventory</div>
+                        <a href="{% url 'receipts_list' %}?status=PENDING" class="nav-link rounded-3 d-flex align-items-center py-2 px-3 mb-1 {% if 'status=PENDING' in request.get_full_path %}active bg-warning text-dark fw-bold{% else %}text-light text-opacity-75{% endif %}">
+                            <i class="fa-solid fa-microscope me-2 text-warning text-center" style="width: 20px;"></i> Quality Inspection
+                        </a>
+                        <a href="{% url 'receipts_list' %}?status=PASSED" class="nav-link rounded-3 d-flex align-items-center py-2 px-3 mb-1 {% if 'status=PASSED' in request.get_full_path %}active bg-success text-white fw-bold{% else %}text-light text-opacity-75{% endif %}">
+                            <i class="fa-solid fa-dolly me-2 text-success text-center" style="width: 20px;"></i> Stock Handoff
+                        </a>
+                        <a href="{% url 'receipts_list' %}?status=FAILED" class="nav-link rounded-3 d-flex align-items-center py-2 px-3 {% if 'status=FAILED' in request.get_full_path %}active bg-danger text-white fw-bold{% else %}text-light text-opacity-75{% endif %}">
+                            <i class="fa-solid fa-ban me-2 text-danger text-center" style="width: 20px;"></i> Rejections & Returns
+                        </a>
+                    </li>
+                </ul>
+
+                <div class="mt-auto pt-4 border-top border-secondary border-opacity-25">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div class="text-start leading-tight">
+                            <div class="fw-semibold text-white small text-truncate" style="max-width: 140px;">{{ user.email }}</div>
+                            <div class="badge bg-info text-dark rounded-pill" style="font-size: 0.65rem;">STORES_RECEIVER</div>
                         </div>
+                        <a href="/logout/" class="btn btn-outline-light btn-sm rounded-pill px-3">
+                            <i class="fa-solid fa-arrow-right-from-bracket"></i>
+                        </a>
                     </div>
                 </div>
-
-                <div class="d-flex align-items-center gap-2">
-                    <!-- Health Indicator -->
-                    <div class="d-none d-sm-flex align-items-center bg-light border border-slate-200 rounded-pill px-3 py-1 me-2">
-                        <span class="spinner-grow spinner-grow-sm text-success me-2" role="status" style="width: 0.5rem; height: 0.5rem;"></span>
-                        <span class="small fw-semibold text-secondary" style="font-size: 0.75rem;">System Online</span>
-                    </div>
-
-                    <!-- Quick New Action Button -->
-                    {% if '/contracts' in request.path or user.role_code == 'LEGAL_MGR' %}
-                    <a href="/contracts/create/" class="btn btn-primary btn-sm rounded-pill fw-bold px-3">
-                        <i class="fa-solid fa-plus me-1"></i> New Contract
-                    </a>
-                    {% endif %}
-
-                    {% if user.is_authenticated %}
-                    <!-- User Dropdown Menu -->
-                    <div class="dropdown ms-2">
-                        <button class="btn btn-outline-secondary btn-sm rounded-circle p-0" type="button" data-bs-toggle="dropdown" aria-expanded="false" style="width: 38px; height: 38px;">
-                            <i class="fa-solid fa-user-gear text-dark fs-6"></i>
-                        </button>
-                        <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 rounded-3 mt-2">
-                            <li class="px-3 py-2 border-bottom">
-                                <div class="fw-bold text-dark small">{{ user.email }}</div>
-                                <div class="text-muted small" style="font-size: 0.72rem;">Role: {{ user.role_code|default:"SUPER_ADMIN" }}</div>
-                            </li>
-                            <li><a class="dropdown-item py-2 small" href="/contracts/"><i class="fa-solid fa-scale-balanced me-2 text-primary"></i> Contract Register</a></li>
-                            <li><a class="dropdown-item py-2 small" href="/approvals/inbox/"><i class="fa-solid fa-square-check me-2 text-warning"></i> Approvals Inbox</a></li>
-                            <li><a class="dropdown-item py-2 small" href="/audit/logs/"><i class="fa-solid fa-shield-halved me-2 text-dark"></i> Audit Trail Log</a></li>
-                            <li><hr class="dropdown-divider"></li>
-                            <li>
-                                <a class="dropdown-item py-2 small text-danger fw-bold" href="/logout/">
-                                    <i class="fa-solid fa-arrow-right-from-bracket me-2"></i> Sign Out
-                                </a>
-                            </li>
-                        </ul>
-                    </div>
-                    {% endif %}
-                </div>
-            </header>
-
-            <!-- Main Page Content -->
-            <main class="app-main-content">
-                {% block content %}{% endblock %}
-            </main>
+            </div>
         </div>
+        {% endif %}
+
+        <!-- Main Page Content Area -->
+        <main class="{% if user.is_authenticated and user.role_code == 'STORES_RECEIVER' %}flex-grow-1 p-3 p-md-4 p-xl-4 overflow-auto bg-light{% else %}container-fluid p-4 overflow-auto{% endif %}" style="min-width: 0;">
+            {% block content %}{% endblock %}
+        </main>
     </div>
+    {% endblock layout %}
     
     <!-- HTMX Modal Container -->
     <div id="modal-container" class="modal fade" tabindex="-1">
@@ -263,19 +257,6 @@
                 event.detail.headers['X-CSRFToken'] = csrfToken[1];
             }
         });
-
-        // Mobile & Desktop Sidebar Toggle Functionality
-        function toggleSidebar() {
-            const sidebar = document.getElementById('appSidebar');
-            const backdrop = document.getElementById('mobileBackdrop');
-            if (sidebar) {
-                sidebar.classList.toggle('show-mobile');
-            }
-            if (backdrop) {
-                backdrop.classList.toggle('show');
-            }
-        }
     </script>
 </body>
 </html>
-
