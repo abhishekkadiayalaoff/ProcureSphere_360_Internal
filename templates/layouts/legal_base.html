@@ -10,10 +10,10 @@
     .legal-layout-container {
         display: flex;
         min-height: 100vh;
-        width: 100vw;
+        width: 100%;
+        max-width: 100vw;
         overflow-x: hidden;
         background-color: #F8FAFC;
-        zoom: 0.82; /* Renders default 100% screen size with exact 75% compact executive density */
     }
 
     /* Legal Dedicated Sidebar */
@@ -119,7 +119,8 @@
         display: flex;
         flex-direction: column;
         min-height: 100vh;
-        width: calc(100vw - 240px);
+        width: calc(100% - 240px);
+        max-width: calc(100vw - 240px);
         background-color: #F8FAFC;
     }
 
@@ -139,8 +140,11 @@
 
     .legal-main-content {
         flex: 1;
-        padding: 1rem 1.25rem;
+        padding: 0.85rem 1.15rem;
         overflow-y: auto;
+        max-width: 1600px;
+        width: 100%;
+        margin: 0 auto;
     }
 
     /* Compact 75% Density Sizing Rules for Legal Dashboard */
@@ -204,17 +208,55 @@
         font-size: 0.88rem;
     }
 
-    /* Mobile Sidebar & Backdrop */
+    /* Responsive Breakpoints & Fluid Screen Fitting */
+    @media (min-width: 1400px) {
+        .legal-compact-workspace {
+            font-size: 0.82rem;
+        }
+        .legal-main-content {
+            padding: 1rem 1.5rem;
+        }
+    }
+
+    @media (max-width: 1399.98px) {
+        .legal-compact-workspace {
+            font-size: 0.8rem;
+        }
+        .legal-compact-workspace .stat-card {
+            padding: 0.65rem 0.75rem;
+        }
+        .legal-compact-workspace .metric-value {
+            font-size: 1.25rem !important;
+        }
+    }
+
     @media (max-width: 991.98px) {
         .legal-sidebar {
             transform: translateX(-100%);
+            width: 250px;
         }
         .legal-sidebar.show-mobile {
             transform: translateX(0);
         }
         .legal-main-wrapper {
             margin-left: 0;
-            width: 100vw;
+            width: 100%;
+            max-width: 100vw;
+        }
+        .legal-topbar {
+            padding: 0 0.85rem;
+        }
+        .legal-main-content {
+            padding: 0.75rem 0.85rem;
+        }
+    }
+
+    @media (max-width: 575.98px) {
+        .legal-compact-workspace .metric-value {
+            font-size: 1.15rem !important;
+        }
+        .legal-topbar h6 {
+            font-size: 0.85rem !important;
         }
     }
 
