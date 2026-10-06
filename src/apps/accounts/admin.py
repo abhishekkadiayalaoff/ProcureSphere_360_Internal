@@ -1,3 +1,6 @@
+Replace `src/apps/accounts/admin.py` with:
+
+```python
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 
@@ -18,20 +21,48 @@ class UserAdmin(BaseUserAdmin):
         "last_name",
         "role",
         "department",
+        "vendor",
         "is_staff",
+        "is_superuser",
         "is_active",
     )
-    list_filter = ("role", "is_staff", "is_superuser", "is_active", "department")
+    list_filter = (
+        "role",
+        "is_staff",
+        "is_superuser",
+        "is_active",
+        "department",
+    )
     search_fields = ("email", "first_name", "last_name")
     ordering = ("email",)
 
     fieldsets = (
         (None, {"fields": ("email", "password")}),
-        ("Personal info", {"fields": ("first_name", "last_name", "phone_number")}),
-        ("Scoping relations", {"fields": ("role", "department", "vendor")}),
+        (
+            "Personal info",
+            {"fields": ("first_name", "last_name", "phone_number")},
+        ),
+        (
+            "Organization & Scoping",
+            {"fields": ("role", "department", "vendor")},
+        ),
         (
             "Permissions",
-            {"fields": ("is_active", "is_staff", "is_superuser", "groups", "user_permissions")},
+            {
+                "fields": (
+                    "is_active",
+                    "is_staff",
+                    "is_superuser",
+                    "groups",
+                    "user_permissions",
+                )
+            },
         ),
-        ("Important dates", {"fields": ("last_login", "date_joined")}),
+        (
+            "Important dates",
+            {"fields": ("last_login", "date_joined")},
+        ),
     )
+```
+
+Paste this into **GitHub’s conflict editor**, then click **Mark as resolved**.

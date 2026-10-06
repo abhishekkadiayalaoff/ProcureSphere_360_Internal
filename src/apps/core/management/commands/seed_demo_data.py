@@ -139,6 +139,11 @@ class Command(BaseCommand):
             organization=org, code="OPS", defaults={"name": "Global Operations"}
         )
 
+        approver.department = dept_it
+        approver.save(update_fields=["department"])
+        requester.department = dept_it
+        requester.save(update_fields=["department"])
+
         cost_center, _ = CostCenter.objects.get_or_create(
             department=dept_it,
             code="CC-IT-101",
