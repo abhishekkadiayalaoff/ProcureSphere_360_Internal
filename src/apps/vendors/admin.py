@@ -42,6 +42,7 @@ class VendorAdmin(admin.ModelAdmin):
         "category",
         "status",
         "email",
+        "phone",
         "created_at",
     )
     list_filter = ("status", "category")

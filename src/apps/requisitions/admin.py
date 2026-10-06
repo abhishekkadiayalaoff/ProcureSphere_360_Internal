@@ -8,11 +8,16 @@ class PRLineInline(admin.TabularInline):
     extra = 0
 
 
+class PRAttachmentInline(admin.TabularInline):
+    model = PRAttachment
+    extra = 1
+
+
 class PurchaseRequisitionAdmin(RoleBasedModelAdmin):
-    list_display = ("pr_number", "title", "requester", "department", "total_amount", "status", "created_at")
-    list_filter = ("status", "department")
+    list_display = ("pr_number", "title", "requester", "department", "cost_center", "total_amount", "status", "created_at")
+    list_filter = ("status", "department", "cost_center")
     search_fields = ("pr_number", "title", "requester__email")
-    inlines = [PRLineInline]
+    inlines = [PRLineInline, PRAttachmentInline]
 
 
 register_model(PurchaseRequisition, PurchaseRequisitionAdmin)

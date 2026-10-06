@@ -14,7 +14,19 @@ class GoodsReceiptAdmin(RoleBasedModelAdmin):
     inlines = [ReceiptLineInline]
 
 
+class InspectionRecordAdmin(RoleBasedModelAdmin):
+    list_display = ("receipt_line", "inspected_by", "passed", "created_at")
+    list_filter = ("passed",)
+    search_fields = ("inspection_notes", "inspected_by__email")
+
+
+class RejectionRecordAdmin(RoleBasedModelAdmin):
+    list_display = ("receipt_line", "rejected_quantity", "returned_to_vendor", "created_at")
+    list_filter = ("returned_to_vendor",)
+    search_fields = ("rejection_reason",)
+
+
 register_model(GoodsReceipt, GoodsReceiptAdmin)
 register_model(ReceiptLine)
-register_model(InspectionRecord)
-register_model(RejectionRecord)
+register_model(InspectionRecord, InspectionRecordAdmin)
+register_model(RejectionRecord, RejectionRecordAdmin)

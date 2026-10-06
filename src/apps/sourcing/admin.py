@@ -19,7 +19,7 @@ class BidInviteInline(admin.TabularInline):
 
 @admin.register(SourcingEvent)
 class SourcingEventAdmin(admin.ModelAdmin):
-    list_display = ("event_number", "title", "event_type", "status", "bid_start_date", "bid_end_date", "is_sealed")
+    list_display = ("event_number", "title", "event_type", "requisition", "status", "bid_start_date", "bid_end_date", "is_sealed")
     list_filter = ("event_type", "status", "is_sealed")
     search_fields = ("event_number", "title", "description")
     inlines = [BidInviteInline]
@@ -43,8 +43,8 @@ class BidAttachmentInline(admin.TabularInline):
 
 @admin.register(VendorBid)
 class VendorBidAdmin(admin.ModelAdmin):
-    list_display = ("bid_number", "event", "vendor", "version", "status", "total_bid_amount", "submitted_at")
-    list_filter = ("status", "version")
+    list_display = ("bid_number", "event", "vendor", "version", "status", "total_bid_amount", "submitted_at", "created_at")
+    list_filter = ("status", "version", "event")
     search_fields = ("bid_number", "event__event_number", "vendor__legal_name")
     inlines = [BidLineInline, BidVersionInline, BidAttachmentInline]
 
@@ -65,4 +65,4 @@ class BidEvaluationAdmin(admin.ModelAdmin):
 @admin.register(AwardDecision)
 class AwardDecisionAdmin(admin.ModelAdmin):
     list_display = ("event", "winning_bid", "approved_by", "created_at")
-    search_fields = ("event__event_number", "winning_bid__bid_number")
+    search_fields = ("event__event_number", "winning_bid__bid_number", "award_reason")

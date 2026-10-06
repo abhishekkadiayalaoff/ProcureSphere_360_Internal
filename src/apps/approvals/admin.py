@@ -23,9 +23,10 @@ class ApprovalStepAdmin(admin.ModelAdmin):
 
 @admin.register(ApprovalAction)
 class ApprovalActionAdmin(admin.ModelAdmin):
-    list_display = ("target_model_name", "target_object_id", "actor", "action", "comments", "created_at")
+    list_display = ("target_model_name", "target_object_id", "actor", "action", "previous_state", "new_state", "comments", "created_at")
     list_filter = ("action", "target_model_name")
-    search_fields = ("actor__email", "target_model_name", "target_object_id")
+    search_fields = ("actor__email", "target_model_name", "target_object_id", "comments")
+    readonly_fields = ("created_at", "updated_at")
 
 
 @admin.register(ApprovalDelegate)

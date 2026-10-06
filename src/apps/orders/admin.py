@@ -10,7 +10,7 @@ class POLineInline(admin.TabularInline):
 class POAmendmentInline(admin.TabularInline):
     model = POAmendment
     extra = 0
-    readonly_fields = ("amendment_number", "reason", "created_at")
+    readonly_fields = ("amendment_number", "reason", "created_at", "previous_version_snapshot")
 
 
 class DeliveryScheduleInline(admin.TabularInline):
@@ -20,8 +20,8 @@ class DeliveryScheduleInline(admin.TabularInline):
 
 @admin.register(PurchaseOrder)
 class PurchaseOrderAdmin(admin.ModelAdmin):
-    list_display = ("po_number", "vendor", "version", "status", "total_amount", "created_at", "acknowledged_at")
-    list_filter = ("status", "version")
+    list_display = ("po_number", "vendor", "version", "requisition", "cost_center", "status", "total_amount", "created_at", "acknowledged_at")
+    list_filter = ("status", "version", "cost_center")
     search_fields = ("po_number", "vendor__legal_name")
     inlines = [POLineInline, DeliveryScheduleInline, POAmendmentInline]
     readonly_fields = ("created_at", "updated_at")

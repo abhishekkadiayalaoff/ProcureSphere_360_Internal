@@ -12,7 +12,7 @@ class RoleAdmin(admin.ModelAdmin):
 
 @admin.register(User)
 class UserAdmin(BaseUserAdmin):
-    list_display = ("email", "first_name", "last_name", "role", "department", "is_staff", "is_active")
+    list_display = ("email", "first_name", "last_name", "role", "department", "vendor", "is_staff", "is_superuser", "is_active")
     list_filter = ("role", "is_staff", "is_superuser", "is_active", "department")
     search_fields = ("email", "first_name", "last_name")
     ordering = ("email",)
@@ -20,7 +20,7 @@ class UserAdmin(BaseUserAdmin):
     fieldsets = (
         (None, {"fields": ("email", "password")}),
         ("Personal info", {"fields": ("first_name", "last_name", "phone_number")}),
-        ("Scoping relations", {"fields": ("role", "department", "vendor")}),
+        ("Organization & Scoping", {"fields": ("role", "department", "vendor")}),
         ("Permissions", {"fields": ("is_active", "is_staff", "is_superuser", "groups", "user_permissions")}),
         ("Important dates", {"fields": ("last_login", "date_joined")}),
     )
