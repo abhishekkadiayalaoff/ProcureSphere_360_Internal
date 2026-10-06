@@ -1,35 +1,15 @@
-from decimal import Decimal
 
 from django.conf import settings
-from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.db import connection
-from django.db.models import Avg, Sum
 from django.http import JsonResponse
 from django.shortcuts import render
-from django.utils import timezone
 from redis import Redis
 from rest_framework.permissions import AllowAny
 from rest_framework.views import APIView
 
 from apps.accounts.models import Role
-from apps.audit.models import AuditLog
-from apps.budgets.models import Budget, SpendLedger
-from apps.contracts.models import Contract
-from apps.invoices.models import MatchException, SupplierInvoice
-from apps.orders.models import PurchaseOrder
-from apps.reports.services import (
-    get_contract_expiry_report,
-    get_invoice_exception_aging_report,
-    get_po_status_report,
-    get_pr_aging_report,
-    get_spend_analytics_report,
-    get_supplier_performance_report,
-)
 from apps.requisitions.models import PurchaseRequisition
-from apps.scorecards.models import VendorScorecard
-from apps.sourcing.models import SourcingEvent
-from apps.vendors.models import Vendor
 
 
 def health_check_view(request):
@@ -94,3 +74,8 @@ def home_view(request):
                 "approved_prs": my_prs.filter(status="APPROVED").count(),
             },
             "my_recent_prs": my_prs.order_by("-created_at")[:10],
+        }
+        return render(request, "pages/dashboards/requester_dashboard.html", context)
+
+    # Fallback for all other roles
+    return render(request, "pages/dashboards/requester_dashboard.html")

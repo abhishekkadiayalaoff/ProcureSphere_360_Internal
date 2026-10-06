@@ -4,7 +4,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect, render
 
-from apps.invoices.models import MatchException, SupplierInvoice
+from apps.invoices.models import MatchException, MatchTolerancePolicy, SupplierInvoice
 from apps.invoices.services import (
     create_supplier_invoice_service,
     mark_invoice_paid_service,
@@ -19,6 +19,31 @@ from apps.vendors.models import Vendor
 def list_view(request):
     items = SupplierInvoice.objects.all().order_by("-created_at")
     return render(request, "pages/invoices/list.html", {"items": items})
+
+
+@login_required(login_url="/login/")
+def tolerance_settings_view(request):
+    policy = MatchTolerancePolicy.get_current()
+    if request.method == "POST":
+        try:
+            # HTML input gives percentage (e.g., 5.5 for 5.5%), convert to decimal 0.055
+            price_pct = Decimal(request.POST.get("price_tolerance_pct", "5.00")) / Decimal("100")
+            qty_pct = Decimal(request.POST.get("qty_tolerance_pct", "5.00")) / Decimal("100")
+            policy.price_tolerance_pct = price_pct
+            policy.qty_tolerance_pct = qty_pct
+            policy.save()
+            messages.success(request, "Tolerance settings updated successfully.")
+            return redirect("tolerance_settings")
+        except Exception:
+            messages.error(request, "Invalid input for tolerances.")
+
+    return render(request, "pages/invoices/settings.html", {"policy": policy})
+
+
+@login_required(login_url="/login/")
+def invoice_detail_view(request, invoice_id):
+    invoice = get_object_or_404(SupplierInvoice, id=invoice_id)
+    return render(request, "pages/invoices/detail.html", {"invoice": invoice})
 
 
 @login_required(login_url="/login/")

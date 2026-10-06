@@ -95,14 +95,21 @@ def create_supplier_invoice_service(
 def run_3_way_match_service(
     *,
     invoice: SupplierInvoice,
-    price_tolerance_pct: Decimal = Decimal("0.05"),
-    qty_tolerance_pct: Decimal = Decimal("0.05"),
+    price_tolerance_pct: Decimal = None,
+    qty_tolerance_pct: Decimal = None,
     user=None,
 ) -> tuple[SupplierInvoice, list[MatchException]]:
     """
     Executes automated 3-way match: PO line vs Goods Receipt line vs Supplier Invoice line.
     Generates explicit MatchException records if variance exceeds tolerance thresholds.
     """
+    from apps.invoices.models import MatchTolerancePolicy
+    policy = MatchTolerancePolicy.get_current()
+    if price_tolerance_pct is None:
+        price_tolerance_pct = policy.price_tolerance_pct
+    if qty_tolerance_pct is None:
+        qty_tolerance_pct = policy.qty_tolerance_pct
+
     invoice.status = SupplierInvoice.STATUS_MATCHING
     invoice.save(update_fields=["status", "updated_at"])
 

@@ -9,6 +9,7 @@ from apps.approvals.models import ApprovalAction, ApprovalPolicy
 from apps.approvals.services import evaluate_approval_chain, record_approval_action_service
 from apps.audit.models import AuditLog
 from apps.budgets.services import (
+    BudgetOverrunException,
     check_and_reserve_budget_service,
     validate_budget_availability_service,
 )
@@ -115,9 +116,6 @@ def submit_purchase_requisition_service(
     if requisition.total_amount <= Decimal("0.00"):
         raise ValidationError("Requisition total amount must be greater than zero.")
 
-    # Execute budget reservation check
-    check_and_reserve_budget_service(requisition=requisition, requested_by_user=user)
-
     # Evaluate approval policy
     evaluate_approval_chain(
         module=ApprovalPolicy.MODULE_PR,
@@ -125,8 +123,15 @@ def submit_purchase_requisition_service(
         department=requisition.department,
     )
 
-    previous_status = requisition.status
-    requisition.status = PurchaseRequisition.STATUS_MANAGER_REVIEW
+    try:
+        # Execute budget reservation check
+        check_and_reserve_budget_service(requisition=requisition, requested_by_user=user)
+        requisition.status = PurchaseRequisition.STATUS_MANAGER_REVIEW
+    except BudgetOverrunException:
+        # Route to budget exception review
+        requisition.status = PurchaseRequisition.STATUS_BUDGET_REVIEW
+
+    previous_status = PurchaseRequisition.STATUS_DRAFT
     requisition.save(update_fields=["status", "updated_at"])
 
     record_approval_action_service(
@@ -140,8 +145,8 @@ def submit_purchase_requisition_service(
     )
 
     # Notify Department Approvers via Notification model
-    from apps.notifications.models import Notification
     from apps.accounts.models import Role, User
+    from apps.notifications.models import Notification
 
     approvers = User.objects.filter(role__code=Role.DEPT_APPROVER)
     if requisition.department:
@@ -177,6 +182,16 @@ def approve_purchase_requisition_service(
         raise ValidationError(f"Cannot approve requisition in status '{requisition.status}'.")
 
     previous_status = requisition.status
+
+    if requisition.status == PurchaseRequisition.STATUS_BUDGET_REVIEW:
+        # Finance is approving an overrun explicitly, force the reservation
+        check_and_reserve_budget_service(requisition=requisition, requested_by_user=approver, force_overrun=True)
+    elif requisition.status == PurchaseRequisition.STATUS_MANAGER_REVIEW:
+        # Manager is approving. If it wasn't already reserved, reserve it now.
+        # Wait, if it didn't overrun, it was reserved during submission. But we should ideally just leave it reserved.
+        # However, to be safe, we just update status.
+        pass
+
     requisition.status = PurchaseRequisition.STATUS_APPROVED
     requisition.save(update_fields=["status", "updated_at"])
 

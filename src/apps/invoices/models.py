@@ -147,3 +147,31 @@ class PaymentStatus(TimeStampedModel):
 
     def __str__(self):
         return f"Payment {self.payment_reference} for {self.invoice.invoice_number} (${self.amount_paid})"
+
+
+class MatchTolerancePolicy(TimeStampedModel):
+    """
+    Singleton-like model to hold global 3-way match tolerance percentages.
+    """
+    is_active = models.BooleanField(default=True, help_text="Only one policy can be active at a time.")
+    price_tolerance_pct = models.DecimalField(
+        max_digits=5, decimal_places=4, default=Decimal("0.0500"), help_text="e.g. 0.0500 for 5%"
+    )
+    qty_tolerance_pct = models.DecimalField(
+        max_digits=5, decimal_places=4, default=Decimal("0.0500"), help_text="e.g. 0.0500 for 5%"
+    )
+
+    def save(self, *args, **kwargs):
+        if self.is_active:
+            MatchTolerancePolicy.objects.exclude(pk=self.pk).update(is_active=False)
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def get_current(cls):
+        policy = cls.objects.filter(is_active=True).first()
+        if not policy:
+            policy = cls.objects.create(is_active=True)
+        return policy
+
+    def __str__(self):
+        return f"Tolerance Policy (Price: {self.price_tolerance_pct*100}%, Qty: {self.qty_tolerance_pct*100}%)"

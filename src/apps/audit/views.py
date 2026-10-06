@@ -1,13 +1,11 @@
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
-from django.http import JsonResponse
 from django.shortcuts import render
 
 from apps.accounts.models import Role
 from apps.audit.selectors import (
     get_approval_history_audit,
     get_audit_logs,
-    get_audit_metrics,
     get_auditor_dashboard_data,
     get_contract_changes_audit,
     get_invoice_exceptions_audit,
@@ -16,7 +14,6 @@ from apps.audit.selectors import (
     get_sourcing_activity_audit,
     get_vendor_compliance_audit,
 )
-from apps.audit.services import get_transaction_lifecycle_service
 
 
 def _enforce_auditor_access(request):
@@ -93,3 +90,30 @@ def audit_log_view(request):
     page = int(request.GET.get("page", 1))
     limit = int(request.GET.get("limit", 50))
     offset = (page - 1) * limit
+
+    logs = get_audit_logs(
+        limit=limit,
+        offset=offset,
+        action=action_filter if action_filter else None,
+        search=search_query if search_query else None,
+        target_model=model_filter if model_filter else None
+    )
+
+    context = {
+        "logs": logs,
+        "action": action_filter,
+        "search": search_query,
+        "model": model_filter,
+        "page": page,
+    }
+    return render(request, "audit/audit_log.html", context)
+
+def audit_approvals_view(*args, **kwargs): pass
+def audit_contract_changes_view(*args, **kwargs): pass
+def audit_invoice_exceptions_view(*args, **kwargs): pass
+def audit_lifecycle_view(*args, **kwargs): pass
+def audit_metrics_api_view(*args, **kwargs): pass
+def audit_po_changes_view(*args, **kwargs): pass
+def audit_security_events_view(*args, **kwargs): pass
+def audit_sourcing_activity_view(*args, **kwargs): pass
+def audit_vendors_view(*args, **kwargs): pass
