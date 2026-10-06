@@ -100,17 +100,20 @@
             <tbody>
                 {% for a in approvals %}
                     <tr>
-                        <td class="ps-4 text-dark small">{{ a.timestamp }}</td>
+                        <td class="ps-4">
+                            <div class="fw-bold text-dark">{{ a.timestamp|slice:":10" }}</div>
+                            <div class="text-muted small"><i class="fa-regular fa-clock me-1 text-cyan"></i>{{ a.timestamp|slice:"11:19" }}</div>
+                        </td>
                         <td>
                             <div class="fw-semibold text-dark">{{ a.actor_email|default:"Approver" }}</div>
-                            <div class="text-muted small">{{ a.actor_role|default:"Manager" }}</div>
+                            <div class="badge bg-secondary-subtle text-secondary rounded-pill" style="font-size: 0.7rem;">{{ a.actor_role|default:"Manager" }}</div>
                         </td>
                         <td>
-                            <span class="badge bg-light text-dark border">{{ a.target_model_name }}</span>
-                            <code class="ms-1 small">{{ a.target_object_id|truncatechars:14 }}</code>
+                            <div class="fw-semibold text-dark">{{ a.target_model_name }}</div>
+                            <span class="badge bg-light text-muted border rounded-pill small" style="font-size: 0.72rem;">ID: {{ a.target_object_id|truncatechars:14 }}</span>
                         </td>
                         <td>
-                            <span class="badge {% if a.action == 'APPROVED' or a.action == 'APPROVE' %}bg-success-subtle text-success border border-success-subtle{% elif a.action == 'REJECTED' or a.action == 'REJECT' %}bg-danger-subtle text-danger border border-danger-subtle{% else %}bg-info-subtle text-info border border-info-subtle{% endif %} fw-bold">
+                            <span class="badge {% if a.action == 'APPROVED' or a.action == 'APPROVE' %}bg-success-subtle text-success border border-success-subtle{% elif a.action == 'REJECTED' or a.action == 'REJECT' %}bg-danger-subtle text-danger border border-danger-subtle{% else %}bg-info-subtle text-info border border-info-subtle{% endif %} rounded-pill fw-bold">
                                 {{ a.action }}
                             </span>
                         </td>

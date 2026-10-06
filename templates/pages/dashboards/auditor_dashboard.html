@@ -317,50 +317,50 @@
         <table class="table table-hover align-middle mb-0">
             <thead class="table-light small text-uppercase text-muted">
                 <tr>
-                    <th class="ps-3">Timestamp & Request</th>
+                    <th class="ps-4">Timestamp</th>
                     <th>Actor</th>
                     <th>Action</th>
                     <th>Target Entity</th>
                     <th>IP Address</th>
-                    <th class="text-end pe-3">Inspector</th>
+                    <th class="text-end pe-4">Inspector</th>
                 </tr>
             </thead>
             <tbody>
                 {% for log in recent_logs|slice:":8" %}
                     <tr>
-                        <td class="ps-3">
-                            <div class="fw-semibold text-dark">{{ log.timestamp|date:"M d, Y H:i:s" }}</div>
-                            <div class="text-muted small"><code>{{ log.request_id|default:"REQ-LOCAL" }}</code></div>
+                        <td class="ps-4">
+                            <div class="fw-bold text-dark">{{ log.timestamp|date:"M d, Y" }}</div>
+                            <div class="text-muted small"><i class="fa-regular fa-clock me-1 text-cyan"></i>{{ log.timestamp|time:"H:i:s" }}</div>
                         </td>
                         <td>
                             <div class="fw-semibold text-dark">{{ log.actor.email|default:"System Engine" }}</div>
-                            <div class="badge bg-secondary-subtle text-secondary" style="font-size: 0.7rem;">{{ log.actor.role.name|default:"AUTOMATED" }}</div>
+                            <div class="badge bg-secondary-subtle text-secondary rounded-pill" style="font-size: 0.7rem;">{{ log.actor.role.name|default:"AUTOMATED" }}</div>
                         </td>
                         <td>
                             {% if log.action == 'APPROVE' or log.action == 'CREATE' %}
-                                <span class="badge bg-success-subtle text-success border border-success-subtle fw-bold">{{ log.action }}</span>
+                                <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill fw-bold">{{ log.action }}</span>
                             {% elif log.action == 'REJECT' or log.action == 'DELETE' or log.action == 'CANCEL' %}
-                                <span class="badge bg-danger-subtle text-danger border border-danger-subtle fw-bold">{{ log.action }}</span>
+                                <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill fw-bold">{{ log.action }}</span>
                             {% elif log.action == 'LOGIN' or log.action == 'EXPORT' %}
-                                <span class="badge bg-primary-subtle text-primary border border-primary-subtle fw-bold">{{ log.action }}</span>
+                                <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill fw-bold">{{ log.action }}</span>
                             {% else %}
-                                <span class="badge bg-info-subtle text-info border border-info-subtle fw-bold">{{ log.action }}</span>
+                                <span class="badge bg-info-subtle text-info border border-info-subtle rounded-pill fw-bold">{{ log.action }}</span>
                             {% endif %}
                         </td>
                         <td>
-                            <span class="badge bg-light text-dark border">{{ log.target_model }}</span>
-                            <code class="ms-1 small">{{ log.target_object_id|truncatechars:14 }}</code>
+                            <div class="fw-semibold text-dark">{{ log.readable_target|default:log.target_model }}</div>
+                            <span class="badge bg-light text-muted border rounded-pill small" style="font-size: 0.72rem;">{{ log.target_model }}</span>
                         </td>
-                        <td><code>{{ log.ip_address|default:"127.0.0.1" }}</code></td>
-                        <td class="text-end pe-3">
-                            <button type="button" class="btn btn-outline-info btn-sm rounded-pill px-3" onclick="showLogDetail('{{ log.id }}')">
+                        <td><code class="text-dark bg-light px-2 py-1 rounded border">{{ log.ip_address|default:"127.0.0.1" }}</code></td>
+                        <td class="text-end pe-4">
+                            <button type="button" class="btn btn-outline-info btn-sm rounded-pill px-3 shadow-2xs" onclick="showLogDetail('{{ log.id }}')">
                                 <i class="fa-solid fa-code-compare me-1"></i> Diff
                             </button>
                         </td>
                     </tr>
                 {% empty %}
                     <tr>
-                        <td colspan="6" class="text-center py-4 text-muted">No recent audit log entries available.</td>
+                        <td colspan="6" class="text-center py-5 text-muted">No recent audit log entries available.</td>
                     </tr>
                 {% endfor %}
             </tbody>

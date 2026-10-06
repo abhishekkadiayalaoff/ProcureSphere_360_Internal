@@ -102,14 +102,8 @@
                 <li class="nav-item my-2 border-top border-white-10"></li>
                 <li class="nav-item">
                     <a href="/reports/hub/" class="nav-link auditor-nav-link d-flex align-items-center rounded-3 px-3 py-2 text-white-75">
-                        <i class="fa-solid fa-chart-line me-3 fs-6 text-white-50"></i>
+                        <i class="fa-solid fa-chart-line me-3 fs-6 text-cyan"></i>
                         <span class="fw-semibold">Financial Reports</span>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="/api/docs/" target="_blank" class="nav-link auditor-nav-link d-flex align-items-center rounded-3 px-3 py-2 text-white-75">
-                        <i class="fa-solid fa-code me-3 fs-6 text-white-50"></i>
-                        <span class="fw-semibold">OpenAPI Reference</span>
                     </a>
                 </li>
             </ul>
@@ -364,6 +358,31 @@
     }
     .shadow-2xs {
         box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.03);
+    }
+
+    /* Enhanced Table Spacing & Modern Aesthetics */
+    .table > :not(caption) > * > * {
+        padding: 0.9rem 1.15rem !important;
+        vertical-align: middle;
+    }
+    .table thead th {
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        font-size: 0.76rem;
+        background-color: #F8FAFC !important;
+        color: #475569 !important;
+        border-bottom: 1px solid #E2E8F0 !important;
+    }
+    .table tbody tr {
+        transition: background-color 0.15s ease;
+    }
+    .table-hover tbody tr:hover {
+        background-color: #F8FAFC !important;
+    }
+    .badge {
+        font-weight: 600;
+        letter-spacing: 0.02em;
+        padding: 0.4em 0.75em;
     }
 </style>
 
