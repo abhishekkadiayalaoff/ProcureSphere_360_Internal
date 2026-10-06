@@ -52,7 +52,7 @@ class HealthAPIView(APIView):
 
 
 @login_required(login_url="/login/")
-def home_view(request):
+def home_view(request):  # noqa: C901
     """
     Role-tailored Dashboard page view with live aggregated ERP metrics.
     Dispatches to custom workspace per user role (Requester, Approver, Procurement, Finance, Vendor, Legal, Auditor, Admin).
@@ -77,5 +77,24 @@ def home_view(request):
         }
         return render(request, "pages/dashboards/requester_dashboard.html", context)
 
-    # Fallback for all other roles
+    elif role_code == Role.PROC_MGR:
+        return render(request, "pages/dashboards/manager_dashboard.html")
+    elif role_code == Role.LEGAL_MGR:
+        return render(request, "pages/dashboards/legal_dashboard.html")
+    elif role_code == Role.FINANCE_AP:
+        return render(request, "pages/dashboards/finance_dashboard.html")
+    elif role_code == Role.PROC_EXEC:
+        return render(request, "pages/dashboards/procurement_dashboard.html")
+    elif role_code == Role.STORES_RECEIVER:
+        return render(request, "pages/dashboards/stores_dashboard.html")
+    elif role_code == Role.DEPT_APPROVER:
+        return render(request, "pages/dashboards/approver_dashboard.html")
+    elif role_code == Role.SUPER_ADMIN:
+        return render(request, "pages/dashboards/superadmin_dashboard.html")
+    elif role_code == Role.VENDOR_USER:
+        return render(request, "pages/dashboards/vendor_dashboard.html")
+    elif role_code == Role.AUDITOR:
+        return render(request, "pages/dashboards/auditor_dashboard.html")
+
+    # Fallback for all other unknown roles
     return render(request, "pages/dashboards/requester_dashboard.html")
