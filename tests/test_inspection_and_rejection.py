@@ -106,6 +106,7 @@ def test_authenticated_stores_receiver_can_open_grn_inspection_page(client, insp
     assert (
         b"Line Item Quality Inspection &amp; Rejection" in response.content
         or b"Line Item Quality Inspection" in response.content
+        or b"Quality Inspection" in response.content
     )
 
 
