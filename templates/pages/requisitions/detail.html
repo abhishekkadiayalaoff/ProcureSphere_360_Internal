@@ -13,6 +13,14 @@
         <a href="/audit/dashboard/" class="text-decoration-none text-muted mb-2 d-inline-block">
             <i class="fa-solid fa-arrow-left me-1"></i> Back to Auditor Dashboard
         </a>
+        {% elif role_code == 'FINANCE_AP' %}
+        <a href="/budgets/exceptions/" class="text-decoration-none text-muted mb-2 d-inline-block">
+            <i class="fa-solid fa-arrow-left me-1"></i> Back to Budget Exceptions
+        </a>
+        {% elif role_code == 'DEPT_APPROVER' or role_code == 'PROC_EXEC' %}
+        <a href="/approvals/inbox/" class="text-decoration-none text-muted mb-2 d-inline-block">
+            <i class="fa-solid fa-arrow-left me-1"></i> Back to Approvals Inbox
+        </a>
         {% else %}
         <a href="{% url 'requisitions_list' %}" class="text-decoration-none text-muted mb-2 d-inline-block">
             <i class="fa-solid fa-arrow-left me-1"></i> Back to Requisitions
@@ -39,8 +47,9 @@
             <i class="fa-solid fa-ban me-2"></i>Cancel PR
         </button>
         {% endif %}
-        {% if pr.status in 'SUBMITTED,MANAGER_REVIEW,BUDGET_REVIEW' and role_code in 'SUPER_ADMIN,DEPT_APPROVER,PROC_MGR' %}
-        <form method="POST" action="/approvals/inbox/" class="d-inline-flex gap-2">
+        {% if pr.status == 'SUBMITTED' or pr.status == 'MANAGER_REVIEW' %}
+            {% if role_code == 'DEPT_APPROVER' or role_code == 'PROC_MGR' or role_code == 'SUPER_ADMIN' %}
+        <form method="POST" action="{% url 'requisition_approve' pr.pk %}" class="d-inline-flex gap-2">
             {% csrf_token %}
             <input type="hidden" name="pr_id" value="{{ pr.id }}">
             <button type="submit" name="action" value="APPROVED" class="btn btn-success rounded-pill shadow-sm px-4 fw-bold">
@@ -50,6 +59,22 @@
                 <i class="fa-solid fa-times me-2"></i>Reject PR
             </button>
         </form>
+            {% endif %}
+        {% elif pr.status == 'BUDGET_REVIEW' %}
+            {% if role_code == 'FINANCE_AP' or role_code == 'SUPER_ADMIN' %}
+        <form method="POST" action="{% url 'requisition_approve' pr.pk %}" class="d-inline-flex gap-2">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-warning rounded-pill shadow-sm px-4 fw-bold text-dark">
+                <i class="fa-solid fa-check-double me-2"></i>Approve Budget Exception
+            </button>
+        </form>
+        <form method="POST" action="{% url 'requisition_reject' pr.pk %}" class="d-inline-flex gap-2">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-outline-danger rounded-pill shadow-sm px-4 fw-bold">
+                <i class="fa-solid fa-times me-2"></i>Reject Exception
+            </button>
+        </form>
+            {% endif %}
         {% endif %}
     </div>
 </div>
@@ -362,11 +387,12 @@
         </div>
         
         <!-- Approval Action Decision Card -->
-        {% if pr.status in 'SUBMITTED,MANAGER_REVIEW,BUDGET_REVIEW' and role_code in 'DEPT_APPROVER,PROC_MGR,SUPER_ADMIN' %}
-        <div class="card border-warning border-2 shadow-sm rounded-4 mb-4 bg-warning bg-opacity-10">
+        {% if pr.status == 'SUBMITTED' or pr.status == 'MANAGER_REVIEW' %}
+            {% if role_code == 'DEPT_APPROVER' or role_code == 'PROC_MGR' or role_code == 'SUPER_ADMIN' %}
+        <div class="card border-primary border-2 shadow-sm rounded-4 mb-4 bg-primary bg-opacity-10">
             <div class="card-body p-4">
                 <h6 class="fw-bold text-dark mb-2">
-                    <i class="fa-solid fa-stamp text-warning me-2"></i>Approval Action Decision
+                    <i class="fa-solid fa-stamp text-primary me-2"></i>Approval Action Decision
                 </h6>
                 <p class="small text-muted mb-3">Review business justification and budget impact, then record your decision.</p>
 
@@ -391,6 +417,48 @@
                 </div>
             </div>
         </div>
+            {% endif %}
+        {% elif pr.status == 'BUDGET_REVIEW' %}
+            {% if role_code == 'FINANCE_AP' or role_code == 'SUPER_ADMIN' %}
+            <div class="card border-warning border-2 shadow-sm rounded-4 mb-4 bg-warning bg-opacity-10">
+                <div class="card-body p-4">
+                    <h6 class="fw-bold text-dark mb-2">
+                        <i class="fa-solid fa-triangle-exclamation text-warning me-2"></i>Budget Exception Review
+                    </h6>
+                    <p class="small text-muted mb-3">This PR exceeds the available budget limit for its Cost Center. As a Finance user, you must review and explicitly approve this overspend.</p>
+
+                    <div class="d-grid gap-2">
+                        <form method="POST" action="{% url 'requisition_approve' pr.pk %}">
+                            {% csrf_token %}
+                            <div class="mb-3">
+                                <label class="form-label small fw-semibold text-dark">Exception Comments</label>
+                                <textarea name="comments" class="form-control form-control-sm" rows="2" placeholder="Required justification for budget overrun..."></textarea>
+                            </div>
+                            <button type="submit" class="btn btn-warning text-dark fw-bold shadow-sm rounded-pill py-2 w-100">
+                                <i class="fa-solid fa-check-double me-2"></i> Approve Budget Exception
+                            </button>
+                        </form>
+                        <form method="POST" action="{% url 'requisition_reject' pr.pk %}">
+                            {% csrf_token %}
+                            <input type="hidden" name="comments" value="Rejected via dashboard" class="reject-comments-mirror-2">
+                            <button type="submit" class="btn btn-outline-danger fw-bold rounded-pill py-2 w-100 mt-2" onclick="document.querySelector('.reject-comments-mirror-2').value = this.closest('.d-grid').querySelector('textarea[name=comments]').value || 'Budget Rejected'">
+                                <i class="fa-solid fa-xmark me-2"></i> Reject Exception
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="card border-warning shadow-sm rounded-4 mb-4">
+                <div class="card-body p-4 d-flex align-items-center">
+                    <i class="fa-solid fa-lock fs-2 text-warning me-4"></i>
+                    <div>
+                        <h6 class="fw-bold text-dark mb-1">Awaiting Finance Exception Approval</h6>
+                        <p class="small text-muted mb-0">This PR has exceeded its budget allocation and is currently pending a manual exception review by the Finance & AP team.</p>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
         {% endif %}
         
         <!-- PO Tracking -->

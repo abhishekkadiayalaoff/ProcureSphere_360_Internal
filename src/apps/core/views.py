@@ -122,9 +122,12 @@ def home_view(request):  # noqa: C901
         from apps.budgets.models import SpendLedger
         from apps.invoices.models import MatchException, SupplierInvoice
 
-        open_exceptions = MatchException.objects.filter(status=MatchException.STATUS_OPEN).order_by(
-            "-created_at"
-        )
+        open_match_exceptions = MatchException.objects.filter(
+            status=MatchException.STATUS_OPEN
+        ).order_by("-created_at")
+        open_budget_exceptions = PurchaseRequisition.objects.filter(
+            status=PurchaseRequisition.STATUS_BUDGET_REVIEW
+        ).order_by("-updated_at")
         ready_for_payment = SupplierInvoice.objects.filter(
             status=SupplierInvoice.STATUS_READY_FOR_PAYMENT
         ).count()
@@ -142,12 +145,14 @@ def home_view(request):  # noqa: C901
         )
         context = {
             "metrics": {
-                "pending_exceptions": open_exceptions.count(),
+                "pending_match_exceptions": open_match_exceptions.count(),
+                "pending_budget_exceptions": open_budget_exceptions.count(),
                 "ready_for_payment": ready_for_payment,
                 "committed_spend": float(committed_spend),
                 "actual_spend": float(actual_spend),
             },
-            "open_exceptions": open_exceptions[:10],
+            "open_match_exceptions": open_match_exceptions[:10],
+            "open_budget_exceptions": open_budget_exceptions[:10],
         }
         return render(request, "pages/dashboards/finance_dashboard.html", context)
 

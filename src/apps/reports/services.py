@@ -5,7 +5,6 @@ from django.core.files.base import ContentFile
 from django.utils import timezone
 
 from apps.audit.models import AuditLog
-from apps.budgets.models import Budget
 from apps.contracts.models import Contract
 from apps.invoices.models import MatchException
 from apps.orders.models import PurchaseOrder
@@ -41,21 +40,42 @@ def get_pr_aging_report():
 
 def get_spend_analytics_report():
     """2. Spend by vendor / category / department / cost center / period"""
-    budgets = Budget.objects.select_related("cost_center", "fiscal_period").all()
+    from apps.invoices.models import SupplierInvoice
+
+    invoices = (
+        SupplierInvoice.objects.select_related(
+            "vendor", "vendor__category", "po", "po__cost_center", "po__requisition__department"
+        )
+        .exclude(status="REJECTED")
+        .order_by("-invoice_date")
+    )
+
     report_data = []
-    for b in budgets:
+    for inv in invoices:
+        po = inv.po
+        dept_name = (
+            po.requisition.department.name
+            if po and po.requisition and po.requisition.department
+            else "N/A"
+        )
+        cc_code = po.cost_center.code if po and po.cost_center else "N/A"
+        cat_name = inv.vendor.category.name if inv.vendor.category else "Uncategorized"
+        period_str = inv.invoice_date.strftime("%Y-%m")
+
         report_data.append(
             {
-                "cost_center": b.cost_center.code,
-                "cost_center_name": b.cost_center.name,
-                "fiscal_period": b.fiscal_period.name,
-                "allocated": float(b.allocated_amount),
-                "reserved": float(b.reserved_amount),
-                "committed": float(b.committed_amount),
-                "actual": float(b.actual_amount),
-                "available": float(b.available_amount),
+                "vendor_name": inv.vendor.legal_name,
+                "vendor_category": cat_name,
+                "department": dept_name,
+                "cost_center": cc_code,
+                "period": period_str,
+                "invoice_number": inv.invoice_number,
+                "po_number": po.po_number if po else "N/A",
+                "status": inv.get_status_display(),
+                "actual_spend": float(inv.total_amount),
             }
         )
+
     return report_data
 
 

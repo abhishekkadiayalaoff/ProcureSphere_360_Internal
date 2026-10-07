@@ -12,7 +12,6 @@ from apps.budgets.services import (
     BudgetOverrunException,
     check_and_reserve_budget_service,
     release_budget_reservation_service,
-    validate_budget_availability_service,
 )
 from apps.organization.models import CostCenter, Department
 
@@ -66,12 +65,8 @@ def create_purchase_requisition_service(
 
     pr.total_amount = total
 
-    # Validate budget availability before saving PR to prevent draft creation on overspend
-    validate_budget_availability_service(
-        cost_center=cost_center,
-        amount=total,
-        today=requested_delivery_date,
-    )
+    # We don't block Drafts from being created if over budget.
+    # The actual budget reservation and BudgetOverrunException routing happens when the PR is submitted.
 
     pr.save(update_fields=["total_amount", "updated_at"])
 

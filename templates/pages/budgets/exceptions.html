@@ -49,15 +49,26 @@
                     <td><span class="badge bg-secondary">{{ exception.cost_center.code }}</span></td>
                     <td class="text-end fw-bold text-danger">${{ exception.total_amount|floatformat:2 }}</td>
                     <td class="text-end pe-4">
-                        <form action="{% url 'approvals_inbox' %}" method="POST" class="d-inline">
-                            {% csrf_token %}
-                            <input type="hidden" name="pr_id" value="{{ exception.id }}">
-                            <input type="hidden" name="action" value="APPROVED">
-                            <input type="hidden" name="comments" value="Budget Exception explicitly approved by Finance.">
-                            <button type="submit" class="btn btn-sm btn-success rounded-pill px-3" onclick="return confirm('Are you sure you want to approve this budget overrun?');">
-                                <i class="fa-solid fa-check me-1"></i> Force Approve
-                            </button>
-                        </form>
+                        <div class="d-inline-flex gap-2">
+                            <form action="{% url 'approvals_inbox' %}" method="POST">
+                                {% csrf_token %}
+                                <input type="hidden" name="pr_id" value="{{ exception.id }}">
+                                <input type="hidden" name="action" value="APPROVED">
+                                <input type="hidden" name="comments" value="Budget Exception explicitly approved by Finance.">
+                                <button type="submit" class="btn btn-sm btn-success rounded-pill px-3" onclick="return confirm('Are you sure you want to approve this budget overrun?');">
+                                    <i class="fa-solid fa-check me-1"></i> Force Approve
+                                </button>
+                            </form>
+                            <form action="{% url 'approvals_inbox' %}" method="POST">
+                                {% csrf_token %}
+                                <input type="hidden" name="pr_id" value="{{ exception.id }}">
+                                <input type="hidden" name="action" value="REJECTED">
+                                <input type="hidden" name="comments" value="Budget Exception rejected by Finance.">
+                                <button type="submit" class="btn btn-sm btn-outline-danger rounded-pill px-3" onclick="return confirm('Are you sure you want to reject this requisition due to budget overrun?');">
+                                    <i class="fa-solid fa-xmark me-1"></i> Reject
+                                </button>
+                            </form>
+                        </div>
                     </td>
                 </tr>
                 {% empty %}
