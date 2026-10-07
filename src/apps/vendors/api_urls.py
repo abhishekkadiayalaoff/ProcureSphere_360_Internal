@@ -2,6 +2,7 @@ from datetime import date, timedelta
 from decimal import Decimal
 
 from django.db.models import Count, Q, Sum
+from django.http import FileResponse
 from django.shortcuts import get_object_or_404
 from django.urls import path
 from rest_framework import serializers, status, viewsets
@@ -13,11 +14,25 @@ from rest_framework.views import APIView
 
 from apps.accounts.permissions import IsProcurementManager
 from apps.audit.models import AuditLog
-from apps.audit.permissions import AuditorReadOnlyPermission
 from apps.orders.models import PurchaseOrder
-
-from .models import Vendor, VendorCategory, VendorContact, VendorDocument, VendorRiskRecord
-from .services import set_vendor_status_governance_service
+from apps.vendors.filters import VendorFilter, annotate_governance
+from apps.vendors.models import (
+    Vendor,
+    VendorCategory,
+    VendorContact,
+    VendorDocument,
+    VendorRiskRecord,
+)
+from apps.vendors.permissions import (
+    GovernanceOperatePermission,
+    VendorAccessPermission,
+)
+from apps.vendors.selectors import get_vendor_change_history
+from apps.vendors.services import (
+    allowed_governance_transitions,
+    record_vendor_risk_assessment_service,
+    set_vendor_status_governance_service,
+)
 
 
 class VendorCategorySerializer(serializers.ModelSerializer):
@@ -57,7 +72,6 @@ class VendorDocumentSerializer(serializers.ModelSerializer):
             "document_type",
             "document_type_display",
             "title",
-            "file",
             "expiry_date",
             "is_verified",
             "verified_by",
@@ -93,6 +107,7 @@ class VendorRiskRecordSerializer(serializers.ModelSerializer):
             "vendor_name",
             "vendor_number",
             "risk_level",
+            "risk_flags",
             "assessment_notes",
             "assessed_by",
             "assessed_by_email",
@@ -159,6 +174,7 @@ class VendorSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
+        read_only_fields = ["status", "vendor_number"]
 
     def get_current_risk_level(self, obj):
         records = getattr(obj, "_prefetched_risk_records", None)
@@ -272,7 +288,7 @@ class VendorViewSet(viewsets.ModelViewSet):
         .order_by("-created_at")
     )
     serializer_class = VendorSerializer
-    permission_classes = [IsAuthenticated, AuditorReadOnlyPermission]
+    permission_classes = [IsAuthenticated, VendorAccessPermission]
     search_fields = [
         "legal_name",
         "trade_name",
@@ -284,14 +300,29 @@ class VendorViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        qs = self.queryset
+        qs = annotate_governance(
+            Vendor.objects.select_related("category").prefetch_related(
+                "documents",
+                "documents__verified_by",
+                "contacts",
+                "risk_records",
+                "risk_records__assessed_by",
+                "purchase_orders",
+            )
+        )
 
         # Vendor user scoping
         if getattr(user, "is_vendor", False) or getattr(user, "vendor_id", None):
             if getattr(user, "vendor_id", None):
                 qs = qs.filter(id=user.vendor_id)
+            elif getattr(user, "vendor", None):
+                qs = qs.filter(id=user.vendor.id)
             else:
                 return qs.none()
+
+        filterset = VendorFilter(self.request.query_params, queryset=qs)
+        if filterset.is_valid():
+            qs = filterset.qs
 
         # Search query
         search_query = self.request.query_params.get("search", "").strip()
@@ -303,21 +334,6 @@ class VendorViewSet(viewsets.ModelViewSet):
                 | Q(tax_identification_number__icontains=search_query)
                 | Q(email__icontains=search_query)
             )
-
-        # Status filter
-        status_param = self.request.query_params.get("status", "").strip().upper()
-        if status_param:
-            qs = qs.filter(status=status_param)
-
-        # Category filter
-        category_param = self.request.query_params.get("category", "").strip()
-        if category_param:
-            qs = qs.filter(Q(category_id=category_param) | Q(category__code__iexact=category_param))
-
-        # Risk Level filter
-        risk_param = self.request.query_params.get("risk_level", "").strip().upper()
-        if risk_param:
-            qs = qs.filter(risk_records__risk_level=risk_param).distinct()
 
         # Compliance Status filter
         compliance_param = self.request.query_params.get("compliance_status", "").strip().lower()
@@ -348,8 +364,100 @@ class VendorViewSet(viewsets.ModelViewSet):
             ]
             if sort_by in allowed_sorts:
                 qs = qs.order_by(sort_by)
+        else:
+            qs = qs.order_by("-created_at")
 
         return qs
+
+    @action(
+        detail=True,
+        methods=["get", "post"],
+        url_path="risk",
+        permission_classes=[IsAuthenticated, GovernanceOperatePermission],
+    )
+    def risk(self, request, pk=None):
+        vendor = self.get_object()
+        if request.method == "GET":
+            records = vendor.risk_records.select_related("assessed_by").order_by("-created_at")
+            return Response(
+                VendorRiskRecordSerializer(records, many=True).data, status=status.HTTP_200_OK
+            )
+
+        risk_level = str(request.data.get("risk_level", "")).upper()
+        risk_flags = request.data.get("risk_flags", [])
+        notes = str(request.data.get("notes", request.data.get("assessment_notes", ""))).strip()
+        record = record_vendor_risk_assessment_service(
+            vendor=vendor,
+            assessor=request.user,
+            risk_level=risk_level,
+            risk_flags=risk_flags,
+            notes=notes,
+        )
+        return Response(VendorRiskRecordSerializer(record).data, status=status.HTTP_201_CREATED)
+
+    @action(
+        detail=True,
+        methods=["post"],
+        url_path="set-status",
+        permission_classes=[IsAuthenticated, GovernanceOperatePermission],
+    )
+    def set_status(self, request, pk=None):
+        vendor = self.get_object()
+        new_status = str(request.data.get("status", "")).upper()
+        notes = str(request.data.get("notes", request.data.get("reason", ""))).strip()
+        vendor = set_vendor_status_governance_service(
+            vendor=vendor,
+            actor=request.user,
+            new_status=new_status,
+            notes=notes,
+        )
+        return Response(self.get_serializer(vendor).data, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=["get"], url_path="allowed-transitions")
+    def allowed_transitions(self, request, pk=None):
+        vendor = self.get_object()
+        allowed = allowed_governance_transitions(vendor, request.user)
+        return Response({"allowed": allowed}, status=status.HTTP_200_OK)
+
+    @action(
+        detail=True,
+        methods=["get"],
+        url_path="history",
+        permission_classes=[IsAuthenticated, GovernanceOperatePermission],
+    )
+    def history(self, request, pk=None):
+        vendor = self.get_object()
+        entries = get_vendor_change_history(vendor)
+        data = [
+            {
+                "id": str(entry.id),
+                "action": entry.action,
+                "object": entry.target_model,
+                "target_object_id": entry.target_object_id,
+                "actor_email": entry.actor.email if entry.actor else None,
+                "timestamp": entry.timestamp.isoformat(),
+                "previous_state": entry.previous_state,
+                "new_state": entry.new_state,
+            }
+            for entry in entries
+        ]
+        return Response(data, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=["get"], url_path="documents")
+    def documents(self, request, pk=None):
+        vendor = self.get_object()
+        docs = vendor.documents.all().order_by("-created_at")
+        return Response(VendorDocumentSerializer(docs, many=True).data, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=["get"], url_path=r"documents/(?P<doc_id>[^/.]+)/download")
+    def download_document(self, request, pk=None, doc_id=None):
+        vendor = self.get_object()
+        doc = get_object_or_404(VendorDocument, id=doc_id, vendor=vendor)
+        if not doc.file:
+            return Response({"detail": "File not found."}, status=status.HTTP_404_NOT_FOUND)
+        return FileResponse(
+            doc.file.open("rb"), as_attachment=True, filename=doc.title or "document"
+        )
 
     @action(detail=False, methods=["get"], url_path="summary")
     def summary(self, request):
@@ -445,7 +553,7 @@ class VendorViewSet(viewsets.ModelViewSet):
 class VendorCategoryViewSet(viewsets.ModelViewSet):
     queryset = VendorCategory.objects.order_by("name")
     serializer_class = VendorCategorySerializer
-    permission_classes = [IsAuthenticated, AuditorReadOnlyPermission]
+    permission_classes = [IsAuthenticated, VendorAccessPermission]
     http_method_names = ["get", "post", "put", "patch", "head", "options"]
 
 
@@ -454,7 +562,7 @@ class VendorRiskRecordViewSet(viewsets.ModelViewSet):
         "-created_at"
     )
     serializer_class = VendorRiskRecordSerializer
-    permission_classes = [IsAuthenticated, AuditorReadOnlyPermission]
+    permission_classes = [IsAuthenticated, VendorAccessPermission]
 
     def get_queryset(self):
         qs = self.queryset
