@@ -106,24 +106,33 @@ def get_audit_metrics(period_days: int = 30) -> Dict[str, Any]:
         {"email": item["actor__email"], "count": item["count"]} for item in top_actors_raw
     ]
 
-    # Critical security & compliance event counts
+    # Critical security & compliance event counts from action distribution
     critical_events = {
-        "approvals": base_qs.filter(action=AuditLog.ACTION_APPROVE).count(),
-        "rejections": base_qs.filter(action=AuditLog.ACTION_REJECT).count(),
-        "logins": base_qs.filter(action=AuditLog.ACTION_LOGIN).count(),
-        "exports": base_qs.filter(action=AuditLog.ACTION_EXPORT).count(),
-        "cancels": base_qs.filter(action=AuditLog.ACTION_CANCEL).count(),
+        "approvals": action_distribution.get(AuditLog.ACTION_APPROVE, 0),
+        "rejections": action_distribution.get(AuditLog.ACTION_REJECT, 0),
+        "logins": action_distribution.get(AuditLog.ACTION_LOGIN, 0),
+        "exports": action_distribution.get(AuditLog.ACTION_EXPORT, 0),
+        "cancels": action_distribution.get(AuditLog.ACTION_CANCEL, 0),
     }
 
-    # Daily activity trend for charting
+    # Daily activity trend aggregated in a single database query using TruncDate
+    from django.db.models.functions import TruncDate
+
+    daily_counts_raw = (
+        base_qs.annotate(day=TruncDate("timestamp"))
+        .values("day")
+        .annotate(count=Count("id"))
+        .order_by("day")
+    )
+    daily_map = {item["day"]: item["count"] for item in daily_counts_raw if item["day"]}
+
     daily_trend: List[Dict[str, Any]] = []
     for day_offset in range(min(period_days, 14), -1, -1):
         day_date = (now - timedelta(days=day_offset)).date()
-        count = AuditLog.objects.filter(timestamp__date=day_date).count()
         daily_trend.append(
             {
                 "date": day_date.strftime("%b %d"),
-                "count": count,
+                "count": daily_map.get(day_date, 0),
             }
         )
 

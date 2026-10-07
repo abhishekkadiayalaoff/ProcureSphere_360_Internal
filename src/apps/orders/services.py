@@ -206,10 +206,28 @@ def amend_purchase_order_service(
     tax = subtotal * tax_rate
     total = subtotal + tax
 
+    old_total = Decimal(str(snapshot["total_amount"]))
+    diff = total - old_total
+
     po.subtotal = subtotal
     po.tax_amount = tax
     po.total_amount = total
     po.save(update_fields=["version", "subtotal", "tax_amount", "total_amount", "updated_at"])
+
+    # Update Budget commitment with delta difference
+    if diff != Decimal("0.00"):
+        budget = Budget.objects.filter(cost_center=po.cost_center).order_by("-created_at").first()
+        if budget:
+            budget.committed_amount = max(Decimal("0.00"), budget.committed_amount + diff)
+            budget.save(update_fields=["committed_amount", "updated_at"])
+
+            SpendLedger.objects.create(
+                budget=budget,
+                entry_type=SpendLedger.ENTRY_COMMITMENT,
+                amount=diff,
+                reference_number=f"{po.po_number}-AMD{amendment_count}",
+                description=f"PO Amendment #{amendment_count} for {po.vendor.legal_name} adjustment",
+            )
 
     AuditLog.objects.create(
         actor=requested_by_user,
@@ -225,3 +243,66 @@ def amend_purchase_order_service(
     )
 
     return amendment
+
+
+@transaction.atomic
+def cancel_purchase_order_governance_service(
+    *, po: PurchaseOrder, actor: User, reason: str
+) -> PurchaseOrder:
+    """
+    Procurement Manager governance action to cancel a Purchase Order.
+    - Transitions PO status to CANCELLED.
+    - Releases unfulfilled financial commitment back to the budget.
+    - Creates a reversal SpendLedger entry.
+    - Records an append-only AuditLog entry.
+    """
+    if not reason or not str(reason).strip():
+        raise ValidationError("Cancellation reason / justification is mandatory.")
+
+    if po.status == PurchaseOrder.STATUS_CANCELLED:
+        raise ValidationError(f"Purchase Order {po.po_number} is already cancelled.")
+
+    if po.status == PurchaseOrder.STATUS_COMPLETED:
+        raise ValidationError(f"Cannot cancel completed/fulfilled Purchase Order {po.po_number}.")
+
+    previous_status = po.status
+    po.status = PurchaseOrder.STATUS_CANCELLED
+    po.save(update_fields=["status", "updated_at"])
+
+    # Calculate unfulfilled commitment amount to release
+    total_received_value = Decimal("0.00")
+    for line in po.lines.all():
+        if line.quantity_received:
+            total_received_value += line.quantity_received * line.unit_price
+
+    unfulfilled_commitment = max(Decimal("0.00"), po.total_amount - total_received_value)
+
+    if unfulfilled_commitment > Decimal("0.00"):
+        budget = Budget.objects.filter(cost_center=po.cost_center).order_by("-created_at").first()
+        if budget:
+            budget.committed_amount = max(Decimal("0.00"), budget.committed_amount - unfulfilled_commitment)
+            budget.save(update_fields=["committed_amount", "updated_at"])
+
+            SpendLedger.objects.create(
+                budget=budget,
+                entry_type=SpendLedger.ENTRY_COMMITMENT,
+                amount=-unfulfilled_commitment,
+                reference_number=f"{po.po_number}-CANCEL",
+                description=f"Commitment release on PO Cancellation: {po.po_number} ({reason})",
+            )
+
+    AuditLog.objects.create(
+        actor=actor,
+        action=AuditLog.ACTION_REJECT,
+        target_model="PurchaseOrder",
+        target_object_id=str(po.id),
+        previous_state={"status": previous_status, "total_amount": str(po.total_amount)},
+        new_state={
+            "status": po.status,
+            "reason": reason,
+            "released_commitment": str(unfulfilled_commitment),
+        },
+    )
+
+    return po
+

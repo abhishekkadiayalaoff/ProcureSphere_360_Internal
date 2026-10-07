@@ -11,6 +11,7 @@ from apps.audit.models import AuditLog
 from apps.budgets.services import (
     BudgetOverrunException,
     check_and_reserve_budget_service,
+    release_budget_reservation_service,
     validate_budget_availability_service,
 )
 from apps.organization.models import CostCenter, Department
@@ -221,6 +222,11 @@ def reject_purchase_requisition_service(
     previous_status = requisition.status
     requisition.status = PurchaseRequisition.STATUS_REJECTED
     requisition.save(update_fields=["status", "updated_at"])
+
+    # Release any active budget reservations for this requisition
+    release_budget_reservation_service(
+        requisition=requisition, user=approver, reason=f"PR Rejected: {comments}"
+    )
 
     record_approval_action_service(
         target_object_id=requisition.id,

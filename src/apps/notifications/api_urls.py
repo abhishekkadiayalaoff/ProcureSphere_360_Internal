@@ -1,4 +1,6 @@
-from rest_framework import mixins, serializers, viewsets
+from django.db.models import Count, Q
+from django.utils import timezone
+from rest_framework import serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -6,48 +8,169 @@ from rest_framework.routers import DefaultRouter
 
 from .models import Notification
 
+HIGH_PRIORITY_TYPES = [
+    Notification.TYPE_APPROVAL_REQUIRED,
+    Notification.TYPE_EXCEPTION_RAISED,
+    Notification.TYPE_BID_DEADLINE,
+    Notification.TYPE_KYC_REQUEST,
+    Notification.TYPE_CONTRACT_EXPIRATION,
+]
+
 
 class NotificationSerializer(serializers.ModelSerializer):
+    recipient_email = serializers.CharField(source="recipient.email", read_only=True)
+    notification_type_display = serializers.CharField(
+        source="get_notification_type_display", read_only=True
+    )
+    is_high_priority = serializers.SerializerMethodField()
+
     class Meta:
         model = Notification
         fields = [
             "id",
+            "recipient",
+            "recipient_email",
             "notification_type",
+            "notification_type_display",
             "title",
             "message",
             "is_read",
             "target_url",
+            "is_high_priority",
             "created_at",
+            "updated_at",
         ]
-        read_only_fields = fields
+
+    def get_is_high_priority(self, obj):
+        return obj.notification_type in HIGH_PRIORITY_TYPES
 
 
-class NotificationViewSet(
-    mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.GenericViewSet
-):
-    """
-    A user's own notifications. Notifications are created only by domain services, never
-    via the API (prevents spoofed notifications to other users).
-    """
-
+class NotificationViewSet(viewsets.ModelViewSet):
+    queryset = Notification.objects.select_related("recipient").all()
     serializer_class = NotificationSerializer
     permission_classes = [IsAuthenticated]
+    search_fields = ["title", "message"]
+    ordering_fields = ["created_at", "is_read", "notification_type"]
 
     def get_queryset(self):
-        return Notification.objects.filter(recipient=self.request.user).order_by("-created_at")
+        user = self.request.user
+        qs = self.queryset.filter(recipient=user).order_by("-created_at")
+
+        # Filter by read status
+        is_read_param = self.request.query_params.get("is_read", "").strip().lower()
+        if is_read_param in ["true", "1", "yes"]:
+            qs = qs.filter(is_read=True)
+        elif is_read_param in ["false", "0", "no"]:
+            qs = qs.filter(is_read=False)
+
+        # Filter by notification type
+        type_param = self.request.query_params.get("type") or self.request.query_params.get(
+            "notification_type"
+        )
+        if type_param:
+            qs = qs.filter(notification_type=type_param.strip().upper())
+
+        # Filter by priority
+        priority_param = self.request.query_params.get("priority", "").strip().upper()
+        if priority_param == "HIGH":
+            qs = qs.filter(notification_type__in=HIGH_PRIORITY_TYPES)
+        elif priority_param == "NORMAL":
+            qs = qs.exclude(notification_type__in=HIGH_PRIORITY_TYPES)
+
+        # Filter by search query
+        search_query = self.request.query_params.get("search", "").strip()
+        if search_query:
+            qs = qs.filter(
+                Q(title__icontains=search_query) | Q(message__icontains=search_query)
+            )
+
+        # Sort
+        sort_by = self.request.query_params.get("sort_by", "").strip()
+        if sort_by in ["created_at", "-created_at", "is_read", "-is_read"]:
+            qs = qs.order_by(sort_by)
+
+        return qs
+
+    @action(detail=False, methods=["get"], url_path="summary")
+    def summary(self, request):
+        """
+        GET /api/v1/notifications/summary/
+        Returns live KPI counters for the user's notification inbox.
+        """
+        user = request.user
+        base_qs = Notification.objects.filter(recipient=user)
+
+        total_count = base_qs.count()
+        unread_count = base_qs.filter(is_read=False).count()
+        read_count = total_count - unread_count
+        high_priority_count = base_qs.filter(
+            notification_type__in=HIGH_PRIORITY_TYPES, is_read=False
+        ).count()
+        actionable_count = base_qs.exclude(target_url="").count()
+
+        type_counts = dict(base_qs.values_list("notification_type").annotate(c=Count("id")))
+
+        return Response(
+            {
+                "total_count": total_count,
+                "unread_count": unread_count,
+                "read_count": read_count,
+                "high_priority_count": high_priority_count,
+                "actionable_count": actionable_count,
+                "type_distribution": type_counts,
+            },
+            status=status.HTTP_200_OK,
+        )
 
     @action(detail=True, methods=["post"], url_path="mark-read")
     def mark_read(self, request, pk=None):
+        """
+        POST /api/v1/notifications/<uuid:pk>/mark-read/
+        Marks a specific notification as read.
+        """
         notification = self.get_object()
-        if not notification.is_read:
-            notification.is_read = True
-            notification.save(update_fields=["is_read", "updated_at"])
-        return Response(NotificationSerializer(notification).data)
+        notification.is_read = True
+        notification.save(update_fields=["is_read", "updated_at"])
+        return Response(
+            {
+                "message": "Notification marked as read.",
+                "id": str(notification.id),
+                "is_read": True,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+    @action(detail=True, methods=["post"], url_path="mark-unread")
+    def mark_unread(self, request, pk=None):
+        """
+        POST /api/v1/notifications/<uuid:pk>/mark-unread/
+        Marks a specific notification as unread.
+        """
+        notification = self.get_object()
+        notification.is_read = False
+        notification.save(update_fields=["is_read", "updated_at"])
+        return Response(
+            {
+                "message": "Notification marked as unread.",
+                "id": str(notification.id),
+                "is_read": False,
+            },
+            status=status.HTTP_200_OK,
+        )
 
     @action(detail=False, methods=["post"], url_path="mark-all-read")
     def mark_all_read(self, request):
-        updated = self.get_queryset().filter(is_read=False).update(is_read=True)
-        return Response({"marked_read": updated})
+        """
+        POST /api/v1/notifications/mark-all-read/
+        Marks all notifications for the authenticated user as read.
+        """
+        updated_count = Notification.objects.filter(
+            recipient=request.user, is_read=False
+        ).update(is_read=True, updated_at=timezone.now())
+        return Response(
+            {"message": f"Successfully marked {updated_count} notification(s) as read."},
+            status=status.HTTP_200_OK,
+        )
 
 
 router = DefaultRouter()

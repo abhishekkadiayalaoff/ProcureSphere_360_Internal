@@ -170,7 +170,9 @@
 
         <!-- Main Body Content Block -->
         <main class="auditor-page-body flex-grow-1 p-2 p-sm-3 p-md-4">
-            {% block auditor_content %}{% endblock auditor_content %}
+            {% block auditor_content %}
+                {% block content %}{% endblock content %}
+            {% endblock auditor_content %}
         </main>
     </div>
 </div>
