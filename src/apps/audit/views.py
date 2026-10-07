@@ -129,7 +129,9 @@ def audit_approvals_view(request):
     _enforce_auditor_access(request)
     search_query = request.GET.get("search", "").strip() or request.GET.get("q", "").strip()
     action_filter = request.GET.get("action", "").strip()
-    target_model = request.GET.get("model", "").strip() or request.GET.get("target_model", "").strip()
+    target_model = (
+        request.GET.get("model", "").strip() or request.GET.get("target_model", "").strip()
+    )
     page = int(request.GET.get("page", 1))
     limit = int(request.GET.get("limit", 50))
     offset = (page - 1) * limit

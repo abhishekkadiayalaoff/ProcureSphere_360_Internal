@@ -280,7 +280,9 @@ def cancel_purchase_order_governance_service(
     if unfulfilled_commitment > Decimal("0.00"):
         budget = Budget.objects.filter(cost_center=po.cost_center).order_by("-created_at").first()
         if budget:
-            budget.committed_amount = max(Decimal("0.00"), budget.committed_amount - unfulfilled_commitment)
+            budget.committed_amount = max(
+                Decimal("0.00"), budget.committed_amount - unfulfilled_commitment
+            )
             budget.save(update_fields=["committed_amount", "updated_at"])
 
             SpendLedger.objects.create(
@@ -305,4 +307,3 @@ def cancel_purchase_order_governance_service(
     )
 
     return po
-

@@ -17,7 +17,6 @@ class BudgetOverrunException(Exception):
         super().__init__(self.message)
 
 
-
 @transaction.atomic
 def allocate_budget_service(
     *,
@@ -73,7 +72,9 @@ def validate_budget_availability_service(*, cost_center: CostCenter, amount: Dec
 
 
 @transaction.atomic
-def check_and_reserve_budget_service(*, requisition, requested_by_user, force_overrun=False) -> BudgetReservation:
+def check_and_reserve_budget_service(
+    *, requisition, requested_by_user, force_overrun=False
+) -> BudgetReservation:
     """
     Checks available budget for a PurchaseRequisition's cost center.
     If available (or forced), locks a BudgetReservation in RESERVED status and writes a SpendLedger entry.
@@ -108,7 +109,7 @@ def check_and_reserve_budget_service(*, requisition, requested_by_user, force_ov
             f"Insufficient budget in Cost Center '{cost_center.code}'. "
             f"Requested: ${amount:,.2f}, Available: ${budget.available_amount:,.2f}.",
             budget=budget,
-            requested_amount=amount
+            requested_amount=amount,
         )
 
     # Update reserved amount on budget
@@ -218,4 +219,3 @@ def release_budget_reservation_service(
             target_object_id=str(res.id),
             new_state={"status": res.status, "reason": reason},
         )
-

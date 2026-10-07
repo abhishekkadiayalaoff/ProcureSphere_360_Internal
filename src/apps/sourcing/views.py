@@ -68,7 +68,9 @@ STATUS_FILTERS = [
 
 def _get_user_org(user):
     if user and user.is_authenticated and not user.is_superuser:
-        if getattr(user, "department_id", None) and getattr(user.department, "organization_id", None):
+        if getattr(user, "department_id", None) and getattr(
+            user.department, "organization_id", None
+        ):
             return user.department.organization
     return None
 
@@ -227,8 +229,18 @@ def _event_audit_trail(event):
 def sourcing_detail_view(request, event_id):
     """Event workspace: lifecycle, invitations, clarifications, evaluation, award and PO."""
     _require_view(request.user)
-    event = get_object_or_404(SourcingEvent.objects.select_related("requisition", "requisition__department", "requisition__department__organization", "created_by", "created_by__department", "created_by__department__organization"), pk=event_id)
-    
+    event = get_object_or_404(
+        SourcingEvent.objects.select_related(
+            "requisition",
+            "requisition__department",
+            "requisition__department__organization",
+            "created_by",
+            "created_by__department",
+            "created_by__department__organization",
+        ),
+        pk=event_id,
+    )
+
     if not request.user.is_superuser:
         user_dept = getattr(request.user, "department", None)
         user_org = getattr(user_dept, "organization", None) if user_dept else None
@@ -243,7 +255,10 @@ def sourcing_detail_view(request, event_id):
         )
         if user_org and event_org and user_org.id != event_org.id:
             from django.core.exceptions import PermissionDenied
-            raise PermissionDenied("You do not have permission to view sourcing events from another organization.")
+
+            raise PermissionDenied(
+                "You do not have permission to view sourcing events from another organization."
+            )
 
     services.sync_event_window_status(event=event)
     caps = sourcing_capabilities(request.user)

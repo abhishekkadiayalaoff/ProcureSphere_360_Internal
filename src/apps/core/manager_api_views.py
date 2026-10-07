@@ -1,5 +1,6 @@
 from decimal import Decimal
 
+from django.core.paginator import Paginator
 from django.db.models import Avg, Q, Sum
 from django.utils import timezone
 from rest_framework import status
@@ -12,6 +13,7 @@ from apps.budgets.models import Budget, SpendLedger
 from apps.invoices.models import MatchException, SupplierInvoice
 from apps.notifications.models import Notification
 from apps.orders.models import PurchaseOrder
+from apps.organization.models import Department, FiscalPeriod
 from apps.receipts.models import GoodsReceipt, InspectionRecord, RejectionRecord
 from apps.requisitions.models import PurchaseRequisition
 from apps.scorecards.models import VendorScorecard
@@ -21,7 +23,9 @@ from apps.vendors.models import Vendor, VendorRiskRecord
 
 def get_user_org(user):
     if user and user.is_authenticated and not user.is_superuser:
-        if getattr(user, "department_id", None) and getattr(user.department, "organization_id", None):
+        if getattr(user, "department_id", None) and getattr(
+            user.department, "organization_id", None
+        ):
             return user.department.organization
     return None
 
@@ -62,9 +66,9 @@ class ManagerKPIsAPIView(APIView):
         if org:
             pending_prs_qs = pending_prs_qs.filter(department__organization=org)
         pr_bottlenecks_count = pending_prs_qs.count()
-        pr_bottlenecks_value = (
-            pending_prs_qs.aggregate(total=Sum("total_amount"))["total"] or Decimal("0.00")
-        )
+        pr_bottlenecks_value = pending_prs_qs.aggregate(total=Sum("total_amount"))[
+            "total"
+        ] or Decimal("0.00")
 
         # 3. Active Purchase Orders
         active_pos_qs = PurchaseOrder.objects.filter(
@@ -77,16 +81,16 @@ class ManagerKPIsAPIView(APIView):
         if org:
             active_pos_qs = active_pos_qs.filter(cost_center__department__organization=org)
         active_pos_count = active_pos_qs.count()
-        active_pos_value = (
-            active_pos_qs.aggregate(total=Sum("total_amount"))["total"] or Decimal("0.00")
+        active_pos_value = active_pos_qs.aggregate(total=Sum("total_amount"))["total"] or Decimal(
+            "0.00"
         )
 
         # 4. High-Risk & Suspended Vendors
         # High risk records or vendors currently on hold/suspended
         high_risk_vendor_ids = set(
-            VendorRiskRecord.objects.filter(risk_level=VendorRiskRecord.RISK_LEVEL_HIGH).values_list(
-                "vendor_id", flat=True
-            )
+            VendorRiskRecord.objects.filter(
+                risk_level=VendorRiskRecord.RISK_LEVEL_HIGH
+            ).values_list("vendor_id", flat=True)
         )
         held_vendor_ids = set(
             Vendor.objects.filter(
@@ -107,21 +111,15 @@ class ManagerKPIsAPIView(APIView):
             budget_qs = budget_qs.filter(cost_center__department__organization=org)
             spend_qs = spend_qs.filter(budget__cost_center__department__organization=org)
 
-        allocated_budget = (
-            budget_qs.aggregate(total=Sum("allocated_amount"))["total"] or Decimal("0.00")
+        allocated_budget = budget_qs.aggregate(total=Sum("allocated_amount"))["total"] or Decimal(
+            "0.00"
         )
-        committed_spend = (
-            spend_qs.filter(entry_type=SpendLedger.ENTRY_COMMITMENT).aggregate(
-                total=Sum("amount")
-            )["total"]
-            or Decimal("0.00")
-        )
-        actual_spend = (
-            spend_qs.filter(entry_type=SpendLedger.ENTRY_ACTUAL).aggregate(
-                total=Sum("amount")
-            )["total"]
-            or Decimal("0.00")
-        )
+        committed_spend = spend_qs.filter(entry_type=SpendLedger.ENTRY_COMMITMENT).aggregate(
+            total=Sum("amount")
+        )["total"] or Decimal("0.00")
+        actual_spend = spend_qs.filter(entry_type=SpendLedger.ENTRY_ACTUAL).aggregate(
+            total=Sum("amount")
+        )["total"] or Decimal("0.00")
 
         # 7. Sourcing Events & Supplier Performance
         open_sourcing_qs = SourcingEvent.objects.filter(
@@ -130,9 +128,9 @@ class ManagerKPIsAPIView(APIView):
         if org:
             open_sourcing_qs = open_sourcing_qs.filter(requisition__department__organization=org)
         open_sourcing_count = open_sourcing_qs.count()
-        avg_scorecard = (
-            VendorScorecard.objects.aggregate(avg=Avg("composite_score"))["avg"] or Decimal("0.00")
-        )
+        avg_scorecard = VendorScorecard.objects.aggregate(avg=Avg("composite_score"))[
+            "avg"
+        ] or Decimal("0.00")
 
         # 8. Unread Governance Notifications
         unread_notifications = Notification.objects.filter(
@@ -168,10 +166,6 @@ class ManagerKPIsAPIView(APIView):
         return Response(data, status=status.HTTP_200_OK)
 
 
-from django.core.paginator import Paginator
-from apps.organization.models import Department
-
-
 class ManagerPipelineAPIView(APIView):
     """
     Returns real procurement lifecycle distribution across all core stages:
@@ -202,9 +196,7 @@ class ManagerPipelineAPIView(APIView):
         requisitions_data = {
             "submitted": {
                 "count": pr_submitted_qs.count(),
-                "amount": float(
-                    pr_submitted_qs.aggregate(total=Sum("total_amount"))["total"] or 0
-                ),
+                "amount": float(pr_submitted_qs.aggregate(total=Sum("total_amount"))["total"] or 0),
             },
             "manager_review": {
                 "count": pr_mgr_review_qs.count(),
@@ -383,9 +375,7 @@ class ManagerPipelineAPIView(APIView):
                 ),
             },
             "ready_for_payment": {
-                "count": invoices.filter(
-                    status=SupplierInvoice.STATUS_READY_FOR_PAYMENT
-                ).count(),
+                "count": invoices.filter(status=SupplierInvoice.STATUS_READY_FOR_PAYMENT).count(),
                 "amount": float(
                     invoices.filter(status=SupplierInvoice.STATUS_READY_FOR_PAYMENT).aggregate(
                         total=Sum("total_amount")
@@ -415,9 +405,7 @@ class ManagerPipelineAPIView(APIView):
         ]
         active_prs_qs = prs.filter(status__in=active_pr_statuses)
         active_prs_count = active_prs_qs.count()
-        active_prs_amount = float(
-            active_prs_qs.aggregate(total=Sum("total_amount"))["total"] or 0
-        )
+        active_prs_amount = float(active_prs_qs.aggregate(total=Sum("total_amount"))["total"] or 0)
 
         approval_pending_statuses = [
             PurchaseRequisition.STATUS_SUBMITTED,
@@ -448,9 +436,7 @@ class ManagerPipelineAPIView(APIView):
             ]
         )
         active_pos_count = active_pos_qs.count()
-        active_pos_amount = float(
-            active_pos_qs.aggregate(total=Sum("total_amount"))["total"] or 0
-        )
+        active_pos_amount = float(active_pos_qs.aggregate(total=Sum("total_amount"))["total"] or 0)
 
         # Bottleneck PRs: pending approval >= 3 days
         bottlenecks_cutoff = now - timezone.timedelta(days=3)
@@ -473,7 +459,8 @@ class ManagerPipelineAPIView(APIView):
             "active_pos_value": active_pos_amount,
             "bottlenecks_count": bottlenecks_count,
             "bottlenecks_amount": bottlenecks_amount,
-            "receipts_pending_inspection": receipts_data["total_grns"] - (receipts_data["inspections_passed"] + receipts_data["inspections_failed"]),
+            "receipts_pending_inspection": receipts_data["total_grns"]
+            - (receipts_data["inspections_passed"] + receipts_data["inspections_failed"]),
         }
 
         # 7. Filtered Requisitions Table / Record List
@@ -504,7 +491,9 @@ class ManagerPipelineAPIView(APIView):
         elif stage_filter == "cancelled":
             filtered_prs = filtered_prs.filter(status=PurchaseRequisition.STATUS_CANCELLED)
         elif stage_filter == "bottlenecks":
-            filtered_prs = filtered_prs.filter(status__in=approval_pending_statuses, created_at__lte=bottlenecks_cutoff)
+            filtered_prs = filtered_prs.filter(
+                status__in=approval_pending_statuses, created_at__lte=bottlenecks_cutoff
+            )
 
         # Status filter
         status_filter = request.GET.get("status")
@@ -575,7 +564,7 @@ class ManagerPipelineAPIView(APIView):
         items_data = []
         for pr in current_page_obj:
             age_days = (now.date() - pr.created_at.date()).days
-            
+
             # Pending approver role attribution
             if pr.status == PurchaseRequisition.STATUS_SUBMITTED:
                 pending_approver = "Department Approver"
@@ -592,38 +581,40 @@ class ManagerPipelineAPIView(APIView):
             else:
                 pending_approver = "None"
 
-            is_bottleneck = (
-                pr.status in approval_pending_statuses and age_days >= 3
-            )
+            is_bottleneck = pr.status in approval_pending_statuses and age_days >= 3
 
-            items_data.append({
-                "id": str(pr.id),
-                "pr_number": pr.pr_number,
-                "title": pr.title,
-                "justification": pr.justification,
-                "requester_id": str(pr.requester.id),
-                "requester_email": pr.requester.email,
-                "department_id": str(pr.department.id) if pr.department else None,
-                "department_name": pr.department.name if pr.department else "N/A",
-                "department_code": pr.department.code if pr.department else "N/A",
-                "cost_center_code": pr.cost_center.code if pr.cost_center else "N/A",
-                "total_amount": float(pr.total_amount),
-                "status": pr.status,
-                "status_display": pr.get_status_display(),
-                "created_at": pr.created_at.isoformat(),
-                "requested_delivery_date": pr.requested_delivery_date.isoformat() if pr.requested_delivery_date else None,
-                "age_days": age_days,
-                "pending_approver": pending_approver,
-                "is_bottleneck": is_bottleneck,
-            })
+            items_data.append(
+                {
+                    "id": str(pr.id),
+                    "pr_number": pr.pr_number,
+                    "title": pr.title,
+                    "justification": pr.justification,
+                    "requester_id": str(pr.requester.id),
+                    "requester_email": pr.requester.email,
+                    "department_id": str(pr.department.id) if pr.department else None,
+                    "department_name": pr.department.name if pr.department else "N/A",
+                    "department_code": pr.department.code if pr.department else "N/A",
+                    "cost_center_code": pr.cost_center.code if pr.cost_center else "N/A",
+                    "total_amount": float(pr.total_amount),
+                    "status": pr.status,
+                    "status_display": pr.get_status_display(),
+                    "created_at": pr.created_at.isoformat(),
+                    "requested_delivery_date": (
+                        pr.requested_delivery_date.isoformat()
+                        if pr.requested_delivery_date
+                        else None
+                    ),
+                    "age_days": age_days,
+                    "pending_approver": pending_approver,
+                    "is_bottleneck": is_bottleneck,
+                }
+            )
 
         # List of departments for filter dropdown
         depts_qs = (
             Department.objects.filter(organization=org) if org else Department.objects.all()
         ).order_by("name")
-        departments_data = [
-            {"id": str(d.id), "name": d.name, "code": d.code} for d in depts_qs
-        ]
+        departments_data = [{"id": str(d.id), "name": d.name, "code": d.code} for d in depts_qs]
 
         pipeline_response = {
             "summary": summary_data,
@@ -669,16 +660,13 @@ class ManagerPRAgingAPIView(APIView):
         search_query = request.GET.get("search", "").strip()
         sort_by = request.GET.get("sort_by", "age_desc")
 
-        base_pending_prs = (
-            PurchaseRequisition.objects.filter(
-                status__in=[
-                    PurchaseRequisition.STATUS_SUBMITTED,
-                    PurchaseRequisition.STATUS_MANAGER_REVIEW,
-                    PurchaseRequisition.STATUS_BUDGET_REVIEW,
-                ]
-            )
-            .select_related("requester", "department", "cost_center")
-        )
+        base_pending_prs = PurchaseRequisition.objects.filter(
+            status__in=[
+                PurchaseRequisition.STATUS_SUBMITTED,
+                PurchaseRequisition.STATUS_MANAGER_REVIEW,
+                PurchaseRequisition.STATUS_BUDGET_REVIEW,
+            ]
+        ).select_related("requester", "department", "cost_center")
 
         if org:
             base_pending_prs = base_pending_prs.filter(department__organization=org)
@@ -787,17 +775,21 @@ class ManagerPRAgingAPIView(APIView):
                 if s["pending_roles"]
                 else "N/A"
             )
-            department_analysis.append({
-                "department_id": s["department_id"],
-                "department_name": s["department_name"],
-                "department_code": s["department_code"],
-                "total_count": s["total_count"],
-                "total_amount": round(s["total_amount"], 2),
-                "aged_count": s["aged_count"],
-                "critical_count": s["critical_count"],
-                "primary_bottleneck": primary_role,
-            })
-        department_analysis.sort(key=lambda x: (x["critical_count"], x["aged_count"], x["total_amount"]), reverse=True)
+            department_analysis.append(
+                {
+                    "department_id": s["department_id"],
+                    "department_name": s["department_name"],
+                    "department_code": s["department_code"],
+                    "total_count": s["total_count"],
+                    "total_amount": round(s["total_amount"], 2),
+                    "aged_count": s["aged_count"],
+                    "critical_count": s["critical_count"],
+                    "primary_bottleneck": primary_role,
+                }
+            )
+        department_analysis.sort(
+            key=lambda x: (x["critical_count"], x["aged_count"], x["total_amount"]), reverse=True
+        )
 
         # Summary statistics
         summary = {
@@ -849,7 +841,8 @@ class ManagerPRAgingAPIView(APIView):
         if search_query:
             sq = search_query.lower()
             target_items = [
-                i for i in target_items
+                i
+                for i in target_items
                 if sq in i["pr_number"].lower()
                 or sq in i["title"].lower()
                 or sq in i["requester_email"].lower()
@@ -891,9 +884,7 @@ class ManagerPRAgingAPIView(APIView):
         depts_qs = (
             Department.objects.filter(organization=org) if org else Department.objects.all()
         ).order_by("name")
-        departments_data = [
-            {"id": str(d.id), "name": d.name, "code": d.code} for d in depts_qs
-        ]
+        departments_data = [{"id": str(d.id), "name": d.name, "code": d.code} for d in depts_qs]
 
         return Response(
             {
@@ -924,12 +915,6 @@ class ManagerSpendAnalyticsAPIView(APIView):
     permission_classes = [IsAuthenticated, IsProcurementManager]
 
     def get(self, request):
-        import csv
-        from django.http import HttpResponse
-        from django.shortcuts import get_object_or_404
-        from apps.organization.models import CostCenter, Department, FiscalPeriod
-        from apps.vendors.models import Vendor, VendorCategory
-
         org = get_user_org(request.user)
 
         # Scoped QuerySets
@@ -942,12 +927,9 @@ class ManagerSpendAnalyticsAPIView(APIView):
             "budget__cost_center__department",
             "budget__fiscal_period",
         ).all()
-        pos_qs = (
-            PurchaseOrder.objects.select_related(
-                "vendor", "vendor__category", "cost_center", "cost_center__department"
-            )
-            .exclude(status=PurchaseOrder.STATUS_CANCELLED)
-        )
+        pos_qs = PurchaseOrder.objects.select_related(
+            "vendor", "vendor__category", "cost_center", "cost_center__department"
+        ).exclude(status=PurchaseOrder.STATUS_CANCELLED)
 
         if org:
             budget_qs = budget_qs.filter(cost_center__department__organization=org)
@@ -984,16 +966,14 @@ class ManagerSpendAnalyticsAPIView(APIView):
         cost_center_param = request.GET.get("cost_center", "").strip()
         if cost_center_param:
             budget_qs = budget_qs.filter(
-                Q(cost_center_id=cost_center_param)
-                | Q(cost_center__code__iexact=cost_center_param)
+                Q(cost_center_id=cost_center_param) | Q(cost_center__code__iexact=cost_center_param)
             )
             spend_qs = spend_qs.filter(
                 Q(budget__cost_center_id=cost_center_param)
                 | Q(budget__cost_center__code__iexact=cost_center_param)
             )
             pos_qs = pos_qs.filter(
-                Q(cost_center_id=cost_center_param)
-                | Q(cost_center__code__iexact=cost_center_param)
+                Q(cost_center_id=cost_center_param) | Q(cost_center__code__iexact=cost_center_param)
             )
 
         vendor_param = request.GET.get("vendor", "").strip()
@@ -1019,18 +999,10 @@ class ManagerSpendAnalyticsAPIView(APIView):
             pos_qs = pos_qs.filter(created_at__date__lte=end_date)
 
         # 1. Summary KPIs
-        total_allocated = (
-            budget_qs.aggregate(s=Sum("allocated_amount"))["s"] or Decimal("0.00")
-        )
-        total_reserved = (
-            budget_qs.aggregate(s=Sum("reserved_amount"))["s"] or Decimal("0.00")
-        )
-        total_committed = (
-            budget_qs.aggregate(s=Sum("committed_amount"))["s"] or Decimal("0.00")
-        )
-        total_actual = (
-            budget_qs.aggregate(s=Sum("actual_amount"))["s"] or Decimal("0.00")
-        )
+        total_allocated = budget_qs.aggregate(s=Sum("allocated_amount"))["s"] or Decimal("0.00")
+        total_reserved = budget_qs.aggregate(s=Sum("reserved_amount"))["s"] or Decimal("0.00")
+        total_committed = budget_qs.aggregate(s=Sum("committed_amount"))["s"] or Decimal("0.00")
+        total_actual = budget_qs.aggregate(s=Sum("actual_amount"))["s"] or Decimal("0.00")
         total_available = total_allocated - (total_reserved + total_committed + total_actual)
         utilization_rate = (
             ((total_committed + total_actual + total_reserved) / total_allocated * Decimal("100.0"))
@@ -1107,7 +1079,11 @@ class ManagerSpendAnalyticsAPIView(APIView):
         for b in budget_qs:
             avail = b.available_amount
             util = (
-                ((b.committed_amount + b.actual_amount + b.reserved_amount) / b.allocated_amount * Decimal("100.0"))
+                (
+                    (b.committed_amount + b.actual_amount + b.reserved_amount)
+                    / b.allocated_amount
+                    * Decimal("100.0")
+                )
                 if b.allocated_amount > Decimal("0.00")
                 else Decimal("0.00")
             )
@@ -1116,7 +1092,9 @@ class ManagerSpendAnalyticsAPIView(APIView):
                     "id": str(b.cost_center.id),
                     "code": b.cost_center.code,
                     "name": b.cost_center.name,
-                    "department": b.cost_center.department.name if b.cost_center.department else "N/A",
+                    "department": (
+                        b.cost_center.department.name if b.cost_center.department else "N/A"
+                    ),
                     "fiscal_period": b.fiscal_period.name if b.fiscal_period else "N/A",
                     "allocated": float(b.allocated_amount),
                     "reserved": float(b.reserved_amount),
@@ -1162,9 +1140,7 @@ class ManagerSpendAnalyticsAPIView(APIView):
         cat_spend = {}
         for po in pos_qs:
             cat_name = (
-                po.vendor.category.name
-                if (po.vendor and po.vendor.category)
-                else "Uncategorized"
+                po.vendor.category.name if (po.vendor and po.vendor.category) else "Uncategorized"
             )
             if cat_name not in cat_spend:
                 cat_spend[cat_name] = {
@@ -1233,9 +1209,7 @@ class ManagerSpendAnalyticsAPIView(APIView):
                     else "N/A"
                 ),
                 "fiscal_period": (
-                    e.budget.fiscal_period.name
-                    if (e.budget and e.budget.fiscal_period)
-                    else "N/A"
+                    e.budget.fiscal_period.name if (e.budget and e.budget.fiscal_period) else "N/A"
                 ),
                 "entry_type": e.entry_type,
                 "amount": float(e.amount),
@@ -1326,6 +1300,7 @@ class ManagerSpendExportAPIView(APIView):
 
     def get(self, request):
         import csv
+
         from django.http import HttpResponse
 
         org = get_user_org(request.user)
@@ -1495,7 +1470,11 @@ class ManagerSupplierPerformanceAPIView(APIView):
                 "performance_status": (
                     "EXCELLENT"
                     if sc.composite_score >= Decimal("85.00")
-                    else ("SATISFACTORY" if sc.composite_score >= Decimal("70.00") else "ATTENTION_REQUIRED")
+                    else (
+                        "SATISFACTORY"
+                        if sc.composite_score >= Decimal("70.00")
+                        else "ATTENTION_REQUIRED"
+                    )
                 ),
                 "evaluator_comments": sc.evaluator_comments,
                 "evaluated_by_email": sc.evaluated_by.email if sc.evaluated_by else "System",
@@ -1586,6 +1565,7 @@ class ManagerSupplierPerformanceDetailAPIView(APIView):
 
     def get(self, request, vendor_id):
         from django.shortcuts import get_object_or_404
+
         from apps.orders.models import DeliverySchedule
         from apps.receipts.models import ReceiptLine
         from apps.vendors.models import Vendor
@@ -1607,7 +1587,11 @@ class ManagerSupplierPerformanceDetailAPIView(APIView):
                 "performance_status": (
                     "EXCELLENT"
                     if sc.composite_score >= Decimal("85.00")
-                    else ("SATISFACTORY" if sc.composite_score >= Decimal("70.00") else "ATTENTION_REQUIRED")
+                    else (
+                        "SATISFACTORY"
+                        if sc.composite_score >= Decimal("70.00")
+                        else "ATTENTION_REQUIRED"
+                    )
                 ),
                 "evaluator_comments": sc.evaluator_comments,
                 "evaluated_by_email": sc.evaluated_by.email if sc.evaluated_by else "System",
@@ -1623,14 +1607,14 @@ class ManagerSupplierPerformanceDetailAPIView(APIView):
                 receipt__po__cost_center__department__organization=org
             )
 
-        total_received = (
-            receipt_lines_qs.aggregate(s=Sum("quantity_received"))["s"] or Decimal("0.00")
+        total_received = receipt_lines_qs.aggregate(s=Sum("quantity_received"))["s"] or Decimal(
+            "0.00"
         )
-        total_accepted = (
-            receipt_lines_qs.aggregate(s=Sum("quantity_accepted"))["s"] or Decimal("0.00")
+        total_accepted = receipt_lines_qs.aggregate(s=Sum("quantity_accepted"))["s"] or Decimal(
+            "0.00"
         )
-        total_rejected = (
-            receipt_lines_qs.aggregate(s=Sum("quantity_rejected"))["s"] or Decimal("0.00")
+        total_rejected = receipt_lines_qs.aggregate(s=Sum("quantity_rejected"))["s"] or Decimal(
+            "0.00"
         )
         rejection_rate = (
             ((total_rejected / total_received) * Decimal("100.0"))
@@ -1641,9 +1625,7 @@ class ManagerSupplierPerformanceDetailAPIView(APIView):
         # Delivery schedules
         schedules_qs = DeliverySchedule.objects.filter(po__vendor=vendor)
         if org:
-            schedules_qs = schedules_qs.filter(
-                po__cost_center__department__organization=org
-            )
+            schedules_qs = schedules_qs.filter(po__cost_center__department__organization=org)
         total_schedules = schedules_qs.count()
 
         # Risk context
@@ -1704,6 +1686,7 @@ class ManagerSupplierCompareAPIView(APIView):
 
     def get(self, request):
         from django.shortcuts import get_object_or_404
+
         from apps.receipts.models import ReceiptLine
         from apps.vendors.models import Vendor
 
@@ -1724,9 +1707,7 @@ class ManagerSupplierCompareAPIView(APIView):
             latest_sc = v.scorecards.order_by("-created_at").first()
             rl_qs = ReceiptLine.objects.filter(receipt__po__vendor=v)
             if org:
-                rl_qs = rl_qs.filter(
-                    receipt__po__cost_center__department__organization=org
-                )
+                rl_qs = rl_qs.filter(receipt__po__cost_center__department__organization=org)
             tot_recv = rl_qs.aggregate(s=Sum("quantity_received"))["s"] or Decimal("0.00")
             tot_acc = rl_qs.aggregate(s=Sum("quantity_accepted"))["s"] or Decimal("0.00")
             tot_rej = rl_qs.aggregate(s=Sum("quantity_rejected"))["s"] or Decimal("0.00")
@@ -1763,5 +1744,3 @@ class ManagerSupplierCompareAPIView(APIView):
             },
             status=status.HTTP_200_OK,
         )
-
-

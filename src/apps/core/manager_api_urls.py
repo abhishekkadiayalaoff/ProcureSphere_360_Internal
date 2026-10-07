@@ -22,8 +22,22 @@ urlpatterns = [
     path("spend/summary/", ManagerSpendSummaryAPIView.as_view(), name="manager-spend-summary-api"),
     path("spend/export/", ManagerSpendExportAPIView.as_view(), name="manager-spend-export-api"),
     # Supplier Performance
-    path("performance/", ManagerSupplierPerformanceAPIView.as_view(), name="manager-performance-api"),
-    path("performance/summary/", ManagerPerformanceSummaryAPIView.as_view(), name="manager-performance-summary-api"),
-    path("performance/compare/", ManagerSupplierCompareAPIView.as_view(), name="manager-performance-compare-api"),
-    path("performance/<uuid:vendor_id>/", ManagerSupplierPerformanceDetailAPIView.as_view(), name="manager-performance-detail-api"),
+    path(
+        "performance/", ManagerSupplierPerformanceAPIView.as_view(), name="manager-performance-api"
+    ),
+    path(
+        "performance/summary/",
+        ManagerPerformanceSummaryAPIView.as_view(),
+        name="manager-performance-summary-api",
+    ),
+    path(
+        "performance/compare/",
+        ManagerSupplierCompareAPIView.as_view(),
+        name="manager-performance-compare-api",
+    ),
+    path(
+        "performance/<uuid:vendor_id>/",
+        ManagerSupplierPerformanceDetailAPIView.as_view(),
+        name="manager-performance-detail-api",
+    ),
 ]

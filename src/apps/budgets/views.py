@@ -19,6 +19,7 @@ def ledger_view(request):
 
 @login_required(login_url="/login/")
 def budget_exceptions_view(request):
-    exceptions = PurchaseRequisition.objects.filter(status=PurchaseRequisition.STATUS_BUDGET_REVIEW).order_by("-updated_at")
+    exceptions = PurchaseRequisition.objects.filter(
+        status=PurchaseRequisition.STATUS_BUDGET_REVIEW
+    ).order_by("-updated_at")
     return render(request, "pages/budgets/exceptions.html", {"exceptions": exceptions})
-

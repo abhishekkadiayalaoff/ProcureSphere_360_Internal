@@ -1,7 +1,6 @@
 from decimal import Decimal
 
 from django.db.models import Avg, Count, Q
-from django.shortcuts import get_object_or_404
 from rest_framework import serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
@@ -57,11 +56,9 @@ class VendorScorecardSerializer(serializers.ModelSerializer):
 
 
 class VendorScorecardViewSet(viewsets.ModelViewSet):
-    queryset = (
-        VendorScorecard.objects.select_related(
-            "vendor", "vendor__category", "evaluated_by"
-        ).order_by("-created_at")
-    )
+    queryset = VendorScorecard.objects.select_related(
+        "vendor", "vendor__category", "evaluated_by"
+    ).order_by("-created_at")
     serializer_class = VendorScorecardSerializer
     permission_classes = [IsAuthenticated]
     search_fields = ["vendor__legal_name", "vendor__vendor_number", "evaluation_period"]
@@ -96,7 +93,9 @@ class VendorScorecardViewSet(viewsets.ModelViewSet):
             qs = qs.filter(evaluation_period=period_param.strip())
 
         # Filter by vendor ID
-        vendor_id_param = self.request.query_params.get("vendor_id") or self.request.query_params.get("vendor")
+        vendor_id_param = self.request.query_params.get(
+            "vendor_id"
+        ) or self.request.query_params.get("vendor")
         if vendor_id_param:
             qs = qs.filter(vendor_id=vendor_id_param.strip())
 
@@ -105,7 +104,9 @@ class VendorScorecardViewSet(viewsets.ModelViewSet):
         if status_param == "EXCELLENT":
             qs = qs.filter(composite_score__gte=Decimal("85.00"))
         elif status_param == "SATISFACTORY":
-            qs = qs.filter(composite_score__gte=Decimal("70.00"), composite_score__lt=Decimal("85.00"))
+            qs = qs.filter(
+                composite_score__gte=Decimal("70.00"), composite_score__lt=Decimal("85.00")
+            )
         elif status_param in ["ATTENTION_REQUIRED", "ATTENTION", "NEEDS_ATTENTION"]:
             qs = qs.filter(composite_score__lt=Decimal("70.00"))
 
@@ -172,9 +173,7 @@ class VendorScorecardViewSet(viewsets.ModelViewSet):
         ).count()
         attention_required = qs.filter(composite_score__lt=Decimal("70.00")).count()
 
-        period_distribution = dict(
-            qs.values_list("evaluation_period").annotate(c=Count("id"))
-        )
+        period_distribution = dict(qs.values_list("evaluation_period").annotate(c=Count("id")))
 
         return Response(
             {

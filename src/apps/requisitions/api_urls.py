@@ -52,7 +52,11 @@ class PurchaseRequisitionViewSet(viewsets.ModelViewSet):
         .all()
     )
     serializer_class = PurchaseRequisitionSerializer
-    permission_classes = [IsAuthenticated, AuditorReadOnlyPermission, CanCreateRequisitionPermission]
+    permission_classes = [
+        IsAuthenticated,
+        AuditorReadOnlyPermission,
+        CanCreateRequisitionPermission,
+    ]
 
     def get_queryset(self):
         user = self.request.user
@@ -75,7 +79,10 @@ class PurchaseRequisitionViewSet(viewsets.ModelViewSet):
         )
         if not user.is_superuser and role_code not in ["REQUESTER", "SUPER_ADMIN"]:
             from rest_framework.exceptions import PermissionDenied
-            raise PermissionDenied("Only users with the Requester role can raise Purchase Requisitions.")
+
+            raise PermissionDenied(
+                "Only users with the Requester role can raise Purchase Requisitions."
+            )
         serializer.save(requester=user)
 
 
@@ -83,4 +90,3 @@ router = DefaultRouter()
 router.register(r"", PurchaseRequisitionViewSet, basename="requisition")
 
 urlpatterns = router.urls
-

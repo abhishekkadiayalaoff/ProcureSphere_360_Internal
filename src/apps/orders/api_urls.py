@@ -1,8 +1,6 @@
 from decimal import Decimal
 
 from django.db.models import Count, Q, Sum
-from django.shortcuts import get_object_or_404
-from django.utils import timezone
 from rest_framework import serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
@@ -104,7 +102,9 @@ class PurchaseOrderSerializer(serializers.ModelSerializer):
     department_name = serializers.CharField(source="cost_center.department.name", read_only=True)
     department_code = serializers.CharField(source="cost_center.department.code", read_only=True)
 
-    requisition_number = serializers.CharField(source="requisition.requisition_number", read_only=True)
+    requisition_number = serializers.CharField(
+        source="requisition.requisition_number", read_only=True
+    )
     sourcing_title = serializers.CharField(source="sourcing_event.title", read_only=True)
 
     status_display = serializers.CharField(source="get_status_display", read_only=True)
@@ -184,15 +184,19 @@ class PurchaseOrderSerializer(serializers.ModelSerializer):
         return float(total)
 
     def get_total_quantity_received(self, obj):
-        total = sum((line.quantity_received or Decimal("0.00") for line in obj.lines.all()), Decimal("0.00"))
+        total = sum(
+            (line.quantity_received or Decimal("0.00") for line in obj.lines.all()), Decimal("0.00")
+        )
         return float(total)
 
     def get_fulfillment_percentage(self, obj):
         lines = list(obj.lines.all())
         if not lines:
             return 100.0 if obj.status == PurchaseOrder.STATUS_COMPLETED else 0.0
-        total_ordered = sum((l.quantity for l in lines), Decimal("0.00"))
-        total_received = sum((l.quantity_received or Decimal("0.00") for l in lines), Decimal("0.00"))
+        total_ordered = sum((line.quantity for line in lines), Decimal("0.00"))
+        total_received = sum(
+            (line.quantity_received or Decimal("0.00") for line in lines), Decimal("0.00")
+        )
         if total_ordered <= Decimal("0.00"):
             return 100.0 if obj.status == PurchaseOrder.STATUS_COMPLETED else 0.0
         pct = (total_received / total_ordered) * Decimal("100.0")
@@ -241,7 +245,12 @@ class PurchaseOrderViewSet(viewsets.ModelViewSet):
     serializer_class = PurchaseOrderSerializer
     permission_classes = [IsAuthenticated, AuditorReadOnlyPermission]
     filterset_fields = ["status", "vendor", "cost_center"]
-    search_fields = ["po_number", "vendor__legal_name", "terms_and_conditions", "lines__item_description"]
+    search_fields = [
+        "po_number",
+        "vendor__legal_name",
+        "terms_and_conditions",
+        "lines__item_description",
+    ]
     ordering_fields = ["created_at", "total_amount", "po_number", "version", "status"]
 
     def get_queryset(self):
@@ -281,7 +290,9 @@ class PurchaseOrderViewSet(viewsets.ModelViewSet):
         # Filter by acknowledgement_status query param
         ack_param = self.request.query_params.get("acknowledgement_status", "").strip().lower()
         if ack_param == "acknowledged":
-            qs = qs.filter(Q(acknowledged_at__isnull=False) | Q(status=PurchaseOrder.STATUS_ACKNOWLEDGED))
+            qs = qs.filter(
+                Q(acknowledged_at__isnull=False) | Q(status=PurchaseOrder.STATUS_ACKNOWLEDGED)
+            )
         elif ack_param == "pending":
             qs = qs.filter(
                 acknowledged_at__isnull=True,

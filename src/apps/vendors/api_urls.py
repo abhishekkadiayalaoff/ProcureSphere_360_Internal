@@ -4,7 +4,6 @@ from decimal import Decimal
 from django.db.models import Count, Q, Sum
 from django.shortcuts import get_object_or_404
 from django.urls import path
-from django.utils import timezone
 from rest_framework import serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
@@ -43,7 +42,9 @@ class VendorContactSerializer(serializers.ModelSerializer):
 
 
 class VendorDocumentSerializer(serializers.ModelSerializer):
-    document_type_display = serializers.CharField(source="get_document_type_display", read_only=True)
+    document_type_display = serializers.CharField(
+        source="get_document_type_display", read_only=True
+    )
     verified_by_email = serializers.CharField(source="verified_by.email", read_only=True)
     is_expired = serializers.SerializerMethodField()
     is_expiring_soon = serializers.SerializerMethodField()
@@ -390,7 +391,9 @@ class VendorViewSet(viewsets.ModelViewSet):
             .distinct()
             .count()
         )
-        missing_docs_count = qs.annotate(doc_count=Count("documents")).filter(doc_count__lt=3).count()
+        missing_docs_count = (
+            qs.annotate(doc_count=Count("documents")).filter(doc_count__lt=3).count()
+        )
 
         return Response(
             {
@@ -447,8 +450,8 @@ class VendorCategoryViewSet(viewsets.ModelViewSet):
 
 
 class VendorRiskRecordViewSet(viewsets.ModelViewSet):
-    queryset = (
-        VendorRiskRecord.objects.select_related("vendor", "assessed_by").order_by("-created_at")
+    queryset = VendorRiskRecord.objects.select_related("vendor", "assessed_by").order_by(
+        "-created_at"
     )
     serializer_class = VendorRiskRecordSerializer
     permission_classes = [IsAuthenticated, AuditorReadOnlyPermission]
@@ -475,9 +478,7 @@ class VendorAssessRiskAPIView(APIView):
     def post(self, request, pk):
         vendor = get_object_or_404(Vendor, pk=pk)
 
-        risk_level = str(
-            request.data.get("risk_level", VendorRiskRecord.RISK_LEVEL_LOW)
-        ).upper()
+        risk_level = str(request.data.get("risk_level", VendorRiskRecord.RISK_LEVEL_LOW)).upper()
         assessment_notes = str(request.data.get("assessment_notes", "")).strip()
         governance_status = request.data.get("governance_status")
 
@@ -494,7 +495,9 @@ class VendorAssessRiskAPIView(APIView):
 
         if not assessment_notes:
             return Response(
-                {"detail": "Assessment notes / justification is required when recording vendor risk."},
+                {
+                    "detail": "Assessment notes / justification is required when recording vendor risk."
+                },
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -588,7 +591,9 @@ router.register(r"risk-records", VendorRiskRecordViewSet, basename="vendor-risk-
 router.register(r"", VendorViewSet, basename="vendor")
 
 urlpatterns = [
-    path("<uuid:pk>/assess-risk/", VendorAssessRiskAPIView.as_view(), name="vendor-assess-risk-api"),
+    path(
+        "<uuid:pk>/assess-risk/", VendorAssessRiskAPIView.as_view(), name="vendor-assess-risk-api"
+    ),
     path(
         "<uuid:pk>/governance-status/",
         VendorGovernanceStatusAPIView.as_view(),

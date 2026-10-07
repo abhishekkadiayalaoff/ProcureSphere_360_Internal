@@ -80,9 +80,7 @@ class NotificationViewSet(viewsets.ModelViewSet):
         # Filter by search query
         search_query = self.request.query_params.get("search", "").strip()
         if search_query:
-            qs = qs.filter(
-                Q(title__icontains=search_query) | Q(message__icontains=search_query)
-            )
+            qs = qs.filter(Q(title__icontains=search_query) | Q(message__icontains=search_query))
 
         # Sort
         sort_by = self.request.query_params.get("sort_by", "").strip()
@@ -164,9 +162,9 @@ class NotificationViewSet(viewsets.ModelViewSet):
         POST /api/v1/notifications/mark-all-read/
         Marks all notifications for the authenticated user as read.
         """
-        updated_count = Notification.objects.filter(
-            recipient=request.user, is_read=False
-        ).update(is_read=True, updated_at=timezone.now())
+        updated_count = Notification.objects.filter(recipient=request.user, is_read=False).update(
+            is_read=True, updated_at=timezone.now()
+        )
         return Response(
             {"message": f"Successfully marked {updated_count} notification(s) as read."},
             status=status.HTTP_200_OK,

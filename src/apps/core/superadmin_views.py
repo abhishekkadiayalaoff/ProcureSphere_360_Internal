@@ -101,8 +101,6 @@ def policy_list_view(request):
     return render(request, "pages/dashboards/superadmin/policies.html", {"policies": policies})
 
 
-
-
 @login_required
 def audit_list_view(request):
     logs_list = AuditLog.objects.select_related("actor").all().order_by("-timestamp")

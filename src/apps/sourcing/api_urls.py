@@ -14,7 +14,7 @@ from apps.audit.models import AuditLog
 from apps.organization.models import Department
 
 from .api_views import BidEvaluationViewSet, ClarificationViewSet
-from .models import AwardDecision, BidEvaluation, SourcingEvent, VendorBid
+from .models import AwardDecision, SourcingEvent, VendorBid
 from .services import evaluate_and_award_sourcing_event_service
 
 
@@ -51,13 +51,31 @@ class SourcingEventSerializer(serializers.ModelSerializer):
     clarifications_count = serializers.SerializerMethodField()
     unanswered_clarifications_count = serializers.SerializerMethodField()
     requisition_id = serializers.CharField(source="requisition.id", read_only=True, default=None)
-    requisition_number = serializers.CharField(source="requisition.pr_number", read_only=True, default=None)
-    requisition_title = serializers.CharField(source="requisition.title", read_only=True, default=None)
-    department_id = serializers.CharField(source="requisition.department.id", read_only=True, default=None)
-    department_name = serializers.CharField(source="requisition.department.name", read_only=True, default="Global / Direct")
-    department_code = serializers.CharField(source="requisition.department.code", read_only=True, default="N/A")
-    cost_center_code = serializers.CharField(source="requisition.cost_center.code", read_only=True, default="N/A")
-    estimated_value = serializers.DecimalField(source="requisition.total_amount", max_digits=14, decimal_places=2, read_only=True, default=0.0)
+    requisition_number = serializers.CharField(
+        source="requisition.pr_number", read_only=True, default=None
+    )
+    requisition_title = serializers.CharField(
+        source="requisition.title", read_only=True, default=None
+    )
+    department_id = serializers.CharField(
+        source="requisition.department.id", read_only=True, default=None
+    )
+    department_name = serializers.CharField(
+        source="requisition.department.name", read_only=True, default="Global / Direct"
+    )
+    department_code = serializers.CharField(
+        source="requisition.department.code", read_only=True, default="N/A"
+    )
+    cost_center_code = serializers.CharField(
+        source="requisition.cost_center.code", read_only=True, default="N/A"
+    )
+    estimated_value = serializers.DecimalField(
+        source="requisition.total_amount",
+        max_digits=14,
+        decimal_places=2,
+        read_only=True,
+        default=0.0,
+    )
     award_readiness = serializers.SerializerMethodField()
     award_readiness_display = serializers.SerializerMethodField()
     attention_required = serializers.SerializerMethodField()
@@ -103,7 +121,10 @@ class SourcingEventSerializer(serializers.ModelSerializer):
             return "AWARDED"
         if obj.status == SourcingEvent.STATUS_AWARD_APPROVAL:
             return "READY_FOR_AWARD"
-        if obj.status in [SourcingEvent.STATUS_TECHNICAL_REVIEW, SourcingEvent.STATUS_COMMERCIAL_REVIEW]:
+        if obj.status in [
+            SourcingEvent.STATUS_TECHNICAL_REVIEW,
+            SourcingEvent.STATUS_COMMERCIAL_REVIEW,
+        ]:
             return "READY_FOR_AWARD" if obj.evaluations.exists() else "EVALUATION_PENDING"
         if obj.status == SourcingEvent.STATUS_BID_WINDOW:
             return "BIDDING_OPEN"
@@ -159,7 +180,9 @@ class VendorBidSerializer(serializers.ModelSerializer):
 
 def get_user_org(user):
     if user and user.is_authenticated and not user.is_superuser:
-        if getattr(user, "department_id", None) and getattr(user.department, "organization_id", None):
+        if getattr(user, "department_id", None) and getattr(
+            user.department, "organization_id", None
+        ):
             return user.department.organization
     return None
 
@@ -185,7 +208,10 @@ class SourcingEventViewSet(viewsets.ModelViewSet):
         if org:
             qs = qs.filter(
                 models.Q(requisition__department__organization=org)
-                | (models.Q(requisition__isnull=True) & models.Q(created_by__department__organization=org))
+                | (
+                    models.Q(requisition__isnull=True)
+                    & models.Q(created_by__department__organization=org)
+                )
             )
         return qs.order_by("-created_at")
 
@@ -264,13 +290,19 @@ class SourcingEventViewSet(viewsets.ModelViewSet):
             filtered_qs = filtered_qs.filter(
                 models.Q(status=SourcingEvent.STATUS_AWARD_APPROVAL)
                 | models.Q(
-                    status__in=[SourcingEvent.STATUS_TECHNICAL_REVIEW, SourcingEvent.STATUS_COMMERCIAL_REVIEW],
+                    status__in=[
+                        SourcingEvent.STATUS_TECHNICAL_REVIEW,
+                        SourcingEvent.STATUS_COMMERCIAL_REVIEW,
+                    ],
                     evaluations__isnull=False,
                 )
             ).distinct()
         elif readiness_filter == "EVALUATION_PENDING":
             filtered_qs = filtered_qs.filter(
-                status__in=[SourcingEvent.STATUS_TECHNICAL_REVIEW, SourcingEvent.STATUS_COMMERCIAL_REVIEW],
+                status__in=[
+                    SourcingEvent.STATUS_TECHNICAL_REVIEW,
+                    SourcingEvent.STATUS_COMMERCIAL_REVIEW,
+                ],
                 evaluations__isnull=True,
             )
         elif readiness_filter == "BIDDING_OPEN":
@@ -303,6 +335,7 @@ class SourcingEventViewSet(viewsets.ModelViewSet):
             page_size = 10
 
         from django.core.paginator import Paginator
+
         paginator = Paginator(filtered_qs, page_size)
         current_page_obj = paginator.get_page(page_num)
 
@@ -311,22 +344,23 @@ class SourcingEventViewSet(viewsets.ModelViewSet):
         depts_qs = (
             Department.objects.filter(organization=org) if org else Department.objects.all()
         ).order_by("name")
-        departments_data = [
-            {"id": str(d.id), "name": d.name, "code": d.code} for d in depts_qs
-        ]
+        departments_data = [{"id": str(d.id), "name": d.name, "code": d.code} for d in depts_qs]
 
-        return Response({
-            "summary": summary_data,
-            "count": paginator.count,
-            "total_count": paginator.count,
-            "page": current_page_obj.number,
-            "page_size": page_size,
-            "total_pages": paginator.num_pages,
-            "has_next": current_page_obj.has_next(),
-            "has_previous": current_page_obj.has_previous(),
-            "results": serializer.data,
-            "departments": departments_data,
-        }, status=status.HTTP_200_OK)
+        return Response(
+            {
+                "summary": summary_data,
+                "count": paginator.count,
+                "total_count": paginator.count,
+                "page": current_page_obj.number,
+                "page_size": page_size,
+                "total_pages": paginator.num_pages,
+                "has_next": current_page_obj.has_next(),
+                "has_previous": current_page_obj.has_previous(),
+                "results": serializer.data,
+                "departments": departments_data,
+            },
+            status=status.HTTP_200_OK,
+        )
 
 
 class VendorBidViewSet(viewsets.ModelViewSet):
@@ -344,7 +378,9 @@ class VendorBidViewSet(viewsets.ModelViewSet):
             return self.queryset.filter(vendor_id=user.vendor_id)
 
         role_code = getattr(user, "role_code", None)
-        if not (user.is_superuser or role_code in [Role.SUPER_ADMIN, Role.PROC_MGR, Role.PROC_EXEC]):
+        if not (
+            user.is_superuser or role_code in [Role.SUPER_ADMIN, Role.PROC_MGR, Role.PROC_EXEC]
+        ):
             return self.queryset.exclude(event__status=SourcingEvent.STATUS_BID_WINDOW)
 
         return self.queryset
@@ -368,9 +404,7 @@ class PendingAwardsAPIView(APIView):
                     SourcingEvent.STATUS_TECHNICAL_REVIEW,
                 ]
             )
-            .select_related(
-                "requisition", "requisition__department", "requisition__cost_center"
-            )
+            .select_related("requisition", "requisition__department", "requisition__cost_center")
             .prefetch_related(
                 "bids",
                 "bids__vendor",
@@ -382,7 +416,10 @@ class PendingAwardsAPIView(APIView):
         if org:
             events = events.filter(
                 models.Q(requisition__department__organization=org)
-                | (models.Q(requisition__isnull=True) & models.Q(created_by__department__organization=org))
+                | (
+                    models.Q(requisition__isnull=True)
+                    & models.Q(created_by__department__organization=org)
+                )
             )
 
         results = []
@@ -425,9 +462,7 @@ class PendingAwardsAPIView(APIView):
                     "requisition_number": (
                         event.requisition.pr_number if event.requisition else None
                     ),
-                    "requisition_title": (
-                        event.requisition.title if event.requisition else None
-                    ),
+                    "requisition_title": (event.requisition.title if event.requisition else None),
                     "department": (
                         event.requisition.department.name
                         if event.requisition and event.requisition.department
@@ -529,7 +564,9 @@ class AwardApproveAPIView(APIView):
 
             if not winning_bid:
                 return Response(
-                    {"detail": "A valid submitted winning bid must be selected for award approval."},
+                    {
+                        "detail": "A valid submitted winning bid must be selected for award approval."
+                    },
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
@@ -602,5 +639,7 @@ router.register(r"evaluations", BidEvaluationViewSet, basename="bid-evaluation")
 
 urlpatterns = [
     path("awards/pending/", PendingAwardsAPIView.as_view(), name="pending-awards-api"),
-    path("events/<uuid:pk>/award-approve/", AwardApproveAPIView.as_view(), name="award-approve-api"),
+    path(
+        "events/<uuid:pk>/award-approve/", AwardApproveAPIView.as_view(), name="award-approve-api"
+    ),
 ] + router.urls

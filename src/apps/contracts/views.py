@@ -426,4 +426,3 @@ def dashboard_view(request):
         "active_alerts_list": active_alerts[:10],
     }
     return render(request, "pages/dashboards/legal_dashboard.html", context)
-

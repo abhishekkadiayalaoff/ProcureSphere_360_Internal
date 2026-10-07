@@ -273,7 +273,10 @@ def detail_view(request, pk):
         pr_org = getattr(getattr(pr, "department", None), "organization", None)
         if user_org and pr_org and user_org.id != pr_org.id:
             from django.core.exceptions import PermissionDenied
-            raise PermissionDenied("You do not have permission to view requisitions from another organization.")
+
+            raise PermissionDenied(
+                "You do not have permission to view requisitions from another organization."
+            )
 
     from apps.approvals.models import ApprovalAction
 
@@ -297,13 +300,19 @@ def detail_view(request, pk):
     base_layout = (
         "manager/base_manager.html"
         if role_code == Role.PROC_MGR
-        else "audit/base_auditor.html"
-        if role_code == Role.AUDITOR
-        else "layouts/legal_base.html"
-        if role_code == Role.LEGAL_MGR
-        else "layouts/approver_base.html"
-        if role_code == Role.DEPT_APPROVER
-        else "layouts/requester_base.html"
+        else (
+            "audit/base_auditor.html"
+            if role_code == Role.AUDITOR
+            else (
+                "layouts/legal_base.html"
+                if role_code == Role.LEGAL_MGR
+                else (
+                    "layouts/approver_base.html"
+                    if role_code == Role.DEPT_APPROVER
+                    else "layouts/requester_base.html"
+                )
+            )
+        )
     )
 
     return render(

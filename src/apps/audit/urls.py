@@ -33,17 +33,20 @@ urlpatterns = [
         "audit/invoice-exceptions/", audit_invoice_exceptions_view, name="audit_invoice_exceptions"
     ),
     path(
-        "auditor/invoice-exceptions/", audit_invoice_exceptions_view, name="auditor_invoice_exceptions"
+        "auditor/invoice-exceptions/",
+        audit_invoice_exceptions_view,
+        name="auditor_invoice_exceptions",
     ),
     path("audit/contract-changes/", audit_contract_changes_view, name="audit_contract_changes"),
     path("auditor/contract-changes/", audit_contract_changes_view, name="auditor_contract_changes"),
     path("audit/security-events/", audit_security_events_view, name="audit_security_events"),
     path("auditor/security-events/", audit_security_events_view, name="auditor_security_events"),
     path("audit/sourcing-activity/", audit_sourcing_activity_view, name="audit_sourcing_activity"),
-    path("auditor/sourcing-activity/", audit_sourcing_activity_view, name="auditor_sourcing_activity"),
+    path(
+        "auditor/sourcing-activity/", audit_sourcing_activity_view, name="auditor_sourcing_activity"
+    ),
     path("audit/lifecycle/", audit_lifecycle_view, name="audit_lifecycle"),
     path("auditor/lifecycle/", audit_lifecycle_view, name="auditor_lifecycle"),
     path("audit/metrics/", audit_metrics_api_view, name="audit_metrics"),
     path("auditor/metrics/", audit_metrics_api_view, name="auditor_metrics"),
 ]
-
