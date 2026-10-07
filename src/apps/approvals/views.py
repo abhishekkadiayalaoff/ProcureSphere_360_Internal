@@ -58,11 +58,12 @@ def approvals_inbox_view(request):
             status__in=["SUBMITTED", "MANAGER_REVIEW", "BUDGET_REVIEW"]
         ).order_by("-updated_at")
 
-    base_layout = (
-        "layouts/approver_base.html"
-        if role_code in [Role.DEPT_APPROVER, Role.PROC_MGR]
-        else "layouts/requester_base.html"
-    )
+    if role_code == Role.LEGAL_MGR or role_code == "LEGAL_MGR":
+        base_layout = "layouts/legal_base.html"
+    elif role_code in [Role.DEPT_APPROVER, Role.PROC_MGR]:
+        base_layout = "layouts/approver_base.html"
+    else:
+        base_layout = "layouts/requester_base.html"
 
     context = {
         "pending_prs": pending_prs,

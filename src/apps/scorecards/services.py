@@ -202,12 +202,21 @@ def calculate_vendor_scorecard_service(
 
 
 def latest_scorecards_queryset():
-    """One row per vendor: the most recent scorecard (DISTINCT ON is PostgreSQL-native)."""
-    ids = (
-        VendorScorecard.objects.order_by("vendor_id", "-created_at")
-        .distinct("vendor_id")
-        .values("id")
-    )
+    """One row per vendor: the most recent scorecard (PostgreSQL DISTINCT ON or DB fallback)."""
+    from django.db import connection
+
+    if connection.vendor == "postgresql":
+        ids = (
+            VendorScorecard.objects.order_by("vendor_id", "-created_at")
+            .distinct("vendor_id")
+            .values("id")
+        )
+    else:
+        ids = (
+            VendorScorecard.objects.values("vendor_id")
+            .annotate(latest_id=models.Max("id"))
+            .values("latest_id")
+        )
     return VendorScorecard.objects.filter(id__in=models.Subquery(ids)).select_related(
         "vendor", "vendor__category"
     )

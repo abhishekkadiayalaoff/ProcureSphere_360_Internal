@@ -55,7 +55,7 @@ def create_legal_test_report_excel(output_path="docs/Legal_Manager_Test_Report.x
         ("Execution Date", datetime.now().strftime("%Y-%m-%d %H:%M:%S")),
         ("Test Environment", "Python 3.12, Django 4.2 LTS (SQLite / PostgreSQL)"),
         ("Target Branch", "features/legal_manager"),
-        ("Overall Test Result", "100% PASSED (19 / 19 Test Cases Passed)"),
+        ("Overall Test Result", "100% PASSED (20 / 20 Test Cases Passed)"),
     ]
 
     ws_summary.cell(row=4, column=1, value="PROJECT & EXECUTION METADATA").font = cyan_title_font
@@ -89,7 +89,7 @@ def create_legal_test_report_excel(output_path="docs/Legal_Manager_Test_Report.x
         c.border = border
 
     row_idx += 1
-    kpi_values = [19, 19, 0, 0, "100.0%", "29.33s"]
+    kpi_values = [20, 20, 0, 0, "100.0%", "26.37s"]
     for col_i, v in enumerate(kpi_values, 1):
         c = ws_summary.cell(row=row_idx, column=col_i, value=v)
         c.font = bold_font
@@ -387,6 +387,18 @@ def create_legal_test_report_excel(output_path="docs/Legal_Manager_Test_Report.x
             "HTTP 200 OK for all 10 role dashboards; no regressions found",
             "PASSED",
             "1.85s",
+            "Verified"
+        ),
+        (
+            "TC-LEG-020",
+            "Integration",
+            "test_integration_all_legal_sidebar_navigation_items_accessible",
+            "Verify all 8 Legal Manager sidebar items (Dashboard, Contracts, Inbox, Sourcing, Vendors, Scorecards, Reports) render seamlessly in Legal theme without 403 errors.",
+            "Logged in user with Role.LEGAL_MGR visiting all 8 sidebar URLs",
+            "HTTP 200 OK for all 8 URLs, rendered using layouts/legal_base.html with zero 403 permission errors",
+            "HTTP 200 OK returned for all 8 sidebar navigation pages in Legal Manager theme",
+            "PASSED",
+            "0.55s",
             "Verified"
         ),
     ]
