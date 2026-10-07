@@ -56,3 +56,11 @@ class ContractSerializer(serializers.ModelSerializer):
     class Meta:
         model = Contract
         fields = "__all__"
+        read_only_fields = (
+            "contract_number",
+            "status",
+            "version",
+            "created_at",
+            "updated_at",
+            "contract_owner",
+        )

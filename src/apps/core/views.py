@@ -243,7 +243,10 @@ def home_view(request):  # noqa: C901
 
     # 8. LEGAL / CONTRACT MANAGER DASHBOARD
     elif role_code == Role.LEGAL_MGR:
-        return render(request, "pages/dashboards/legal_dashboard.html")
+        from apps.contracts.selectors import get_legal_dashboard_metrics
+
+        metrics = get_legal_dashboard_metrics()
+        return render(request, "pages/dashboards/legal_dashboard.html", {"metrics": metrics})
     elif role_code == Role.FINANCE_AP:
         return render(request, "pages/dashboards/finance_dashboard.html")
     elif role_code == Role.PROC_EXEC:
