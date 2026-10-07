@@ -471,9 +471,6 @@ def invite_vendors_to_event_service(
     return invitations
 
 
-<<<<<<< Updated upstream
-def validate_bid_service(*, bid: VendorBid) -> dict:  # noqa: C901
-=======
 @transaction.atomic
 def revoke_invitation_service(*, invite: BidInvite, user: User):
     """Removes an invitation while the event is still a DRAFT (nothing has been sent yet)."""
@@ -573,7 +570,6 @@ def withdraw_vendor_bid_service(*, bid: VendorBid, user: User, reason: str) -> V
 
 
 def validate_bid_service(*, bid: VendorBid) -> dict:
->>>>>>> Stashed changes
     """
     Authoritative server-side bid validation.
     Checks authorization, status, deadline, completeness, line item pricing, and attachments.
