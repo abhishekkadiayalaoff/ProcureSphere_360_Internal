@@ -237,6 +237,10 @@ def sourcing_detail_view(request, event_id):
 
     from apps.orders.models import PurchaseOrder
 
+    evaluation_rows = []
+    if caps["can_read_bids"] and event.bids_visible_to_evaluators:
+        evaluation_rows = build_evaluation_rows(event, request.user)
+
     context = {
         "event": event,
         "caps": caps,
@@ -258,6 +262,7 @@ def sourcing_detail_view(request, event_id):
         "clarifications": event.clarifications.select_related("vendor", "answered_by").order_by(
             "-created_at"
         ),
+        "evaluation_rows": evaluation_rows,
         "current_decision": event.award_decision,
         "purchase_orders": PurchaseOrder.objects.filter(sourcing_event=event).order_by(
             "-created_at"
