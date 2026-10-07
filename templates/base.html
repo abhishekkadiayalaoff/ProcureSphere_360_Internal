@@ -55,6 +55,8 @@
             </div>
         </div>
     </nav>
+    {% elif user.is_authenticated and user.role_code == 'PROC_EXEC' %}
+    {# Procurement Executive: sidebar-only layout (brand, user and sign-out live in the sidebar) #}
     {% else %}
     <!-- Top Navigation Bar for other roles -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm py-2">
@@ -128,7 +130,10 @@
     {% endblock navbar %}
 
     {% block layout %}
-    <div class="{% if user.is_authenticated and user.role_code == 'STORES_RECEIVER' %}d-flex min-vh-100 position-relative{% else %}container-fluid p-0{% endif %}">
+    <div class="{% if user.is_authenticated and user.role_code == 'STORES_RECEIVER' or user.is_authenticated and user.role_code == 'PROC_EXEC' %}d-flex min-vh-100 position-relative{% else %}container-fluid p-0{% endif %}">
+        {% if user.is_authenticated and user.role_code == 'PROC_EXEC' %}
+        {% include 'partials/proc_exec_sidebar.html' %}
+        {% endif %}
         {% if user.is_authenticated and user.role_code == 'STORES_RECEIVER' %}
         <!-- Stores Receiver Desktop Sidebar (>= 992px) -->
         <aside class="stores-sidebar bg-dark text-white d-none d-lg-flex flex-column border-end border-secondary border-opacity-25 shadow-sm" style="width: 260px; flex-shrink: 0; min-height: calc(100vh - 56px);">
@@ -232,7 +237,12 @@
         {% endif %}
 
         <!-- Main Page Content Area -->
-        <main class="{% if user.is_authenticated and user.role_code == 'STORES_RECEIVER' %}flex-grow-1 p-3 p-md-4 p-xl-4 overflow-auto bg-light{% else %}container-fluid p-4 overflow-auto{% endif %}" style="min-width: 0;">
+        <main class="{% if user.is_authenticated and user.role_code == 'STORES_RECEIVER' or user.is_authenticated and user.role_code == 'PROC_EXEC' %}flex-grow-1 p-3 p-md-4 p-xl-4 overflow-auto bg-light{% else %}container-fluid p-4 overflow-auto{% endif %}" style="min-width: 0;">
+            {% if user.is_authenticated and user.role_code == 'PROC_EXEC' %}
+            <button class="btn btn-outline-dark btn-sm d-lg-none mb-3" type="button" data-bs-toggle="offcanvas" data-bs-target="#procExecSidebar" aria-controls="procExecSidebar">
+                <i class="fa-solid fa-bars me-1"></i> Menu
+            </button>
+            {% endif %}
             {% block content %}{% endblock %}
         </main>
     </div>

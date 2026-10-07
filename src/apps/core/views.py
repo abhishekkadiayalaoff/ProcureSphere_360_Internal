@@ -2,6 +2,7 @@
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.db import connection
+from django.db.models import Avg, Count, Q, Sum
 from django.http import JsonResponse
 from django.shortcuts import render
 from redis import Redis
@@ -10,6 +11,9 @@ from rest_framework.views import APIView
 
 from apps.accounts.models import Role
 from apps.requisitions.models import PurchaseRequisition
+from apps.scorecards.models import VendorScorecard
+from apps.sourcing.models import Clarification, SourcingEvent
+from apps.vendors.models import Vendor
 
 
 def health_check_view(request):
@@ -78,7 +82,165 @@ def home_view(request):  # noqa: C901
         return render(request, "pages/dashboards/requester_dashboard.html", context)
 
     elif role_code == Role.PROC_MGR:
+<<<<<<< Updated upstream
         return render(request, "pages/dashboards/manager_dashboard.html")
+=======
+        pending_prs = PurchaseRequisition.objects.filter(
+            status__in=["SUBMITTED", "MANAGER_REVIEW", "BUDGET_REVIEW"]
+        ).order_by("-updated_at")
+        open_sourcing = SourcingEvent.objects.filter(status__in=["PUBLISHED", "BID_WINDOW"]).count()
+        kyc_vendors = Vendor.objects.filter(status="KYC_REVIEW")
+        active_pos = PurchaseOrder.objects.filter(status="ISSUED").count()
+        context = {
+            "metrics": {
+                "pending_approvals": pending_prs.count(),
+                "open_sourcing": open_sourcing,
+                "kyc_reviews": kyc_vendors.count(),
+                "active_pos": active_pos,
+            },
+            "pending_prs": pending_prs[:5],
+            "kyc_vendors": kyc_vendors[:5],
+        }
+        return render(request, "pages/dashboards/manager_dashboard.html", context)
+
+    # 4. STORES / RECEIVER DASHBOARD
+    elif role_code == Role.STORES_RECEIVER:
+        from apps.receipts.models import GoodsReceipt, InspectionRecord, RejectionRecord
+
+        total_grns = GoodsReceipt.objects.count()
+        pending_deliveries = PurchaseOrder.objects.filter(
+            status__in=["ISSUED", "ACKNOWLEDGED", "PARTIAL_RECEIPT"]
+        ).count()
+        total_inspections = InspectionRecord.objects.count()
+        total_rejections = RejectionRecord.objects.count()
+        recent_grns = GoodsReceipt.objects.select_related("po", "received_by").order_by(
+            "-received_date"
+        )[:10]
+        context = {
+            "metrics": {
+                "total_grns": total_grns,
+                "pending_deliveries": pending_deliveries,
+                "total_inspections": total_inspections,
+                "total_rejections": total_rejections,
+            },
+            "recent_grns": recent_grns,
+        }
+        return render(request, "pages/dashboards/stores_dashboard.html", context)
+
+    # 5. VENDOR PORTAL USER DASHBOARD
+    elif role_code == Role.VENDOR_USER:
+        from apps.vendors.vendor_dashboard_views import vendor_dashboard_overview_view
+
+        return vendor_dashboard_overview_view(request)
+
+    # 6. FINANCE / AP SPECIALIST DASHBOARD
+    elif role_code == Role.FINANCE_AP:
+        open_exceptions = MatchException.objects.filter(status=MatchException.STATUS_OPEN).order_by(
+            "-created_at"
+        )
+        ready_for_payment = SupplierInvoice.objects.filter(
+            status=SupplierInvoice.STATUS_READY_FOR_PAYMENT
+        ).count()
+        committed_spend = (
+            SpendLedger.objects.filter(entry_type=SpendLedger.ENTRY_COMMITMENT).aggregate(
+                total=Sum("amount")
+            )["total"]
+            or 0
+        )
+        actual_spend = (
+            SpendLedger.objects.filter(entry_type=SpendLedger.ENTRY_ACTUAL).aggregate(
+                total=Sum("amount")
+            )["total"]
+            or 0
+        )
+        context = {
+            "metrics": {
+                "pending_exceptions": open_exceptions.count(),
+                "ready_for_payment": ready_for_payment,
+                "committed_spend": float(committed_spend),
+                "actual_spend": float(actual_spend),
+            },
+            "open_exceptions": open_exceptions[:10],
+        }
+        return render(request, "pages/dashboards/finance_dashboard.html", context)
+
+    # 7. PROCUREMENT EXECUTIVE DASHBOARD
+    elif role_code == Role.PROC_EXEC:
+        from apps.notifications.models import Notification
+        from apps.sourcing.selectors import get_sourcing_dashboard_metrics
+        from apps.sourcing.services import sync_all_event_windows
+        from apps.vendors.filters import annotate_governance
+        from apps.vendors.selectors import get_governance_metrics
+
+        sync_all_event_windows()
+        now = timezone.now()
+        closing_soon = (
+            SourcingEvent.objects.filter(
+                status=SourcingEvent.STATUS_BID_WINDOW,
+                bid_end_date__gt=now,
+                bid_end_date__lte=now + timezone.timedelta(days=3),
+            )
+            .annotate(invite_count=Count("invitations"))
+            .order_by("bid_end_date")[:8]
+        )
+        action_queue = SourcingEvent.objects.filter(
+            status__in=[
+                SourcingEvent.STATUS_DRAFT,
+                SourcingEvent.STATUS_TECHNICAL_REVIEW,
+                SourcingEvent.STATUS_COMMERCIAL_REVIEW,
+                SourcingEvent.STATUS_AWARD_APPROVAL,
+            ]
+        ).order_by("-updated_at")[:10]
+        attention_vendors = (
+            annotate_governance(Vendor.objects.select_related("category"))
+            .filter(
+                Q(status=Vendor.STATUS_ON_HOLD)
+                | Q(latest_risk_level="HIGH")
+                | Q(latest_composite_score__lt=70)
+            )
+            .order_by("-updated_at")[:8]
+        )
+        awarded_without_po = (
+            SourcingEvent.objects.filter(status=SourcingEvent.STATUS_AWARDED)
+            .exclude(
+                purchase_orders__status__in=[
+                    PurchaseOrder.STATUS_DRAFT,
+                    PurchaseOrder.STATUS_APPROVAL,
+                    PurchaseOrder.STATUS_ISSUED,
+                    PurchaseOrder.STATUS_ACKNOWLEDGED,
+                    PurchaseOrder.STATUS_PARTIAL_RECEIPT,
+                    PurchaseOrder.STATUS_COMPLETED,
+                ]
+            )
+            .order_by("-updated_at")[:8]
+        )
+        avg_scorecard = VendorScorecard.objects.aggregate(avg=Avg("composite_score"))["avg"]
+        context = {
+            "sourcing": get_sourcing_dashboard_metrics(),
+            "governance": get_governance_metrics(),
+            "open_pos": PurchaseOrder.objects.filter(
+                status__in=[
+                    PurchaseOrder.STATUS_ISSUED,
+                    PurchaseOrder.STATUS_ACKNOWLEDGED,
+                    PurchaseOrder.STATUS_PARTIAL_RECEIPT,
+                ]
+            ).count(),
+            "pending_clarifications": Clarification.objects.filter(status="PENDING")
+            .exclude(event__status__in=["AWARDED", "CANCELLED"])
+            .count(),
+            "avg_scorecard": round(float(avg_scorecard), 1) if avg_scorecard is not None else None,
+            "unread_notifications": Notification.objects.filter(
+                recipient=user, is_read=False
+            ).count(),
+            "closing_soon": closing_soon,
+            "action_queue": action_queue,
+            "attention_vendors": attention_vendors,
+            "awarded_without_po": awarded_without_po,
+        }
+        return render(request, "pages/dashboards/procurement_dashboard.html", context)
+
+    # 8. LEGAL / CONTRACT MANAGER DASHBOARD
+>>>>>>> Stashed changes
     elif role_code == Role.LEGAL_MGR:
         return render(request, "pages/dashboards/legal_dashboard.html")
     elif role_code == Role.FINANCE_AP:

@@ -201,10 +201,10 @@ def test_vendor_only_sees_invited_sourcing_events(client, vendor_setup):
         description="Compute nodes",
         created_by_user=exec_user,
     )
-    publish_sourcing_event_service(event=event_a, user=exec_user)
     invite_vendors_to_event_service(
         event=event_a, vendor_ids=[vendor_setup["vendor_a"].id], invited_by=exec_user
     )
+    publish_sourcing_event_service(event=event_a, user=exec_user)
 
     # Event 2: Invited Vendor B ONLY
     event_b = create_sourcing_event_service(
@@ -215,10 +215,10 @@ def test_vendor_only_sees_invited_sourcing_events(client, vendor_setup):
         description="Core switches",
         created_by_user=exec_user,
     )
-    publish_sourcing_event_service(event=event_b, user=exec_user)
     invite_vendors_to_event_service(
         event=event_b, vendor_ids=[vendor_setup["vendor_b"].id], invited_by=exec_user
     )
+    publish_sourcing_event_service(event=event_b, user=exec_user)
 
     # Vendor A accesses sourcing list
     client.force_login(vendor_setup["user_vendor_a"])
@@ -244,10 +244,10 @@ def test_vendor_uninvited_event_detail_rejected_with_403(client, vendor_setup):
         description="Private telecom requirements",
         created_by_user=exec_user,
     )
-    publish_sourcing_event_service(event=event_b, user=exec_user)
     invite_vendors_to_event_service(
         event=event_b, vendor_ids=[vendor_setup["vendor_b"].id], invited_by=exec_user
     )
+    publish_sourcing_event_service(event=event_b, user=exec_user)
 
     # Vendor A tries to access event_b detail directly
     client.force_login(vendor_setup["user_vendor_a"])
@@ -274,10 +274,10 @@ def test_bid_draft_creation_and_save(client, vendor_setup):
         description="Storage shelves and controllers",
         created_by_user=exec_user,
     )
-    publish_sourcing_event_service(event=event, user=exec_user)
     invite_vendors_to_event_service(
         event=event, vendor_ids=[vendor_setup["vendor_a"].id], invited_by=exec_user
     )
+    publish_sourcing_event_service(event=event, user=exec_user)
 
     client.force_login(vendor_setup["user_vendor_a"])
     res_get = client.get(f"/vendor/bids/create/{event.id}/")
@@ -318,6 +318,9 @@ def test_bid_validation_detects_empty_and_zero_items(vendor_setup):
         description="Validation test event",
         created_by_user=exec_user,
     )
+    invite_vendors_to_event_service(
+        event=event, vendor_ids=[vendor_setup["vendor_a"].id], invited_by=exec_user
+    )
     publish_sourcing_event_service(event=event, user=exec_user)
 
     bid = VendorBid.objects.create(
@@ -354,10 +357,10 @@ def test_bid_submission_creates_v1_snapshot_and_audit(client, vendor_setup):
         description="H100 accelerator nodes",
         created_by_user=exec_user,
     )
-    publish_sourcing_event_service(event=event, user=exec_user)
     invite_vendors_to_event_service(
         event=event, vendor_ids=[vendor_setup["vendor_a"].id], invited_by=exec_user
     )
+    publish_sourcing_event_service(event=event, user=exec_user)
 
     client.force_login(vendor_setup["user_vendor_a"])
 
@@ -402,19 +405,21 @@ def test_bid_submission_rejected_after_deadline(vendor_setup):
     now = timezone.now()
     exec_user = vendor_setup["proc_exec"]
 
-    # Event closed 1 hour ago
+    # Event published while open; its deadline then passed 1 hour ago
     event = create_sourcing_event_service(
         title="Expired RFQ",
         event_type=SourcingEvent.TYPE_RFQ,
         bid_start_date=now - timedelta(days=7),
-        bid_end_date=now - timedelta(hours=1),
+        bid_end_date=now + timedelta(days=1),
         description="Past deadline event",
         created_by_user=exec_user,
     )
-    publish_sourcing_event_service(event=event, user=exec_user)
     invite_vendors_to_event_service(
         event=event, vendor_ids=[vendor_setup["vendor_a"].id], invited_by=exec_user
     )
+    publish_sourcing_event_service(event=event, user=exec_user)
+    event.bid_end_date = now - timedelta(hours=1)
+    event.save(update_fields=["bid_end_date"])
 
     lines = [
         {
@@ -461,10 +466,10 @@ def test_bid_amendment_before_deadline_creates_v2_without_overwriting_v1(client,
         description="Switching infrastructure",
         created_by_user=exec_user,
     )
-    publish_sourcing_event_service(event=event, user=exec_user)
     invite_vendors_to_event_service(
         event=event, vendor_ids=[vendor_setup["vendor_a"].id], invited_by=exec_user
     )
+    publish_sourcing_event_service(event=event, user=exec_user)
 
     # Initial submission (V1)
     v1_lines = [
@@ -529,10 +534,10 @@ def test_bid_amendment_rejected_after_deadline(client, vendor_setup):
         description="Edge Routers",
         created_by_user=exec_user,
     )
-    publish_sourcing_event_service(event=event, user=exec_user)
     invite_vendors_to_event_service(
         event=event, vendor_ids=[vendor_setup["vendor_a"].id], invited_by=exec_user
     )
+    publish_sourcing_event_service(event=event, user=exec_user)
 
     v1_lines = [
         {
@@ -591,12 +596,12 @@ def test_vendor_cannot_view_or_amend_another_vendors_bid(client, vendor_setup):
         description="Blade chassis and nodes",
         created_by_user=exec_user,
     )
-    publish_sourcing_event_service(event=event, user=exec_user)
     invite_vendors_to_event_service(
         event=event,
         vendor_ids=[vendor_setup["vendor_a"].id, vendor_setup["vendor_b"].id],
         invited_by=exec_user,
     )
+    publish_sourcing_event_service(event=event, user=exec_user)
 
     # Vendor A submits bid
     v1_lines = [
@@ -728,10 +733,10 @@ def test_clarifications_ask_and_view(client, vendor_setup):
         description="Facility power",
         created_by_user=exec_user,
     )
-    publish_sourcing_event_service(event=event, user=exec_user)
     invite_vendors_to_event_service(
         event=event, vendor_ids=[vendor_setup["vendor_a"].id], invited_by=exec_user
     )
+    publish_sourcing_event_service(event=event, user=exec_user)
 
     client.force_login(vendor_setup["user_vendor_a"])
     post_data = {
