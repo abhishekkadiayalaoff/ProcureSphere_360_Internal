@@ -15,4 +15,8 @@ urlpatterns = [
     path("<uuid:pk>/edit/", views.edit_view, name="requisition_edit"),
     path("<uuid:pk>/submit/", views.submit_view, name="requisition_submit"),
     path("<uuid:pk>/cancel/", views.cancel_view, name="requisition_cancel"),
+    path("<uuid:pk>/approve/", views.approve_view, name="requisition_approve"),
+    path("<uuid:pk>/reject/", views.reject_view, name="requisition_reject"),
+    path("requisitions/<uuid:pk>/approve/", views.approve_view, name="requisition_approve_alt"),
+    path("requisitions/<uuid:pk>/reject/", views.reject_view, name="requisition_reject_alt"),
 ]

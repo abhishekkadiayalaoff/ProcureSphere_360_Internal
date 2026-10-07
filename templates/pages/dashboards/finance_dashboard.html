@@ -31,12 +31,12 @@
         <div class="card h-100 border-0 shadow-sm rounded-4 hover-elevate border-start border-warning border-4">
             <div class="card-body p-4">
                 <div class="d-flex align-items-center justify-content-between mb-3">
-                    <h6 class="text-muted fw-bold mb-0 text-uppercase small">Open Exceptions</h6>
+                    <h6 class="text-muted fw-bold mb-0 text-uppercase small">Match Exceptions</h6>
                     <div class="bg-warning bg-opacity-10 p-2 rounded-circle">
                         <i class="fa-solid fa-triangle-exclamation text-warning fs-5"></i>
                     </div>
                 </div>
-                <h3 class="fw-bold mb-1 text-dark">{{ metrics.pending_exceptions }}</h3>
+                <h3 class="fw-bold mb-1 text-dark">{{ metrics.pending_match_exceptions }}</h3>
                 <p class="text-muted small mb-0">Invoices requiring manual match review</p>
             </div>
         </div>
@@ -110,7 +110,7 @@
                             </tr>
                         </thead>
                         <tbody>
-                            {% for exception in open_exceptions %}
+                            {% for exception in open_match_exceptions %}
                             <tr>
                                 <td class="ps-3">
                                     <span class="badge bg-warning text-dark px-2 py-1 rounded-pill"><i class="fa-solid fa-bolt me-1"></i> {{ exception.get_exception_type_display }}</span>
@@ -137,6 +137,54 @@
                                     <div class="mb-3"><i class="fa-solid fa-check-circle text-success fs-1 opacity-50"></i></div>
                                     <h6>All Clear!</h6>
                                     <p class="mb-0 small">There are currently no open invoice match exceptions.</p>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- PR Budget Exceptions -->
+    <div class="col-12 mt-4">
+        <div class="card border-0 shadow-sm rounded-4">
+            <div class="card-header bg-white border-bottom-0 pt-4 pb-0 px-4 d-flex justify-content-between align-items-center">
+                <h5 class="fw-bold mb-0"><i class="fa-solid fa-scale-unbalanced text-danger me-2"></i> Pending Budget Exceptions ({{ metrics.pending_budget_exceptions }})</h5>
+                <a href="/budgets/exceptions/" class="btn btn-sm btn-outline-secondary rounded-pill px-3">View All Exceptions</a>
+            </div>
+            <div class="card-body p-4">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light text-muted small text-uppercase">
+                            <tr>
+                                <th class="ps-3 rounded-start">PR Number</th>
+                                <th>Cost Center</th>
+                                <th>Department</th>
+                                <th>Requested Amount</th>
+                                <th>Date Submitted</th>
+                                <th class="text-end pe-3 rounded-end">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for exception in open_budget_exceptions %}
+                            <tr>
+                                <td class="ps-3 fw-bold text-dark">{{ exception.pr_number }}</td>
+                                <td>{{ exception.cost_center.name }}</td>
+                                <td>{{ exception.department.name }}</td>
+                                <td><span class="text-danger fw-bold">${{ exception.total_amount|floatformat:2 }}</span></td>
+                                <td class="text-muted small">{{ exception.updated_at|date:"M d, Y" }}</td>
+                                <td class="text-end pe-3">
+                                    <a href="{% url 'requisition_detail' exception.id %}" class="btn btn-sm btn-primary rounded-pill px-3">Review</a>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="6" class="text-center py-5 text-muted">
+                                    <div class="mb-3"><i class="fa-solid fa-check-circle text-success fs-1 opacity-50"></i></div>
+                                    <h6>All Clear!</h6>
+                                    <p class="mb-0 small">There are currently no pending budget exceptions.</p>
                                 </td>
                             </tr>
                             {% endfor %}

@@ -217,13 +217,16 @@
                 <p class="text-muted mb-3">
                     Your calculated total amount of <strong class="text-danger fs-5" id="modal_total_amt">$0.00</strong> exceeds the available budget of <strong class="text-success fs-5" id="modal_available_amt">$0.00</strong> for <strong id="modal_cc_code">Cost Center</strong>.
                 </p>
-                <div class="alert alert-warning small border-0 mb-0">
-                    <i class="fa-solid fa-info-circle me-1"></i> Draft requisitions cannot be saved when budget is exceeded. Please reduce quantity or unit prices before saving.
+                <div class="alert alert-warning small border-0 mb-3 text-start">
+                    <i class="fa-solid fa-info-circle me-1"></i> You may save this draft, but if you proceed, this requisition will be routed for <strong>Budget Exception Review</strong> by the Finance team when submitted.
                 </div>
+                <button type="button" class="btn btn-warning fw-bold text-dark rounded-pill px-4 shadow-sm" onclick="forceSubmitForm()">
+                    <i class="fa-solid fa-triangle-exclamation me-2"></i>Proceed Anyway
+                </button>
             </div>
-            <div class="modal-footer border-top-0 p-4 justify-content-center">
-                <button type="button" class="btn btn-secondary rounded-pill px-4 fw-bold" data-bs-dismiss="modal">
-                    <i class="fa-solid fa-pen me-2"></i>Adjust Quantities / Prices
+            <div class="modal-footer border-top-0 p-4 justify-content-center bg-light rounded-bottom-4">
+                <button type="button" class="btn btn-secondary rounded-pill px-4 fw-semibold shadow-sm" data-bs-dismiss="modal">
+                    Cancel
                 </button>
             </div>
         </div>
@@ -231,6 +234,33 @@
 </div>
 
 <script>
+    window.forceSubmitForm = function() {
+        const form = document.getElementById('pr_edit_form');
+        form.removeEventListener('submit', validateBudgetOnSubmit);
+        form.submit();
+    };
+
+    function validateBudgetOnSubmit(e) {
+        const total = calculateTotalAmount();
+        const select = document.getElementById('cost_center_select');
+        const selectedOpt = select ? select.options[select.selectedIndex] : null;
+        const budgetVal = selectedOpt ? selectedOpt.getAttribute('data-budget') : null;
+        
+        if (budgetVal && budgetVal !== 'N/A') {
+            const available = parseFloat(budgetVal);
+            if (total > available) {
+                e.preventDefault();
+                
+                document.getElementById('modal_total_amt').textContent = '$' + total.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                document.getElementById('modal_available_amt').textContent = '$' + available.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                document.getElementById('modal_cc_code').textContent = selectedOpt.text.trim();
+                
+                const modal = new bootstrap.Modal(document.getElementById('budgetExceededModal'));
+                modal.show();
+            }
+        }
+    }
+
     function addLineItem() {
         const tbody = document.getElementById('line-items-body');
         const tr = document.createElement('tr');
@@ -292,26 +322,7 @@
         }
     }
 
-    document.getElementById('pr_edit_form').addEventListener('submit', function(e) {
-        const total = calculateTotalAmount();
-        const select = document.getElementById('cost_center_select');
-        const selectedOpt = select ? select.options[select.selectedIndex] : null;
-        const budgetVal = selectedOpt ? selectedOpt.getAttribute('data-budget') : null;
-        
-        if (budgetVal && budgetVal !== 'N/A') {
-            const available = parseFloat(budgetVal);
-            if (total > available) {
-                e.preventDefault();
-                
-                document.getElementById('modal_total_amt').textContent = '$' + total.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-                document.getElementById('modal_available_amt').textContent = '$' + available.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-                document.getElementById('modal_cc_code').textContent = selectedOpt.text.trim();
-                
-                const modal = new bootstrap.Modal(document.getElementById('budgetExceededModal'));
-                modal.show();
-            }
-        }
-    });
+    document.getElementById('pr_edit_form').addEventListener('submit', validateBudgetOnSubmit);
 
     document.addEventListener('DOMContentLoaded', function() {
         updateBudgetNotice();
