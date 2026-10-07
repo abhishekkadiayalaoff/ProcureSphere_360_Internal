@@ -103,7 +103,6 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "apps.notifications.context_processors.notifications_processor",
-                "apps.core.context_processors.layout_context",
             ],
         },
     },
