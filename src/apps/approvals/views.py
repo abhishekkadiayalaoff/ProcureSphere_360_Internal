@@ -48,10 +48,16 @@ def approvals_inbox_view(request):
         except Exception as e:
             messages.error(request, f"Error processing approval action: {str(e)}")
 
+    tab = request.GET.get("tab", "pending")
+
     if role_code == Role.REQUESTER:
         pending_prs = PurchaseRequisition.objects.filter(
             requester=user,
             status__in=["SUBMITTED", "MANAGER_REVIEW", "BUDGET_REVIEW"],
+        ).order_by("-updated_at")
+        history_prs = PurchaseRequisition.objects.filter(
+            requester=user,
+            status__in=["APPROVED", "REJECTED", "SOURCING", "PO_ISSUED"],
         ).order_by("-updated_at")
     elif role_code == Role.DEPT_APPROVER:
         user_dept = getattr(user, "department", None)
@@ -60,13 +66,19 @@ def approvals_inbox_view(request):
                 department=user_dept,
                 status__in=["SUBMITTED", "MANAGER_REVIEW", "BUDGET_REVIEW"],
             ).order_by("-updated_at")
-        else:
-            pending_prs = PurchaseRequisition.objects.filter(
-                status__in=["SUBMITTED", "MANAGER_REVIEW", "BUDGET_REVIEW"]
+            history_prs = PurchaseRequisition.objects.filter(
+                department=user_dept,
+                status__in=["APPROVED", "REJECTED", "SOURCING", "PO_ISSUED"],
             ).order_by("-updated_at")
+        else:
+            pending_prs = PurchaseRequisition.objects.none()
+            history_prs = PurchaseRequisition.objects.none()
     else:
         pending_prs = PurchaseRequisition.objects.filter(
             status__in=["SUBMITTED", "MANAGER_REVIEW", "BUDGET_REVIEW"]
+        ).order_by("-updated_at")
+        history_prs = PurchaseRequisition.objects.filter(
+            status__in=["APPROVED", "REJECTED", "SOURCING", "PO_ISSUED"]
         ).order_by("-updated_at")
 
     if role_code == Role.LEGAL_MGR or role_code == "LEGAL_MGR":
@@ -78,6 +90,8 @@ def approvals_inbox_view(request):
 
     context = {
         "pending_prs": pending_prs,
+        "history_prs": history_prs,
+        "active_tab": tab,
         "role_code": role_code,
         "base_layout": base_layout,
     }
