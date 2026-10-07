@@ -18,9 +18,7 @@ def notifications_processor(request):
     role_code = getattr(user, "role_code", None)
 
     # 1. Calculate unread notifications count for recipient
-    unread_count = Notification.objects.filter(
-        recipient=user, is_read=False
-    ).count()
+    unread_count = Notification.objects.filter(recipient=user, is_read=False).count()
 
     # 2. Calculate pending approvals count for DEPT_APPROVER or PROC_MGR
     pending_count = 0
@@ -38,13 +36,9 @@ def notifications_processor(request):
         else:
             pending_count = 0
     elif role_code in [Role.PROC_MGR, Role.SUPER_ADMIN]:
-        pending_count = PurchaseRequisition.objects.filter(
-            status__in=statuses
-        ).count()
+        pending_count = PurchaseRequisition.objects.filter(status__in=statuses).count()
 
-    recent_notifications = Notification.objects.filter(
-        recipient=user
-    ).order_by("-created_at")[:5]
+    recent_notifications = Notification.objects.filter(recipient=user).order_by("-created_at")[:5]
 
     return {
         "unread_notifications_count": unread_count,

@@ -282,9 +282,7 @@ def home_view(request):  # noqa: C901
                 )
 
         pending_prs = dept_prs.filter(status__in=statuses).order_by("-updated_at")
-        available_budget = sum(
-            (budget.available_amount for budget in budget_qs), Decimal("0.00")
-        )
+        available_budget = sum((budget.available_amount for budget in budget_qs), Decimal("0.00"))
         context = {
             "user_department": user_dept,
             "pending_prs": pending_prs[:10],

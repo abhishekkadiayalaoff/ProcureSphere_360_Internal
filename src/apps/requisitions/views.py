@@ -155,7 +155,9 @@ def create_view(request):
                     f"Purchase Requisition {pr.pr_number} created and submitted for approval successfully!",
                 )
             else:
-                messages.success(request, f"Purchase Requisition {pr.pr_number} created in Draft status.")
+                messages.success(
+                    request, f"Purchase Requisition {pr.pr_number} created in Draft status."
+                )
 
             return redirect("requisition_detail", pk=pr.pk)
 
@@ -184,9 +186,9 @@ def detail_view(request, pk):
         user.role.code if hasattr(user, "role") and user.role else Role.SUPER_ADMIN
     )
     pr = get_object_or_404(
-        PurchaseRequisition.objects.select_related("requester", "department", "cost_center").prefetch_related(
-            "lines", "attachments", "purchase_orders"
-        ),
+        PurchaseRequisition.objects.select_related(
+            "requester", "department", "cost_center"
+        ).prefetch_related("lines", "attachments", "purchase_orders"),
         pk=pk,
     )
 
