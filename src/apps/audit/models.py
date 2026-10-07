@@ -123,8 +123,6 @@ class AuditLog(models.Model):
             return self.actor.role_code
         return "SYSTEM"
 
-
-
     @property
     def summary(self):
         if self.new_state and isinstance(self.new_state, dict):

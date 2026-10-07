@@ -153,7 +153,10 @@ class MatchTolerancePolicy(TimeStampedModel):
     """
     Singleton-like model to hold global 3-way match tolerance percentages.
     """
-    is_active = models.BooleanField(default=True, help_text="Only one policy can be active at a time.")
+
+    is_active = models.BooleanField(
+        default=True, help_text="Only one policy can be active at a time."
+    )
     price_tolerance_pct = models.DecimalField(
         max_digits=5, decimal_places=4, default=Decimal("0.0500"), help_text="e.g. 0.0500 for 5%"
     )
