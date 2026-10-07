@@ -26,4 +26,25 @@ urlpatterns = [
         views.vendor_document_download_view,
         name="vendor_document_download",
     ),
+    # Procurement Executive Dashboard — Pillar 1 HTMX fragments
+    path(
+        "vendors/htmx/qualification/",
+        views.vendor_qualification_tab_view,
+        name="vendors_qualification_tab",
+    ),
+    path(
+        "vendors/<uuid:vendor_id>/htmx/documents/",
+        views.vendor_documents_modal_view,
+        name="vendors_documents_modal",
+    ),
+    path(
+        "vendors/<uuid:vendor_id>/htmx/risk/",
+        views.vendor_risk_modal_view,
+        name="vendors_risk_modal",
+    ),
+    path(
+        "vendors/<uuid:vendor_id>/htmx/kyc/<slug:kyc_action>/",
+        views.vendor_kyc_htmx_view,
+        name="vendors_kyc_htmx",
+    ),
 ]

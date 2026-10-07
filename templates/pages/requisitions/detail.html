@@ -29,14 +29,16 @@
             <i class="fa-solid fa-ban me-2"></i>Cancel PR
         </button>
         {% endif %}
-        {% if pr.status in 'SUBMITTED,MANAGER_REVIEW,BUDGET_REVIEW' %}
-        <form method="POST" action="/approvals/inbox/" class="d-inline-flex gap-2">
+        {% if pr.status in 'SUBMITTED,MANAGER_REVIEW,BUDGET_REVIEW' and role_code in 'DEPT_APPROVER,PROC_MGR,SUPER_ADMIN' %}
+        <form method="POST" action="{% url 'requisition_approve' pr.pk %}" class="d-inline-flex gap-2">
             {% csrf_token %}
-            <input type="hidden" name="pr_id" value="{{ pr.id }}">
-            <button type="submit" name="action" value="APPROVED" class="btn btn-success rounded-pill shadow-sm px-4 fw-bold">
+            <button type="submit" class="btn btn-success rounded-pill shadow-sm px-4 fw-bold">
                 <i class="fa-solid fa-check me-2"></i>Approve PR
             </button>
-            <button type="submit" name="action" value="REJECTED" class="btn btn-outline-danger rounded-pill shadow-sm px-4 fw-bold">
+        </form>
+        <form method="POST" action="{% url 'requisition_reject' pr.pk %}" class="d-inline-flex gap-2">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-outline-danger rounded-pill shadow-sm px-4 fw-bold">
                 <i class="fa-solid fa-times me-2"></i>Reject PR
             </button>
         </form>
@@ -352,7 +354,7 @@
         </div>
         
         <!-- Approval Action Decision Card -->
-        {% if pr.status in 'SUBMITTED,MANAGER_REVIEW,BUDGET_REVIEW' %}
+        {% if pr.status in 'SUBMITTED,MANAGER_REVIEW,BUDGET_REVIEW' and role_code in 'DEPT_APPROVER,PROC_MGR,SUPER_ADMIN' %}
         <div class="card border-warning border-2 shadow-sm rounded-4 mb-4 bg-warning bg-opacity-10">
             <div class="card-body p-4">
                 <h6 class="fw-bold text-dark mb-2">
@@ -360,22 +362,25 @@
                 </h6>
                 <p class="small text-muted mb-3">Review business justification and budget impact, then record your decision.</p>
 
-                <form method="POST" action="/approvals/inbox/">
-                    {% csrf_token %}
-                    <input type="hidden" name="pr_id" value="{{ pr.id }}">
-                    <div class="mb-3">
-                        <label class="form-label small fw-semibold text-dark">Decision Comments</label>
-                        <textarea name="comments" class="form-control form-control-sm" rows="2" placeholder="Optional comments or notes..."></textarea>
-                    </div>
-                    <div class="d-grid gap-2">
-                        <button type="submit" name="action" value="APPROVED" class="btn btn-success fw-bold shadow-sm rounded-pill py-2">
+                <div class="d-grid gap-2">
+                    <form method="POST" action="{% url 'requisition_approve' pr.pk %}">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold text-dark">Decision Comments</label>
+                            <textarea name="comments" class="form-control form-control-sm" rows="2" placeholder="Optional comments or notes..."></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-success fw-bold shadow-sm rounded-pill py-2 w-100">
                             <i class="fa-solid fa-check me-2"></i> Approve Requisition
                         </button>
-                        <button type="submit" name="action" value="REJECTED" class="btn btn-outline-danger fw-bold rounded-pill py-2">
+                    </form>
+                    <form method="POST" action="{% url 'requisition_reject' pr.pk %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="comments" value="Rejected via dashboard" class="reject-comments-mirror">
+                        <button type="submit" class="btn btn-outline-danger fw-bold rounded-pill py-2 w-100 mt-2" onclick="document.querySelector('.reject-comments-mirror').value = this.closest('.d-grid').querySelector('textarea[name=comments]').value || 'Rejected'">
                             <i class="fa-solid fa-xmark me-2"></i> Reject Requisition
                         </button>
-                    </div>
-                </form>
+                    </form>
+                </div>
             </div>
         </div>
         {% endif %}

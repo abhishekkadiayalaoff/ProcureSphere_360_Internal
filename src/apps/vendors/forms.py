@@ -24,13 +24,18 @@ class VendorRegistrationForm(forms.Form):
 
 
 class RiskAssessmentForm(forms.Form):
-    risk_level = forms.ChoiceField(choices=VendorRiskRecord.RISK_CHOICES)
+    risk_level = forms.ChoiceField(
+        choices=VendorRiskRecord.RISK_CHOICES,
+        widget=forms.Select(attrs={"class": "form-select form-select-sm"}),
+    )
     risk_flags = forms.MultipleChoiceField(
         choices=VendorRiskRecord.RISK_FLAG_CHOICES,
         required=False,
         widget=forms.CheckboxSelectMultiple,
     )
-    notes = forms.CharField(widget=forms.Textarea(attrs={"rows": 3}))
+    notes = forms.CharField(
+        widget=forms.Textarea(attrs={"rows": 3, "class": "form-control form-control-sm"})
+    )
 
 
 class GovernanceStatusForm(forms.Form):

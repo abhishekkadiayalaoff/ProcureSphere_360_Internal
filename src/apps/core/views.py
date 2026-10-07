@@ -1,4 +1,3 @@
-
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.db import connection
@@ -255,7 +254,11 @@ def home_view(request):  # noqa: C901
         return render(request, "pages/dashboards/stores_dashboard.html")
     elif role_code == Role.DEPT_APPROVER:
         from decimal import Decimal
+
+        from django.utils import timezone as fiscal_timezone
+
         from apps.budgets.models import Budget
+        from apps.organization.models import FiscalPeriod as ApproverFiscalPeriod
 
         user_dept = getattr(user, "department", None)
         statuses = [
@@ -263,30 +266,35 @@ def home_view(request):  # noqa: C901
             PurchaseRequisition.STATUS_MANAGER_REVIEW,
             PurchaseRequisition.STATUS_BUDGET_REVIEW,
         ]
+        dept_prs = PurchaseRequisition.objects.none()
+        budget_qs = Budget.objects.none()
+
         if user_dept:
             dept_prs = PurchaseRequisition.objects.filter(department=user_dept)
-            budget_qs = Budget.objects.filter(cost_center__department=user_dept)
-        else:
-            dept_prs = PurchaseRequisition.objects.all()
-            budget_qs = Budget.objects.all()
+            now = fiscal_timezone.now()
+            current_period = ApproverFiscalPeriod.objects.filter(
+                start_date__lte=now, end_date__gte=now, is_closed=False
+            ).first()
+            if current_period:
+                budget_qs = Budget.objects.filter(
+                    cost_center__department=user_dept,
+                    fiscal_period=current_period,
+                )
 
         pending_prs = dept_prs.filter(status__in=statuses).order_by("-updated_at")
-        total_prs_count = dept_prs.count()
-        pending_count = pending_prs.count()
-        approved_count = dept_prs.filter(status=PurchaseRequisition.STATUS_APPROVED).count()
-
-        avail_budget = Decimal("0.00")
-        if budget_qs.exists():
-            avail_budget = sum((b.available_amount for b in budget_qs), Decimal("0.00"))
-
+        available_budget = sum(
+            (budget.available_amount for budget in budget_qs), Decimal("0.00")
+        )
         context = {
             "user_department": user_dept,
-            "pending_prs": pending_prs,
+            "pending_prs": pending_prs[:10],
             "metrics": {
-                "pending_count": pending_count,
-                "total_prs_count": total_prs_count,
-                "approved_count": approved_count,
-                "available_budget": float(avail_budget),
+                "pending_count": pending_prs.count(),
+                "total_prs_count": dept_prs.count(),
+                "approved_count": dept_prs.filter(
+                    status=PurchaseRequisition.STATUS_APPROVED
+                ).count(),
+                "available_budget": float(available_budget),
             },
         }
         return render(request, "pages/dashboards/approver_dashboard.html", context)

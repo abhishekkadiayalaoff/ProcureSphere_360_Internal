@@ -265,3 +265,164 @@ def vendor_document_download_view(request, vendor_id, doc_id):
         return FileResponse(doc.file.open("rb"), as_attachment=True)
     except (FileNotFoundError, ValueError):
         raise Http404("Document file is not available in storage.")
+
+
+# ------------------------------------------------------------------------------------------
+# Procurement Executive Dashboard — Pillar 1 HTMX fragments (qualification queue, KYC docs,
+# risk assessment). All actions call the transactional services in services.py; RBAC is
+# enforced on the backend via can_view_governance / can_operate_governance.
+# ------------------------------------------------------------------------------------------
+
+
+def _is_htmx(request):
+    return request.headers.get("HX-Request") == "true"
+
+
+@login_required(login_url="/login/")
+def vendor_qualification_tab_view(request):
+    """HTMX tab: vendors in SUBMITTED or KYC_REVIEW status awaiting qualification."""
+    _require_governance_view(request.user)
+    queue = (
+        get_governance_vendor_queryset()
+        .filter(status__in=[Vendor.STATUS_SUBMITTED, Vendor.STATUS_KYC_REVIEW])
+        .prefetch_related("documents", "risk_records")[:50]
+    )
+    rows = []
+    for vendor in queue:
+        docs = list(vendor.documents.all())
+        latest_risk = vendor.risk_records.order_by("-created_at").first()
+        rows.append(
+            {
+                "vendor": vendor,
+                "doc_total": len(docs),
+                "doc_verified": sum(1 for d in docs if d.is_verified),
+                "latest_risk": latest_risk,
+            }
+        )
+    return render(
+        request,
+        "vendors/partials/htmx_qualification_tab.html",
+        {"rows": rows, "caps": governance_capabilities(request.user)},
+    )
+
+
+@login_required(login_url="/login/")
+def vendor_documents_modal_view(request, vendor_id):
+    """HTMX modal: review a vendor's VendorDocument (KYC) records + verify actions."""
+    _require_governance_view(request.user)
+    vendor = get_object_or_404(Vendor.objects.select_related("category"), pk=vendor_id)
+    documents = vendor.documents.select_related("verified_by").order_by("-created_at")
+    return render(
+        request,
+        "vendors/partials/htmx_documents_modal.html",
+        {
+            "vendor": vendor,
+            "documents": documents,
+            "caps": governance_capabilities(request.user),
+        },
+    )
+
+
+@login_required(login_url="/login/")
+def vendor_risk_modal_view(request, vendor_id):
+    """HTMX modal: GET shows risk form; POST records via record_vendor_risk_assessment_service."""
+    _require_governance_operate(request.user)
+    vendor = get_object_or_404(Vendor, pk=vendor_id)
+    form = RiskAssessmentForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        try:
+            record = record_vendor_risk_assessment_service(
+                vendor=vendor,
+                assessor=request.user,
+                risk_level=form.cleaned_data["risk_level"],
+                risk_flags=form.cleaned_data["risk_flags"],
+                notes=form.cleaned_data["notes"],
+            )
+        except ValidationError as exc:
+            form.add_error(None, exc)
+            return render(
+                request,
+                "vendors/partials/htmx_risk_modal.html",
+                {
+                    "vendor": vendor,
+                    "form": form,
+                    "risk_flag_choices": VendorRiskRecord.RISK_FLAG_CHOICES,
+                },
+                status=400,
+            )
+        messages.success(request, f"Risk assessment recorded ({record.get_risk_level_display()}).")
+        if _is_htmx(request):
+            response = render(
+                request,
+                "vendors/partials/htmx_action_result.html",
+                {"success": True, "vendor": vendor, "record": record},
+            )
+            response["HX-Trigger"] = "vendor-updated"
+            return response
+        return redirect("vendor_detail", vendor_id=vendor.id)
+    if request.method == "POST":
+        return render(
+            request,
+            "vendors/partials/htmx_risk_modal.html",
+            {
+                "vendor": vendor,
+                "form": form,
+                "risk_flag_choices": VendorRiskRecord.RISK_FLAG_CHOICES,
+            },
+            status=400,
+        )
+    return render(
+        request,
+        "vendors/partials/htmx_risk_modal.html",
+        {
+            "vendor": vendor,
+            "form": RiskAssessmentForm(),
+            "risk_flag_choices": VendorRiskRecord.RISK_FLAG_CHOICES,
+        },
+    )
+
+
+@login_required(login_url="/login/")
+@require_POST
+def vendor_kyc_htmx_view(request, vendor_id, kyc_action):
+    """HTMX KYC transitions: start-review / verify-document / approve (APPROVED via service)."""
+    _require_governance_operate(request.user)
+    vendor = get_object_or_404(Vendor, pk=vendor_id)
+    try:
+        if kyc_action == "start-review":
+            start_kyc_review_service(vendor=vendor, reviewer=request.user)
+            detail = "KYC review started."
+        elif kyc_action == "verify-document":
+            doc = get_object_or_404(
+                VendorDocument, pk=request.POST.get("document_id"), vendor=vendor
+            )
+            verify_vendor_document_service(document=doc, verifier=request.user)
+            detail = f"Document '{doc.title}' verified."
+        elif kyc_action == "approve":
+            approve_vendor_service(
+                vendor=vendor, manager=request.user, notes=request.POST.get("notes", "").strip()
+            )
+            detail = "Vendor approved and activated."
+        else:
+            raise Http404("Unknown KYC action.")
+    except ValidationError as exc:
+        messages.error(request, " ".join(exc.messages))
+        if _is_htmx(request):
+            return render(
+                request,
+                "vendors/partials/htmx_action_result.html",
+                {"success": False, "errors": exc.messages},
+                status=400,
+            )
+        return redirect("vendor_detail", vendor_id=vendor.id)
+    messages.success(request, detail)
+    if _is_htmx(request):
+        vendor.refresh_from_db()
+        response = render(
+            request,
+            "vendors/partials/htmx_action_result.html",
+            {"success": True, "vendor": vendor, "detail": detail},
+        )
+        response["HX-Trigger"] = "vendor-updated"
+        return response
+    return redirect("vendor_detail", vendor_id=vendor.id)

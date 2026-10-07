@@ -10,7 +10,11 @@ from django.utils.dateparse import parse_date
 
 from apps.accounts.models import Role
 from apps.orders.models import PurchaseOrder
-from apps.receipts.models import GoodsReceipt
+from apps.receipts.models import (
+    GoodsReceipt,
+    ReceiptLine,
+    RejectionRecord,
+)
 from apps.receipts.services import (
     create_goods_receipt_service,
     handoff_goods_to_stock_service,
@@ -510,5 +514,237 @@ def receipt_stock_handoff_view(request, grn_id):
             "po": grn.po,
             "lines": grn.lines.all(),
             "accepted_lines": accepted_lines,
+        },
+    )
+
+
+@login_required(login_url="/login/")
+def receipt_inspection_queue_view(request):
+    """
+    Dedicated operational queue for Quality Inspection.
+    Displays all GRNs requiring or undergoing inspection, item breakdowns, and direct Inspect actions.
+    """
+    search_query = request.GET.get("q", "").strip()
+    status_filter = request.GET.get("status", "").strip().upper()
+
+    base_qs = (
+        GoodsReceipt.objects.select_related("po__vendor", "received_by")
+        .prefetch_related(
+            "lines__po_line",
+            "lines__inspection__inspected_by",
+            "lines__rejections",
+        )
+        .order_by("-received_date")
+    )
+
+    if search_query:
+        base_qs = base_qs.filter(
+            Q(grn_number__icontains=search_query)
+            | Q(po__po_number__icontains=search_query)
+            | Q(po__vendor__legal_name__icontains=search_query)
+            | Q(lines__po_line__item_description__icontains=search_query)
+        ).distinct()
+
+    all_grns = list(base_qs)
+
+    if status_filter == "PENDING":
+        filtered_grns = [g for g in all_grns if g.overall_inspection_status == "PENDING"]
+    elif status_filter == "PASSED":
+        filtered_grns = [g for g in all_grns if g.overall_inspection_status == "PASSED"]
+    elif status_filter in ["FAILED", "REJECTED"]:
+        filtered_grns = [
+            g for g in all_grns if g.overall_inspection_status in ["FAILED", "REJECTED"]
+        ]
+    elif status_filter == "PARTIALLY_INSPECTED":
+        filtered_grns = [
+            g for g in all_grns if g.overall_inspection_status == "PARTIALLY_INSPECTED"
+        ]
+    else:
+        filtered_grns = all_grns
+
+    # Real DB-level inspection metrics
+    pending_count = sum(1 for g in all_grns if g.overall_inspection_status == "PENDING")
+    passed_count = sum(1 for g in all_grns if g.overall_inspection_status == "PASSED")
+    rejected_count = sum(
+        1 for g in all_grns if g.overall_inspection_status in ["FAILED", "REJECTED"]
+    )
+    total_count = len(all_grns)
+
+    paginator = Paginator(filtered_grns, 10)
+    page_number = request.GET.get("page", 1)
+    try:
+        page_obj = paginator.get_page(page_number)
+    except (PageNotAnInteger, EmptyPage):
+        page_obj = paginator.get_page(1)
+
+    return render(
+        request,
+        "receipts/inspection_queue.html",
+        {
+            "grns": page_obj,
+            "page_obj": page_obj,
+            "search_query": search_query,
+            "status_filter": status_filter,
+            "pending_count": pending_count,
+            "passed_count": passed_count,
+            "rejected_count": rejected_count,
+            "total_count": total_count,
+        },
+    )
+
+
+@login_required(login_url="/login/")
+def receipt_stock_handoff_queue_view(request):
+    """
+    Dedicated operational queue for Stock Handoff.
+    Shows GRNs and receipt lines eligible for warehouse stock posting, excluding rejected quantities.
+    """
+    search_query = request.GET.get("q", "").strip()
+    status_filter = request.GET.get("status", "").strip().upper()
+
+    base_qs = (
+        GoodsReceipt.objects.select_related("po__vendor", "received_by")
+        .prefetch_related(
+            "lines__po_line",
+            "lines__stock_handoff__handed_off_by",
+            "lines__inspection",
+            "lines__rejections",
+        )
+        .order_by("-received_date")
+    )
+
+    if search_query:
+        base_qs = base_qs.filter(
+            Q(grn_number__icontains=search_query)
+            | Q(po__po_number__icontains=search_query)
+            | Q(po__vendor__legal_name__icontains=search_query)
+            | Q(lines__po_line__item_description__icontains=search_query)
+        ).distinct()
+
+    # Filter to only GRNs with accepted quantity > 0
+    eligible_grns = [
+        g
+        for g in base_qs
+        if any(line.quantity_accepted > Decimal("0.00") for line in g.lines.all())
+    ]
+
+    if status_filter == "PENDING":
+        filtered_grns = [g for g in eligible_grns if g.stock_handoff_status == "PENDING_HANDOFF"]
+    elif status_filter == "HANDED_OFF":
+        filtered_grns = [g for g in eligible_grns if g.stock_handoff_status == "HANDED_OFF"]
+    elif status_filter == "PARTIALLY_HANDED_OFF":
+        filtered_grns = [
+            g for g in eligible_grns if g.stock_handoff_status == "PARTIALLY_HANDED_OFF"
+        ]
+    else:
+        filtered_grns = eligible_grns
+
+    # Real operational metrics
+    all_eligible = [
+        g
+        for g in GoodsReceipt.objects.prefetch_related("lines__stock_handoff")
+        if any(line.quantity_accepted > Decimal("0.00") for line in g.lines.all())
+    ]
+    pending_handoff_count = sum(
+        1 for g in all_eligible if g.stock_handoff_status == "PENDING_HANDOFF"
+    )
+    completed_handoff_count = sum(1 for g in all_eligible if g.stock_handoff_status == "HANDED_OFF")
+    partial_handoff_count = sum(
+        1 for g in all_eligible if g.stock_handoff_status == "PARTIALLY_HANDED_OFF"
+    )
+    total_eligible_count = len(all_eligible)
+
+    paginator = Paginator(filtered_grns, 10)
+    page_number = request.GET.get("page", 1)
+    try:
+        page_obj = paginator.get_page(page_number)
+    except (PageNotAnInteger, EmptyPage):
+        page_obj = paginator.get_page(1)
+
+    return render(
+        request,
+        "receipts/stock_handoff_queue.html",
+        {
+            "grns": page_obj,
+            "page_obj": page_obj,
+            "search_query": search_query,
+            "status_filter": status_filter,
+            "pending_handoff_count": pending_handoff_count,
+            "completed_handoff_count": completed_handoff_count,
+            "partial_handoff_count": partial_handoff_count,
+            "total_eligible_count": total_eligible_count,
+        },
+    )
+
+
+@login_required(login_url="/login/")
+def receipt_rejections_queue_view(request):
+    """
+    Dedicated operational queue for Rejections & Returns.
+    Displays all rejected receipt lines, rejection reasons, return-to-vendor status, and PO links.
+    """
+    search_query = request.GET.get("q", "").strip()
+    status_filter = request.GET.get("status", "").strip().upper()
+
+    base_qs = (
+        ReceiptLine.objects.filter(
+            Q(quantity_rejected__gt=Decimal("0.00")) | Q(rejections__isnull=False)
+        )
+        .select_related(
+            "receipt__po__vendor",
+            "receipt__received_by",
+            "po_line",
+            "inspection__inspected_by",
+        )
+        .prefetch_related("rejections")
+        .distinct()
+        .order_by("-receipt__received_date")
+    )
+
+    if search_query:
+        base_qs = base_qs.filter(
+            Q(receipt__grn_number__icontains=search_query)
+            | Q(receipt__po__po_number__icontains=search_query)
+            | Q(receipt__po__vendor__legal_name__icontains=search_query)
+            | Q(po_line__item_description__icontains=search_query)
+            | Q(rejections__rejection_reason__icontains=search_query)
+        ).distinct()
+
+    if status_filter == "RETURNED":
+        base_qs = base_qs.filter(rejections__returned_to_vendor=True).distinct()
+    elif status_filter == "NOT_RETURNED":
+        base_qs = base_qs.filter(
+            Q(rejections__returned_to_vendor=False) | Q(rejections__isnull=True)
+        ).distinct()
+
+    total_rejected_lines = (
+        ReceiptLine.objects.filter(
+            Q(quantity_rejected__gt=Decimal("0.00")) | Q(rejections__isnull=False)
+        )
+        .distinct()
+        .count()
+    )
+
+    returned_count = RejectionRecord.objects.filter(returned_to_vendor=True).count()
+    pending_return_count = RejectionRecord.objects.filter(returned_to_vendor=False).count()
+
+    paginator = Paginator(base_qs, 15)
+    page_number = request.GET.get("page", 1)
+    try:
+        page_obj = paginator.get_page(page_number)
+    except (PageNotAnInteger, EmptyPage):
+        page_obj = paginator.get_page(1)
+
+    return render(
+        request,
+        "receipts/rejections_queue.html",
+        {
+            "rejected_lines": page_obj,
+            "page_obj": page_obj,
+            "search_query": search_query,
+            "status_filter": status_filter,
+            "total_rejected_lines": total_rejected_lines,
+            "returned_count": returned_count,
+            "pending_return_count": pending_return_count,
         },
     )

@@ -13,7 +13,10 @@
     </div>
     <div class="d-flex align-items-center gap-2">
         <a href="{% url 'orders_list' %}" class="btn btn-primary rounded-pill px-4 fw-semibold shadow-sm">
-            <i class="fa-solid fa-plus-circle me-1"></i> Record Goods Receipt
+            <i class="fa-solid fa-plus me-1"></i> Record Goods Receipt
+        </a>
+        <a href="{% url 'orders_list' %}" class="btn btn-outline-secondary rounded-pill px-3 fw-semibold">
+            <i class="fa-solid fa-truck-ramp-box me-1"></i> View Pending Deliveries
         </a>
     </div>
 </div>
@@ -223,7 +226,7 @@
                             </a>
                             {% else %}
                             <a href="{% url 'orders_list' %}" class="btn btn-sm btn-primary rounded-pill px-4 fw-semibold">
-                                View Open POs to Receive
+                                <i class="fa-solid fa-plus me-1"></i> Record Goods Receipt
                             </a>
                             {% endif %}
                         </td>

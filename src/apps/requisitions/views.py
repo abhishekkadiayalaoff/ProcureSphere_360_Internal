@@ -33,7 +33,7 @@ def list_view(request):
                 "-created_at"
             )
         else:
-            items = PurchaseRequisition.objects.all().order_by("-created_at")
+            items = PurchaseRequisition.objects.none()
     else:
         items = PurchaseRequisition.objects.all().order_by("-created_at")
 
@@ -190,8 +190,15 @@ def detail_view(request, pk):
         pk=pk,
     )
 
+    if role_code == Role.REQUESTER and pr.requester != user:
+        messages.error(request, "Permission denied.")
+        return redirect("requisitions_list")
+
     approval_history = (
-        ApprovalAction.objects.filter(target_object_id=str(pr.id))
+        ApprovalAction.objects.filter(
+            target_object_id=str(pr.id),
+            target_model_name="PurchaseRequisition",
+        )
         .select_related("actor")
         .order_by("-created_at")
     )
