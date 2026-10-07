@@ -95,7 +95,18 @@ def create_view(request):
             messages.error(request, str(e))
             return redirect('requisition_create')
 
-    return render(request, 'pages/requisitions/create.html')
+    if getattr(user, "department", None):
+        departments = Department.objects.filter(id=user.department.id)
+        cost_centers = CostCenter.objects.filter(department=user.department)
+    else:
+        departments = Department.objects.all()
+        cost_centers = CostCenter.objects.all()
+
+    return render(
+        request, 
+        'pages/requisitions/create.html',
+        {"departments": departments, "cost_centers": cost_centers}
+    )
 
 def detail_view(*args, **kwargs): pass
 def approve_view(*args, **kwargs): pass
