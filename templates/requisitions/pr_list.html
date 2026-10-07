@@ -8,9 +8,11 @@
         <h2 class="fw-bold text-dark mb-1"><i class="fa-solid fa-file-invoice-dollar text-primary me-2"></i> Purchase Requisitions</h2>
         <p class="text-muted small mb-0">Multi-level approval workflows & real-time budget reservation tracking.</p>
     </div>
+    {% if request.user.role_code == 'REQUESTER' or request.user.role.code == 'REQUESTER' or request.user.is_superuser %}
     <a href="/requisitions/create/" class="btn btn-cyan rounded-pill px-4 fw-semibold shadow-sm">
         <i class="fa-solid fa-plus me-1"></i> Create New PR
     </a>
+    {% endif %}
 </div>
 
 <!-- Messages Alert -->

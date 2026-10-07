@@ -1,0 +1,75 @@
+{% extends 'layouts/finance_base.html' %}
+
+{% block title %}Budget Exceptions — ProcureSphere 360{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12 d-flex justify-content-between align-items-center">
+        <div>
+            <h2 class="fw-bold text-dark mb-1"><i class="fa-solid fa-scale-unbalanced text-danger me-2"></i> Budget Exceptions</h2>
+            <p class="text-muted mb-0">Purchase Requisitions that exceed available department budgets and require explicit Finance approval.</p>
+        </div>
+    </div>
+</div>
+
+{% if messages %}
+<div class="mb-4">
+    {% for message in messages %}
+    <div class="alert {% if message.tags == 'success' %}alert-success{% else %}alert-danger{% endif %} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<div class="card shadow-sm border-0">
+    <div class="card-body p-0">
+        <table class="table table-hover table-striped align-middle mb-0">
+            <thead class="table-dark">
+                <tr>
+                    <th scope="col" class="ps-4">PR Number</th>
+                    <th scope="col">Requester</th>
+                    <th scope="col">Department</th>
+                    <th scope="col">Cost Center</th>
+                    <th scope="col" class="text-end">Requested Amount</th>
+                    <th scope="col" class="text-end pe-4">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for exception in exceptions %}
+                <tr>
+                    <td class="ps-4 fw-bold">
+                        <a href="{% url 'requisition_detail' exception.id %}" class="text-decoration-none">
+                            {{ exception.pr_number }}
+                        </a>
+                    </td>
+                    <td>{{ exception.requester.email }}</td>
+                    <td>{{ exception.department.name }}</td>
+                    <td><span class="badge bg-secondary">{{ exception.cost_center.code }}</span></td>
+                    <td class="text-end fw-bold text-danger">${{ exception.total_amount|floatformat:2 }}</td>
+                    <td class="text-end pe-4">
+                        <form action="{% url 'approvals_inbox' %}" method="POST" class="d-inline">
+                            {% csrf_token %}
+                            <input type="hidden" name="pr_id" value="{{ exception.id }}">
+                            <input type="hidden" name="action" value="APPROVED">
+                            <input type="hidden" name="comments" value="Budget Exception explicitly approved by Finance.">
+                            <button type="submit" class="btn btn-sm btn-success rounded-pill px-3" onclick="return confirm('Are you sure you want to approve this budget overrun?');">
+                                <i class="fa-solid fa-check me-1"></i> Force Approve
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="text-center py-5 text-muted">
+                        <h5>No Open Budget Exceptions</h5>
+                        <p class="mb-0">All submitted purchase requisitions are within their allocated budgets.</p>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

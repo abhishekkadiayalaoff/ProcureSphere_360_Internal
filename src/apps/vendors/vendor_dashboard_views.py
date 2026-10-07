@@ -103,7 +103,10 @@ def vendor_dashboard_overview_view(request):
 
     # Section A: Recent RFQ/RFP Invitations (Invited events)
     recent_invitations = (
-        BidInvite.objects.filter(vendor=vendor).select_related("event").order_by("-created_at")[:5]
+        BidInvite.objects.exclude(event__status=SourcingEvent.STATUS_DRAFT)
+        .filter(vendor=vendor)
+        .select_related("event")
+        .order_by("-created_at")[:5]
     )
 
     # Section B: Upcoming Bid Deadlines (Events closing within 7 days)
@@ -263,7 +266,8 @@ def vendor_sourcing_list_view(request):
 
     # Base query: events where vendor has invitation
     invites_qs = (
-        BidInvite.objects.filter(vendor=vendor)
+        BidInvite.objects.exclude(event__status=SourcingEvent.STATUS_DRAFT)
+        .filter(vendor=vendor)
         .select_related("event", "event__requisition")
         .order_by("-event__created_at")
     )
@@ -319,19 +323,26 @@ def vendor_sourcing_list_view(request):
 
     # Counts for tabs
     tab_counts = {
-        "all": BidInvite.objects.filter(vendor=vendor).count(),
-        "active": BidInvite.objects.filter(
+        "all": BidInvite.objects.exclude(event__status=SourcingEvent.STATUS_DRAFT)
+        .filter(vendor=vendor)
+        .count(),
+        "active": BidInvite.objects.exclude(event__status=SourcingEvent.STATUS_DRAFT)
+        .filter(
             vendor=vendor,
             event__status=SourcingEvent.STATUS_BID_WINDOW,
             event__bid_end_date__gte=now,
-        ).count(),
-        "closing": BidInvite.objects.filter(
+        )
+        .count(),
+        "closing": BidInvite.objects.exclude(event__status=SourcingEvent.STATUS_DRAFT)
+        .filter(
             vendor=vendor,
             event__status=SourcingEvent.STATUS_BID_WINDOW,
             event__bid_end_date__gte=now,
             event__bid_end_date__lte=now + timedelta(days=3),
-        ).count(),
-        "closed": BidInvite.objects.filter(vendor=vendor)
+        )
+        .count(),
+        "closed": BidInvite.objects.exclude(event__status=SourcingEvent.STATUS_DRAFT)
+        .filter(vendor=vendor)
         .filter(
             Q(
                 event__status__in=[
@@ -377,7 +388,11 @@ def vendor_sourcing_detail_view(request, event_id):
     event = get_object_or_404(SourcingEvent, id=event_id)
 
     # BACKEND AUTHORIZATION: Vendor must be invited to this event
-    invite = BidInvite.objects.filter(event=event, vendor=vendor).first()
+    invite = (
+        BidInvite.objects.exclude(event__status=SourcingEvent.STATUS_DRAFT)
+        .filter(event=event, vendor=vendor)
+        .first()
+    )
     if not invite and not request.user.is_superuser:
         raise PermissionDenied(
             "Access Denied: You do not hold a valid invitation for this sourcing event."
@@ -421,7 +436,11 @@ def vendor_sourcing_participate_view(request, event_id):
     vendor = request.vendor
     event = get_object_or_404(SourcingEvent, id=event_id)
 
-    invite = BidInvite.objects.filter(event=event, vendor=vendor).first()
+    invite = (
+        BidInvite.objects.exclude(event__status=SourcingEvent.STATUS_DRAFT)
+        .filter(event=event, vendor=vendor)
+        .first()
+    )
     if not invite and not request.user.is_superuser:
         raise PermissionDenied("Access Denied: You do not hold an invitation for this event.")
 
@@ -498,7 +517,7 @@ def vendor_bids_list_view(request):
 
 
 @vendor_required
-def vendor_bid_create_view(request, event_id):
+def vendor_bid_create_view(request, event_id):  # noqa: C901
     """
     Bid Preparation Page:
     Sections:
@@ -520,7 +539,9 @@ def vendor_bid_create_view(request, event_id):
 
     # BACKEND AUTHORIZATION: Vendor must be invited
     if (
-        not BidInvite.objects.filter(event=event, vendor=vendor).exists()
+        not BidInvite.objects.exclude(event__status=SourcingEvent.STATUS_DRAFT)
+        .filter(event=event, vendor=vendor)
+        .exists()
         and not request.user.is_superuser
     ):
         raise PermissionDenied(
@@ -750,7 +771,7 @@ def vendor_bid_validate_view(request, bid_id):
 
 
 @vendor_required
-def vendor_bid_amend_view(request, bid_id):
+def vendor_bid_amend_view(request, bid_id):  # noqa: C901
     """
     Bid Amendment Functionality:
     Vendor can amend a submitted bid ONLY while the event is still open.
@@ -1278,7 +1299,10 @@ def vendor_reports_history_view(request):
         .order_by("-created_at")
     )
     sourcing_participation = (
-        BidInvite.objects.filter(vendor=vendor).select_related("event").order_by("-created_at")
+        BidInvite.objects.exclude(event__status=SourcingEvent.STATUS_DRAFT)
+        .filter(vendor=vendor)
+        .select_related("event")
+        .order_by("-created_at")
     )
     po_history = PurchaseOrder.objects.filter(vendor=vendor).order_by("-created_at")
     scorecards_history = VendorScorecard.objects.filter(vendor=vendor).order_by("-created_at")

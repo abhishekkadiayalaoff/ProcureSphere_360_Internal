@@ -24,6 +24,7 @@ class SourcingEventAdmin(admin.ModelAdmin):
         "event_number",
         "title",
         "event_type",
+        "requisition",
         "status",
         "bid_start_date",
         "bid_end_date",
@@ -42,7 +43,12 @@ class BidLineInline(admin.TabularInline):
 class BidVersionInline(admin.TabularInline):
     model = BidVersion
     extra = 0
-    readonly_fields = ("version_number", "total_bid_amount", "amendment_reason", "created_at")
+    readonly_fields = (
+        "version_number",
+        "total_bid_amount",
+        "amendment_reason",
+        "created_at",
+    )
 
 
 class BidAttachmentInline(admin.TabularInline):
@@ -60,26 +66,57 @@ class VendorBidAdmin(admin.ModelAdmin):
         "status",
         "total_bid_amount",
         "submitted_at",
+        "created_at",
     )
-    list_filter = ("status", "version")
-    search_fields = ("bid_number", "event__event_number", "vendor__legal_name")
+    list_filter = ("status", "version", "event")
+    search_fields = (
+        "bid_number",
+        "event__event_number",
+        "vendor__legal_name",
+    )
     inlines = [BidLineInline, BidVersionInline, BidAttachmentInline]
 
 
 @admin.register(Clarification)
 class ClarificationAdmin(admin.ModelAdmin):
-    list_display = ("event", "vendor", "status", "created_at", "answered_at")
+    list_display = (
+        "event",
+        "vendor",
+        "status",
+        "created_at",
+        "answered_at",
+    )
     list_filter = ("status",)
-    search_fields = ("question", "answer", "event__event_number", "vendor__legal_name")
+    search_fields = (
+        "question",
+        "answer",
+        "event__event_number",
+        "vendor__legal_name",
+    )
 
 
 @admin.register(BidEvaluation)
 class BidEvaluationAdmin(admin.ModelAdmin):
-    list_display = ("event", "bid", "evaluator", "weighted_total_score", "created_at")
+    list_display = (
+        "event",
+        "bid",
+        "evaluator",
+        "weighted_total_score",
+        "created_at",
+    )
     search_fields = ("event__event_number", "bid__bid_number")
 
 
 @admin.register(AwardDecision)
 class AwardDecisionAdmin(admin.ModelAdmin):
-    list_display = ("event", "winning_bid", "approved_by", "created_at")
-    search_fields = ("event__event_number", "winning_bid__bid_number")
+    list_display = (
+        "event",
+        "winning_bid",
+        "approved_by",
+        "created_at",
+    )
+    search_fields = (
+        "event__event_number",
+        "winning_bid__bid_number",
+        "award_reason",
+    )

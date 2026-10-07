@@ -1,11 +1,15 @@
-from django.core.exceptions import ValidationError
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
 from django.utils import timezone
 
 from apps.accounts.models import User
 from apps.audit.models import AuditLog
+from apps.audit.services import create_audit_log_service
+from apps.core.validators import validate_file_upload
+from apps.notifications.models import Notification
+from apps.notifications.services import notify_vendor_users
 
-from .models import Vendor, VendorCategory, VendorDocument
+from .models import Vendor, VendorCategory, VendorDocument, VendorRiskRecord
 
 
 @transaction.atomic
@@ -123,9 +127,19 @@ def verify_vendor_document_service(*, document: VendorDocument, verifier: User) 
     """
     Marks a KYC document as verified.
     """
+    if document.is_verified:
+        raise ValidationError("Document is already verified.")
     document.is_verified = True
     document.verified_by = verifier
     document.save(update_fields=["is_verified", "verified_by", "updated_at"])
+    create_audit_log_service(
+        actor=verifier,
+        action=AuditLog.ACTION_VERIFY,
+        target_model="VendorDocument",
+        target_object_id=document.id,
+        previous_state={"is_verified": False},
+        new_state={"is_verified": True, "vendor": document.vendor.legal_name},
+    )
     return document
 
 
@@ -157,36 +171,136 @@ def approve_vendor_service(*, vendor: Vendor, manager: User, notes: str = "") ->
     return vendor
 
 
+# (from_status, to_status) -> capability required. Anything not listed is an invalid transition.
+VENDOR_GOVERNANCE_TRANSITIONS = {
+    (Vendor.STATUS_ACTIVE, Vendor.STATUS_ON_HOLD): "operate",
+    (Vendor.STATUS_ON_HOLD, Vendor.STATUS_ACTIVE): "operate",
+    (Vendor.STATUS_ACTIVE, Vendor.STATUS_SUSPENDED): "suspend",
+    (Vendor.STATUS_ON_HOLD, Vendor.STATUS_SUSPENDED): "suspend",
+    (Vendor.STATUS_SUSPENDED, Vendor.STATUS_ACTIVE): "suspend",
+    (Vendor.STATUS_SUBMITTED, Vendor.STATUS_REJECTED): "operate",
+    (Vendor.STATUS_KYC_REVIEW, Vendor.STATUS_REJECTED): "operate",
+}
+
+
+def allowed_governance_transitions(vendor: Vendor, user: User) -> list:
+    """Target statuses the given user may move this vendor to (drives the UI and the API)."""
+    from .permissions import can_operate_governance, can_suspend_vendor
+
+    checks = {"operate": can_operate_governance(user), "suspend": can_suspend_vendor(user)}
+    return [
+        to_status
+        for (from_status, to_status), capability in VENDOR_GOVERNANCE_TRANSITIONS.items()
+        if from_status == vendor.status and checks[capability]
+    ]
+
+
 @transaction.atomic
 def set_vendor_status_governance_service(
     *, vendor: Vendor, actor: User, new_status: str, notes: str
 ) -> Vendor:
     """
-    Governance service to set vendor status (HOLD, SUSPENDED, ACTIVE, REJECTED).
+    Governance status change (hold / release / suspend / reinstate / reject) through the
+    VENDOR_GOVERNANCE_TRANSITIONS table. Records the vendor's open sourcing/PO exposure in the
+    audit trail. Open transactions are NOT auto-cancelled (OPEN DECISION, ASSUMP-009); a
+    suspended vendor is blocked from new invitations, bids, awards and POs by those services.
     """
-    allowed_statuses = [
-        Vendor.STATUS_ON_HOLD,
-        Vendor.STATUS_SUSPENDED,
-        Vendor.STATUS_ACTIVE,
-        Vendor.STATUS_REJECTED,
-    ]
-    if new_status not in allowed_statuses:
-        raise ValidationError(f"Invalid status '{new_status}'. Allowed: {allowed_statuses}")
+    from .permissions import can_operate_governance, can_suspend_vendor
+    from .selectors import get_vendor_open_transactions
 
+    Vendor.objects.select_for_update().filter(pk=vendor.pk).first()
+    vendor.refresh_from_db()
+    capability = VENDOR_GOVERNANCE_TRANSITIONS.get((vendor.status, new_status))
+    if capability is None:
+        raise ValidationError(f"Invalid vendor status transition {vendor.status} -> {new_status}.")
+    allowed = (
+        can_suspend_vendor(actor) if capability == "suspend" else can_operate_governance(actor)
+    )
+    if not allowed:
+        raise PermissionDenied(
+            "Your role is not authorised to perform this vendor governance action."
+        )
+    if not (notes or "").strip():
+        raise ValidationError("A governance reason / note is required.")
+
+    exposure = get_vendor_open_transactions(vendor)["summary"]
     previous_status = vendor.status
     vendor.status = new_status
-    vendor.status_notes = notes
+    vendor.status_notes = notes.strip()
     vendor.save(update_fields=["status", "status_notes", "updated_at"])
 
-    AuditLog.objects.create(
+    create_audit_log_service(
         actor=actor,
-        action=AuditLog.ACTION_UPDATE,
+        action=(
+            AuditLog.ACTION_REJECT
+            if new_status == Vendor.STATUS_REJECTED
+            else AuditLog.ACTION_UPDATE
+        ),
         target_model="Vendor",
-        target_object_id=str(vendor.id),
+        target_object_id=vendor.id,
         previous_state={"status": previous_status},
-        new_state={"status": vendor.status, "notes": notes},
+        new_state={
+            "status": vendor.status,
+            "notes": vendor.status_notes,
+            "open_transactions_at_change": exposure,
+        },
+    )
+    notify_vendor_users(
+        vendor=vendor,
+        notification_type=Notification.TYPE_KYC_REQUEST,
+        title=f"Vendor status changed to {vendor.get_status_display()}",
+        message=vendor.status_notes[:500],
+        target_url="/vendor/profile/",
     )
     return vendor
+
+
+@transaction.atomic
+def record_vendor_risk_assessment_service(
+    *, vendor: Vendor, assessor: User, risk_level: str, risk_flags: list, notes: str
+) -> VendorRiskRecord:
+    """Appends a new risk assessment (risk history is never overwritten)."""
+    from .permissions import can_operate_governance
+
+    if not can_operate_governance(assessor):
+        raise PermissionDenied("Your role is not authorised to record vendor risk assessments.")
+    valid_levels = {code for code, _ in VendorRiskRecord.RISK_CHOICES}
+    if risk_level not in valid_levels:
+        raise ValidationError(f"Invalid risk level '{risk_level}'.")
+    valid_flags = {code for code, _ in VendorRiskRecord.RISK_FLAG_CHOICES}
+    risk_flags = list(dict.fromkeys(risk_flags or []))
+    unknown = [f for f in risk_flags if f not in valid_flags]
+    if unknown:
+        raise ValidationError(f"Unknown risk flag(s): {', '.join(unknown)}.")
+    if not (notes or "").strip():
+        raise ValidationError("Assessment notes are required.")
+
+    previous = vendor.risk_records.order_by("-created_at").first()
+    record = VendorRiskRecord.objects.create(
+        vendor=vendor,
+        risk_level=risk_level,
+        risk_flags=risk_flags,
+        assessment_notes=notes.strip(),
+        assessed_by=assessor,
+        created_by=assessor,
+    )
+    create_audit_log_service(
+        actor=assessor,
+        action=AuditLog.ACTION_CREATE,
+        target_model="VendorRiskRecord",
+        target_object_id=record.id,
+        previous_state=(
+            {"risk_level": previous.risk_level, "risk_flags": previous.risk_flags}
+            if previous
+            else None
+        ),
+        new_state={
+            "vendor": vendor.legal_name,
+            "risk_level": record.risk_level,
+            "risk_flags": record.risk_flags,
+        },
+    )
+    return record
 
 
 @transaction.atomic
@@ -265,6 +379,9 @@ def upload_vendor_document_service(
     """
     Uploads a KYC or compliance document for a vendor.
     """
+    if document_type not in dict(VendorDocument.DOC_TYPE_CHOICES):
+        raise ValidationError(f"Invalid document type '{document_type}'.")
+    validate_file_upload(file)
     if not title or not title.strip():
         title = getattr(file, "name", "Vendor Document")
 

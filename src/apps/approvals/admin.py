@@ -26,7 +26,12 @@ class ApprovalPolicyAdmin(admin.ModelAdmin):
 
 @admin.register(ApprovalStep)
 class ApprovalStepAdmin(admin.ModelAdmin):
-    list_display = ("policy", "step_number", "approver_role", "specific_approver")
+    list_display = (
+        "policy",
+        "step_number",
+        "approver_role",
+        "specific_approver",
+    )
     list_filter = ("approver_role",)
 
 
@@ -37,15 +42,29 @@ class ApprovalActionAdmin(admin.ModelAdmin):
         "target_object_id",
         "actor",
         "action",
+        "previous_state",
+        "new_state",
         "comments",
         "created_at",
     )
     list_filter = ("action", "target_model_name")
-    search_fields = ("actor__email", "target_model_name", "target_object_id")
+    search_fields = (
+        "actor__email",
+        "target_model_name",
+        "target_object_id",
+        "comments",
+    )
+    readonly_fields = ("created_at", "updated_at")
 
 
 @admin.register(ApprovalDelegate)
 class ApprovalDelegateAdmin(admin.ModelAdmin):
-    list_display = ("approver", "delegate", "start_date", "end_date", "is_active")
+    list_display = (
+        "approver",
+        "delegate",
+        "start_date",
+        "end_date",
+        "is_active",
+    )
     list_filter = ("is_active",)
     search_fields = ("approver__email", "delegate__email")

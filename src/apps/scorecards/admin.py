@@ -11,9 +11,10 @@ class VendorScorecardAdmin(RoleBasedModelAdmin):
         "quality_score",
         "price_score",
         "compliance_score",
+        "evaluated_by",
     )
-    list_filter = ("evaluation_period",)
-    search_fields = ("vendor__legal_name",)
+    list_filter = ("evaluation_period", "vendor")
+    search_fields = ("vendor__legal_name", "evaluator_comments")
 
 
 register_model(VendorScorecard, VendorScorecardAdmin)

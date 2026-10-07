@@ -102,6 +102,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "apps.notifications.context_processors.notifications_processor",
                 "apps.core.context_processors.layout_context",
             ],
         },
@@ -209,6 +210,10 @@ CELERY_BEAT_SCHEDULE = {
     "test-beat-task-every-minute": {
         "task": "apps.notifications.tasks.test_celery_beat_task",
         "schedule": 60.0,  # every 60 seconds
+    },
+    "sync-sourcing-bid-windows": {
+        "task": "apps.sourcing.tasks.sync_sourcing_bid_windows_task",
+        "schedule": 300.0,  # every 5 minutes; views/services also sync on access
     },
 }
 # Login Throttling (django-axes) & Redirects

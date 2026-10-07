@@ -118,11 +118,43 @@ class VendorRiskRecord(TimeStampedModel):
     ]
 
     vendor = models.ForeignKey(Vendor, on_delete=models.CASCADE, related_name="risk_records")
-    risk_level = models.CharField(max_length=20, choices=RISK_CHOICES, default=RISK_LEVEL_LOW)
+    # PRD 3.3 Vendor Master & Risk: "risk flags". Codes from RISK_FLAG_CHOICES.
+    FLAG_FINANCIAL = "FINANCIAL"
+    FLAG_COMPLIANCE = "COMPLIANCE"
+    FLAG_DELIVERY = "DELIVERY"
+    FLAG_QUALITY = "QUALITY"
+    FLAG_KYC_EXPIRY = "KYC_EXPIRY"
+    FLAG_LEGAL = "LEGAL"
+    FLAG_SANCTIONS = "SANCTIONS"
+    FLAG_CONCENTRATION = "CONCENTRATION"
+
+    RISK_FLAG_CHOICES = [
+        (FLAG_FINANCIAL, "Financial stability"),
+        (FLAG_COMPLIANCE, "Compliance / regulatory"),
+        (FLAG_DELIVERY, "Delivery performance"),
+        (FLAG_QUALITY, "Quality performance"),
+        (FLAG_KYC_EXPIRY, "KYC document expiry"),
+        (FLAG_LEGAL, "Legal / litigation"),
+        (FLAG_SANCTIONS, "Sanctions / watchlist"),
+        (FLAG_CONCENTRATION, "Supply concentration"),
+    ]
+
+    risk_level = models.CharField(
+        max_length=20, choices=RISK_CHOICES, default=RISK_LEVEL_LOW, db_index=True
+    )
+    risk_flags = models.JSONField(default=list, blank=True)
     assessment_notes = models.TextField()
     assessed_by = models.ForeignKey(
         "accounts.User", on_delete=models.PROTECT, related_name="assessed_vendor_risks"
     )
 
+    class Meta:
+        ordering = ["-created_at"]
+
     def __str__(self):
         return f"{self.vendor.legal_name} - {self.risk_level} Risk"
+
+    @property
+    def risk_flag_labels(self):
+        labels = dict(self.RISK_FLAG_CHOICES)
+        return [labels.get(code, code) for code in (self.risk_flags or [])]

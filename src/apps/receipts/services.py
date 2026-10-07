@@ -4,11 +4,17 @@ from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.utils import timezone
 
-from apps.accounts.models import User
+from apps.accounts.models import Role, User
 from apps.audit.models import AuditLog
 from apps.orders.models import POLine, PurchaseOrder
 
-from .models import GoodsReceipt, InspectionRecord, ReceiptLine, RejectionRecord
+from .models import (
+    GoodsReceipt,
+    InspectionRecord,
+    ReceiptLine,
+    RejectionRecord,
+    StockHandoffRecord,
+)
 
 
 def _validate_and_create_receipt_line(
@@ -35,7 +41,8 @@ def _validate_and_create_receipt_line(
             f"Quantity received for '{po_line.item_description}' must be greater than 0."
         )
 
-    remaining_qty = po_line.quantity - (po_line.quantity_received or Decimal("0.00"))
+    current_received = po_line.quantity_received or Decimal("0.00")
+    remaining_qty = max(Decimal("0.00"), po_line.quantity - current_received)
     if qty_received > remaining_qty:
         raise ValidationError(
             f"Quantity received ({qty_received}) cannot exceed remaining quantity ({remaining_qty}) for '{po_line.item_description}'."
@@ -77,14 +84,19 @@ def _validate_and_create_receipt_line(
             rejection_reason=item.get("rejection_reason", "Quality non-conformance"),
         )
 
-    po_line.quantity_received += qty_accepted
+    po_line.quantity_received = current_received + qty_accepted
     po_line.save(update_fields=["quantity_received", "updated_at"])
 
 
 def _update_po_completion_status(po: PurchaseOrder) -> None:
+    lines = list(POLine.objects.filter(po=po))
+    if not lines:
+        return
+
     all_completed = True
-    for line in POLine.objects.filter(po=po):
-        if line.quantity_received < line.quantity:
+    for line in lines:
+        line_received = line.quantity_received or Decimal("0.00")
+        if line_received < line.quantity:
             all_completed = False
             break
 
@@ -108,6 +120,8 @@ def create_goods_receipt_service(
     Supports partial receipts and multiple GRNs against one PO.
     Updates POLine.quantity_received and transitions PO status (PARTIAL_RECEIPT vs COMPLETED).
     """
+    po = PurchaseOrder.objects.select_for_update().get(id=po.id)
+
     if po.status not in [
         PurchaseOrder.STATUS_ISSUED,
         PurchaseOrder.STATUS_ACKNOWLEDGED,
@@ -232,13 +246,17 @@ def _apply_single_line_inspection(
 
     old_accepted = receipt_line.quantity_accepted
     delta_accepted = qty_accepted - old_accepted
-    po_line_updated = False
 
     if delta_accepted != Decimal("0.00"):
         po_line = POLine.objects.select_for_update().get(id=receipt_line.po_line_id)
-        po_line.quantity_received = max(Decimal("0.00"), po_line.quantity_received + delta_accepted)
+        current_recv = po_line.quantity_received or Decimal("0.00")
+        new_recv = max(Decimal("0.00"), current_recv + delta_accepted)
+        if new_recv > po_line.quantity:
+            raise ValidationError(
+                f"Accepted quantity cannot cause received quantity ({new_recv}) to exceed ordered quantity ({po_line.quantity}) on '{po_line.item_description}'."
+            )
+        po_line.quantity_received = new_recv
         po_line.save(update_fields=["quantity_received", "updated_at"])
-        po_line_updated = True
 
     receipt_line.quantity_accepted = qty_accepted
     receipt_line.quantity_rejected = qty_rejected
@@ -255,7 +273,14 @@ def _apply_single_line_inspection(
     )
 
     _sync_rejection_record(receipt_line, qty_rejected, item, inspection_notes)
-    return po_line_updated
+
+    if hasattr(receipt_line, "stock_handoff"):
+        try:
+            handoff = receipt_line.stock_handoff
+            handoff.quantity_handed_off = qty_accepted
+            handoff.save(update_fields=["quantity_handed_off", "updated_at"])
+        except StockHandoffRecord.DoesNotExist:
+            pass
 
 
 @transaction.atomic
@@ -272,21 +297,17 @@ def record_inspection_service(
     if not inspection_items:
         raise ValidationError("Inspection must contain results for at least one line item.")
 
-    po = receipt.po
-    po_lines_updated = False
+    po = PurchaseOrder.objects.select_for_update().get(id=receipt.po_id)
 
     for item in inspection_items:
-        updated = _apply_single_line_inspection(
+        _apply_single_line_inspection(
             receipt=receipt,
             po=po,
             inspected_by=inspected_by,
             item=item,
         )
-        if updated:
-            po_lines_updated = True
 
-    if po_lines_updated:
-        _update_po_completion_status(po)
+    _update_po_completion_status(po)
 
     AuditLog.objects.create(
         actor=inspected_by,
@@ -298,6 +319,126 @@ def record_inspection_service(
             "action": "RECORD_INSPECTION",
             "po_number": po.po_number,
             "inspected_lines_count": len(inspection_items),
+        },
+    )
+
+    return receipt
+
+
+def _check_stores_receiver_permission(user: User) -> None:
+    role_code = user.role_code
+    is_authorized = (
+        user.is_superuser
+        or role_code in [Role.STORES_RECEIVER, Role.SUPER_ADMIN]
+        or getattr(user, "is_staff", False)
+    )
+    if not is_authorized:
+        raise ValidationError("Unauthorized: Only Stores Receiver can hand off goods to stock.")
+
+
+def _apply_line_stock_handoff(
+    *,
+    line: ReceiptLine,
+    handed_off_by: User,
+    location: str,
+    notes: str,
+) -> StockHandoffRecord:
+    if line.quantity_accepted <= Decimal("0.00"):
+        raise ValidationError(
+            f"Cannot hand off line '{line.po_line.item_description}' with 0 accepted quantity to stock."
+        )
+
+    handoff, _ = StockHandoffRecord.objects.update_or_create(
+        receipt_line=line,
+        defaults={
+            "handed_off_by": handed_off_by,
+            "quantity_handed_off": line.quantity_accepted,
+            "storage_location": location or "MAIN-WH",
+            "handoff_notes": notes or "",
+        },
+    )
+    return handoff
+
+
+@transaction.atomic
+def handoff_goods_to_stock_service(
+    *,
+    receipt: GoodsReceipt,
+    handed_off_by: User,
+    storage_location: str = "MAIN-WH",
+    handoff_notes: str = "",
+    line_items: list = None,
+) -> GoodsReceipt:
+    """
+    Hands accepted goods from a Goods Receipt Note into inventory/stock.
+    Ensures:
+    - Only authorized Stores Receiver can execute.
+    - Only accepted quantities are handed off (rejected items excluded).
+    - Idempotent: repeated submissions or re-runs do not double-post stock.
+    - End-to-end traceability with storage location, notes, and audit log.
+    """
+    _check_stores_receiver_permission(handed_off_by)
+
+    receipt = GoodsReceipt.objects.select_for_update().get(id=receipt.id)
+    lines = list(
+        ReceiptLine.objects.select_for_update().select_related("po_line").filter(receipt=receipt)
+    )
+
+    if not lines:
+        raise ValidationError("Cannot hand off to stock: Receipt contains no line items.")
+
+    accepted_lines = [rline for rline in lines if rline.quantity_accepted > Decimal("0.00")]
+    if not accepted_lines:
+        raise ValidationError(
+            "Cannot hand off to stock: No accepted items available in this receipt."
+        )
+
+    lines_by_id = {str(rline.id): rline for rline in lines}
+    processed_count = 0
+
+    if line_items:
+        for item in line_items:
+            line_id = str(
+                item.get("receipt_line_id")
+                or (item["receipt_line"].id if "receipt_line" in item else "")
+            )
+            line = lines_by_id.get(line_id)
+            if not line:
+                raise ValidationError(
+                    f"Receipt line {line_id} does not belong to Goods Receipt {receipt.grn_number}."
+                )
+
+            loc = str(item.get("storage_location") or storage_location or "MAIN-WH").strip()
+            notes = str(item.get("handoff_notes") or handoff_notes or "").strip()
+            _apply_line_stock_handoff(
+                line=line,
+                handed_off_by=handed_off_by,
+                location=loc,
+                notes=notes,
+            )
+            processed_count += 1
+    else:
+        loc = (storage_location or "MAIN-WH").strip()
+        notes = (handoff_notes or "").strip()
+        for line in accepted_lines:
+            _apply_line_stock_handoff(
+                line=line,
+                handed_off_by=handed_off_by,
+                location=loc,
+                notes=notes,
+            )
+            processed_count += 1
+
+    AuditLog.objects.create(
+        actor=handed_off_by,
+        action=AuditLog.ACTION_UPDATE,
+        target_model="GoodsReceipt",
+        target_object_id=str(receipt.id),
+        new_state={
+            "grn_number": receipt.grn_number,
+            "action": "STOCK_HANDOFF",
+            "storage_location": storage_location or "MAIN-WH",
+            "lines_handed_off": processed_count,
         },
     )
 

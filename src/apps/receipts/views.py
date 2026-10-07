@@ -8,9 +8,14 @@ from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.dateparse import parse_date
 
+from apps.accounts.models import Role
 from apps.orders.models import PurchaseOrder
 from apps.receipts.models import GoodsReceipt
-from apps.receipts.services import create_goods_receipt_service, record_inspection_service
+from apps.receipts.services import (
+    create_goods_receipt_service,
+    handoff_goods_to_stock_service,
+    record_inspection_service,
+)
 
 
 def _filter_receipts_by_status(queryset, status_filter: str):
@@ -439,5 +444,71 @@ def receipt_create_view(request, po_id):
             "lines": lines,
             "delivery_note_number": "",
             "remarks": "",
+        },
+    )
+
+
+@login_required(login_url="/login/")
+def receipt_stock_handoff_view(request, grn_id):
+    role_code = request.user.role_code
+    is_authorized = (
+        request.user.is_superuser
+        or role_code in [Role.STORES_RECEIVER, Role.SUPER_ADMIN]
+        or getattr(request.user, "is_staff", False)
+    )
+    if not is_authorized:
+        messages.error(request, "Access denied: Only Stores Receiver can hand off goods to stock.")
+        return redirect("receipt_detail", grn_id=grn_id)
+
+    grn = get_object_or_404(
+        GoodsReceipt.objects.select_related(
+            "po__vendor", "po__cost_center", "received_by"
+        ).prefetch_related(
+            "lines__po_line",
+            "lines__inspection__inspected_by",
+            "lines__rejections",
+            "lines__stock_handoff",
+        ),
+        id=grn_id,
+    )
+
+    accepted_lines = [line for line in grn.lines.all() if line.quantity_accepted > Decimal("0.00")]
+    if not accepted_lines:
+        messages.error(
+            request,
+            f"Cannot hand off Goods Receipt {grn.grn_number} to stock: No accepted quantities available.",
+        )
+        return redirect("receipt_detail", grn_id=grn.id)
+
+    if request.method == "POST":
+        storage_location = request.POST.get("storage_location", "MAIN-WH").strip()
+        handoff_notes = request.POST.get("handoff_notes", "").strip()
+
+        try:
+            handoff_goods_to_stock_service(
+                receipt=grn,
+                handed_off_by=request.user,
+                storage_location=storage_location,
+                handoff_notes=handoff_notes,
+            )
+            messages.success(
+                request,
+                f"Accepted goods for {grn.grn_number} successfully handed off to stock ({storage_location}).",
+            )
+            return redirect("receipt_detail", grn_id=grn.id)
+        except ValidationError as ve:
+            error_msg = ve.message if hasattr(ve, "message") else str(ve)
+            messages.error(request, error_msg)
+        except Exception as e:
+            messages.error(request, f"Error processing stock handoff: {str(e)}")
+
+    return render(
+        request,
+        "receipts/receipt_handoff.html",
+        {
+            "grn": grn,
+            "po": grn.po,
+            "lines": grn.lines.all(),
+            "accepted_lines": accepted_lines,
         },
     )
