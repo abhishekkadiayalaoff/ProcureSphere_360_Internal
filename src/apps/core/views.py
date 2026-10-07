@@ -5,11 +5,13 @@ from django.db import connection
 from django.db.models import Avg, Count, Q, Sum
 from django.http import JsonResponse
 from django.shortcuts import render
+from django.utils import timezone
 from redis import Redis
 from rest_framework.permissions import AllowAny
 from rest_framework.views import APIView
 
 from apps.accounts.models import Role
+from apps.orders.models import PurchaseOrder
 from apps.requisitions.models import PurchaseRequisition
 from apps.scorecards.models import VendorScorecard
 from apps.sourcing.models import Clarification, SourcingEvent
@@ -82,9 +84,6 @@ def home_view(request):  # noqa: C901
         return render(request, "pages/dashboards/requester_dashboard.html", context)
 
     elif role_code == Role.PROC_MGR:
-<<<<<<< Updated upstream
-        return render(request, "pages/dashboards/manager_dashboard.html")
-=======
         pending_prs = PurchaseRequisition.objects.filter(
             status__in=["SUBMITTED", "MANAGER_REVIEW", "BUDGET_REVIEW"]
         ).order_by("-updated_at")
@@ -135,6 +134,9 @@ def home_view(request):  # noqa: C901
 
     # 6. FINANCE / AP SPECIALIST DASHBOARD
     elif role_code == Role.FINANCE_AP:
+        from apps.budgets.models import SpendLedger
+        from apps.invoices.models import MatchException, SupplierInvoice
+
         open_exceptions = MatchException.objects.filter(status=MatchException.STATUS_OPEN).order_by(
             "-created_at"
         )
@@ -240,7 +242,6 @@ def home_view(request):  # noqa: C901
         return render(request, "pages/dashboards/procurement_dashboard.html", context)
 
     # 8. LEGAL / CONTRACT MANAGER DASHBOARD
->>>>>>> Stashed changes
     elif role_code == Role.LEGAL_MGR:
         return render(request, "pages/dashboards/legal_dashboard.html")
     elif role_code == Role.FINANCE_AP:
