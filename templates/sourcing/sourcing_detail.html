@@ -197,7 +197,7 @@
             <div class="small mb-3">
                 <span class="badge bg-light text-dark border">Invited: {{ invitation_rows|length }}</span>
                 <span class="badge bg-light text-dark border">Bids received: {{ submitted_count }}</span>
-                {% if event.status == 'BID_WINDOW' %}<span class="badge bg-dark"><i class="fa-solid fa-lock me-1"></i>Sealed</span>{% endif %}
+                {% if event.status == 'BID_WINDOW' %}<span class="badge bg-dark"><i class="fa-solid fa-lock me-1"></i>Bids are sealed</span>{% endif %}
             </div>
             {% if caps.can_read_bids and event.status != 'DRAFT' %}
                 <a href="{% url 'bid_portal_event' event.id %}" class="btn btn-sm btn-outline-info rounded-pill px-3">Open bid portal monitor</a>
@@ -215,6 +215,23 @@
             {% endif %}
             {% for po in purchase_orders %}<div class="small mb-1">PO <a href="{% url 'order_detail' po.id %}">{{ po.po_number }}</a> · {{ po.get_status_display }}</div>{% endfor %}
             {% if caps.can_read_bids and event.bids_visible_to_evaluators %}
+                {% if evaluation_rows %}
+                    <div class="mt-2 mb-3 border-top pt-2">
+                        <div class="small fw-semibold text-muted mb-2">Submitted Proposals</div>
+                        {% for row in evaluation_rows %}
+                            <div class="border rounded p-2 mb-2 bg-light small">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <span class="fw-semibold text-dark">{{ row.vendor.legal_name }}</span>
+                                    <span class="badge bg-secondary">{{ row.bid.bid_number }}</span>
+                                </div>
+                                <div class="text-muted mb-1"><strong>Technical:</strong> {{ row.bid.technical_proposal|default:row.bid.proposal_summary|default:"—"|linebreaksbr }}</div>
+                                {% if row.commercial_proposal %}
+                                    <div class="text-muted"><strong>Commercial:</strong> {{ row.commercial_proposal|linebreaksbr }}</div>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
                 <a href="{% url 'evaluation_event' event.id %}" class="btn btn-sm btn-outline-warning text-dark rounded-pill px-3 mt-2">Open evaluation workspace</a>
             {% elif event.status != 'CANCELLED' %}
                 <span class="small text-muted">Opens after the bid window closes ({{ event.bid_end_date|date:"Y-m-d H:i" }}).</span>
