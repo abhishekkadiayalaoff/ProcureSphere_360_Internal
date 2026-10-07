@@ -543,6 +543,355 @@ def evaluation_dashboard_view(request):
     )
 
 
+def _is_htmx(request):
+    return request.headers.get("HX-Request") == "true"
+
+
+@login_required(login_url="/login/")
+def sourcing_ready_prs_tab_view(request):
+    """Pillar 2 HTMX tab: approved PRs ready for sourcing (real DB rows)."""
+    _require_view(request.user)
+    from apps.requisitions.models import PurchaseRequisition
+
+    ready = (
+        PurchaseRequisition.objects.filter(status=PurchaseRequisition.STATUS_APPROVED)
+        .select_related("department", "cost_center", "requester")
+        .prefetch_related("lines", "sourcing_events")
+        .order_by("-created_at")[:50]
+    )
+    return render(
+        request,
+        "sourcing/partials/htmx_ready_prs.html",
+        {"ready": ready, "caps": sourcing_capabilities(request.user)},
+    )
+
+
+@login_required(login_url="/login/")
+def sourcing_events_tab_view(request):
+    """Pillar 2 HTMX tab: active sourcing events register (compact)."""
+    _require_view(request.user)
+    services.sync_all_event_windows()
+    events = get_all_sourcing_events().filter(
+        status__in=[
+            SourcingEvent.STATUS_DRAFT,
+            SourcingEvent.STATUS_PUBLISHED,
+            SourcingEvent.STATUS_BID_WINDOW,
+            SourcingEvent.STATUS_TECHNICAL_REVIEW,
+            SourcingEvent.STATUS_COMMERCIAL_REVIEW,
+            SourcingEvent.STATUS_AWARD_APPROVAL,
+        ]
+    )[:30]
+    return render(
+        request,
+        "sourcing/partials/htmx_events_tab.html",
+        {"events": events, "caps": sourcing_capabilities(request.user)},
+    )
+
+
+@login_required(login_url="/login/")
+def sourcing_event_create_htmx_view(request):
+    """Pillar 2 HTMX modal: create SourcingEvent (weights + deadline) via service."""
+    _require_manage(request.user)
+    form = SourcingEventForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        try:
+            event = services.create_sourcing_event_service(
+                **_form_to_kwargs(form.cleaned_data), created_by_user=request.user
+            )
+        except ValidationError as exc:
+            form.add_error(None, exc)
+            return render(
+                request,
+                "sourcing/partials/htmx_event_create_modal.html",
+                {"form": form},
+                status=400,
+            )
+        messages.success(
+            request,
+            f"{event.event_number} created as DRAFT. Invite eligible vendors, then publish.",
+        )
+        if _is_htmx(request):
+            response = render(
+                request,
+                "sourcing/partials/htmx_action_result.html",
+                {"success": True, "event": event},
+            )
+            response["HX-Trigger"] = "sourcing-updated"
+            return response
+        return redirect("sourcing_detail", event_id=event.id)
+    if request.method == "POST":
+        return render(
+            request, "sourcing/partials/htmx_event_create_modal.html", {"form": form}, status=400
+        )
+    return render(request, "sourcing/partials/htmx_event_create_modal.html", {"form": form})
+
+
+@login_required(login_url="/login/")
+def sourcing_invites_htmx_view(request, event_id):
+    """Pillar 2 HTMX fragment: manage BidInvite (invite ACTIVE vendors / revoke in DRAFT)."""
+    _require_view(request.user)
+    event = get_object_or_404(SourcingEvent, pk=event_id)
+    services.sync_event_window_status(event=event)
+
+    if request.method == "POST":
+        _require_manage(request.user)
+        op = request.POST.get("op", "invite")
+        try:
+            if op == "revoke":
+                invite = get_object_or_404(BidInvite, pk=request.POST.get("invite_id"), event=event)
+                services.revoke_invitation_service(invite=invite, user=request.user)
+                detail = "Invitation removed."
+            else:
+                invites = services.invite_vendors_to_event_service(
+                    event=event,
+                    vendor_ids=request.POST.getlist("vendor_ids"),
+                    invited_by=request.user,
+                )
+                detail = f"{len(invites)} vendor(s) invited."
+            messages.success(request, detail)
+        except ValidationError as exc:
+            if _is_htmx(request):
+                return render(
+                    request,
+                    "sourcing/partials/htmx_action_result.html",
+                    {"success": False, "errors": exc.messages},
+                    status=400,
+                )
+            messages.error(request, " ".join(exc.messages))
+        if _is_htmx(request) and "detail" in locals():
+            response = render(
+                request,
+                "sourcing/partials/htmx_action_result.html",
+                {"success": True, "detail": detail, "event": event},
+            )
+            response["HX-Trigger"] = "sourcing-updated"
+            return response
+
+    context = {
+        "event": event,
+        "caps": sourcing_capabilities(request.user),
+        "invitation_rows": get_invitation_rows(event),
+        "can_invite": sourcing_capabilities(request.user)["can_manage"]
+        and event.status
+        in (
+            SourcingEvent.STATUS_DRAFT,
+            SourcingEvent.STATUS_PUBLISHED,
+            SourcingEvent.STATUS_BID_WINDOW,
+        ),
+        "eligible_vendors": (
+            get_eligible_vendors_for_event(event)[:100]
+            if sourcing_capabilities(request.user)["can_manage"]
+            else []
+        ),
+    }
+    return render(request, "sourcing/partials/htmx_invites.html", context)
+
+
+@login_required(login_url="/login/")
+def sourcing_clarifications_htmx_view(request, event_id):
+    """Pillar 2 HTMX fragment: list + answer vendor Clarification questions."""
+    _require_view(request.user)
+    event = get_object_or_404(SourcingEvent, pk=event_id)
+
+    if request.method == "POST":
+        _require_manage(request.user)
+        clarification = get_object_or_404(
+            Clarification, pk=request.POST.get("clarification_id"), event=event
+        )
+        try:
+            services.answer_clarification_service(
+                clarification=clarification,
+                user=request.user,
+                answer=request.POST.get("answer", ""),
+            )
+            messages.success(request, "Clarification answered and vendor notified.")
+            if _is_htmx(request):
+                response = render(
+                    request,
+                    "sourcing/partials/htmx_action_result.html",
+                    {"success": True, "detail": "Clarification answered.", "event": event},
+                )
+                response["HX-Trigger"] = "sourcing-updated"
+                return response
+        except ValidationError as exc:
+            if _is_htmx(request):
+                return render(
+                    request,
+                    "sourcing/partials/htmx_action_result.html",
+                    {"success": False, "errors": exc.messages},
+                    status=400,
+                )
+            messages.error(request, " ".join(exc.messages))
+
+    clarifications = event.clarifications.select_related("vendor", "answered_by").order_by(
+        "-created_at"
+    )
+    return render(
+        request,
+        "sourcing/partials/htmx_clarifications.html",
+        {
+            "event": event,
+            "clarifications": clarifications,
+            "caps": sourcing_capabilities(request.user),
+        },
+    )
+
+
+@login_required(login_url="/login/")
+def evaluation_compare_htmx_view(request, event_id):
+    """Pillar 3 HTMX fragment: unsealed VendorBid comparison table for a closed event."""
+    _require_bid_access(request.user)
+    event = get_object_or_404(SourcingEvent.objects.select_related("requisition"), pk=event_id)
+    services.sync_event_window_status(event=event)
+    if not event.bids_visible_to_evaluators:
+        return render(
+            request, "sourcing/partials/htmx_evaluation.html", {"event": event, "sealed": True}
+        )
+    rows = build_evaluation_rows(event, request.user)
+    return render(
+        request,
+        "sourcing/partials/htmx_evaluation.html",
+        {
+            "event": event,
+            "sealed": False,
+            "rows": rows,
+            "show_commercial": event.commercial_visible_to_evaluators,
+            "comparison": build_commercial_comparison(event, rows),
+            "negotiation_notes": event.negotiation_notes.select_related(
+                "author", "bid__vendor"
+            ).order_by("-created_at")[:50],
+            "current_decision": event.award_decision,
+            "caps": sourcing_capabilities(request.user),
+        },
+    )
+
+
+@login_required(login_url="/login/")
+@require_POST
+def evaluation_score_htmx_view(request, event_id):
+    """Pillar 3 HTMX: add BidEvaluation scores (stage=technical|commercial)."""
+    _require_bid_access(request.user)
+    if not can_manage_events(request.user):
+        raise PermissionDenied("Your role cannot record evaluation scores.")
+    event = get_object_or_404(SourcingEvent, pk=event_id)
+    bid = get_object_or_404(VendorBid, pk=request.POST.get("bid_id"), event=event)
+    stage = request.POST.get("stage", "technical")
+    try:
+        if stage == "commercial":
+            services.record_commercial_evaluation_service(
+                event=event,
+                bid=bid,
+                evaluator=request.user,
+                score=request.POST.get("score"),
+                comments=request.POST.get("comments", ""),
+            )
+            detail = "Commercial score saved."
+        else:
+            services.record_technical_evaluation_service(
+                event=event,
+                bid=bid,
+                evaluator=request.user,
+                score=request.POST.get("score"),
+                comments=request.POST.get("comments", ""),
+            )
+            detail = "Technical score saved."
+    except ValidationError as exc:
+        messages.error(request, " ".join(exc.messages))
+        if _is_htmx(request):
+            return render(
+                request,
+                "sourcing/partials/htmx_action_result.html",
+                {"success": False, "errors": exc.messages},
+                status=400,
+            )
+        return redirect("evaluation_event", event_id=event.id)
+    messages.success(request, detail)
+    if _is_htmx(request):
+        response = render(
+            request,
+            "sourcing/partials/htmx_action_result.html",
+            {"success": True, "detail": detail, "event": event},
+        )
+        response["HX-Trigger"] = "evaluation-updated"
+        return response
+    return redirect("evaluation_event", event_id=event.id)
+
+
+@login_required(login_url="/login/")
+@require_POST
+def negotiation_note_htmx_view(request, event_id):
+    """Pillar 3 HTMX: log append-only NegotiationNote records against a bid."""
+    _require_bid_access(request.user)
+    if not can_manage_events(request.user):
+        raise PermissionDenied("Your role cannot record negotiation notes.")
+    event = get_object_or_404(SourcingEvent, pk=event_id)
+    bid = get_object_or_404(VendorBid, pk=request.POST.get("bid_id"), event=event)
+    try:
+        services.add_negotiation_note_service(
+            event=event, bid=bid, author=request.user, note=request.POST.get("note", "")
+        )
+        detail = "Negotiation note recorded."
+    except ValidationError as exc:
+        messages.error(request, " ".join(exc.messages))
+        if _is_htmx(request):
+            return render(
+                request,
+                "sourcing/partials/htmx_action_result.html",
+                {"success": False, "errors": exc.messages},
+                status=400,
+            )
+        return redirect("evaluation_event", event_id=event.id)
+    messages.success(request, detail)
+    if _is_htmx(request):
+        response = render(
+            request,
+            "sourcing/partials/htmx_action_result.html",
+            {"success": True, "detail": detail, "event": event},
+        )
+        response["HX-Trigger"] = "evaluation-updated"
+        return response
+    return redirect("evaluation_event", event_id=event.id)
+
+
+@login_required(login_url="/login/")
+@require_POST
+def award_recommend_htmx_view(request, event_id):
+    """Pillar 3 HTMX: submit an AwardDecision for the winning bid (PENDING approval)."""
+    _require_bid_access(request.user)
+    if not can_manage_events(request.user):
+        raise PermissionDenied("Your role cannot recommend awards.")
+    event = get_object_or_404(SourcingEvent, pk=event_id)
+    bid = get_object_or_404(VendorBid, pk=request.POST.get("bid_id"), event=event)
+    try:
+        decision = services.recommend_award_service(
+            event=event,
+            winning_bid=bid,
+            recommended_by=request.user,
+            award_reason=request.POST.get("award_reason", ""),
+        )
+        detail = "Award recommendation submitted for Procurement Manager approval."
+    except ValidationError as exc:
+        messages.error(request, " ".join(exc.messages))
+        if _is_htmx(request):
+            return render(
+                request,
+                "sourcing/partials/htmx_action_result.html",
+                {"success": False, "errors": exc.messages},
+                status=400,
+            )
+        return redirect("evaluation_event", event_id=event.id)
+    messages.success(request, detail)
+    if _is_htmx(request):
+        response = render(
+            request,
+            "sourcing/partials/htmx_action_result.html",
+            {"success": True, "detail": detail, "event": event, "decision": decision},
+        )
+        response["HX-Trigger"] = "evaluation-updated"
+        return response
+    return redirect("evaluation_event", event_id=event.id)
+
+
 @login_required(login_url="/login/")
 def evaluation_event_view(request, event_id):
     """

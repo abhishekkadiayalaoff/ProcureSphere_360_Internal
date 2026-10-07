@@ -17,6 +17,68 @@
     </div>
 </div>
 
+<!-- Procurement Executive Workspace: 4-pillar HTMX operations (all actions persist to PostgreSQL via services.py) -->
+<div class="glass-card p-4 shadow-sm mb-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+        <h2 class="h6 fw-bold mb-0"><i class="fa-solid fa-layer-group text-primary me-2"></i>Executive workspace <span class="text-muted fw-normal">— live, no mock data</span></h2>
+        <div class="d-flex flex-wrap gap-2">
+            <button class="btn btn-sm btn-warning text-dark rounded-pill fw-bold px-3"
+                    hx-get="{% url 'sourcing_event_create_htmx' %}" hx-target="#modal-content-body"
+                    data-bs-toggle="modal" data-bs-target="#modal-container">
+                <i class="fa-solid fa-plus me-1"></i>New RFQ / RFP
+            </button>
+            <a href="{% url 'vendor_create' %}" class="btn btn-sm btn-outline-secondary rounded-pill px-3">Register Vendor</a>
+        </div>
+    </div>
+    <ul class="nav nav-pills small gap-1 flex-wrap mb-3" role="tablist" aria-label="Executive workspace pillars">
+        <li class="nav-item" role="presentation"><button class="nav-link active py-1 px-3" data-bs-toggle="pill" data-bs-target="#pillar-vendors" type="button" role="tab"><i class="fa-solid fa-id-card me-1"></i>1 · Vendor Qualification</button></li>
+        <li class="nav-item" role="presentation"><button class="nav-link py-1 px-3" data-bs-toggle="pill" data-bs-target="#pillar-sourcing" type="button" role="tab"><i class="fa-solid fa-gavel me-1"></i>2 · Sourcing &amp; RFQ</button></li>
+        <li class="nav-item" role="presentation"><button class="nav-link py-1 px-3" data-bs-toggle="pill" data-bs-target="#pillar-eval" type="button" role="tab"><i class="fa-solid fa-scale-balanced me-1"></i>3 · Evaluation &amp; Award</button></li>
+        <li class="nav-item" role="presentation"><button class="nav-link py-1 px-3" data-bs-toggle="pill" data-bs-target="#pillar-po" type="button" role="tab"><i class="fa-solid fa-cart-shopping me-1"></i>4 · PO Execution</button></li>
+    </ul>
+    <div class="tab-content">
+        <div class="tab-pane fade show active" id="pillar-vendors" role="tabpanel">
+            <p class="small text-muted mb-2">Vendors in <code>SUBMITTED</code> / <code>KYC_REVIEW</code>. Review KYC documents, record <code>VendorRiskRecord</code>, approve to <code>ACTIVE</code> — all via <code>apps/vendors/services.py</code>.</p>
+            <div hx-get="{% url 'vendors_qualification_tab' %}" hx-trigger="load, vendor-updated from:body" hx-swap="innerHTML">
+                <div class="text-center py-3 text-muted small"><span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Loading qualification queue…</div>
+            </div>
+            <div class="mt-2 small"><a href="{% url 'vendor_onboarding' %}">Open full onboarding &amp; KYC queue →</a></div>
+        </div>
+        <div class="tab-pane fade" id="pillar-sourcing" role="tabpanel">
+            <p class="small text-muted mb-2">Approved PR intake → create <code>SourcingEvent</code> (weights + deadline) → invite ACTIVE vendors → answer <code>Clarification</code>s. Full register: <a href="{% url 'sourcing_list' %}">RFQ / RFP</a>.</p>
+            <h3 class="h6 fw-bold">Approved requisitions ready for sourcing</h3>
+            <div hx-get="{% url 'sourcing_ready_prs_tab' %}" hx-trigger="load, sourcing-updated from:body" hx-swap="innerHTML" class="mb-3">
+                <div class="text-center py-3 text-muted small"><span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Loading ready PRs…</div>
+            </div>
+            <h3 class="h6 fw-bold">Active events</h3>
+            <div hx-get="{% url 'sourcing_events_tab' %}" hx-trigger="load, sourcing-updated from:body" hx-swap="innerHTML">
+                <div class="text-center py-3 text-muted small"><span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Loading events…</div>
+            </div>
+        </div>
+        <div class="tab-pane fade" id="pillar-eval" role="tabpanel">
+            <p class="small text-muted mb-2">Closed events: unsealed comparison, <code>BidEvaluation</code> scores (weighted total auto-calculated), append-only <code>NegotiationNote</code>s, <code>AwardDecision</code> → manager approval. Full workspace: <a href="{% url 'evaluation_dashboard' %}">Evaluation &amp; Award</a>.</p>
+            {% for e in action_queue %}
+                {% if e.status == 'TECHNICAL_REVIEW' or e.status == 'COMMERCIAL_REVIEW' or e.status == 'AWARD_APPROVAL' %}
+                <div class="border rounded p-2 mb-2 small d-flex flex-wrap justify-content-between align-items-center gap-2">
+                    <div><a href="{% url 'evaluation_event' e.id %}" class="fw-semibold">{{ e.event_number }}</a> <span class="text-muted">{{ e.title|truncatechars:50 }}</span> {% include 'sourcing/partials/status_badge.html' with status=e.status label=e.get_status_display %}</div>
+                    <button class="btn btn-sm btn-outline-primary rounded-pill" hx-get="{% url 'evaluation_compare_htmx' e.id %}" hx-target="#eval-compare-result" hx-swap="innerHTML">Load comparison</button>
+                </div>
+                {% endif %}
+            {% endfor %}
+            <div id="eval-compare-result" hx-trigger="evaluation-updated from:body" aria-live="polite">
+                <p class="small text-muted mb-0">Select “Load comparison” on an event above to score, negotiate and recommend award inline.</p>
+            </div>
+        </div>
+        <div class="tab-pane fade" id="pillar-po" role="tabpanel">
+            <p class="small text-muted mb-2">Approved awards pending PO → <code>generate_purchase_order_service()</code> (budget reserved → committed via <code>SpendLedger</code>) → vendor acknowledgement → amendments via <code>amend_purchase_order_service()</code> with immutable snapshots.</p>
+            <div hx-get="{% url 'orders_awards_pending_tab' %}" hx-trigger="load, po-generated from:body" hx-swap="innerHTML">
+                <div class="text-center py-3 text-muted small"><span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Loading awards pending PO…</div>
+            </div>
+            <div class="mt-2 small"><a href="{% url 'orders_list' %}">Open Purchase Orders register →</a></div>
+        </div>
+    </div>
+</div>
+
 <h2 class="h6 fw-bold text-uppercase text-muted mb-2">RFQ / RFP sourcing</h2>
 <div class="row g-3 mb-4">
     {% with m=sourcing %}
