@@ -1,5 +1,6 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.db.models import Q
 from django.shortcuts import redirect, render
 
 from apps.accounts.models import Role
@@ -49,37 +50,56 @@ def approvals_inbox_view(request):
             messages.error(request, f"Error processing approval action: {str(e)}")
 
     tab = request.GET.get("tab", "pending")
+    search_q = request.GET.get("q", "").strip()
+    status_filter = request.GET.get("status", "").strip()
 
     if role_code == Role.REQUESTER:
         pending_prs = PurchaseRequisition.objects.filter(
             requester=user,
             status__in=["SUBMITTED", "MANAGER_REVIEW", "BUDGET_REVIEW"],
-        ).order_by("-updated_at")
+        )
         history_prs = PurchaseRequisition.objects.filter(
             requester=user,
             status__in=["APPROVED", "REJECTED", "SOURCING", "PO_ISSUED"],
-        ).order_by("-updated_at")
+        )
     elif role_code == Role.DEPT_APPROVER:
         user_dept = getattr(user, "department", None)
         if user_dept:
             pending_prs = PurchaseRequisition.objects.filter(
                 department=user_dept,
                 status__in=["SUBMITTED", "MANAGER_REVIEW", "BUDGET_REVIEW"],
-            ).order_by("-updated_at")
+            )
             history_prs = PurchaseRequisition.objects.filter(
                 department=user_dept,
                 status__in=["APPROVED", "REJECTED", "SOURCING", "PO_ISSUED"],
-            ).order_by("-updated_at")
+            )
         else:
             pending_prs = PurchaseRequisition.objects.none()
             history_prs = PurchaseRequisition.objects.none()
     else:
         pending_prs = PurchaseRequisition.objects.filter(
             status__in=["SUBMITTED", "MANAGER_REVIEW", "BUDGET_REVIEW"]
-        ).order_by("-updated_at")
+        )
         history_prs = PurchaseRequisition.objects.filter(
             status__in=["APPROVED", "REJECTED", "SOURCING", "PO_ISSUED"]
-        ).order_by("-updated_at")
+        )
+
+    if search_q:
+        q_filter = (
+            Q(pr_number__icontains=search_q)
+            | Q(title__icontains=search_q)
+            | Q(requester__email__icontains=search_q)
+            | Q(department__name__icontains=search_q)
+        )
+        pending_prs = pending_prs.filter(q_filter)
+        history_prs = history_prs.filter(q_filter)
+
+    if status_filter:
+        pending_prs = pending_prs.filter(status=status_filter)
+        history_prs = history_prs.filter(status=status_filter)
+
+    pending_prs = pending_prs.order_by("-updated_at")
+    history_prs = history_prs.order_by("-updated_at")
 
     if role_code == Role.LEGAL_MGR or role_code == "LEGAL_MGR":
         base_layout = "layouts/legal_base.html"
@@ -94,6 +114,8 @@ def approvals_inbox_view(request):
         "active_tab": tab,
         "role_code": role_code,
         "base_layout": base_layout,
+        "search_q": search_q,
+        "status_filter": status_filter,
     }
     return render(request, "pages/approvals/inbox.html", context)
 

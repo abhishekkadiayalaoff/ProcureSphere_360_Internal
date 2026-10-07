@@ -1,5 +1,6 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 
 from apps.accounts.models import Role
@@ -20,6 +21,8 @@ def list_view(request):
     role_code = getattr(user, "role_code", None) or (
         user.role.code if hasattr(user, "role") and user.role else Role.SUPER_ADMIN
     )
+    search_q = request.GET.get("q", "").strip()
+    status_filter = request.GET.get("status", "").strip()
 
     if role_code == Role.REQUESTER:
         items = PurchaseRequisition.objects.filter(requester=user).order_by("-created_at")
@@ -34,6 +37,33 @@ def list_view(request):
     else:
         items = PurchaseRequisition.objects.all().order_by("-created_at")
 
+    if search_q:
+        items = items.filter(
+            Q(pr_number__icontains=search_q)
+            | Q(title__icontains=search_q)
+            | Q(requester__email__icontains=search_q)
+        )
+
+    if status_filter:
+        if status_filter == "PENDING":
+            items = items.filter(
+                status__in=[
+                    PurchaseRequisition.STATUS_SUBMITTED,
+                    PurchaseRequisition.STATUS_MANAGER_REVIEW,
+                    PurchaseRequisition.STATUS_BUDGET_REVIEW,
+                ]
+            )
+        elif status_filter == "APPROVED":
+            items = items.filter(
+                status__in=[
+                    PurchaseRequisition.STATUS_APPROVED,
+                    PurchaseRequisition.STATUS_SOURCING,
+                    PurchaseRequisition.STATUS_PO_ISSUED,
+                ]
+            )
+        else:
+            items = items.filter(status=status_filter)
+
     if role_code == Role.LEGAL_MGR or role_code == "LEGAL_MGR":
         base_layout = "layouts/legal_base.html"
     elif role_code in [Role.DEPT_APPROVER, Role.PROC_MGR]:
@@ -44,7 +74,13 @@ def list_view(request):
     return render(
         request,
         "pages/requisitions/list.html",
-        {"items": items, "role_code": role_code, "base_layout": base_layout},
+        {
+            "items": items,
+            "role_code": role_code,
+            "base_layout": base_layout,
+            "search_q": search_q,
+            "status_filter": status_filter,
+        },
     )
 
 
