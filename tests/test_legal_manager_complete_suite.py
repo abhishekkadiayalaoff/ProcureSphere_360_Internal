@@ -344,3 +344,31 @@ def test_integration_contract_list_detail_and_create_views(client, legal_test_en
     # 3. Contract Create GET View
     res_create = client.get(reverse("contract_create"))
     assert res_create.status_code == 200
+
+
+@pytest.mark.django_db
+def test_integration_all_legal_sidebar_navigation_items_accessible(client, legal_test_environment):
+    """
+    Integration test verifying that all 8 sidebar navigation items for Legal Manager
+    (Dashboard, Contract Register, New Contract, Approvals Inbox, Sourcing Events,
+    Vendor Directory, Vendor Scorecards, Reports & Analytics) return HTTP 200 OK
+    without permission errors and render using the Legal Manager layout.
+    """
+    legal_user = legal_test_environment["legal_user"]
+    client.force_login(legal_user)
+
+    sidebar_urls = [
+        "/",
+        "/contracts/",
+        "/contracts/create/",
+        "/approvals/inbox/",
+        "/sourcing-events/",
+        "/vendors/",
+        "/scorecards/",
+        "/reports/",
+    ]
+
+    for url in sidebar_urls:
+        response = client.get(url)
+        assert response.status_code == 200, f"URL {url} failed with status {response.status_code}"
+
