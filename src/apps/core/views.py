@@ -254,7 +254,49 @@ def home_view(request):  # noqa: C901
     elif role_code == Role.STORES_RECEIVER:
         return render(request, "pages/dashboards/stores_dashboard.html")
     elif role_code == Role.DEPT_APPROVER:
-        return render(request, "pages/dashboards/approver_dashboard.html")
+        user_department = getattr(user, "department", None)
+        if user_department:
+            dept_prs = PurchaseRequisition.objects.filter(department=user_department)
+            pending_prs_qs = dept_prs.filter(status__in=["SUBMITTED", "MANAGER_REVIEW", "BUDGET_REVIEW"]).order_by("-updated_at")
+            
+            from apps.budgets.models import Budget
+            from django.utils import timezone
+            # Basic available budget calculation for dashboard
+            now = timezone.now()
+            # Find current fiscal period
+            from apps.organization.models import FiscalPeriod
+            current_period = FiscalPeriod.objects.filter(start_date__lte=now, end_date__gte=now, is_active=True).first()
+            
+            available_budget = 0
+            if current_period:
+                from apps.organization.models import CostCenter
+                # Aggregate available budget across all cost centers in this department
+                dept_ccs = CostCenter.objects.filter(department=user_department)
+                budgets = Budget.objects.filter(cost_center__in=dept_ccs, fiscal_period=current_period)
+                available_budget = sum([b.available_amount for b in budgets])
+                
+            context = {
+                "user_department": user_department,
+                "metrics": {
+                    "total_prs_count": dept_prs.count(),
+                    "pending_count": pending_prs_qs.count(),
+                    "approved_count": dept_prs.filter(status="APPROVED").count(),
+                    "available_budget": float(available_budget)
+                },
+                "pending_prs": pending_prs_qs[:10]
+            }
+        else:
+            context = {
+                "user_department": None,
+                "metrics": {
+                    "total_prs_count": 0,
+                    "pending_count": 0,
+                    "approved_count": 0,
+                    "available_budget": 0.0
+                },
+                "pending_prs": []
+            }
+        return render(request, "pages/dashboards/approver_dashboard.html", context)
     elif role_code == Role.SUPER_ADMIN:
         return render(request, "pages/dashboards/superadmin_dashboard.html")
     elif role_code == Role.VENDOR_USER:
