@@ -99,6 +99,8 @@ def _vendor_register(request, *, mode):
         "metrics": get_governance_metrics() if mode == "governance" else None,
     }
     return render(request, "pages/vendors/list.html", context)
+
+
 @login_required(login_url="/login/")
 def vendor_list_view(request):
     """Vendor Master & Risk register (all vendors)."""
