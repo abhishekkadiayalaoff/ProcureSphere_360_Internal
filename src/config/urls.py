@@ -14,8 +14,9 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path("login/", portal_login_view, name="login"),
     path("logout/", portal_logout_view, name="logout"),
-    # Superadmin & Vendor Portals
+    # Superadmin, Manager & Vendor Portals
     path("superadmin/", include("apps.core.superadmin_urls")),
+    path("manager/", include("apps.core.manager_urls")),
     path("vendor/", include("apps.vendors.vendor_dashboard_urls")),
     # Core & Auth & Page Views
     path("", include("apps.core.urls")),
@@ -55,6 +56,7 @@ urlpatterns = [
     path("api/v1/notifications/", include("apps.notifications.api_urls")),
     path("api/v1/reports/", include("apps.reports.api_urls")),
     path("api/v1/audit/", include("apps.audit.api_urls")),
+    path("api/v1/manager/", include("apps.core.manager_api_urls")),
 ]
 
 if settings.DEBUG:

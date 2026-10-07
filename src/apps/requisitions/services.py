@@ -11,6 +11,7 @@ from apps.audit.models import AuditLog
 from apps.budgets.services import (
     BudgetOverrunException,
     check_and_reserve_budget_service,
+    release_budget_reservation_service,
     validate_budget_availability_service,
 )
 from apps.organization.models import CostCenter, Department
@@ -185,7 +186,9 @@ def approve_purchase_requisition_service(
 
     if requisition.status == PurchaseRequisition.STATUS_BUDGET_REVIEW:
         # Finance is approving an overrun explicitly, force the reservation
-        check_and_reserve_budget_service(requisition=requisition, requested_by_user=approver, force_overrun=True)
+        check_and_reserve_budget_service(
+            requisition=requisition, requested_by_user=approver, force_overrun=True
+        )
     elif requisition.status == PurchaseRequisition.STATUS_MANAGER_REVIEW:
         # Manager is approving. If it wasn't already reserved, reserve it now.
         # Wait, if it didn't overrun, it was reserved during submission. But we should ideally just leave it reserved.
@@ -221,6 +224,11 @@ def reject_purchase_requisition_service(
     previous_status = requisition.status
     requisition.status = PurchaseRequisition.STATUS_REJECTED
     requisition.save(update_fields=["status", "updated_at"])
+
+    # Release any active budget reservations for this requisition
+    release_budget_reservation_service(
+        requisition=requisition, user=approver, reason=f"PR Rejected: {comments}"
+    )
 
     record_approval_action_service(
         target_object_id=requisition.id,

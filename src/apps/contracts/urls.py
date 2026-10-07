@@ -54,5 +54,7 @@ urlpatterns = [
         name="contract_document_upload",
     ),
     path("contracts/<uuid:contract_id>/renew/", views.renew_view, name="contract_renew"),
-    path("contracts/<uuid:contract_id>/terminate/", views.terminate_view, name="contract_terminate"),
+    path(
+        "contracts/<uuid:contract_id>/terminate/", views.terminate_view, name="contract_terminate"
+    ),
 ]

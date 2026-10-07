@@ -17,7 +17,6 @@ class BudgetOverrunException(Exception):
         super().__init__(self.message)
 
 
-
 @transaction.atomic
 def allocate_budget_service(
     *,
@@ -73,7 +72,9 @@ def validate_budget_availability_service(*, cost_center: CostCenter, amount: Dec
 
 
 @transaction.atomic
-def check_and_reserve_budget_service(*, requisition, requested_by_user, force_overrun=False) -> BudgetReservation:
+def check_and_reserve_budget_service(
+    *, requisition, requested_by_user, force_overrun=False
+) -> BudgetReservation:
     """
     Checks available budget for a PurchaseRequisition's cost center.
     If available (or forced), locks a BudgetReservation in RESERVED status and writes a SpendLedger entry.
@@ -108,7 +109,7 @@ def check_and_reserve_budget_service(*, requisition, requested_by_user, force_ov
             f"Insufficient budget in Cost Center '{cost_center.code}'. "
             f"Requested: ${amount:,.2f}, Available: ${budget.available_amount:,.2f}.",
             budget=budget,
-            requested_amount=amount
+            requested_amount=amount,
         )
 
     # Update reserved amount on budget
@@ -186,3 +187,35 @@ def convert_commitment_to_actual_service(*, po, invoice, user) -> SpendLedger:
     )
 
     return ledger_entry
+
+
+@transaction.atomic
+def release_budget_reservation_service(
+    *, requisition, user, reason: str = "Requisition Rejected/Cancelled"
+) -> None:
+    """
+    Releases active budget reservations for a rejected or cancelled PurchaseRequisition.
+    Deducts reserved_amount from Budget, updates BudgetReservation status to RELEASED,
+    and logs AuditLog event.
+    """
+    reservations = BudgetReservation.objects.select_for_update().filter(
+        requisition=requisition, status=BudgetReservation.STATUS_RESERVED
+    )
+    for res in reservations:
+        budget = res.budget
+        if budget.reserved_amount >= res.amount:
+            budget.reserved_amount -= res.amount
+        else:
+            budget.reserved_amount = Decimal("0.00")
+        budget.save(update_fields=["reserved_amount", "updated_at"])
+
+        res.status = BudgetReservation.STATUS_RELEASED
+        res.save(update_fields=["status", "updated_at"])
+
+        AuditLog.objects.create(
+            actor=user,
+            action=AuditLog.ACTION_UPDATE,
+            target_model="BudgetReservation",
+            target_object_id=str(res.id),
+            new_state={"status": res.status, "reason": reason},
+        )
