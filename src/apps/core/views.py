@@ -261,21 +261,17 @@ def home_view(request):  # noqa: C901
             ).order_by("-updated_at")
 
             from apps.budgets.models import Budget
-            from django.utils import timezone
+            from apps.organization.models import CostCenter, FiscalPeriod
 
             # Basic available budget calculation for dashboard
             now = timezone.now()
             # Find current fiscal period
-            from apps.organization.models import FiscalPeriod
-
             current_period = FiscalPeriod.objects.filter(
                 start_date__lte=now, end_date__gte=now, is_active=True
             ).first()
 
             available_budget = 0
             if current_period:
-                from apps.organization.models import CostCenter
-
                 # Aggregate available budget across all cost centers in this department
                 dept_ccs = CostCenter.objects.filter(department=user_department)
                 budgets = Budget.objects.filter(

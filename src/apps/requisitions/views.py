@@ -1,6 +1,6 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.shortcuts import redirect, render
+from django.shortcuts import get_object_or_404, redirect, render
 
 from apps.accounts.models import Role
 from apps.organization.models import CostCenter, Department
@@ -124,9 +124,6 @@ def create_view(request):
         "pages/requisitions/create.html",
         {"departments": departments, "cost_centers": cost_centers},
     )
-
-
-from django.shortcuts import get_object_or_404
 
 
 @login_required(login_url="/login/")
