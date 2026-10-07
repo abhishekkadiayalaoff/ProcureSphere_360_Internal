@@ -1,4 +1,3 @@
-
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import redirect, render
@@ -69,6 +68,7 @@ def create_view(request):
 
         try:
             from apps.requisitions.services import create_purchase_requisition_service
+
             department = Department.objects.get(id=department_id)
             cost_center = CostCenter.objects.get(id=cost_center_id)
 
@@ -102,9 +102,9 @@ def create_view(request):
                 cost_center=cost_center,
                 requested_delivery_date=requested_delivery_date,
                 line_items=line_items,
-                attachments=attachments
+                attachments=attachments,
             )
-            
+
             messages.success(request, f"Requisition {pr.pr_number} successfully created as DRAFT.")
             return redirect("requisition_detail", pk=pr.pk)
 
@@ -120,33 +120,40 @@ def create_view(request):
         cost_centers = CostCenter.objects.all()
 
     return render(
-        request, 
-        'pages/requisitions/create.html',
-        {"departments": departments, "cost_centers": cost_centers}
+        request,
+        "pages/requisitions/create.html",
+        {"departments": departments, "cost_centers": cost_centers},
     )
 
+
 from django.shortcuts import get_object_or_404
+
 
 @login_required(login_url="/login/")
 def detail_view(request, pk):
     pr = get_object_or_404(PurchaseRequisition, pk=pk)
-    role_code = getattr(request.user, "role_code", None) or (request.user.role.code if hasattr(request.user, "role") and request.user.role else Role.SUPER_ADMIN)
-    
+    role_code = getattr(request.user, "role_code", None) or (
+        request.user.role.code
+        if hasattr(request.user, "role") and request.user.role
+        else Role.SUPER_ADMIN
+    )
+
     if role_code == Role.REQUESTER and pr.requester != request.user:
         messages.error(request, "Permission denied.")
         return redirect("requisitions_list")
-        
+
     from apps.approvals.models import ApprovalAction
+
     approval_history = ApprovalAction.objects.filter(
-        target_object_id=pr.id,
-        target_model_name="PurchaseRequisition"
+        target_object_id=pr.id, target_model_name="PurchaseRequisition"
     ).order_by("created_at")
-        
+
     return render(
         request,
         "pages/requisitions/detail.html",
-        {"pr": pr, "role_code": role_code, "approval_history": approval_history}
+        {"pr": pr, "role_code": role_code, "approval_history": approval_history},
     )
+
 
 @login_required(login_url="/login/")
 def submit_view(request, pk):
@@ -154,6 +161,7 @@ def submit_view(request, pk):
         pr = get_object_or_404(PurchaseRequisition, pk=pk)
         try:
             from apps.requisitions.services import submit_purchase_requisition_service
+
             submit_purchase_requisition_service(requisition=pr, user=request.user)
             messages.success(request, f"Requisition {pr.pr_number} submitted to Dept Approver.")
         except Exception as e:
@@ -161,16 +169,18 @@ def submit_view(request, pk):
         return redirect("requisition_detail", pk=pr.pk)
     return redirect("requisitions_list")
 
+
 @login_required(login_url="/login/")
 def approve_view(request, pk):
     if request.method == "POST":
         pr = get_object_or_404(PurchaseRequisition, pk=pk)
         try:
             from apps.requisitions.services import approve_purchase_requisition_service
+
             approve_purchase_requisition_service(
-                requisition=pr, 
-                approver=request.user, 
-                comments=request.POST.get("comments", "Approved by Dept Approver")
+                requisition=pr,
+                approver=request.user,
+                comments=request.POST.get("comments", "Approved by Dept Approver"),
             )
             messages.success(request, f"Requisition {pr.pr_number} successfully approved.")
         except Exception as e:
@@ -178,16 +188,18 @@ def approve_view(request, pk):
         return redirect("requisition_detail", pk=pr.pk)
     return redirect("requisitions_list")
 
+
 @login_required(login_url="/login/")
 def reject_view(request, pk):
     if request.method == "POST":
         pr = get_object_or_404(PurchaseRequisition, pk=pk)
         try:
             from apps.requisitions.services import reject_purchase_requisition_service
+
             reject_purchase_requisition_service(
-                requisition=pr, 
-                approver=request.user, 
-                comments=request.POST.get("comments", "Rejected")
+                requisition=pr,
+                approver=request.user,
+                comments=request.POST.get("comments", "Rejected"),
             )
             messages.success(request, f"Requisition {pr.pr_number} rejected.")
         except Exception as e:
@@ -195,6 +207,14 @@ def reject_view(request, pk):
         return redirect("requisition_detail", pk=pr.pk)
     return redirect("requisitions_list")
 
-def edit_view(*args, **kwargs): pass
-def delete_view(*args, **kwargs): pass
-def cancel_view(*args, **kwargs): pass
+
+def edit_view(*args, **kwargs):
+    pass
+
+
+def delete_view(*args, **kwargs):
+    pass
+
+
+def cancel_view(*args, **kwargs):
+    pass
