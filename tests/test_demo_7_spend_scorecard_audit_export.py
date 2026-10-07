@@ -117,6 +117,7 @@ def test_demo_7_spend_scorecard_and_audited_report_export():
         invoice_number="INV-OMNI-001",
         invoice_date=timezone.now().date(),
         due_date=timezone.now().date() + timezone.timedelta(days=30),
+        subtotal=Decimal("10000.00"),
         total_amount=Decimal("10000.00"),
         status=SupplierInvoice.STATUS_RECEIVED,
     )
