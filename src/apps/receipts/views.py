@@ -12,10 +12,8 @@ from apps.accounts.models import Role
 from apps.orders.models import PurchaseOrder
 from apps.receipts.models import (
     GoodsReceipt,
-    InspectionRecord,
     ReceiptLine,
     RejectionRecord,
-    StockHandoffRecord,
 )
 from apps.receipts.services import (
     create_goods_receipt_service,

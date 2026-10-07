@@ -296,4 +296,3 @@ def test_receipts_list_record_goods_receipt_action(client, dedicated_queues_setu
     # Verify '+ Record Goods Receipt' button exists and points to orders_list
     assert "Record Goods Receipt" in content
     assert reverse("orders_list") in content
-
