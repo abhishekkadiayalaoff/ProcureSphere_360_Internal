@@ -53,6 +53,17 @@ def approvals_inbox_view(request):
             requester=user,
             status__in=["SUBMITTED", "MANAGER_REVIEW", "BUDGET_REVIEW"],
         ).order_by("-updated_at")
+    elif role_code == Role.DEPT_APPROVER:
+        user_dept = getattr(user, "department", None)
+        if user_dept:
+            pending_prs = PurchaseRequisition.objects.filter(
+                department=user_dept,
+                status__in=["SUBMITTED", "MANAGER_REVIEW", "BUDGET_REVIEW"],
+            ).order_by("-updated_at")
+        else:
+            pending_prs = PurchaseRequisition.objects.filter(
+                status__in=["SUBMITTED", "MANAGER_REVIEW", "BUDGET_REVIEW"]
+            ).order_by("-updated_at")
     else:
         pending_prs = PurchaseRequisition.objects.filter(
             status__in=["SUBMITTED", "MANAGER_REVIEW", "BUDGET_REVIEW"]

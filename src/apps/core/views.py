@@ -254,7 +254,42 @@ def home_view(request):  # noqa: C901
     elif role_code == Role.STORES_RECEIVER:
         return render(request, "pages/dashboards/stores_dashboard.html")
     elif role_code == Role.DEPT_APPROVER:
-        return render(request, "pages/dashboards/approver_dashboard.html")
+        from decimal import Decimal
+        from apps.budgets.models import Budget
+
+        user_dept = getattr(user, "department", None)
+        statuses = [
+            PurchaseRequisition.STATUS_SUBMITTED,
+            PurchaseRequisition.STATUS_MANAGER_REVIEW,
+            PurchaseRequisition.STATUS_BUDGET_REVIEW,
+        ]
+        if user_dept:
+            dept_prs = PurchaseRequisition.objects.filter(department=user_dept)
+            budget_qs = Budget.objects.filter(cost_center__department=user_dept)
+        else:
+            dept_prs = PurchaseRequisition.objects.all()
+            budget_qs = Budget.objects.all()
+
+        pending_prs = dept_prs.filter(status__in=statuses).order_by("-updated_at")
+        total_prs_count = dept_prs.count()
+        pending_count = pending_prs.count()
+        approved_count = dept_prs.filter(status=PurchaseRequisition.STATUS_APPROVED).count()
+
+        avail_budget = Decimal("0.00")
+        if budget_qs.exists():
+            avail_budget = sum((b.available_amount for b in budget_qs), Decimal("0.00"))
+
+        context = {
+            "user_department": user_dept,
+            "pending_prs": pending_prs,
+            "metrics": {
+                "pending_count": pending_count,
+                "total_prs_count": total_prs_count,
+                "approved_count": approved_count,
+                "available_budget": float(avail_budget),
+            },
+        }
+        return render(request, "pages/dashboards/approver_dashboard.html", context)
     elif role_code == Role.SUPER_ADMIN:
         return render(request, "pages/dashboards/superadmin_dashboard.html")
     elif role_code == Role.VENDOR_USER:
