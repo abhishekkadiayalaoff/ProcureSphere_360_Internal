@@ -235,53 +235,48 @@ def home_view(request):  # noqa: C901
 
     # 9. DEPARTMENT APPROVER DASHBOARD
     elif role_code == Role.DEPT_APPROVER:
-        user_department = getattr(user, "department", None)
-        if user_department:
-            dept_prs = PurchaseRequisition.objects.filter(department=user_department)
-            pending_prs_qs = dept_prs.filter(
-                status__in=["SUBMITTED", "MANAGER_REVIEW", "BUDGET_REVIEW"]
-            ).order_by("-updated_at")
+        from decimal import Decimal
 
-            from apps.budgets.models import Budget
-            from apps.organization.models import CostCenter, FiscalPeriod
+        from django.utils import timezone as fiscal_timezone
 
-            # Basic available budget calculation for dashboard
-            now = timezone.now()
-            # Find current fiscal period
-            current_period = FiscalPeriod.objects.filter(
-                start_date__lte=now, end_date__gte=now, is_active=True
+        from apps.budgets.models import Budget
+        from apps.organization.models import FiscalPeriod as ApproverFiscalPeriod
+
+        user_dept = getattr(user, "department", None)
+        statuses = [
+            PurchaseRequisition.STATUS_SUBMITTED,
+            PurchaseRequisition.STATUS_MANAGER_REVIEW,
+            PurchaseRequisition.STATUS_BUDGET_REVIEW,
+        ]
+        dept_prs = PurchaseRequisition.objects.none()
+        budget_qs = Budget.objects.none()
+
+        if user_dept:
+            dept_prs = PurchaseRequisition.objects.filter(department=user_dept)
+            now = fiscal_timezone.now()
+            current_period = ApproverFiscalPeriod.objects.filter(
+                start_date__lte=now, end_date__gte=now, is_closed=False
             ).first()
-
-            available_budget = 0
             if current_period:
-                # Aggregate available budget across all cost centers in this department
-                dept_ccs = CostCenter.objects.filter(department=user_department)
-                budgets = Budget.objects.filter(
-                    cost_center__in=dept_ccs, fiscal_period=current_period
+                budget_qs = Budget.objects.filter(
+                    cost_center__department=user_dept,
+                    fiscal_period=current_period,
                 )
-                available_budget = sum([b.available_amount for b in budgets])
 
-            context = {
-                "user_department": user_department,
-                "metrics": {
-                    "total_prs_count": dept_prs.count(),
-                    "pending_count": pending_prs_qs.count(),
-                    "approved_count": dept_prs.filter(status="APPROVED").count(),
-                    "available_budget": float(available_budget),
-                },
-                "pending_prs": pending_prs_qs[:10],
-            }
-        else:
-            context = {
-                "user_department": None,
-                "metrics": {
-                    "total_prs_count": 0,
-                    "pending_count": 0,
-                    "approved_count": 0,
-                    "available_budget": 0.0,
-                },
-                "pending_prs": [],
-            }
+        pending_prs = dept_prs.filter(status__in=statuses).order_by("-updated_at")
+        available_budget = sum((budget.available_amount for budget in budget_qs), Decimal("0.00"))
+        context = {
+            "user_department": user_dept,
+            "pending_prs": pending_prs[:10],
+            "metrics": {
+                "pending_count": pending_prs.count(),
+                "total_prs_count": dept_prs.count(),
+                "approved_count": dept_prs.filter(
+                    status=PurchaseRequisition.STATUS_APPROVED
+                ).count(),
+                "available_budget": float(available_budget),
+            },
+        }
         return render(request, "pages/dashboards/approver_dashboard.html", context)
 
     # 10. SUPER ADMIN DASHBOARD

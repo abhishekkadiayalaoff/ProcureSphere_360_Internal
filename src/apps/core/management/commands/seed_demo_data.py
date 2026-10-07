@@ -45,12 +45,12 @@ from apps.vendors.services import (
 class Command(BaseCommand):
     help = "Seeds ProcureSphere 360 database with realistic demonstration data for all core ERP workflows."
 
-    def get_or_create_user(self, email, role, is_superuser=False):
+    def get_or_create_user(self, email, role, is_superuser=False, password="Password123!"):
         user = User.objects.filter(email=email).first()
         if not user:
             user = User.objects.create_user(email=email, role=role)
         user.role = role
-        user.set_password("Password123!")
+        user.set_password(password)
         user.is_active = True
         user.is_staff = True
         user.is_superuser = is_superuser
@@ -101,32 +101,35 @@ class Command(BaseCommand):
             roles[code] = role
 
         # 2. Seed Users
-        self.get_or_create_user("admin@hpe.com", roles[Role.SUPER_ADMIN], is_superuser=True)
-        requester = self.get_or_create_user(
-            "requester@hpe.com", roles[Role.REQUESTER], is_superuser=False
-        )
-        approver = self.get_or_create_user(
-            "approver@hpe.com", roles[Role.DEPT_APPROVER], is_superuser=False
-        )
-        proc_exec = self.get_or_create_user(
-            "procexec@hpe.com", roles[Role.PROC_EXEC], is_superuser=False
-        )
-        proc_mgr = self.get_or_create_user(
-            "procmgr@hpe.com", roles[Role.PROC_MGR], is_superuser=False
-        )
-        finance_user = self.get_or_create_user(
-            "finance@hpe.com", roles[Role.FINANCE_AP], is_superuser=False
-        )
-        receiver_user = self.get_or_create_user(
-            "receiver@hpe.com", roles[Role.STORES_RECEIVER], is_superuser=False
-        )
-        legal_user = self.get_or_create_user(
-            "legal@hpe.com", roles[Role.LEGAL_MGR], is_superuser=False
-        )
-        self.get_or_create_user("auditor@hpe.com", roles[Role.AUDITOR], is_superuser=False)
-        vendor_user = self.get_or_create_user(
-            "vendoruser@cisco.com", roles[Role.VENDOR_USER], is_superuser=False
-        )
+        self.get_or_create_user("admin@hpe.com", roles[Role.SUPER_ADMIN], is_superuser=True, password="Password123!")
+        self.get_or_create_user("admin@procuresphere.com", roles[Role.SUPER_ADMIN], is_superuser=True, password="ProcureAdmin@360!")
+
+        requester = self.get_or_create_user("requester@hpe.com", roles[Role.REQUESTER], is_superuser=False, password="Password123!")
+        req_ps = self.get_or_create_user("requester01@procuresphere.com", roles[Role.REQUESTER], is_superuser=False, password="Requester@360!")
+
+        approver = self.get_or_create_user("approver@hpe.com", roles[Role.DEPT_APPROVER], is_superuser=False, password="Password123!")
+        app_ps = self.get_or_create_user("dept.approver01@procuresphere.com", roles[Role.DEPT_APPROVER], is_superuser=False, password="DeptApprover@360!")
+
+        proc_exec = self.get_or_create_user("procexec@hpe.com", roles[Role.PROC_EXEC], is_superuser=False, password="Password123!")
+        self.get_or_create_user("proc.executive01@procuresphere.com", roles[Role.PROC_EXEC], is_superuser=False, password="ProcExec@360!")
+
+        proc_mgr = self.get_or_create_user("procmgr@hpe.com", roles[Role.PROC_MGR], is_superuser=False, password="Password123!")
+        self.get_or_create_user("proc.manager01@procuresphere.com", roles[Role.PROC_MGR], is_superuser=False, password="ProcManager@360!")
+
+        finance_user = self.get_or_create_user("finance@hpe.com", roles[Role.FINANCE_AP], is_superuser=False, password="Password123!")
+        self.get_or_create_user("finance.ap01@procuresphere.com", roles[Role.FINANCE_AP], is_superuser=False, password="FinanceAP@360!")
+
+        receiver_user = self.get_or_create_user("receiver@hpe.com", roles[Role.STORES_RECEIVER], is_superuser=False, password="Password123!")
+        self.get_or_create_user("stores.recv01@procuresphere.com", roles[Role.STORES_RECEIVER], is_superuser=False, password="StoresRecv@360!")
+
+        legal_user = self.get_or_create_user("legal@hpe.com", roles[Role.LEGAL_MGR], is_superuser=False, password="Password123!")
+        self.get_or_create_user("legal.contract01@procuresphere.com", roles[Role.LEGAL_MGR], is_superuser=False, password="LegalContract@360!")
+
+        self.get_or_create_user("auditor@hpe.com", roles[Role.AUDITOR], is_superuser=False, password="Password123!")
+        self.get_or_create_user("compliance.audit01@procuresphere.com", roles[Role.AUDITOR], is_superuser=False, password="ComplianceAudit@360!")
+
+        vendor_user = self.get_or_create_user("vendoruser@cisco.com", roles[Role.VENDOR_USER], is_superuser=False, password="Password123!")
+        self.get_or_create_user("vendor.user01@procuresphere.com", roles[Role.VENDOR_USER], is_superuser=False, password="VendorUser@360!")
 
         # 3. Organization Master Data
         org, _ = Organization.objects.get_or_create(
@@ -141,8 +144,13 @@ class Command(BaseCommand):
 
         approver.department = dept_it
         approver.save(update_fields=["department"])
+        app_ps.department = dept_it
+        app_ps.save(update_fields=["department"])
+
         requester.department = dept_it
         requester.save(update_fields=["department"])
+        req_ps.department = dept_it
+        req_ps.save(update_fields=["department"])
 
         cost_center, _ = CostCenter.objects.get_or_create(
             department=dept_it,
@@ -202,6 +210,10 @@ class Command(BaseCommand):
 
         vendor_user.vendor = vendor1
         vendor_user.save(update_fields=["vendor"])
+        v_ps = User.objects.filter(email="vendor.user01@procuresphere.com").first()
+        if v_ps:
+            v_ps.vendor = vendor1
+            v_ps.save(update_fields=["vendor"])
 
         vendor2 = Vendor.objects.filter(tax_identification_number="TAX-INTEL-882").first()
         if not vendor2:

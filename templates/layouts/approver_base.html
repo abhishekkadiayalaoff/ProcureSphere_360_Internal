@@ -35,8 +35,6 @@
                     <i class="fa-solid fa-bell me-1"></i> Approvals Inbox
                     {% if pending_approvals_count > 0 %}
                     <span class="badge bg-danger rounded-pill ms-1">{{ pending_approvals_count }}</span>
-                    {% elif unread_notifications_count > 0 %}
-                    <span class="badge bg-danger rounded-pill ms-1">{{ unread_notifications_count }}</span>
                     {% endif %}
                 </a>
                 <a href="/logout/" class="btn btn-outline-light btn-sm rounded-pill px-3">
@@ -69,8 +67,8 @@
                 <li class="nav-item mt-2">
                     <div class="text-uppercase text-secondary fw-bold mb-2 small px-2">Approvals</div>
                     <a href="/approvals/inbox/"
-                        class="nav-link rounded sidebar-link {% if '/approvals/' in request.path %}active bg-primary fw-bold text-white border-start border-3 border-light{% else %}text-light{% endif %}">
-                        <i class="fa-solid fa-square-check me-2 {% if '/approvals/' in request.path %}text-white{% else %}text-warning{% endif %} text-center"
+                        class="nav-link rounded sidebar-link {% if '/approvals/' in request.path and request.GET.tab != 'history' %}active bg-primary fw-bold text-white border-start border-3 border-light{% else %}text-light{% endif %}">
+                        <i class="fa-solid fa-square-check me-2 {% if '/approvals/' in request.path and request.GET.tab != 'history' %}text-white{% else %}text-warning{% endif %} text-center"
                             style="width: 20px;"></i> Pending Approvals
                     </a>
                 </li>
@@ -84,9 +82,9 @@
                 </li>
                 <li class="nav-item mt-2">
                     <div class="text-uppercase text-secondary fw-bold mb-2 small px-2">Tracking</div>
-                    <a href="/audit/logs/"
-                        class="nav-link rounded sidebar-link {% if '/audit/' in request.path %}active bg-primary fw-bold text-white border-start border-3 border-light{% else %}text-light{% endif %}">
-                        <i class="fa-solid fa-timeline me-2 {% if '/audit/' in request.path %}text-white{% else %}text-success{% endif %} text-center"
+                    <a href="/approvals/inbox/?tab=history"
+                        class="nav-link rounded sidebar-link {% if request.GET.tab == 'history' %}active bg-primary fw-bold text-white border-start border-3 border-light{% else %}text-light{% endif %}">
+                        <i class="fa-solid fa-timeline me-2 {% if request.GET.tab == 'history' %}text-white{% else %}text-success{% endif %} text-center"
                             style="width: 20px;"></i> My Approvals
                     </a>
                 </li>

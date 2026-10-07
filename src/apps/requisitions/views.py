@@ -3,12 +3,20 @@ from decimal import Decimal
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
+from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 
 from apps.accounts.models import Role
+from apps.approvals.models import ApprovalAction
+from apps.approvals.services import process_approval_action_service
+from apps.budgets.models import Budget
 from apps.budgets.services import validate_budget_availability_service
 from apps.organization.models import CostCenter, Department
 from apps.requisitions.models import PRAttachment, PRLine, PurchaseRequisition
+from apps.requisitions.services import (
+    create_purchase_requisition_service,
+    submit_purchase_requisition_service,
+)
 
 
 @login_required(login_url="/login/")
@@ -17,6 +25,8 @@ def list_view(request):
     role_code = getattr(user, "role_code", None) or (
         user.role.code if hasattr(user, "role") and user.role else Role.SUPER_ADMIN
     )
+    search_q = request.GET.get("q", "").strip()
+    status_filter = request.GET.get("status", "").strip()
 
     if role_code == Role.REQUESTER:
         items = PurchaseRequisition.objects.filter(requester=user).order_by("-created_at")
@@ -31,16 +41,50 @@ def list_view(request):
     else:
         items = PurchaseRequisition.objects.all().order_by("-created_at")
 
-    base_layout = (
-        "layouts/approver_base.html"
-        if role_code in [Role.DEPT_APPROVER, Role.PROC_MGR]
-        else "layouts/requester_base.html"
-    )
+    if search_q:
+        items = items.filter(
+            Q(pr_number__icontains=search_q)
+            | Q(title__icontains=search_q)
+            | Q(requester__email__icontains=search_q)
+        )
+
+    if status_filter:
+        if status_filter == "PENDING":
+            items = items.filter(
+                status__in=[
+                    PurchaseRequisition.STATUS_SUBMITTED,
+                    PurchaseRequisition.STATUS_MANAGER_REVIEW,
+                    PurchaseRequisition.STATUS_BUDGET_REVIEW,
+                ]
+            )
+        elif status_filter == "APPROVED":
+            items = items.filter(
+                status__in=[
+                    PurchaseRequisition.STATUS_APPROVED,
+                    PurchaseRequisition.STATUS_SOURCING,
+                    PurchaseRequisition.STATUS_PO_ISSUED,
+                ]
+            )
+        else:
+            items = items.filter(status=status_filter)
+
+    if role_code == Role.LEGAL_MGR or role_code == "LEGAL_MGR":
+        base_layout = "layouts/legal_base.html"
+    elif role_code in [Role.DEPT_APPROVER, Role.PROC_MGR]:
+        base_layout = "layouts/approver_base.html"
+    else:
+        base_layout = "layouts/requester_base.html"
 
     return render(
         request,
         "pages/requisitions/list.html",
-        {"items": items, "role_code": role_code, "base_layout": base_layout},
+        {
+            "items": items,
+            "role_code": role_code,
+            "base_layout": base_layout,
+            "search_q": search_q,
+            "status_filter": status_filter,
+        },
     )
 
 
@@ -62,14 +106,14 @@ def create_view(request):
         return redirect("requisitions_list")
 
     if request.method == "POST":
-        title = request.POST.get("title")
-        justification = request.POST.get("justification")
+        title = (request.POST.get("title") or "").strip()
+        justification = (request.POST.get("justification") or "").strip()
         department_id = request.POST.get("department")
         cost_center_id = request.POST.get("cost_center")
         requested_delivery_date = request.POST.get("requested_delivery_date")
         attachments = request.FILES.getlist("attachments")
+        action_type = request.POST.get("action_type", "save_draft")
 
-        # Simple validation
         if not (title and department_id and cost_center_id and requested_delivery_date):
             messages.error(request, "Please fill in all required fields.")
             return redirect("requisition_create")
@@ -78,7 +122,6 @@ def create_view(request):
             department = Department.objects.get(id=department_id)
             cost_center = CostCenter.objects.get(id=cost_center_id)
 
-            # Extract Line Items
             item_descriptions = request.POST.getlist("item_description[]")
             quantities = request.POST.getlist("quantity[]")
             unit_prices = request.POST.getlist("estimated_unit_price[]")
@@ -98,7 +141,9 @@ def create_view(request):
                     }
                 )
 
-            from apps.requisitions.services import create_purchase_requisition_service
+            if not line_items:
+                messages.error(request, "Please add at least one line item.")
+                return redirect("requisition_create")
 
             pr = create_purchase_requisition_service(
                 title=title,
@@ -111,7 +156,17 @@ def create_view(request):
                 attachments=attachments,
             )
 
-            messages.success(request, f"Requisition {pr.pr_number} created successfully as Draft.")
+            if action_type == "submit" or "submit" in request.POST:
+                submit_purchase_requisition_service(requisition=pr, user=user)
+                messages.success(
+                    request,
+                    f"Purchase Requisition {pr.pr_number} created and submitted for approval successfully!",
+                )
+            else:
+                messages.success(
+                    request, f"Purchase Requisition {pr.pr_number} created in Draft status."
+                )
+
             return redirect("requisition_detail", pk=pr.pk)
         except Exception as e:
             messages.error(request, f"Error creating requisition: {str(e)}")
@@ -137,8 +192,6 @@ def create_view(request):
 def _attach_available_budgets(cost_centers):
     from django.utils import timezone
 
-    from apps.budgets.models import Budget
-
     today = timezone.now().date()
 
     budgets = Budget.objects.filter(
@@ -158,7 +211,7 @@ def _attach_available_budgets(cost_centers):
 @login_required(login_url="/login/")
 def edit_view(request, pk):
     pr = get_object_or_404(PurchaseRequisition, pk=pk)
-    if pr.requester != request.user:
+    if pr.requester != request.user and not request.user.is_superuser:
         messages.error(request, "You do not have permission to edit this requisition.")
         return redirect("requisitions_list")
 
@@ -167,23 +220,30 @@ def edit_view(request, pk):
         return redirect("requisition_detail", pk=pr.pk)
 
     if request.method == "POST":
-        title = request.POST.get("title")
-        justification = request.POST.get("justification")
+        title = (request.POST.get("title") or "").strip()
+        justification = (request.POST.get("justification") or "").strip()
         department_id = request.POST.get("department")
         cost_center_id = request.POST.get("cost_center")
         requested_delivery_date = request.POST.get("requested_delivery_date")
         attachments = request.FILES.getlist("attachments")
 
         try:
-            department = Department.objects.get(id=department_id)
-            cost_center = CostCenter.objects.get(id=cost_center_id)
+            department = (
+                Department.objects.get(id=department_id) if department_id else pr.department
+            )
+            cost_center = (
+                CostCenter.objects.get(id=cost_center_id) if cost_center_id else pr.cost_center
+            )
 
             # Update basic fields
-            pr.title = title
-            pr.justification = justification
+            if title:
+                pr.title = title
+            if justification:
+                pr.justification = justification
             pr.department = department
             pr.cost_center = cost_center
-            pr.requested_delivery_date = requested_delivery_date
+            if requested_delivery_date:
+                pr.requested_delivery_date = requested_delivery_date
 
             # Extract Line Items
             item_descriptions = request.POST.getlist("item_description[]")
@@ -192,34 +252,36 @@ def edit_view(request, pk):
             uoms = request.POST.getlist("unit_of_measure[]")
 
             with transaction.atomic():
-                # Delete existing lines and recreate
-                pr.lines.all().delete()
+                if item_descriptions:
+                    # Delete existing lines and recreate if new line items provided
+                    pr.lines.all().delete()
 
-                total_amount = 0
-                for i in range(len(item_descriptions)):
-                    desc = item_descriptions[i].strip()
-                    if not desc:
-                        continue
+                    total_amount = 0
+                    for i in range(len(item_descriptions)):
+                        desc = item_descriptions[i].strip()
+                        if not desc:
+                            continue
 
-                    qty = float(quantities[i])
-                    price = float(unit_prices[i])
-                    uom = uoms[i]
+                        qty = float(quantities[i])
+                        price = float(unit_prices[i])
+                        uom = uoms[i] if i < len(uoms) else "EA"
 
-                    PRLine.objects.create(
-                        requisition=pr,
-                        item_description=desc,
-                        quantity=qty,
-                        unit_of_measure=uom,
-                        estimated_unit_price=price,
+                        PRLine.objects.create(
+                            requisition=pr,
+                            item_description=desc,
+                            quantity=qty,
+                            unit_of_measure=uom,
+                            estimated_unit_price=price,
+                        )
+                        total_amount += qty * price
+
+                    # Validate budget before saving PR total
+                    validate_budget_availability_service(
+                        cost_center=cost_center, amount=Decimal(str(total_amount))
                     )
-                    total_amount += qty * price
 
-                # Validate budget before saving PR total
-                validate_budget_availability_service(
-                    cost_center=cost_center, amount=Decimal(str(total_amount))
-                )
+                    pr.total_amount = total_amount
 
-                pr.total_amount = total_amount
                 pr.save()
 
                 if attachments:
@@ -237,7 +299,7 @@ def edit_view(request, pk):
             messages.error(request, f"Error updating requisition: {str(e)}")
 
     # GET Request
-    if request.user.department:
+    if getattr(request.user, "department", None):
         departments = Department.objects.filter(id=request.user.department.id)
         cost_centers = CostCenter.objects.filter(department=request.user.department)
     else:
@@ -255,20 +317,23 @@ def edit_view(request, pk):
 
 @login_required(login_url="/login/")
 def detail_view(request, pk):
-    pr = get_object_or_404(PurchaseRequisition, pk=pk)
-
-    # Simple object-level security & tenant isolation
-    role_code = getattr(request.user, "role_code", None) or (
-        request.user.role.code
-        if hasattr(request.user, "role") and request.user.role
-        else Role.SUPER_ADMIN
+    user = request.user
+    role_code = getattr(user, "role_code", None) or (
+        user.role.code if hasattr(user, "role") and user.role else Role.SUPER_ADMIN
     )
-    if role_code == Role.REQUESTER and pr.requester != request.user:
+    pr = get_object_or_404(
+        PurchaseRequisition.objects.select_related(
+            "requester", "department", "cost_center"
+        ).prefetch_related("lines", "attachments", "purchase_orders"),
+        pk=pk,
+    )
+
+    if role_code == Role.REQUESTER and pr.requester != user:
         messages.error(request, "You do not have permission to view this requisition.")
         return redirect("requisitions_list")
 
-    if not request.user.is_superuser:
-        user_dept = getattr(request.user, "department", None)
+    if not user.is_superuser:
+        user_dept = getattr(user, "department", None)
         user_org = getattr(user_dept, "organization", None) if user_dept else None
         pr_org = getattr(getattr(pr, "department", None), "organization", None)
         if user_org and pr_org and user_org.id != pr_org.id:
@@ -278,15 +343,16 @@ def detail_view(request, pk):
                 "You do not have permission to view requisitions from another organization."
             )
 
-    from apps.approvals.models import ApprovalAction
-
-    approval_history = ApprovalAction.objects.filter(
-        target_object_id=pr.id, target_model_name="PurchaseRequisition"
-    ).order_by("created_at")
+    approval_history = (
+        ApprovalAction.objects.filter(
+            target_object_id=str(pr.id),
+            target_model_name="PurchaseRequisition",
+        )
+        .select_related("actor")
+        .order_by("-created_at")
+    )
 
     from django.utils import timezone
-
-    from apps.budgets.models import Budget
 
     today = timezone.now().date()
     active_budget = Budget.objects.filter(
@@ -336,7 +402,7 @@ def submit_view(request, pk):
     pr = get_object_or_404(PurchaseRequisition, pk=pk)
 
     # Check permissions
-    if pr.requester != request.user:
+    if pr.requester != request.user and not request.user.is_superuser:
         messages.error(request, "You do not have permission to submit this requisition.")
         return redirect("requisition_detail", pk=pr.pk)
 
@@ -344,15 +410,50 @@ def submit_view(request, pk):
         messages.error(request, "Only draft requisitions can be submitted.")
         return redirect("requisition_detail", pk=pr.pk)
 
-    # Use service function for workflow transitions
     try:
-        from apps.requisitions.services import submit_purchase_requisition_service
-
         submit_purchase_requisition_service(requisition=pr, user=request.user)
-        messages.success(request, f"Requisition {pr.pr_number} submitted successfully.")
+        messages.success(
+            request, f"Requisition {pr.pr_number} submitted for approval successfully."
+        )
     except Exception as e:
         messages.error(request, f"Error submitting requisition: {str(e)}")
 
+    return redirect("requisition_detail", pk=pr.pk)
+
+
+@login_required(login_url="/login/")
+def approve_view(request, pk):
+    pr = get_object_or_404(PurchaseRequisition, pk=pk)
+    if request.method == "POST":
+        comments = request.POST.get("comments", "").strip()
+        try:
+            process_approval_action_service(
+                target_object=pr, actor=request.user, action="APPROVED", comments=comments
+            )
+            messages.success(request, f"Requisition {pr.pr_number} approved successfully!")
+        except Exception as e:
+            messages.error(request, f"Approval error: {str(e)}")
+    referer = request.META.get("HTTP_REFERER")
+    if referer:
+        return redirect(referer)
+    return redirect("requisition_detail", pk=pr.pk)
+
+
+@login_required(login_url="/login/")
+def reject_view(request, pk):
+    pr = get_object_or_404(PurchaseRequisition, pk=pk)
+    if request.method == "POST":
+        comments = request.POST.get("comments", "").strip() or "Rejected by Approver."
+        try:
+            process_approval_action_service(
+                target_object=pr, actor=request.user, action="REJECTED", comments=comments
+            )
+            messages.success(request, f"Requisition {pr.pr_number} rejected.")
+        except Exception as e:
+            messages.error(request, f"Rejection error: {str(e)}")
+    referer = request.META.get("HTTP_REFERER")
+    if referer:
+        return redirect(referer)
     return redirect("requisition_detail", pk=pr.pk)
 
 
@@ -361,7 +462,7 @@ def cancel_view(request, pk):
     if request.method == "POST":
         pr = get_object_or_404(PurchaseRequisition, pk=pk)
 
-        if pr.requester != request.user:
+        if pr.requester != request.user and not request.user.is_superuser:
             messages.error(request, "You do not have permission to cancel this requisition.")
             return redirect("requisition_detail", pk=pr.pk)
 
@@ -402,3 +503,16 @@ def cancel_view(request, pk):
         return redirect("requisition_detail", pk=pr.pk)
 
     return redirect("requisitions_list")
+
+
+@login_required(login_url="/login/")
+def delete_view(request, pk):
+    pr = get_object_or_404(PurchaseRequisition, pk=pk)
+    if pr.status == PurchaseRequisition.STATUS_DRAFT and (
+        pr.requester == request.user or request.user.is_superuser
+    ):
+        pr.delete()
+        messages.success(request, "Draft requisition deleted successfully.")
+        return redirect("requisitions_list")
+    messages.error(request, "Cannot delete requisition.")
+    return redirect("requisition_detail", pk=pr.pk)
