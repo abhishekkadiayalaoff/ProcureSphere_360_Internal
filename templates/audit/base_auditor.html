@@ -101,23 +101,12 @@
                 </li>
                 <li class="nav-item my-2 border-top border-white-10"></li>
                 <li class="nav-item">
-                    <a href="/reports/hub/" class="nav-link auditor-nav-link d-flex align-items-center rounded-3 px-3 py-2 text-white-75">
+                    <a href="/reports/hub/" class="nav-link auditor-nav-link d-flex align-items-center rounded-3 px-3 py-2 text-white-75 {% if '/reports/' in request.path %}active{% endif %}">
                         <i class="fa-solid fa-chart-line me-3 fs-6 text-cyan"></i>
                         <span class="fw-semibold">Financial Reports</span>
                     </a>
                 </li>
             </ul>
-        </div>
-
-        <!-- Sidebar Footer -->
-        <div class="sidebar-footer p-3 border-top border-white-10 bg-black-20">
-            <div class="d-flex align-items-center justify-content-between small text-white-50">
-                <span class="d-flex align-items-center">
-                    <span class="pulse-indicator bg-success me-2"></span>
-                    <span>Immutable Ledger</span>
-                </span>
-                <span class="badge bg-dark border border-white-10 text-cyan">v2026.1</span>
-            </div>
         </div>
     </aside>
 
@@ -242,6 +231,12 @@
     .auditor-main-content {
         min-width: 0;
         overflow-x: clip; /* clip does NOT create an overflow scroll container, preserving position: sticky */
+    }
+
+    .auditor-sidebar,
+    .sidebar-nav-container {
+        overscroll-behavior: contain !important;
+        overscroll-behavior-y: contain !important;
     }
 
     /* Desktop Sidebar (>= 992px) */
@@ -407,14 +402,31 @@
         }
     }
 
-    // Auto-close sidebar on mobile/tablet when a route is clicked
+    // Auto-close sidebar on mobile/tablet when a route is clicked & isolate sidebar mouse wheel scroll
     document.addEventListener('DOMContentLoaded', () => {
+        const sidebar = document.getElementById('auditorSidebar');
+        const backdrop = document.getElementById('auditorSidebarBackdrop');
+
+        if (sidebar) {
+            // Isolate mouse wheel scrolling so the background dashboard NEVER scrolls up/down when cursor is over sidebar
+            sidebar.addEventListener('wheel', (e) => {
+                const nav = sidebar.querySelector('.sidebar-nav-container');
+                if (nav && nav.scrollHeight > nav.clientHeight) {
+                    const atTop = nav.scrollTop <= 0 && e.deltaY < 0;
+                    const atBottom = (nav.scrollHeight - nav.scrollTop - nav.clientHeight <= 1) && e.deltaY > 0;
+                    if (!atTop && !atBottom) {
+                        nav.scrollTop += e.deltaY;
+                    }
+                }
+                e.preventDefault();
+                e.stopPropagation();
+            }, { passive: false });
+        }
+
         if (window.innerWidth < 992) {
             const navLinks = document.querySelectorAll('.auditor-nav-link');
             navLinks.forEach(link => {
                 link.addEventListener('click', () => {
-                    const sidebar = document.getElementById('auditorSidebar');
-                    const backdrop = document.getElementById('auditorSidebarBackdrop');
                     if (sidebar) sidebar.classList.remove('show');
                     if (backdrop) backdrop.classList.remove('show');
                 });

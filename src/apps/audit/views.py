@@ -134,7 +134,7 @@ def audit_log_view(request):
         "total_count": total_count,
         "base_layout": base_layout,
     }
-    return render(request, "audit/audit_log.html", context)
+    return render(request, "audit/logs.html", context)
 
 
 @login_required
