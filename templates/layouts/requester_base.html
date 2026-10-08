@@ -1,24 +1,34 @@
 {% extends 'base.html' %}
 
 {% block navbar %}
-<!-- Minimal Top Navigation for Requester -->
-<nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm py-2">
-    <div class="container-fluid px-4">
-        <a href="/" class="navbar-brand d-flex align-items-center text-white me-4">
-            <i class="fa-solid fa-layer-group text-primary fa-xl me-2"></i>
-            <span class="fs-5 fw-bold">ProcureSphere 360</span>
-        </a>
-        <div class="ms-auto d-flex align-items-center">
+<!-- Top Navigation for Requester -->
+<nav class="navbar navbar-dark bg-dark shadow-sm py-2 sticky-top border-bottom border-secondary border-opacity-25">
+    <div class="container-fluid px-3 px-lg-4">
+        <div class="d-flex align-items-center">
+            <!-- Mobile / Tablet Hamburger Button -->
+            <button class="btn btn-outline-light btn-sm d-lg-none me-2 rounded-2" type="button" data-bs-toggle="offcanvas" data-bs-target="#requesterSidebar" aria-controls="requesterSidebar" title="Toggle Navigation">
+                <i class="fa-solid fa-bars-staggered"></i>
+            </button>
+            <a href="/" class="navbar-brand d-flex align-items-center text-white me-2 mb-0">
+                <i class="fa-solid fa-layer-group text-primary fa-xl me-2"></i>
+                <span class="fs-5 fw-bold">ProcureSphere <span class="text-primary fw-light">360</span></span>
+            </a>
+            <span class="badge bg-secondary bg-opacity-25 text-white border border-secondary border-opacity-50 px-2 py-1 rounded-pill d-none d-md-inline-flex align-items-center ms-2" style="font-size: 0.75rem;">
+                <i class="fa-solid fa-cart-shopping text-info me-1"></i> Requester Desk
+            </span>
+        </div>
+
+        <div class="ms-auto d-flex align-items-center gap-2">
             {% if user.is_authenticated %}
-                <div class="me-3 d-flex align-items-center px-3 py-1 bg-secondary bg-opacity-25 rounded-pill border border-secondary text-white">
-                    <i class="fa-solid fa-circle-user text-info me-2 fs-5"></i>
-                    <div class="text-start leading-tight me-2">
-                        <div class="fw-semibold text-white small">{{ user.email }}</div>
+                <div class="d-flex align-items-center px-2 px-sm-3 py-1 bg-secondary bg-opacity-25 rounded-pill border border-secondary border-opacity-50 text-white">
+                    <i class="fa-solid fa-circle-user text-info me-1 me-sm-2 fs-5"></i>
+                    <div class="text-start leading-tight me-1 d-none d-sm-block">
+                        <div class="fw-semibold text-white small text-truncate" style="max-width: 140px;">{{ user.email }}</div>
                         <div class="badge bg-info text-dark rounded-pill" style="font-size: 0.65rem;">{{ user.role_code|default:"REQUESTER" }}</div>
                     </div>
                 </div>
-                <a href="/logout/" class="btn btn-outline-light btn-sm rounded-pill px-3">
-                    <i class="fa-solid fa-arrow-right-from-bracket me-1"></i> Sign Out
+                <a href="/logout/" class="btn btn-outline-light btn-sm rounded-pill px-3" title="Sign Out">
+                    <i class="fa-solid fa-arrow-right-from-bracket me-sm-1"></i> <span class="d-none d-sm-inline">Sign Out</span>
                 </a>
             {% endif %}
         </div>
@@ -27,10 +37,10 @@
 {% endblock navbar %}
 
 {% block layout %}
-<div class="d-flex" style="min-height: calc(100vh - 56px);"> <!-- Adjust height based on navbar -->
-    <!-- Sidebar -->
-    <div class="bg-dark border-end border-secondary shadow-sm" style="width: 260px; flex-shrink: 0;">
-        <div class="p-3">
+<div class="d-flex" style="min-height: calc(100vh - 56px);">
+    <!-- Desktop Sidebar (>= 992px) -->
+    <aside class="bg-dark border-end border-secondary border-opacity-25 shadow-sm d-none d-lg-flex flex-column" style="width: 260px; flex-shrink: 0;">
+        <div class="p-3 d-flex flex-column flex-grow-1">
             <h6 class="text-uppercase text-light fw-bold mb-3 small"><i class="fa-solid fa-compass me-2"></i>Requester Menu</h6>
             <ul class="nav flex-column gap-1">
                 <li class="nav-item">
@@ -57,11 +67,61 @@
                 </li>
             </ul>
         </div>
+    </aside>
+
+    <!-- Mobile Offcanvas Sidebar (< 992px) -->
+    <div class="offcanvas offcanvas-start bg-dark text-white d-lg-none" tabindex="-1" id="requesterSidebar" aria-labelledby="requesterSidebarLabel" style="width: 280px;">
+        <div class="offcanvas-header border-bottom border-secondary border-opacity-25 py-3">
+            <div class="d-flex align-items-center" id="requesterSidebarLabel">
+                <i class="fa-solid fa-layer-group text-primary fa-xl me-2"></i>
+                <span class="fs-6 fw-bold text-white">ProcureSphere <span class="text-primary fw-light">360</span></span>
+            </div>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+        </div>
+        <div class="offcanvas-body p-3 d-flex flex-column">
+            <h6 class="text-uppercase text-light fw-bold mb-3 small"><i class="fa-solid fa-compass me-2"></i>Requester Menu</h6>
+            <ul class="nav flex-column gap-1">
+                <li class="nav-item">
+                    <a href="/" class="nav-link rounded sidebar-link {% if request.path == '/' %}active bg-primary fw-bold text-white{% else %}text-light{% endif %}">
+                        <i class="fa-solid fa-chart-pie me-2 text-center" style="width: 20px;"></i> Dashboard
+                    </a>
+                </li>
+                <li class="nav-item mt-2">
+                    <div class="text-uppercase text-secondary fw-bold mb-2 small px-2">Requisitions</div>
+                    <a href="/requisitions/" class="nav-link rounded sidebar-link {% if '/requisitions/' in request.path and 'create' not in request.path %}active bg-primary fw-bold text-white{% else %}text-light{% endif %}">
+                        <i class="fa-solid fa-list me-2 text-center" style="width: 20px;"></i> My PRs
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="/requisitions/create/" class="nav-link rounded sidebar-link {% if '/requisitions/create' in request.path %}active bg-primary fw-bold text-white{% else %}text-light{% endif %}">
+                        <i class="fa-solid fa-plus me-2 text-center" style="width: 20px;"></i> Create New PR
+                    </a>
+                </li>
+                <li class="nav-item mt-2">
+                    <div class="text-uppercase text-secondary fw-bold mb-2 small px-2">Tracking</div>
+                    <a href="/approvals/inbox/" class="nav-link rounded sidebar-link {% if '/approvals/' in request.path %}active bg-primary fw-bold text-white{% else %}text-light{% endif %}">
+                        <i class="fa-solid fa-timeline me-2 text-center" style="width: 20px;"></i> My Approvals
+                    </a>
+                </li>
+            </ul>
+
+            <div class="mt-auto pt-4 border-top border-secondary border-opacity-25">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div class="text-start leading-tight">
+                        <div class="fw-semibold text-white small text-truncate" style="max-width: 150px;">{{ user.email }}</div>
+                        <div class="badge bg-info text-dark rounded-pill" style="font-size: 0.65rem;">{{ user.role_code|default:"REQUESTER" }}</div>
+                    </div>
+                    <a href="/logout/" class="btn btn-outline-light btn-sm rounded-pill px-3">
+                        <i class="fa-solid fa-arrow-right-from-bracket"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Main Content -->
-    <div class="flex-grow-1 p-4 bg-light overflow-auto">
+    <main class="flex-grow-1 p-3 p-md-4 bg-light overflow-auto" style="min-width: 0;">
         {% block content %}{% endblock %}
-    </div>
+    </main>
 </div>
 {% endblock layout %}
