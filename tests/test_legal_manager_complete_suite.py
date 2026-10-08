@@ -371,4 +371,3 @@ def test_integration_all_legal_sidebar_navigation_items_accessible(client, legal
     for url in sidebar_urls:
         response = client.get(url)
         assert response.status_code == 200, f"URL {url} failed with status {response.status_code}"
-

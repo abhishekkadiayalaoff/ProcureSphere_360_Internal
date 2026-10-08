@@ -194,9 +194,9 @@ def test_pr_creation_fails_when_budget_exceeded(db_roles):
         requested_delivery_date=today + timedelta(days=14),
         line_items=line_items,
     )
-    
+
     assert pr.status == PurchaseRequisition.STATUS_DRAFT
-    
+
     pr = submit_purchase_requisition_service(requisition=pr, user=user)
-    
+
     assert pr.status == PurchaseRequisition.STATUS_BUDGET_REVIEW
