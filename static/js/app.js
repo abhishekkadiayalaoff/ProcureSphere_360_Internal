@@ -85,10 +85,15 @@ document.addEventListener('DOMContentLoaded', function () {
         delete btn.dataset.originalHtml;
     };
 
-    // Track clicked submit button on form (to preserve name & value on submit)
+    // Track clicked submit button on form and block rapid double-clicks
     document.addEventListener('click', function (e) {
         const btn = e.target.closest('button[type="submit"], input[type="submit"]');
         if (btn && btn.form) {
+            if (btn.form.dataset.submitting === 'true' || btn.classList.contains('btn-loading') || btn.disabled) {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                return false;
+            }
             btn.form._ps360_clickedSubmitBtn = btn;
         }
     }, true);

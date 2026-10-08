@@ -147,21 +147,50 @@ def create_view(request):
                 return redirect("requisition_create")
 
             # Prevent duplicate draft saves from repeated clicks or slow network on Render
-            if action_type != "submit" and "submit" not in request.POST:
-                recent_duplicate = PurchaseRequisition.objects.filter(
+            from django.core.cache import cache
+
+            lock_key = f"pr_create_lock_{user.id}_{hash((title, department_id, cost_center_id, requested_delivery_date))}"
+            if not cache.add(lock_key, True, timeout=15):
+                recent_duplicate = (
+                    PurchaseRequisition.objects.filter(
+                        requester=user,
+                        title=title,
+                        department=department,
+                        cost_center=cost_center,
+                        created_at__gte=timezone.now() - timezone.timedelta(seconds=30),
+                    )
+                    .order_by("-created_at")
+                    .first()
+                )
+                if recent_duplicate:
+                    messages.info(
+                        request,
+                        f"Purchase Requisition {recent_duplicate.pr_number} was already created.",
+                    )
+                    return redirect("requisition_detail", pk=recent_duplicate.pk)
+                else:
+                    messages.info(
+                        request, "Your requisition request is already being processed. Please wait..."
+                    )
+                    return redirect("requisitions_list")
+
+            recent_duplicate = (
+                PurchaseRequisition.objects.filter(
                     requester=user,
                     title=title,
                     department=department,
                     cost_center=cost_center,
-                    status=PurchaseRequisition.STATUS_DRAFT,
-                    created_at__gte=timezone.now() - timezone.timedelta(seconds=5),
-                ).first()
-                if recent_duplicate:
-                    messages.info(
-                        request,
-                        f"Purchase Requisition {recent_duplicate.pr_number} draft was already saved.",
-                    )
-                    return redirect("requisition_detail", pk=recent_duplicate.pk)
+                    created_at__gte=timezone.now() - timezone.timedelta(seconds=15),
+                )
+                .order_by("-created_at")
+                .first()
+            )
+            if recent_duplicate:
+                messages.info(
+                    request,
+                    f"Purchase Requisition {recent_duplicate.pr_number} was already created.",
+                )
+                return redirect("requisition_detail", pk=recent_duplicate.pk)
 
             pr = create_purchase_requisition_service(
                 title=title,
