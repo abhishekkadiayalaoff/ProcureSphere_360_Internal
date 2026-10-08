@@ -40,6 +40,8 @@ from apps.vendors.services import (
     update_vendor_profile_service,
     upload_vendor_document_service,
 )
+from apps.invoices.models import SupplierInvoice
+from apps.contracts.models import Contract
 
 
 def vendor_required(view_func):
@@ -232,11 +234,15 @@ def vendor_profile_view(request):
         .order_by("-created_at")
     )
     risk_records = vendor.risk_records.select_related("assessed_by").order_by("-created_at")
+    latest_risk = risk_records.first()
+    risk_flags_set = set(latest_risk.risk_flags) if (latest_risk and latest_risk.risk_flags) else set()
 
     context = {
         "vendor": vendor,
         "documents": documents,
         "risk_records": risk_records,
+        "latest_risk": latest_risk,
+        "risk_flags_set": risk_flags_set,
         "doc_types": VendorDocument.DOC_TYPE_CHOICES,
         "active_nav": "profile",
     }
@@ -1152,7 +1158,35 @@ def vendor_performance_view(request):
 
 
 # ==============================================================================
-# 13. DOCUMENTS
+# 13. INVOICES & CONTRACTS (COMING SOON)
+# ==============================================================================
+
+@vendor_required
+def vendor_invoices_view(request):
+    vendor = request.vendor
+    invoices = SupplierInvoice.objects.filter(vendor=vendor).order_by("-created_at")
+    
+    context = {
+        "vendor": vendor, 
+        "active_nav": "invoices",
+        "invoices": invoices,
+    }
+    return render(request, "pages/vendor/invoices.html", context)
+
+@vendor_required
+def vendor_contracts_view(request):
+    vendor = request.vendor
+    contracts = Contract.objects.filter(vendor=vendor).order_by("-created_at")
+    
+    context = {
+        "vendor": vendor, 
+        "active_nav": "contracts",
+        "contracts": contracts,
+    }
+    return render(request, "pages/vendor/contracts.html", context)
+
+# ==============================================================================
+# 14. DOCUMENTS
 # ==============================================================================
 
 

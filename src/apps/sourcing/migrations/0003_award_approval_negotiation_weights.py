@@ -139,7 +139,7 @@ class Migration(migrations.Migration):
         migrations.AddConstraint(
             model_name="bidevaluation",
             constraint=models.CheckConstraint(
-                check=models.Q(
+                condition=models.Q(
                     ("technical_score__gte", 0),
                     ("technical_score__lte", 100),
                     ("commercial_score__gte", 0),
@@ -151,7 +151,7 @@ class Migration(migrations.Migration):
         migrations.AddConstraint(
             model_name="sourcingevent",
             constraint=models.CheckConstraint(
-                check=models.Q(
+                condition=models.Q(
                     ("technical_weight__gte", 0),
                     ("commercial_weight__gte", 0),
                     ("technical_weight__lte", 100),

@@ -68,7 +68,7 @@ class SourcingEvent(TimeStampedModel):
     class Meta:
         constraints = [
             models.CheckConstraint(
-                check=models.Q(technical_weight__gte=0)
+                condition=models.Q(technical_weight__gte=0)
                 & models.Q(commercial_weight__gte=0)
                 & models.Q(technical_weight__lte=100)
                 & models.Q(commercial_weight__lte=100),
@@ -295,7 +295,7 @@ class BidEvaluation(TimeStampedModel):
         constraints = [
             models.UniqueConstraint(fields=["bid", "evaluator"], name="evaluation_unique_per_bid"),
             models.CheckConstraint(
-                check=models.Q(technical_score__gte=0)
+                condition=models.Q(technical_score__gte=0)
                 & models.Q(technical_score__lte=100)
                 & models.Q(commercial_score__gte=0)
                 & models.Q(commercial_score__lte=100),
