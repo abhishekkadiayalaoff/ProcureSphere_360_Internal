@@ -197,8 +197,8 @@ SPECTACULAR_SETTINGS = {
     "SCHEMA_PATH_PREFIX": r"/api/v1/",
 }
 
-# Celery Configuration
-REDIS_URL = env("REDIS_URL")
+# Celery & Redis Configuration
+REDIS_URL = env("REDIS_URL", default="redis://127.0.0.1:6379/0").strip()
 CELERY_BROKER_URL = REDIS_URL
 CELERY_RESULT_BACKEND = REDIS_URL
 CELERY_ACCEPT_CONTENT = ["json"]

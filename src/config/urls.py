@@ -7,8 +7,11 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
 from apps.accounts.api_views import SessionLoginView, SessionLogoutView
 from apps.accounts.views import portal_login_view, portal_logout_view
+from .healthchecks import health, readyz
 
 urlpatterns = [
+    path("health", health, name="health"),
+    path("readyz", readyz, name="readyz"),
     re_path(r"^.*prompts\.json$", lambda request: JsonResponse({})),
     path("admin/logout/", portal_logout_view, name="admin_logout_override"),
     path("admin/", admin.site.urls),
