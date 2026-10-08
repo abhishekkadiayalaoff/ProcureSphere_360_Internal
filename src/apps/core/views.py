@@ -296,3 +296,15 @@ def home_view(request):  # noqa: C901
 
     # Fallback for all other unknown roles
     return render(request, "pages/dashboards/requester_dashboard.html")
+
+
+def custom_404_view(request, exception=None):
+    return render(request, "404.html", status=404)
+
+
+def custom_500_view(request):
+    return render(request, "500.html", status=500)
+
+
+def custom_403_view(request, exception=None):
+    return render(request, "403.html", status=403)

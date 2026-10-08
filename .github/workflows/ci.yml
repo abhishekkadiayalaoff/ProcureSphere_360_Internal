@@ -2,9 +2,9 @@ name: ProcureSphere 360 CI Workflow
 
 on:
   push:
-    branches: [ main, staging, "feature/**", "bugfix/**" ]
+    branches: [ main, dev, staging, "feature/**", "bugfix/**" ]
   pull_request:
-    branches: [ main, staging ]
+    branches: [ main, dev, staging ]
 
 jobs:
   lint-and-test:
@@ -51,18 +51,25 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Lint with Ruff & Black (Changed Python Files vs dev)
+      - name: Lint with Ruff & Black (Changed Python Files)
         run: |
-          git fetch origin dev
-          CHANGED_FILES=$(git diff --name-only --diff-filter=d origin/dev...HEAD -- "*.py")
+          git fetch origin dev || true
+          if [ -n "$GITHUB_BASE_REF" ]; then
+            BASE_REF="origin/$GITHUB_BASE_REF"
+          else
+            BASE_REF="origin/dev"
+          fi
+          CHANGED_FILES=$(git diff --name-only --diff-filter=d $BASE_REF...HEAD -- "*.py" 2>/dev/null || true)
+          if [ -z "$CHANGED_FILES" ]; then
+            CHANGED_FILES=$(git diff --name-only --diff-filter=d HEAD~1 HEAD -- "*.py" 2>/dev/null || true)
+          fi
           if [ -n "$CHANGED_FILES" ]; then
-            echo "Linting changed Python files relative to dev:"
+            echo "Linting changed Python files:"
             echo "$CHANGED_FILES"
-
             ruff check $CHANGED_FILES
             black --check $CHANGED_FILES
           else
-            echo "No changed Python files relative to dev. Skipping lint."
+            echo "No changed Python files detected. Skipping lint."
           fi
       - name: Run Migrations Check
         env:

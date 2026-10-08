@@ -135,23 +135,43 @@
                 </a>
             </div>
             <div class="card-body p-0">
-                <div class="table-responsive">
-                    <table class="table table-sm table-borderless align-middle mb-0">
+                <!-- Mobile Card List (<768px) -->
+                <div class="list-group list-group-flush d-md-none">
+                    {% for exc in open_exceptions|slice:":5" %}
+                        <div class="list-group-item p-3 border-bottom">
+                            <div class="d-flex align-items-center justify-content-between mb-1">
+                                <strong class="text-dark font-monospace">{{ exc.invoice.invoice_number }}</strong>
+                                <span class="badge bg-warning-subtle text-warning-emphasis border">{{ exc.get_exception_type_display }}</span>
+                            </div>
+                            <div class="text-muted small mb-1 text-truncate">{{ exc.invoice.vendor.legal_name }}</div>
+                            <div class="d-flex align-items-center justify-content-between text-muted small">
+                                <span>Variance</span>
+                                <span class="fw-bold text-danger fs-6">${{ exc.variance_amount }}</span>
+                            </div>
+                        </div>
+                    {% empty %}
+                        <div class="text-center text-muted py-4 small">No open matching exceptions detected.</div>
+                    {% endfor %}
+                </div>
+
+                <!-- Desktop & Tablet Table (>=768px) -->
+                <div class="table-responsive d-none d-md-block">
+                    <table class="table table-sm table-borderless align-middle mb-0" style="min-width: 420px;">
                         <thead class="small text-muted text-uppercase bg-light">
                             <tr>
-                                <th class="ps-3">Invoice</th>
+                                <th class="ps-3 text-nowrap">Invoice</th>
                                 <th>Vendor</th>
-                                <th>Type</th>
-                                <th class="text-end pe-3">Variance</th>
+                                <th class="text-nowrap">Type</th>
+                                <th class="text-end pe-3 text-nowrap">Variance</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for exc in open_exceptions|slice:":5" %}
                                 <tr class="border-top">
-                                    <td class="ps-3"><strong class="text-dark">{{ exc.invoice.invoice_number }}</strong></td>
-                                    <td class="text-muted small">{{ exc.invoice.vendor.legal_name|truncatechars:20 }}</td>
-                                    <td><span class="badge bg-light text-dark border">{{ exc.get_exception_type_display }}</span></td>
-                                    <td class="text-end pe-3 fw-bold text-danger">${{ exc.variance_amount }}</td>
+                                    <td class="ps-3 text-nowrap"><strong class="text-dark font-monospace">{{ exc.invoice.invoice_number }}</strong></td>
+                                    <td class="text-muted small text-truncate" style="max-width: 140px;" title="{{ exc.invoice.vendor.legal_name }}">{{ exc.invoice.vendor.legal_name|truncatechars:20 }}</td>
+                                    <td class="text-nowrap"><span class="badge bg-light text-dark border">{{ exc.get_exception_type_display }}</span></td>
+                                    <td class="text-end pe-3 fw-bold text-danger text-nowrap">${{ exc.variance_amount }}</td>
                                 </tr>
                             {% empty %}
                                 <tr>
@@ -178,23 +198,43 @@
                 </a>
             </div>
             <div class="card-body p-0">
-                <div class="table-responsive">
-                    <table class="table table-sm table-borderless align-middle mb-0">
+                <!-- Mobile Card List (<768px) -->
+                <div class="list-group list-group-flush d-md-none">
+                    {% for v in suspended_vendors|slice:":5" %}
+                        <div class="list-group-item p-3 border-bottom">
+                            <div class="d-flex align-items-center justify-content-between mb-1">
+                                <code class="text-dark font-monospace">{{ v.vendor_number }}</code>
+                                <span class="badge bg-danger text-white">{{ v.get_status_display }}</span>
+                            </div>
+                            <div class="fw-semibold text-dark mb-1 text-truncate">{{ v.legal_name }}</div>
+                            <div class="d-flex align-items-center justify-content-between text-muted small">
+                                <span>Category</span>
+                                <span class="text-dark">{{ v.category.name|default:"General" }}</span>
+                            </div>
+                        </div>
+                    {% empty %}
+                        <div class="text-center text-muted py-4 small">No suspended or blacklisted vendors.</div>
+                    {% endfor %}
+                </div>
+
+                <!-- Desktop & Tablet Table (>=768px) -->
+                <div class="table-responsive d-none d-md-block">
+                    <table class="table table-sm table-borderless align-middle mb-0" style="min-width: 420px;">
                         <thead class="small text-muted text-uppercase bg-light">
                             <tr>
-                                <th class="ps-3">Vendor #</th>
+                                <th class="ps-3 text-nowrap">Vendor #</th>
                                 <th>Legal Name</th>
-                                <th>Status</th>
-                                <th class="text-end pe-3">Category</th>
+                                <th class="text-nowrap">Status</th>
+                                <th class="text-end pe-3 text-nowrap">Category</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for v in suspended_vendors|slice:":5" %}
                                 <tr class="border-top">
-                                    <td class="ps-3"><code>{{ v.vendor_number }}</code></td>
-                                    <td class="fw-semibold text-dark">{{ v.legal_name }}</td>
-                                    <td><span class="badge bg-danger text-white">{{ v.get_status_display }}</span></td>
-                                    <td class="text-end pe-3 text-muted small">{{ v.category.name|default:"General" }}</td>
+                                    <td class="ps-3 text-nowrap"><code>{{ v.vendor_number }}</code></td>
+                                    <td class="fw-semibold text-dark small text-truncate" style="max-width: 150px;" title="{{ v.legal_name }}">{{ v.legal_name }}</td>
+                                    <td class="text-nowrap"><span class="badge bg-danger text-white">{{ v.get_status_display }}</span></td>
+                                    <td class="text-end pe-3 text-muted small text-nowrap">{{ v.category.name|default:"General" }}</td>
                                 </tr>
                             {% empty %}
                                 <tr>
@@ -226,23 +266,43 @@
                 </a>
             </div>
             <div class="card-body p-0">
-                <div class="table-responsive">
-                    <table class="table table-sm table-borderless align-middle mb-0">
+                <!-- Mobile Card List (<768px) -->
+                <div class="list-group list-group-flush d-md-none">
+                    {% for po in po_changes.results|slice:":5" %}
+                        <div class="list-group-item p-3 border-bottom">
+                            <div class="d-flex align-items-center justify-content-between mb-1">
+                                <span class="badge bg-hpe-navy text-cyan px-2 py-1 font-monospace fw-bold">{{ po.po_number|default:po.id }}</span>
+                                <span class="badge bg-light text-dark border">{{ po.status|default:"ISSUED" }}</span>
+                            </div>
+                            <div class="fw-semibold text-dark mb-1 text-truncate">{{ po.vendor_name|default:"Vendor" }}</div>
+                            <div class="d-flex align-items-center justify-content-between text-muted small">
+                                <span>Order Amount</span>
+                                <span class="fw-bold text-dark fs-6">${{ po.total_amount|default:"0.00" }}</span>
+                            </div>
+                        </div>
+                    {% empty %}
+                        <div class="text-center text-muted py-4 small">No purchase orders found.</div>
+                    {% endfor %}
+                </div>
+
+                <!-- Desktop & Tablet Table (>=768px) -->
+                <div class="table-responsive d-none d-md-block">
+                    <table class="table table-sm table-borderless align-middle mb-0" style="min-width: 440px;">
                         <thead class="small text-muted text-uppercase bg-light">
                             <tr>
-                                <th class="ps-3">PO #</th>
+                                <th class="ps-3 text-nowrap">PO #</th>
                                 <th>Vendor</th>
-                                <th>Status</th>
-                                <th class="text-end pe-3">Amount</th>
+                                <th class="text-nowrap">Status</th>
+                                <th class="text-end pe-3 text-nowrap">Amount</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for po in po_changes.results|slice:":5" %}
                                 <tr class="border-top">
-                                    <td class="ps-3"><strong class="text-dark">{{ po.po_number|default:po.id }}</strong></td>
-                                    <td class="text-muted small">{{ po.vendor_name|default:"Vendor" }}</td>
-                                    <td><span class="badge bg-light text-dark border">{{ po.status|default:"ISSUED" }}</span></td>
-                                    <td class="text-end pe-3 fw-bold">${{ po.total_amount|default:"0.00" }}</td>
+                                    <td class="ps-3 text-nowrap"><span class="badge bg-hpe-navy text-cyan font-monospace fw-bold">{{ po.po_number|default:po.id }}</span></td>
+                                    <td class="text-dark fw-medium small text-truncate" style="max-width: 150px;" title="{{ po.vendor_name }}">{{ po.vendor_name|default:"Vendor" }}</td>
+                                    <td class="text-nowrap"><span class="badge bg-light text-dark border">{{ po.status|default:"ISSUED" }}</span></td>
+                                    <td class="text-end pe-3 fw-bold text-dark text-nowrap">${{ po.total_amount|default:"0.00" }}</td>
                                 </tr>
                             {% empty %}
                                 <tr>
@@ -269,23 +329,43 @@
                 </a>
             </div>
             <div class="card-body p-0">
-                <div class="table-responsive">
-                    <table class="table table-sm table-borderless align-middle mb-0">
+                <!-- Mobile Card List (<768px) -->
+                <div class="list-group list-group-flush d-md-none">
+                    {% for c in contract_changes.results|slice:":5" %}
+                        <div class="list-group-item p-3 border-bottom">
+                            <div class="d-flex align-items-center justify-content-between mb-1">
+                                <span class="badge bg-light text-dark border font-monospace fw-bold">{{ c.contract_number|default:"CON-2026" }}</span>
+                                <span class="badge bg-success-subtle text-success border">{{ c.status|default:"ACTIVE" }}</span>
+                            </div>
+                            <div class="fw-semibold text-dark mb-1 text-truncate" title="{{ c.title }}">{{ c.title|default:"Master Agreement" }}</div>
+                            <div class="d-flex align-items-center justify-content-between text-muted small">
+                                <span>Contract Value</span>
+                                <span class="fw-bold text-emerald fs-6">${{ c.contract_value|default:"0.00" }}</span>
+                            </div>
+                        </div>
+                    {% empty %}
+                        <div class="text-center text-muted py-4 small">No active contracts found.</div>
+                    {% endfor %}
+                </div>
+
+                <!-- Desktop & Tablet Table (>=768px) -->
+                <div class="table-responsive d-none d-md-block">
+                    <table class="table table-sm table-borderless align-middle mb-0" style="min-width: 440px;">
                         <thead class="small text-muted text-uppercase bg-light">
                             <tr>
-                                <th class="ps-3">Contract #</th>
+                                <th class="ps-3 text-nowrap">Contract #</th>
                                 <th>Title</th>
-                                <th>Status</th>
-                                <th class="text-end pe-3">Value</th>
+                                <th class="text-nowrap">Status</th>
+                                <th class="text-end pe-3 text-nowrap">Value</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for c in contract_changes.results|slice:":5" %}
                                 <tr class="border-top">
-                                    <td class="ps-3"><code>{{ c.contract_number|default:"CON-2026" }}</code></td>
-                                    <td class="fw-semibold text-dark">{{ c.title|default:"Master Agreement" }}</td>
-                                    <td><span class="badge bg-success-subtle text-success border">{{ c.status|default:"ACTIVE" }}</span></td>
-                                    <td class="text-end pe-3 fw-bold">${{ c.contract_value|default:"0.00" }}</td>
+                                    <td class="ps-3 text-nowrap"><code class="text-dark bg-light px-2 py-1 rounded border">{{ c.contract_number|default:"CON-2026" }}</code></td>
+                                    <td class="fw-semibold text-dark small text-truncate" style="max-width: 170px;" title="{{ c.title }}">{{ c.title|default:"Master Agreement" }}</td>
+                                    <td class="text-nowrap"><span class="badge bg-success-subtle text-success border">{{ c.status|default:"ACTIVE" }}</span></td>
+                                    <td class="text-end pe-3 fw-bold text-emerald text-nowrap">${{ c.contract_value|default:"0.00" }}</td>
                                 </tr>
                             {% empty %}
                                 <tr>

@@ -16,6 +16,46 @@ class IsLegalManager(permissions.BasePermission):
         )
         return role_code in [Role.LEGAL_MGR, Role.SUPER_ADMIN]
 
+    def has_object_permission(self, request, view, obj):
+        return self.has_permission(request, view)
+
+
+class IsNotAuditor(permissions.BasePermission):
+    """
+    Prevents Compliance Auditors (strictly read-only role) from performing state changes or write operations.
+    """
+
+    def has_permission(self, request, view):
+        if not request.user or not request.user.is_authenticated:
+            return False
+        if request.method in permissions.SAFE_METHODS:
+            return True
+        role_code = getattr(request.user, "role_code", None) or (
+            request.user.role.code if getattr(request.user, "role", None) else None
+        )
+        return role_code != Role.AUDITOR
+
+    def has_object_permission(self, request, view, obj):
+        return self.has_permission(request, view)
+
+
+class CanManageContract(permissions.BasePermission):
+    """
+    Permission required to amend or update core contract structure:
+    Legal Manager, Procurement Manager, Contract Owner, or Super Admin (excludes Auditor & Vendor User).
+    """
+
+    def has_permission(self, request, view):
+        if not request.user or not request.user.is_authenticated:
+            return False
+        role_code = getattr(request.user, "role_code", None) or (
+            request.user.role.code if getattr(request.user, "role", None) else None
+        )
+        return role_code not in [Role.AUDITOR, Role.VENDOR_USER]
+
+    def has_object_permission(self, request, view, obj):
+        return self.has_permission(request, view)
+
 
 class CanViewContract(permissions.BasePermission):
     """
