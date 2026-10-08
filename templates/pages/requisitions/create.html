@@ -214,7 +214,7 @@
                 <div class="alert alert-warning small border-0 mb-3 text-start">
                     <i class="fa-solid fa-info-circle me-1"></i> You may save this draft, but if you proceed, this requisition will be routed for <strong>Budget Exception Review</strong> by the Finance team when submitted.
                 </div>
-                <button type="button" class="btn btn-warning fw-bold text-dark rounded-pill px-4 shadow-sm" onclick="forceSubmitForm()">
+                <button type="button" class="btn btn-warning fw-bold text-dark rounded-pill px-4 shadow-sm" onclick="forceSubmitForm(this)">
                     <i class="fa-solid fa-triangle-exclamation me-2"></i>Proceed Anyway
                 </button>
             </div>
@@ -228,11 +228,23 @@
 </div>
 
 <script>
-    window.forceSubmitForm = function() {
-        // Need to bypass the JS validation check
+    window.forceSubmitForm = function(btn) {
+        const modalEl = document.getElementById('budgetExceededModal');
         const form = document.getElementById('pr_create_form');
+        const proceedBtn = btn || (modalEl ? modalEl.querySelector('.btn-warning') : null);
+        if (proceedBtn) {
+            window.setButtonLoading(proceedBtn, 'Saving Draft...');
+        }
+        const draftBtn = form ? form.querySelector('button[name="submit_action"]') : null;
+        if (draftBtn) {
+            window.setButtonLoading(draftBtn, 'Saving Draft...');
+        }
         form.removeEventListener('submit', validateBudgetOnSubmit);
-        form.submit();
+        if (form.requestSubmit) {
+            form.requestSubmit();
+        } else {
+            form.submit();
+        }
     };
 
     function validateBudgetOnSubmit(e) {
@@ -245,6 +257,14 @@
             const available = parseFloat(budgetVal);
             if (total > available) {
                 e.preventDefault();
+                e.stopImmediatePropagation();
+                
+                const form = document.getElementById('pr_create_form');
+                if (form) {
+                    delete form.dataset.submitting;
+                    const draftBtn = form.querySelector('button[name="submit_action"]');
+                    if (draftBtn) window.resetButtonLoading(draftBtn);
+                }
                 
                 document.getElementById('modal_total_amt').textContent = '$' + total.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
                 document.getElementById('modal_available_amt').textContent = '$' + available.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});

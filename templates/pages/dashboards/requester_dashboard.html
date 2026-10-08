@@ -3,74 +3,74 @@
 {% block title %}Requester Dashboard — ProcureSphere 360{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center gap-3 mb-4">
     <div>
-        <h2 class="fw-bold text-dark mb-1">Requester Dashboard</h2>
-        <p class="text-muted mb-0">Overview of your Purchase Requisitions and approvals.</p>
+        <h2 class="fw-bold text-dark mb-1 fs-3 fs-md-2">Requester Dashboard</h2>
+        <p class="text-muted mb-0 small">Overview of your Purchase Requisitions and approvals.</p>
     </div>
-    <a href="/requisitions/create/" class="btn btn-primary rounded-pill shadow-sm px-4 fw-semibold">
+    <a href="/requisitions/create/" class="btn btn-primary rounded-pill shadow-sm px-4 fw-semibold flex-shrink-0">
         <i class="fa-solid fa-plus me-2"></i>New Requisition
     </a>
 </div>
 
 <!-- Metrics Cards -->
-<div class="row g-4 mb-4">
-    <div class="col-md-4">
+<div class="row g-3 g-md-4 mb-4">
+    <div class="col-12 col-md-4">
         <div class="card border-0 shadow-sm rounded-4 overflow-hidden h-100">
-            <div class="card-body p-4 d-flex align-items-center justify-content-between">
+            <div class="card-body p-3 p-sm-4 d-flex align-items-center justify-content-between">
                 <div>
                     <h6 class="text-uppercase text-muted fw-bold mb-2 small">Total PRs</h6>
                     <h2 class="fw-bold mb-0 text-dark">{{ metrics.total_my_prs }}</h2>
                 </div>
-                <div class="bg-primary bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
-                    <i class="fa-solid fa-file-invoice-dollar fs-3 text-primary"></i>
+                <div class="bg-primary bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style="width: 54px; height: 54px;">
+                    <i class="fa-solid fa-file-invoice-dollar fs-4 text-primary"></i>
                 </div>
             </div>
-            <div class="bg-primary text-white text-center py-1" style="font-size: 0.75rem; letter-spacing: 1px;">ALL TIME</div>
+            <div class="bg-primary text-white text-center py-1" style="font-size: 0.72rem; letter-spacing: 1px;">ALL TIME</div>
         </div>
     </div>
     
-    <div class="col-md-4">
+    <div class="col-12 col-md-4">
         <div class="card border-0 shadow-sm rounded-4 overflow-hidden h-100">
-            <div class="card-body p-4 d-flex align-items-center justify-content-between">
+            <div class="card-body p-3 p-sm-4 d-flex align-items-center justify-content-between">
                 <div>
                     <h6 class="text-uppercase text-muted fw-bold mb-2 small">Pending Approval</h6>
                     <h2 class="fw-bold mb-0 text-warning">{{ metrics.pending_prs }}</h2>
                 </div>
-                <div class="bg-warning bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
-                    <i class="fa-solid fa-clock-rotate-left fs-3 text-warning"></i>
+                <div class="bg-warning bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style="width: 54px; height: 54px;">
+                    <i class="fa-solid fa-clock-rotate-left fs-4 text-warning"></i>
                 </div>
             </div>
-            <div class="bg-warning text-dark text-center py-1 fw-bold" style="font-size: 0.75rem; letter-spacing: 1px;">ACTION REQUIRED</div>
+            <div class="bg-warning text-dark text-center py-1 fw-bold" style="font-size: 0.72rem; letter-spacing: 1px;">ACTION REQUIRED</div>
         </div>
     </div>
 
-    <div class="col-md-4">
+    <div class="col-12 col-md-4">
         <div class="card border-0 shadow-sm rounded-4 overflow-hidden h-100">
-            <div class="card-body p-4 d-flex align-items-center justify-content-between">
+            <div class="card-body p-3 p-sm-4 d-flex align-items-center justify-content-between">
                 <div>
                     <h6 class="text-uppercase text-muted fw-bold mb-2 small">Approved PRs</h6>
                     <h2 class="fw-bold mb-0 text-success">{{ metrics.approved_prs }}</h2>
                 </div>
-                <div class="bg-success bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
-                    <i class="fa-solid fa-check-double fs-3 text-success"></i>
+                <div class="bg-success bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style="width: 54px; height: 54px;">
+                    <i class="fa-solid fa-check-double fs-4 text-success"></i>
                 </div>
             </div>
-            <div class="bg-success text-white text-center py-1" style="font-size: 0.75rem; letter-spacing: 1px;">PROCESSED</div>
+            <div class="bg-success text-white text-center py-1" style="font-size: 0.72rem; letter-spacing: 1px;">PROCESSED</div>
         </div>
     </div>
 </div>
 
 <!-- Recent Activity Table -->
 <div class="card border-0 shadow-sm rounded-4 mb-4">
-    <div class="card-header bg-white border-bottom-0 pt-4 pb-0 px-4 d-flex justify-content-between align-items-center">
-        <h5 class="fw-bold text-dark mb-0"><i class="fa-solid fa-list-ul text-primary me-2"></i>Recent Requisitions</h5>
+    <div class="card-header bg-white border-bottom-0 pt-3 pt-sm-4 pb-0 px-3 px-sm-4 d-flex justify-content-between align-items-center">
+        <h5 class="fw-bold text-dark mb-0 fs-6 fs-sm-5"><i class="fa-solid fa-list-ul text-primary me-2"></i>Recent Requisitions</h5>
         <a href="/requisitions/" class="btn btn-sm btn-outline-secondary rounded-pill px-3">View All</a>
     </div>
-    <div class="card-body p-4">
+    <div class="card-body p-3 p-sm-4">
         {% if my_recent_prs %}
         <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0">
+            <table class="table table-hover align-middle mb-0 text-nowrap">
                 <thead class="table-light">
                     <tr>
                         <th class="text-uppercase text-secondary small fw-bold">PR Number</th>
@@ -85,8 +85,8 @@
                     {% for pr in my_recent_prs %}
                     <tr>
                         <td class="fw-semibold text-dark">{{ pr.pr_number }}</td>
-                        <td>{{ pr.title }}</td>
-                        <td>{{ pr.created_at|date:"M d, Y" }}</td>
+                        <td class="text-truncate" style="max-width: 200px;">{{ pr.title }}</td>
+                        <td class="text-muted small">{{ pr.created_at|date:"M d, Y" }}</td>
                         <td class="text-end fw-semibold">${{ pr.total_amount|floatformat:2 }}</td>
                         <td class="text-center">
                             {% if pr.status == 'DRAFT' %}
@@ -115,7 +115,7 @@
                 <i class="fa-solid fa-folder-open text-muted fs-1"></i>
             </div>
             <h5 class="text-muted fw-bold">No requisitions yet</h5>
-            <p class="text-secondary">You haven't created any purchase requisitions.</p>
+            <p class="text-secondary small">You haven't created any purchase requisitions.</p>
             <a href="/requisitions/create/" class="btn btn-outline-primary rounded-pill mt-2 px-4">Create your first PR</a>
         </div>
         {% endif %}

@@ -39,6 +39,10 @@ def notifications_processor(request):
             pending_count = PurchaseRequisition.objects.filter(status__in=statuses).count()
     elif role_code in [Role.PROC_MGR, Role.SUPER_ADMIN]:
         pending_count = PurchaseRequisition.objects.filter(status__in=statuses).count()
+    elif role_code == Role.LEGAL_MGR:
+        from apps.contracts.models import Contract
+
+        pending_count = Contract.objects.filter(status=Contract.STATUS_LEGAL_REVIEW).count()
 
     recent_notifications = Notification.objects.filter(recipient=user).order_by("-created_at")[:5]
 

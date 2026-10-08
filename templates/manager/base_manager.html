@@ -292,6 +292,12 @@
         overflow-x: clip;
     }
 
+    .manager-sidebar,
+    .sidebar-nav-container {
+        overscroll-behavior: contain !important;
+        overscroll-behavior-y: contain !important;
+    }
+
     /* Desktop Sidebar (>= 992px) */
     @media (min-width: 992px) {
         .manager-sidebar {
@@ -457,8 +463,38 @@
         }
     }
 
-    // Update Topbar Notification Badge
+    // Update Topbar Notification Badge & isolate sidebar mouse wheel scroll
     document.addEventListener('DOMContentLoaded', async () => {
+        const sidebar = document.getElementById('managerSidebar');
+        const backdrop = document.getElementById('managerSidebarBackdrop');
+
+        if (sidebar) {
+            // Isolate mouse wheel scrolling so the background dashboard NEVER scrolls up/down when cursor is over sidebar
+            sidebar.addEventListener('wheel', (e) => {
+                const nav = sidebar.querySelector('.sidebar-nav-container');
+                if (nav && nav.scrollHeight > nav.clientHeight) {
+                    const atTop = nav.scrollTop <= 0 && e.deltaY < 0;
+                    const atBottom = (nav.scrollHeight - nav.scrollTop - nav.clientHeight <= 1) && e.deltaY > 0;
+                    if (!atTop && !atBottom) {
+                        nav.scrollTop += e.deltaY;
+                    }
+                }
+                e.preventDefault();
+                e.stopPropagation();
+            }, { passive: false });
+        }
+
+        // Auto-close sidebar on mobile/tablet when a route is clicked
+        if (window.innerWidth < 992) {
+            const navLinks = document.querySelectorAll('.manager-nav-link');
+            navLinks.forEach(link => {
+                link.addEventListener('click', () => {
+                    if (sidebar) sidebar.classList.remove('show');
+                    if (backdrop) backdrop.classList.remove('show');
+                });
+            });
+        }
+
         const topbarBadge = document.getElementById('topbarNotificationBadge');
         if (topbarBadge) {
             try {
