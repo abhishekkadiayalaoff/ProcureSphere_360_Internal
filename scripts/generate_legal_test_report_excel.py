@@ -1,6 +1,6 @@
 import os
-import sys
 from datetime import datetime
+
 import openpyxl
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
@@ -11,9 +11,7 @@ def create_legal_test_report_excel(output_path="docs/Legal_Manager_Test_Report.x
 
     # Define color palette & styling
     navy_fill = PatternFill(start_color="002B49", end_color="002B49", fill_type="solid")
-    cyan_fill = PatternFill(start_color="00B0B9", end_color="00B0B9", fill_type="solid")
     header_fill = PatternFill(start_color="0F172A", end_color="0F172A", fill_type="solid")
-    accent_fill = PatternFill(start_color="1E293B", end_color="1E293B", fill_type="solid")
     pass_fill = PatternFill(start_color="D1FAE5", end_color="D1FAE5", fill_type="solid")
 
     white_bold_font = Font(name="Calibri", size=11, bold=True, color="FFFFFF")
@@ -31,7 +29,6 @@ def create_legal_test_report_excel(output_path="docs/Legal_Manager_Test_Report.x
 
     align_center = Alignment(horizontal="center", vertical="center", wrap_text=True)
     align_left = Alignment(horizontal="left", vertical="center", wrap_text=True)
-    align_right = Alignment(horizontal="right", vertical="center", wrap_text=True)
 
     # --------------------------------------------------------------------------
     # SHEET 1: Summary Dashboard
