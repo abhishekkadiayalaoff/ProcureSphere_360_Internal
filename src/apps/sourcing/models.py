@@ -1,9 +1,12 @@
 from decimal import Decimal
 
+import django
 from django.db import models
 
 from apps.core.models import TimeStampedModel
 from apps.core.validators import validate_file_upload
+
+_CHECK_KW = "condition" if django.VERSION >= (5, 1) else "check"
 
 
 class SourcingEvent(TimeStampedModel):
@@ -68,10 +71,12 @@ class SourcingEvent(TimeStampedModel):
     class Meta:
         constraints = [
             models.CheckConstraint(
-                condition=models.Q(technical_weight__gte=0)
-                & models.Q(commercial_weight__gte=0)
-                & models.Q(technical_weight__lte=100)
-                & models.Q(commercial_weight__lte=100),
+                **{
+                    _CHECK_KW: models.Q(technical_weight__gte=0)
+                    & models.Q(commercial_weight__gte=0)
+                    & models.Q(technical_weight__lte=100)
+                    & models.Q(commercial_weight__lte=100)
+                },
                 name="sourcing_event_weights_range",
             ),
         ]
@@ -295,10 +300,12 @@ class BidEvaluation(TimeStampedModel):
         constraints = [
             models.UniqueConstraint(fields=["bid", "evaluator"], name="evaluation_unique_per_bid"),
             models.CheckConstraint(
-                condition=models.Q(technical_score__gte=0)
-                & models.Q(technical_score__lte=100)
-                & models.Q(commercial_score__gte=0)
-                & models.Q(commercial_score__lte=100),
+                **{
+                    _CHECK_KW: models.Q(technical_score__gte=0)
+                    & models.Q(technical_score__lte=100)
+                    & models.Q(commercial_score__gte=0)
+                    & models.Q(commercial_score__lte=100)
+                },
                 name="evaluation_scores_range",
             ),
         ]

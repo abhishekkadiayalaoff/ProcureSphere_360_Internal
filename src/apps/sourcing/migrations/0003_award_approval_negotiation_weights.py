@@ -3,9 +3,12 @@
 import uuid
 from decimal import Decimal
 
+import django
 import django.db.models.deletion
 from django.conf import settings
 from django.db import migrations, models
+
+_check_kw = "condition" if django.VERSION >= (5, 1) else "check"
 
 
 def mark_existing_awards_approved(apps, schema_editor):
@@ -146,24 +149,28 @@ class Migration(migrations.Migration):
         migrations.AddConstraint(
             model_name="bidevaluation",
             constraint=models.CheckConstraint(
-                condition=models.Q(
-                    ("technical_score__gte", 0),
-                    ("technical_score__lte", 100),
-                    ("commercial_score__gte", 0),
-                    ("commercial_score__lte", 100),
-                ),
+                **{
+                    _check_kw: models.Q(
+                        ("technical_score__gte", 0),
+                        ("technical_score__lte", 100),
+                        ("commercial_score__gte", 0),
+                        ("commercial_score__lte", 100),
+                    )
+                },
                 name="evaluation_scores_range",
             ),
         ),
         migrations.AddConstraint(
             model_name="sourcingevent",
             constraint=models.CheckConstraint(
-                condition=models.Q(
-                    ("technical_weight__gte", 0),
-                    ("commercial_weight__gte", 0),
-                    ("technical_weight__lte", 100),
-                    ("commercial_weight__lte", 100),
-                ),
+                **{
+                    _check_kw: models.Q(
+                        ("technical_weight__gte", 0),
+                        ("commercial_weight__gte", 0),
+                        ("technical_weight__lte", 100),
+                        ("commercial_weight__lte", 100),
+                    )
+                },
                 name="sourcing_event_weights_range",
             ),
         ),
