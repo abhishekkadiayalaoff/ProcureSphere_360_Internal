@@ -7,6 +7,7 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
 from apps.accounts.api_views import SessionLoginView, SessionLogoutView
 from apps.accounts.views import portal_login_view, portal_logout_view
+
 from .healthchecks import health, readyz
 
 urlpatterns = [
