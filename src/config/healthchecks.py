@@ -13,7 +13,6 @@ from django.http import JsonResponse
 from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_safe
 
-
 logger = logging.getLogger(__name__)
 
 
