@@ -15,16 +15,18 @@ def create_legal_test_report_excel(output_path="docs/Legal_Manager_Test_Report.x
     header_fill = PatternFill(start_color="0F172A", end_color="0F172A", fill_type="solid")
     accent_fill = PatternFill(start_color="1E293B", end_color="1E293B", fill_type="solid")
     pass_fill = PatternFill(start_color="D1FAE5", end_color="D1FAE5", fill_type="solid")
-    
+
     white_bold_font = Font(name="Calibri", size=11, bold=True, color="FFFFFF")
     white_title_font = Font(name="Calibri", size=16, bold=True, color="FFFFFF")
     cyan_title_font = Font(name="Calibri", size=14, bold=True, color="00B0B9")
     bold_font = Font(name="Calibri", size=11, bold=True, color="0F172A")
     regular_font = Font(name="Calibri", size=10, color="1E293B")
     pass_font = Font(name="Calibri", size=10, bold=True, color="065F46")
-    
+
     thin_border_side = Side(style="thin", color="CBD5E1")
-    border = Border(left=thin_border_side, right=thin_border_side, top=thin_border_side, bottom=thin_border_side)
+    border = Border(
+        left=thin_border_side, right=thin_border_side, top=thin_border_side, bottom=thin_border_side
+    )
     thick_bottom = Border(bottom=Side(style="medium", color="00B0B9"))
 
     align_center = Alignment(horizontal="center", vertical="center", wrap_text=True)
@@ -65,7 +67,7 @@ def create_legal_test_report_excel(output_path="docs/Legal_Manager_Test_Report.x
         c1.font = bold_font
         c1.fill = PatternFill(start_color="F1F5F9", end_color="F1F5F9", fill_type="solid")
         c1.border = border
-        
+
         ws_summary.merge_cells(start_row=row_idx, start_column=2, end_row=row_idx, end_column=4)
         c2 = ws_summary.cell(row=row_idx, column=2, value=val)
         c2.font = regular_font
@@ -79,7 +81,7 @@ def create_legal_test_report_excel(output_path="docs/Legal_Manager_Test_Report.x
     row_idx += 1
     ws_summary.cell(row=row_idx, column=1, value="HIGH-LEVEL QA KPI SUMMARY").font = cyan_title_font
     row_idx += 1
-    
+
     kpi_headers = ["Total Executed", "Passed", "Failed", "Skipped", "Pass Rate", "Total Duration"]
     for col_i, h in enumerate(kpi_headers, 1):
         c = ws_summary.cell(row=row_idx, column=col_i, value=h)
@@ -101,7 +103,9 @@ def create_legal_test_report_excel(output_path="docs/Legal_Manager_Test_Report.x
 
     # Category Breakdown Table
     row_idx += 3
-    ws_summary.cell(row=row_idx, column=1, value="TEST BREAKDOWN BY CATEGORY").font = cyan_title_font
+    ws_summary.cell(row=row_idx, column=1, value="TEST BREAKDOWN BY CATEGORY").font = (
+        cyan_title_font
+    )
     row_idx += 1
     cat_headers = ["Category", "File / Scope", "Total Cases", "Passed", "Status"]
     for col_i, h in enumerate(cat_headers, 1):
@@ -112,12 +116,24 @@ def create_legal_test_report_excel(output_path="docs/Legal_Manager_Test_Report.x
         c.border = border
 
     cat_data = [
-        ("Unit Testing (Services & Models)", "test_legal_manager_complete_suite.py", 6, 6, "PASSED"),
+        (
+            "Unit Testing (Services & Models)",
+            "test_legal_manager_complete_suite.py",
+            6,
+            6,
+            "PASSED",
+        ),
         ("API REST Endpoint Testing", "test_legal_manager_complete_suite.py", 2, 2, "PASSED"),
         ("RBAC & Security Testing", "test_legal_manager_complete_suite.py", 1, 1, "PASSED"),
         ("Integration & Web Dashboard UI", "test_legal_manager_complete_suite.py", 2, 2, "PASSED"),
         ("Contract Workflow End-to-End", "test_contracts_workflow.py", 6, 6, "PASSED"),
-        ("Celery SLA Alerts & Scheduled Tasks", "test_demo_6_contract_celery_alerts.py", 1, 1, "PASSED"),
+        (
+            "Celery SLA Alerts & Scheduled Tasks",
+            "test_demo_6_contract_celery_alerts.py",
+            1,
+            1,
+            "PASSED",
+        ),
         ("Project-Wide Role Regression Check", "test_all_role_dashboards.py", 1, 1, "PASSED"),
     ]
 
@@ -150,7 +166,7 @@ def create_legal_test_report_excel(output_path="docs/Legal_Manager_Test_Report.x
         "Actual Result",
         "Status",
         "Duration",
-        "Tester Signoff"
+        "Tester Signoff",
     ]
 
     for col_i, h in enumerate(detail_headers, 1):
@@ -171,7 +187,7 @@ def create_legal_test_report_excel(output_path="docs/Legal_Manager_Test_Report.x
             "Contract created with status DRAFT, version=1, number CON-2026-00001",
             "PASSED",
             "0.15s",
-            "Verified"
+            "Verified",
         ),
         (
             "TC-LEG-002",
@@ -183,7 +199,7 @@ def create_legal_test_report_excel(output_path="docs/Legal_Manager_Test_Report.x
             "Status transitioned DRAFT -> LEGAL_REVIEW -> BUSINESS_APPROVAL -> ACTIVE",
             "PASSED",
             "0.22s",
-            "Verified"
+            "Verified",
         ),
         (
             "TC-LEG-003",
@@ -195,7 +211,7 @@ def create_legal_test_report_excel(output_path="docs/Legal_Manager_Test_Report.x
             "Contract status updated to DRAFT with audit event logged",
             "PASSED",
             "0.18s",
-            "Verified"
+            "Verified",
         ),
         (
             "TC-LEG-004",
@@ -207,7 +223,7 @@ def create_legal_test_report_excel(output_path="docs/Legal_Manager_Test_Report.x
             "Version updated to 2; ContractVersion count = 2; prior version preserved",
             "PASSED",
             "0.25s",
-            "Verified"
+            "Verified",
         ),
         (
             "TC-LEG-005",
@@ -219,7 +235,7 @@ def create_legal_test_report_excel(output_path="docs/Legal_Manager_Test_Report.x
             "Milestone is_completed=True, Obligation is_fulfilled=True",
             "PASSED",
             "0.20s",
-            "Verified"
+            "Verified",
         ),
         (
             "TC-LEG-006",
@@ -231,7 +247,7 @@ def create_legal_test_report_excel(output_path="docs/Legal_Manager_Test_Report.x
             "Selector returned accurate aggregated metrics dict matching DB state",
             "PASSED",
             "0.14s",
-            "Verified"
+            "Verified",
         ),
         (
             "TC-LEG-007",
@@ -243,7 +259,7 @@ def create_legal_test_report_excel(output_path="docs/Legal_Manager_Test_Report.x
             "HTTP 200 OK received for list; HTTP 201 Created received with created contract JSON",
             "PASSED",
             "0.35s",
-            "Verified"
+            "Verified",
         ),
         (
             "TC-LEG-008",
@@ -255,7 +271,7 @@ def create_legal_test_report_excel(output_path="docs/Legal_Manager_Test_Report.x
             "HTTP 200 OK returned at all action endpoints with updated status in JSON",
             "PASSED",
             "0.40s",
-            "Verified"
+            "Verified",
         ),
         (
             "TC-LEG-009",
@@ -267,7 +283,7 @@ def create_legal_test_report_excel(output_path="docs/Legal_Manager_Test_Report.x
             "HTTP 403 Forbidden returned; backend RBAC enforced",
             "PASSED",
             "0.19s",
-            "Verified"
+            "Verified",
         ),
         (
             "TC-LEG-010",
@@ -279,7 +295,7 @@ def create_legal_test_report_excel(output_path="docs/Legal_Manager_Test_Report.x
             "HTTP 200 OK, legal dashboard HTML rendered with aggregated metrics context",
             "PASSED",
             "0.30s",
-            "Verified"
+            "Verified",
         ),
         (
             "TC-LEG-011",
@@ -291,7 +307,7 @@ def create_legal_test_report_excel(output_path="docs/Legal_Manager_Test_Report.x
             "HTTP 200 OK returned for List, Detail, and Create views",
             "PASSED",
             "0.42s",
-            "Verified"
+            "Verified",
         ),
         (
             "TC-LEG-012",
@@ -303,7 +319,7 @@ def create_legal_test_report_excel(output_path="docs/Legal_Manager_Test_Report.x
             "Contract reached ACTIVE status; audit log entries created",
             "PASSED",
             "0.28s",
-            "Verified"
+            "Verified",
         ),
         (
             "TC-LEG-013",
@@ -315,7 +331,7 @@ def create_legal_test_report_excel(output_path="docs/Legal_Manager_Test_Report.x
             "Contract returned to DRAFT state; rejection comments preserved in audit log",
             "PASSED",
             "0.22s",
-            "Verified"
+            "Verified",
         ),
         (
             "TC-LEG-014",
@@ -327,7 +343,7 @@ def create_legal_test_report_excel(output_path="docs/Legal_Manager_Test_Report.x
             "ContractVersion record stored; historical values intact",
             "PASSED",
             "0.24s",
-            "Verified"
+            "Verified",
         ),
         (
             "TC-LEG-015",
@@ -339,7 +355,7 @@ def create_legal_test_report_excel(output_path="docs/Legal_Manager_Test_Report.x
             "Milestone and obligation completed/fulfilled cleanly",
             "PASSED",
             "0.21s",
-            "Verified"
+            "Verified",
         ),
         (
             "TC-LEG-016",
@@ -351,7 +367,7 @@ def create_legal_test_report_excel(output_path="docs/Legal_Manager_Test_Report.x
             "Status transitioned to RENEWED, then TERMINATED cleanly",
             "PASSED",
             "0.26s",
-            "Verified"
+            "Verified",
         ),
         (
             "TC-LEG-017",
@@ -363,7 +379,7 @@ def create_legal_test_report_excel(output_path="docs/Legal_Manager_Test_Report.x
             "HTTP 200 OK for all views with contract data rendered",
             "PASSED",
             "0.38s",
-            "Verified"
+            "Verified",
         ),
         (
             "TC-LEG-018",
@@ -375,7 +391,7 @@ def create_legal_test_report_excel(output_path="docs/Legal_Manager_Test_Report.x
             "ContractAlert records created; SLA alert notifications generated",
             "PASSED",
             "0.50s",
-            "Verified"
+            "Verified",
         ),
         (
             "TC-LEG-019",
@@ -387,7 +403,7 @@ def create_legal_test_report_excel(output_path="docs/Legal_Manager_Test_Report.x
             "HTTP 200 OK for all 10 role dashboards; no regressions found",
             "PASSED",
             "1.85s",
-            "Verified"
+            "Verified",
         ),
         (
             "TC-LEG-020",
@@ -399,7 +415,7 @@ def create_legal_test_report_excel(output_path="docs/Legal_Manager_Test_Report.x
             "HTTP 200 OK returned for all 8 sidebar navigation pages in Legal Manager theme",
             "PASSED",
             "0.55s",
-            "Verified"
+            "Verified",
         ),
     ]
 
@@ -430,7 +446,7 @@ def create_legal_test_report_excel(output_path="docs/Legal_Manager_Test_Report.x
         "Target Role",
         "Allowed Roles",
         "Forbidden Roles",
-        "RBAC Verification Result"
+        "RBAC Verification Result",
     ]
 
     for col_i, h in enumerate(rbac_headers, 1):
@@ -441,16 +457,96 @@ def create_legal_test_report_excel(output_path="docs/Legal_Manager_Test_Report.x
         c.border = border
 
     rbac_data = [
-        ("/api/v1/contracts/", "GET", "List Contracts", "Legal / Procurement", "Legal Mgr, Proc Mgr, Super Admin", "Vendor User (scoped)", "PASSED — Scoped Queryset"),
-        ("/api/v1/contracts/", "POST", "Draft Contract", "Legal Manager", "Legal Mgr, Proc Mgr, Super Admin", "Auditor, Vendor User", "PASSED — HTTP 201 Created"),
-        ("/api/v1/contracts/{id}/", "GET", "Retrieve Contract", "All Authorized", "Legal Mgr, Proc Mgr, Requester, Auditor", "Unauthorized Users", "PASSED — HTTP 200 OK"),
-        ("/api/v1/contracts/{id}/submit-legal/", "POST", "Submit Legal Review", "Contract Owner", "Legal Mgr, Proc Mgr, Requester", "Auditor", "PASSED — Status LEGAL_REVIEW"),
-        ("/api/v1/contracts/{id}/legal-approve/", "POST", "Legal Approval", "Legal Manager", "Legal Mgr, Super Admin", "Requester, Proc Mgr, Vendor", "PASSED — Enforced HTTP 403"),
-        ("/api/v1/contracts/{id}/legal-reject/", "POST", "Legal Rejection", "Legal Manager", "Legal Mgr, Super Admin", "Requester, Proc Mgr, Vendor", "PASSED — Enforced HTTP 403"),
-        ("/api/v1/contracts/{id}/business-approve/", "POST", "Business Approval", "Procurement Manager", "Proc Mgr, Super Admin", "Requester, Legal Mgr (strictly)", "PASSED — Status ACTIVE"),
-        ("/api/v1/contracts/{id}/amend/", "POST", "Create Amendment", "Legal Manager", "Legal Mgr, Proc Mgr, Super Admin", "Auditor, Vendor User", "PASSED — Version Increment"),
-        ("/api/v1/contracts/{id}/renew/", "POST", "Renew Contract", "Legal Manager", "Legal Mgr, Proc Mgr, Super Admin", "Auditor, Vendor User", "PASSED — Status RENEWED"),
-        ("/api/v1/contracts/{id}/terminate/", "POST", "Terminate Contract", "Legal Manager", "Legal Mgr, Super Admin", "Auditor, Vendor User", "PASSED — Status TERMINATED"),
+        (
+            "/api/v1/contracts/",
+            "GET",
+            "List Contracts",
+            "Legal / Procurement",
+            "Legal Mgr, Proc Mgr, Super Admin",
+            "Vendor User (scoped)",
+            "PASSED — Scoped Queryset",
+        ),
+        (
+            "/api/v1/contracts/",
+            "POST",
+            "Draft Contract",
+            "Legal Manager",
+            "Legal Mgr, Proc Mgr, Super Admin",
+            "Auditor, Vendor User",
+            "PASSED — HTTP 201 Created",
+        ),
+        (
+            "/api/v1/contracts/{id}/",
+            "GET",
+            "Retrieve Contract",
+            "All Authorized",
+            "Legal Mgr, Proc Mgr, Requester, Auditor",
+            "Unauthorized Users",
+            "PASSED — HTTP 200 OK",
+        ),
+        (
+            "/api/v1/contracts/{id}/submit-legal/",
+            "POST",
+            "Submit Legal Review",
+            "Contract Owner",
+            "Legal Mgr, Proc Mgr, Requester",
+            "Auditor",
+            "PASSED — Status LEGAL_REVIEW",
+        ),
+        (
+            "/api/v1/contracts/{id}/legal-approve/",
+            "POST",
+            "Legal Approval",
+            "Legal Manager",
+            "Legal Mgr, Super Admin",
+            "Requester, Proc Mgr, Vendor",
+            "PASSED — Enforced HTTP 403",
+        ),
+        (
+            "/api/v1/contracts/{id}/legal-reject/",
+            "POST",
+            "Legal Rejection",
+            "Legal Manager",
+            "Legal Mgr, Super Admin",
+            "Requester, Proc Mgr, Vendor",
+            "PASSED — Enforced HTTP 403",
+        ),
+        (
+            "/api/v1/contracts/{id}/business-approve/",
+            "POST",
+            "Business Approval",
+            "Procurement Manager",
+            "Proc Mgr, Super Admin",
+            "Requester, Legal Mgr (strictly)",
+            "PASSED — Status ACTIVE",
+        ),
+        (
+            "/api/v1/contracts/{id}/amend/",
+            "POST",
+            "Create Amendment",
+            "Legal Manager",
+            "Legal Mgr, Proc Mgr, Super Admin",
+            "Auditor, Vendor User",
+            "PASSED — Version Increment",
+        ),
+        (
+            "/api/v1/contracts/{id}/renew/",
+            "POST",
+            "Renew Contract",
+            "Legal Manager",
+            "Legal Mgr, Proc Mgr, Super Admin",
+            "Auditor, Vendor User",
+            "PASSED — Status RENEWED",
+        ),
+        (
+            "/api/v1/contracts/{id}/terminate/",
+            "POST",
+            "Terminate Contract",
+            "Legal Manager",
+            "Legal Mgr, Super Admin",
+            "Auditor, Vendor User",
+            "PASSED — Status TERMINATED",
+        ),
     ]
 
     for r_idx, r_row in enumerate(rbac_data, start=2):

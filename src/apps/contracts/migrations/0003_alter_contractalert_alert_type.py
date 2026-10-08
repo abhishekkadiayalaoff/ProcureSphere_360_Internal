@@ -6,13 +6,21 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('contracts', '0002_contractobligation_contractdocument'),
+        ("contracts", "0002_contractobligation_contractdocument"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='contractalert',
-            name='alert_type',
-            field=models.CharField(choices=[('EXPIRATION', 'Contract Expiration Warning'), ('MILESTONE', 'Milestone Due Warning'), ('RENEWAL', 'Renewal Notice Required'), ('OBLIGATION', 'Legal Obligation Due Warning')], max_length=30),
+            model_name="contractalert",
+            name="alert_type",
+            field=models.CharField(
+                choices=[
+                    ("EXPIRATION", "Contract Expiration Warning"),
+                    ("MILESTONE", "Milestone Due Warning"),
+                    ("RENEWAL", "Renewal Notice Required"),
+                    ("OBLIGATION", "Legal Obligation Due Warning"),
+                ],
+                max_length=30,
+            ),
         ),
     ]
