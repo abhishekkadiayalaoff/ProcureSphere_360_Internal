@@ -5,6 +5,7 @@ from django.contrib.auth.decorators import login_required
 from django.db import transaction
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
 
 from apps.accounts.models import Role
 from apps.approvals.models import ApprovalAction
@@ -144,6 +145,23 @@ def create_view(request):
             if not line_items:
                 messages.error(request, "Please add at least one line item.")
                 return redirect("requisition_create")
+
+            # Prevent duplicate draft saves from repeated clicks or slow network on Render
+            if action_type != "submit" and "submit" not in request.POST:
+                recent_duplicate = PurchaseRequisition.objects.filter(
+                    requester=user,
+                    title=title,
+                    department=department,
+                    cost_center=cost_center,
+                    status=PurchaseRequisition.STATUS_DRAFT,
+                    created_at__gte=timezone.now() - timezone.timedelta(seconds=5),
+                ).first()
+                if recent_duplicate:
+                    messages.info(
+                        request,
+                        f"Purchase Requisition {recent_duplicate.pr_number} draft was already saved.",
+                    )
+                    return redirect("requisition_detail", pk=recent_duplicate.pk)
 
             pr = create_purchase_requisition_service(
                 title=title,
