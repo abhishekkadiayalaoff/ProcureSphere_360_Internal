@@ -11,7 +11,16 @@ urlpatterns = [
     path("requisitions/<uuid:pk>/cancel/", views.cancel_view, name="requisition_cancel"),
     path("requisitions/<uuid:pk>/approve/", views.approve_view, name="requisition_approve"),
     path("requisitions/<uuid:pk>/reject/", views.reject_view, name="requisition_reject"),
+    # Alt names from dev
+    path("requisitions/create/", views.create_view, name="requisition_create_alt"),
+    path("requisitions/<uuid:pk>/", views.detail_view, name="requisition_detail_alt"),
+    path("requisitions/<uuid:pk>/edit/", views.edit_view, name="requisition_edit_alt"),
+    path("requisitions/<uuid:pk>/submit/", views.submit_view, name="requisition_submit_alt"),
+    path("requisitions/<uuid:pk>/cancel/", views.cancel_view, name="requisition_cancel_alt"),
+    path("requisitions/<uuid:pk>/approve/", views.approve_view, name="requisition_approve_alt"),
+    path("requisitions/<uuid:pk>/reject/", views.reject_view, name="requisition_reject_alt"),
     # Direct alias fallbacks
+    path("", views.list_view, name="requisitions_list_root"),
     path("create/", views.create_view, name="requisition_create_alias"),
     path("<uuid:pk>/", views.detail_view, name="requisition_detail_alias"),
     path("<uuid:pk>/edit/", views.edit_view, name="requisition_edit_alias"),

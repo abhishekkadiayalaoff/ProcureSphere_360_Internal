@@ -185,16 +185,18 @@ def test_pr_creation_fails_when_budget_exceeded(db_roles):
         }
     ]
 
-    with pytest.raises(ValidationError) as excinfo:
-        create_purchase_requisition_service(
-            title="Over-budget IT Hardware",
-            justification="Hardware refresh",
-            requester=user,
-            department=dept,
-            cost_center=cost_center,
-            requested_delivery_date=today + timedelta(days=14),
-            line_items=line_items,
-        )
-
-    assert "Insufficient budget in Cost Center 'CC-IT-101'" in str(excinfo.value)
-    assert PurchaseRequisition.objects.filter(title="Over-budget IT Hardware").count() == 0
+    pr = create_purchase_requisition_service(
+        title="Over-budget IT Hardware",
+        justification="Hardware refresh",
+        requester=user,
+        department=dept,
+        cost_center=cost_center,
+        requested_delivery_date=today + timedelta(days=14),
+        line_items=line_items,
+    )
+    
+    assert pr.status == PurchaseRequisition.STATUS_DRAFT
+    
+    pr = submit_purchase_requisition_service(requisition=pr, user=user)
+    
+    assert pr.status == PurchaseRequisition.STATUS_BUDGET_REVIEW

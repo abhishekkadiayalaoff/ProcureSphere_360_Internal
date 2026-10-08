@@ -189,3 +189,22 @@ h1, h2, h3, h4, h5, h6, .font-heading {
 ::-webkit-scrollbar-thumb:hover {
     background: #94A3B8;
 }
+
+/* Button Loading State */
+.btn-loading {
+    position: relative;
+    pointer-events: none;
+    opacity: 0.85;
+    cursor: not-allowed !important;
+}
+
+.btn-loading .spinner-border {
+    vertical-align: -0.15em;
+}
+
+/* Responsive Layout Helpers */
+@media (max-width: 991.98px) {
+    .sidebar-desktop {
+        display: none !important;
+    }
+}
