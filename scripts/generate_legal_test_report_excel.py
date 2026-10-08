@@ -25,7 +25,6 @@ def create_legal_test_report_excel(output_path="docs/Legal_Manager_Test_Report.x
     border = Border(
         left=thin_border_side, right=thin_border_side, top=thin_border_side, bottom=thin_border_side
     )
-    thick_bottom = Border(bottom=Side(style="medium", color="00B0B9"))
 
     align_center = Alignment(horizontal="center", vertical="center", wrap_text=True)
     align_left = Alignment(horizontal="left", vertical="center", wrap_text=True)
