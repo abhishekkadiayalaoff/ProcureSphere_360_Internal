@@ -121,7 +121,7 @@ def test_demo_7_spend_scorecard_and_audited_report_export():
         total_amount=Decimal("10000.00"),
         status=SupplierInvoice.STATUS_RECEIVED,
     )
-    
+
     spend_report = get_spend_analytics_report()
     assert len(spend_report) >= 1
 
