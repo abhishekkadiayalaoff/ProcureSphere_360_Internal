@@ -170,7 +170,8 @@ def create_view(request):
                     return redirect("requisition_detail", pk=recent_duplicate.pk)
                 else:
                     messages.info(
-                        request, "Your requisition request is already being processed. Please wait..."
+                        request,
+                        "Your requisition request is already being processed. Please wait...",
                     )
                     return redirect("requisitions_list")
 

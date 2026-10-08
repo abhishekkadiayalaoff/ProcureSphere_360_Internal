@@ -111,6 +111,7 @@ def test_demo_7_spend_scorecard_and_audited_report_export():
 
     # 2. Spend analytics report & Supplier performance report
     from apps.invoices.models import SupplierInvoice
+
     SupplierInvoice.objects.create(
         vendor=vendor,
         po=po,
