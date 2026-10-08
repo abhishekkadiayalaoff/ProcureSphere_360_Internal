@@ -58,8 +58,9 @@ jobs:
           if [ -n "$CHANGED_FILES" ]; then
             echo "Linting changed Python files relative to dev:"
             echo "$CHANGED_FILES"
-            ruff check --fix $CHANGED_FILES
-            black $CHANGED_FILES
+
+            ruff check $CHANGED_FILES
+            black --check $CHANGED_FILES
           else
             echo "No changed Python files relative to dev. Skipping lint."
           fi
