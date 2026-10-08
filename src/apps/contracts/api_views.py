@@ -1,10 +1,9 @@
 from django.core.exceptions import ValidationError
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-
-from rest_framework.exceptions import PermissionDenied
 
 from .models import ContractMilestone, ContractObligation
 from .permissions import CanManageContract, CanViewContract, IsLegalManager, IsNotAuditor
@@ -193,7 +192,12 @@ class ContractViewSet(viewsets.ModelViewSet):
 
         if not title or not due_date:
             return Response(
-                {"error": {"code": "MISSING_PARAM", "message": "Both title and due_date are required"}},
+                {
+                    "error": {
+                        "code": "MISSING_PARAM",
+                        "message": "Both title and due_date are required",
+                    }
+                },
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -201,7 +205,9 @@ class ContractViewSet(viewsets.ModelViewSet):
             milestone = add_contract_milestone_service(
                 contract=contract, title=title, due_date=due_date, amount=amount, user=request.user
             )
-            return Response(ContractMilestoneSerializer(milestone).data, status=status.HTTP_201_CREATED)
+            return Response(
+                ContractMilestoneSerializer(milestone).data, status=status.HTTP_201_CREATED
+            )
         except ValidationError as e:
             return Response(
                 {"error": {"code": "INVALID_MILESTONE", "message": str(e)}},
@@ -230,7 +236,12 @@ class ContractViewSet(viewsets.ModelViewSet):
 
         if not title or not due_date:
             return Response(
-                {"error": {"code": "MISSING_PARAM", "message": "Both title and due_date are required"}},
+                {
+                    "error": {
+                        "code": "MISSING_PARAM",
+                        "message": "Both title and due_date are required",
+                    }
+                },
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -242,7 +253,9 @@ class ContractViewSet(viewsets.ModelViewSet):
                 due_date=due_date,
                 user=request.user,
             )
-            return Response(ContractObligationSerializer(obligation).data, status=status.HTTP_201_CREATED)
+            return Response(
+                ContractObligationSerializer(obligation).data, status=status.HTTP_201_CREATED
+            )
         except ValidationError as e:
             return Response(
                 {"error": {"code": "INVALID_OBLIGATION", "message": str(e)}},
@@ -254,8 +267,12 @@ class ContractViewSet(viewsets.ModelViewSet):
         contract = self.get_object()
         try:
             obligation = ContractObligation.objects.get(id=obligation_id, contract=contract)
-            obligation = fulfill_contract_obligation_service(obligation=obligation, user=request.user)
-            return Response(ContractObligationSerializer(obligation).data, status=status.HTTP_200_OK)
+            obligation = fulfill_contract_obligation_service(
+                obligation=obligation, user=request.user
+            )
+            return Response(
+                ContractObligationSerializer(obligation).data, status=status.HTTP_200_OK
+            )
         except ContractObligation.DoesNotExist:
             return Response(
                 {"error": {"code": "NOT_FOUND", "message": "Obligation record not found"}},
@@ -327,7 +344,9 @@ class ContractViewSet(viewsets.ModelViewSet):
                 title=title,
                 file=file_obj,
             )
-            return Response(ContractDocumentSerializer(document).data, status=status.HTTP_201_CREATED)
+            return Response(
+                ContractDocumentSerializer(document).data, status=status.HTTP_201_CREATED
+            )
         except ValidationError as e:
             return Response(
                 {"error": {"code": "INVALID_DOCUMENT", "message": str(e)}},

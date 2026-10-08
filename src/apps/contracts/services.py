@@ -343,7 +343,12 @@ def create_contract_version_service(
 
 @transaction.atomic
 def add_contract_milestone_service(
-    *, contract: Contract, title: str, due_date, amount: Decimal = Decimal("0.00"), user: User = None
+    *,
+    contract: Contract,
+    title: str,
+    due_date,
+    amount: Decimal = Decimal("0.00"),
+    user: User = None,
 ) -> ContractMilestone:
     """
     Adds a tracked milestone to a contract with audit logging.

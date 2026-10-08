@@ -91,4 +91,3 @@ def test_demo_6_contract_milestone_and_celery_alerts():
     assert Notification.TYPE_CONTRACT_EXPIRATION in notif_types
     assert Notification.TYPE_CONTRACT_MILESTONE in notif_types
     assert Notification.TYPE_CONTRACT_OBLIGATION in notif_types
-

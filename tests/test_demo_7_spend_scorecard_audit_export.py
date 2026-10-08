@@ -111,6 +111,7 @@ def test_demo_7_spend_scorecard_and_audited_report_export():
 
     # 2. Spend analytics report & Supplier performance report
     from apps.invoices.models import SupplierInvoice
+
     SupplierInvoice.objects.create(
         vendor=vendor,
         po=po,
@@ -121,7 +122,7 @@ def test_demo_7_spend_scorecard_and_audited_report_export():
         total_amount=Decimal("10000.00"),
         status=SupplierInvoice.STATUS_RECEIVED,
     )
-    
+
     spend_report = get_spend_analytics_report()
     assert len(spend_report) >= 1
 

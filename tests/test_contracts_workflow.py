@@ -237,6 +237,7 @@ def test_legal_manager_dashboard_and_views(client, contract_setup):
 @pytest.mark.django_db
 def test_contract_document_vault_upload_and_validation(client, contract_setup):
     from django.core.files.uploadedfile import SimpleUploadedFile
+
     from apps.audit.models import AuditLog
     from apps.contracts.forms import ContractDocumentForm
     from apps.contracts.models import ContractDocument
@@ -246,7 +247,9 @@ def test_contract_document_vault_upload_and_validation(client, contract_setup):
     legal_user = contract_setup["legal_user"]
 
     # 1. Service Layer upload
-    valid_file = SimpleUploadedFile("executed_msa.pdf", b"%PDF-1.4 dummy content", content_type="application/pdf")
+    valid_file = SimpleUploadedFile(
+        "executed_msa.pdf", b"%PDF-1.4 dummy content", content_type="application/pdf"
+    )
     doc = upload_contract_document_service(
         contract=contract,
         user=legal_user,
@@ -258,19 +261,27 @@ def test_contract_document_vault_upload_and_validation(client, contract_setup):
     assert doc.uploaded_by == legal_user
 
     # Verify AuditLog
-    audit_entry = AuditLog.objects.filter(target_model="ContractDocument", target_object_id=str(doc.id)).first()
+    audit_entry = AuditLog.objects.filter(
+        target_model="ContractDocument", target_object_id=str(doc.id)
+    ).first()
     assert audit_entry is not None
     assert audit_entry.actor == legal_user
 
     # 2. Form Validation — Invalid extension
-    invalid_file = SimpleUploadedFile("malicious.exe", b"binary data", content_type="application/octet-stream")
+    invalid_file = SimpleUploadedFile(
+        "malicious.exe", b"binary data", content_type="application/octet-stream"
+    )
     form = ContractDocumentForm(data={"title": "Bad File"}, files={"file": invalid_file})
     assert not form.is_valid()
     assert "Unsupported file format" in str(form.errors["file"])
 
     # 3. REST API upload endpoint
     client.force_login(legal_user)
-    api_file = SimpleUploadedFile("sow_appendix.docx", b"dummy word content", content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+    api_file = SimpleUploadedFile(
+        "sow_appendix.docx",
+        b"dummy word content",
+        content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    )
     response = client.post(
         f"/api/v1/contracts/{contract.id}/upload-document/",
         {"title": "SOW Appendix A", "file": api_file},
@@ -305,53 +316,83 @@ def test_full_contract_lifecycle_view_and_api_workflow(client, contract_setup):
 
     # 1. Requester / Owner submits for Legal Review via HTTP View
     client.force_login(legal_user)
-    response = client.post(reverse("contract_submit_legal", kwargs={"contract_id": contract.id}), {"notes": "Submitting for contract sign-off"})
+    response = client.post(
+        reverse("contract_submit_legal", kwargs={"contract_id": contract.id}),
+        {"notes": "Submitting for contract sign-off"},
+    )
     assert response.status_code == 302
     contract.refresh_from_db()
     assert contract.status == Contract.STATUS_LEGAL_REVIEW
 
     # Verify AuditLog & Notification for Legal Manager
-    audit1 = AuditLog.objects.filter(target_model="Contract", target_object_id=str(contract.id)).latest("timestamp")
+    audit1 = AuditLog.objects.filter(
+        target_model="Contract", target_object_id=str(contract.id)
+    ).latest("timestamp")
     assert audit1.action == AuditLog.ACTION_UPDATE
-    assert Notification.objects.filter(recipient=legal_user, notification_type=Notification.TYPE_APPROVAL_REQUIRED).exists()
+    assert Notification.objects.filter(
+        recipient=legal_user, notification_type=Notification.TYPE_APPROVAL_REQUIRED
+    ).exists()
 
     # 2. Negative RBAC: Requester attempts Legal Approval via REST API -> 403 Forbidden
     client.force_login(requester_user)
-    api_resp = client.post(f"/api/v1/contracts/{contract.id}/legal-approve/", {"notes": "Bypassing legal"}, content_type="application/json")
+    api_resp = client.post(
+        f"/api/v1/contracts/{contract.id}/legal-approve/",
+        {"notes": "Bypassing legal"},
+        content_type="application/json",
+    )
     assert api_resp.status_code == 403
     contract.refresh_from_db()
     assert contract.status == Contract.STATUS_LEGAL_REVIEW
 
     # 3. Negative RBAC: Auditor attempts Legal Approval via HTTP View -> Permission Error
     client.force_login(auditor_user)
-    response = client.post(reverse("contract_legal_approve", kwargs={"contract_id": contract.id}), {"notes": "Auditor approve"})
+    response = client.post(
+        reverse("contract_legal_approve", kwargs={"contract_id": contract.id}),
+        {"notes": "Auditor approve"},
+    )
     assert response.status_code == 302
     contract.refresh_from_db()
     assert contract.status == Contract.STATUS_LEGAL_REVIEW
 
     # 4. Legal Manager approves via REST API -> BUSINESS_APPROVAL
     client.force_login(legal_user)
-    api_resp = client.post(f"/api/v1/contracts/{contract.id}/legal-approve/", {"notes": "Legal sign-off complete"}, content_type="application/json")
+    api_resp = client.post(
+        f"/api/v1/contracts/{contract.id}/legal-approve/",
+        {"notes": "Legal sign-off complete"},
+        content_type="application/json",
+    )
     assert api_resp.status_code == 200
     contract.refresh_from_db()
     assert contract.status == Contract.STATUS_BUSINESS_APPROVAL
 
     # Verify AuditLog & Notifications for Procurement Manager
-    audit2 = AuditLog.objects.filter(target_model="Contract", target_object_id=str(contract.id)).latest("timestamp")
+    audit2 = AuditLog.objects.filter(
+        target_model="Contract", target_object_id=str(contract.id)
+    ).latest("timestamp")
     assert audit2.action == AuditLog.ACTION_APPROVE
-    assert Notification.objects.filter(recipient=proc_user, notification_type=Notification.TYPE_APPROVAL_REQUIRED).exists()
+    assert Notification.objects.filter(
+        recipient=proc_user, notification_type=Notification.TYPE_APPROVAL_REQUIRED
+    ).exists()
 
     # 5. Business Approval via REST API -> ACTIVE
     client.force_login(proc_user)
-    api_resp = client.post(f"/api/v1/contracts/{contract.id}/business-approve/", {"notes": "Executive budget approval"}, content_type="application/json")
+    api_resp = client.post(
+        f"/api/v1/contracts/{contract.id}/business-approve/",
+        {"notes": "Executive budget approval"},
+        content_type="application/json",
+    )
     assert api_resp.status_code == 200
     contract.refresh_from_db()
     assert contract.status == Contract.STATUS_ACTIVE
 
     # Verify final AuditLog & Notification
-    audit3 = AuditLog.objects.filter(target_model="Contract", target_object_id=str(contract.id)).latest("timestamp")
+    audit3 = AuditLog.objects.filter(
+        target_model="Contract", target_object_id=str(contract.id)
+    ).latest("timestamp")
     assert audit3.action == AuditLog.ACTION_APPROVE
-    assert Notification.objects.filter(recipient=contract.contract_owner, notification_type=Notification.TYPE_APPROVAL_REQUIRED).exists()
+    assert Notification.objects.filter(
+        recipient=contract.contract_owner, notification_type=Notification.TYPE_APPROVAL_REQUIRED
+    ).exists()
 
 
 @pytest.mark.django_db
@@ -359,9 +400,9 @@ def test_contract_expiry_renewal_and_notification_routing(client, contract_setup
     """
     Day 16 Task: Complete contract expiry and renewal notifications, background scans, and context processor integration.
     """
+    from apps.contracts.tasks import scan_contract_expirations_and_milestones_task
     from apps.notifications.context_processors import notifications_processor
     from apps.notifications.models import Notification
-    from apps.contracts.tasks import scan_contract_expirations_and_milestones_task
 
     contract = contract_setup["contract"]
     legal_user = contract_setup["legal_user"]
@@ -381,8 +422,12 @@ def test_contract_expiry_renewal_and_notification_routing(client, contract_setup
     )
     contract.refresh_from_db()
     assert contract.status == Contract.STATUS_RENEWED
-    assert Notification.objects.filter(recipient=legal_user, notification_type=Notification.TYPE_CONTRACT_EXPIRATION).exists()
-    assert Notification.objects.filter(recipient=proc_user, notification_type=Notification.TYPE_CONTRACT_EXPIRATION).exists()
+    assert Notification.objects.filter(
+        recipient=legal_user, notification_type=Notification.TYPE_CONTRACT_EXPIRATION
+    ).exists()
+    assert Notification.objects.filter(
+        recipient=proc_user, notification_type=Notification.TYPE_CONTRACT_EXPIRATION
+    ).exists()
 
     # 3. Fast-forward contract end date to past -> scan task transitions to EXPIRED
     contract.end_date = today - timezone.timedelta(days=5)
@@ -393,7 +438,11 @@ def test_contract_expiry_renewal_and_notification_routing(client, contract_setup
 
     contract.refresh_from_db()
     assert contract.status == Contract.STATUS_EXPIRED
-    assert Notification.objects.filter(recipient=legal_user, notification_type=Notification.TYPE_CONTRACT_EXPIRATION, message__contains="has expired").exists()
+    assert Notification.objects.filter(
+        recipient=legal_user,
+        notification_type=Notification.TYPE_CONTRACT_EXPIRATION,
+        message__contains="has expired",
+    ).exists()
 
     # 4. Context processor pending approvals & unread notification count
     # Move a draft contract to LEGAL_REVIEW to test pending count
@@ -505,6 +554,7 @@ def test_contract_obligations_milestones_and_document_evidence(client, contract_
     Day 18 Task: Validate contract obligations, milestones and document evidence end-to-end.
     """
     from django.core.files.uploadedfile import SimpleUploadedFile
+
     from apps.audit.models import AuditLog
     from apps.contracts.models import ContractDocument, ContractMilestone, ContractObligation
 
@@ -514,7 +564,9 @@ def test_contract_obligations_milestones_and_document_evidence(client, contract_
 
     # Create Auditor user
     auditor_role = _get_or_create_role(Role.AUDITOR, "Auditor")
-    auditor_user = User.objects.create_user(email="auditor@hpe.com", password="Password123!", role=auditor_role)
+    auditor_user = User.objects.create_user(
+        email="auditor@hpe.com", password="Password123!", role=auditor_role
+    )
 
     client.force_login(legal_user)
 
@@ -526,14 +578,23 @@ def test_contract_obligations_milestones_and_document_evidence(client, contract_
         follow=True,
     )
     assert resp.status_code == 200
-    milestone1 = ContractMilestone.objects.get(contract=contract, title="Phase 1 Acceptance & Signoff")
+    milestone1 = ContractMilestone.objects.get(
+        contract=contract, title="Phase 1 Acceptance & Signoff"
+    )
     assert milestone1.amount == Decimal("50000.00")
     assert milestone1.is_completed is False
-    assert AuditLog.objects.filter(target_model="ContractMilestone", target_object_id=str(milestone1.id), action=AuditLog.ACTION_CREATE).exists()
+    assert AuditLog.objects.filter(
+        target_model="ContractMilestone",
+        target_object_id=str(milestone1.id),
+        action=AuditLog.ACTION_CREATE,
+    ).exists()
 
     # Complete Milestone 1 & verify AuditLog
     resp = client.post(
-        reverse("contract_milestone_complete", kwargs={"contract_id": contract.id, "milestone_id": milestone1.id}),
+        reverse(
+            "contract_milestone_complete",
+            kwargs={"contract_id": contract.id, "milestone_id": milestone1.id},
+        ),
         follow=True,
     )
     assert resp.status_code == 200
@@ -554,10 +615,16 @@ def test_contract_obligations_milestones_and_document_evidence(client, contract_
         content_type="application/json",
     )
     assert response.status_code == 201
-    obligation1 = ContractObligation.objects.get(contract=contract, title="Quarterly ISO 27001 Security Audit Compliance Report")
+    obligation1 = ContractObligation.objects.get(
+        contract=contract, title="Quarterly ISO 27001 Security Audit Compliance Report"
+    )
     assert obligation1.responsible_party == "VENDOR LEGAL"
     assert obligation1.is_fulfilled is False
-    assert AuditLog.objects.filter(target_model="ContractObligation", target_object_id=str(obligation1.id), action=AuditLog.ACTION_CREATE).exists()
+    assert AuditLog.objects.filter(
+        target_model="ContractObligation",
+        target_object_id=str(obligation1.id),
+        action=AuditLog.ACTION_CREATE,
+    ).exists()
 
     # Fulfill Obligation via REST API
     response = client.post(
@@ -570,16 +637,22 @@ def test_contract_obligations_milestones_and_document_evidence(client, contract_
     assert obligation1.fulfilled_at is not None
 
     # 3. Upload Contract Document Evidence
-    sample_file = SimpleUploadedFile("executed_msa_agreement.pdf", b"PDF Document Content Bytes", content_type="application/pdf")
+    sample_file = SimpleUploadedFile(
+        "executed_msa_agreement.pdf", b"PDF Document Content Bytes", content_type="application/pdf"
+    )
     resp = client.post(
         reverse("contract_document_upload", kwargs={"contract_id": contract.id}),
         {"title": "Executed Master Service Agreement PDF", "file": sample_file},
         follow=True,
     )
     assert resp.status_code == 200
-    doc = ContractDocument.objects.get(contract=contract, title="Executed Master Service Agreement PDF")
+    doc = ContractDocument.objects.get(
+        contract=contract, title="Executed Master Service Agreement PDF"
+    )
     assert doc.uploaded_by == legal_user
-    assert AuditLog.objects.filter(target_model="ContractDocument", target_object_id=str(doc.id), action=AuditLog.ACTION_CREATE).exists()
+    assert AuditLog.objects.filter(
+        target_model="ContractDocument", target_object_id=str(doc.id), action=AuditLog.ACTION_CREATE
+    ).exists()
 
     # 4. Enforce Auditor read-only restriction on milestone & obligation creation
     client.force_login(auditor_user)
@@ -599,9 +672,9 @@ def test_day19_end_to_end_contract_integration_lifecycle(client, contract_setup)
     creation -> review -> approval -> active -> renewal/expiry -> audit & notifications.
     """
     from apps.audit.models import AuditLog
+    from apps.contracts.tasks import scan_contract_expirations_and_milestones_task
     from apps.notifications.context_processors import notifications_processor
     from apps.notifications.models import Notification
-    from apps.contracts.tasks import scan_contract_expirations_and_milestones_task
 
     contract = contract_setup["contract"]
     legal_user = contract_setup["legal_user"]
@@ -609,13 +682,16 @@ def test_day19_end_to_end_contract_integration_lifecycle(client, contract_setup)
     today = timezone.now().date()
 
     # 1. State: DRAFT -> Submit for Legal Review
-    submit_for_legal_review_service(contract=contract, user=legal_user, notes="Initial legal review request")
+    submit_for_legal_review_service(
+        contract=contract, user=legal_user, notes="Initial legal review request"
+    )
     contract.refresh_from_db()
     assert contract.status == Contract.STATUS_LEGAL_REVIEW
 
     # Verify context processor reports pending approval for Legal Manager
     class DummyRequest:
         user = legal_user
+
     ctx = notifications_processor(DummyRequest())
     assert ctx["pending_approvals_count"] >= 1
 
@@ -660,7 +736,10 @@ def test_day19_end_to_end_contract_integration_lifecycle(client, contract_setup)
     assert contract.status == Contract.STATUS_EXPIRED
 
     # 7. Audit & Notification checks
-    assert AuditLog.objects.filter(target_model="Contract", target_object_id=str(contract.id)).count() >= 5
+    assert (
+        AuditLog.objects.filter(target_model="Contract", target_object_id=str(contract.id)).count()
+        >= 5
+    )
     assert Notification.objects.filter(recipient=legal_user).exists()
 
 
@@ -685,7 +764,9 @@ def test_day20_legal_rbac_contract_access_and_restricted_actions(client, contrac
     auditor_role = _get_or_create_role(Role.AUDITOR, "Auditor")
     vendor_role = _get_or_create_role(Role.VENDOR_USER, "Vendor User")
 
-    auditor_user = User.objects.create_user(email="auditor.d20@hpe.com", password="Password123!", role=auditor_role)
+    auditor_user = User.objects.create_user(
+        email="auditor.d20@hpe.com", password="Password123!", role=auditor_role
+    )
 
     cat2 = VendorCategory.objects.create(name="Telecom D20", code="CAT-TEL-D20")
     vendor2 = register_vendor_service(
@@ -697,7 +778,10 @@ def test_day20_legal_rbac_contract_access_and_restricted_actions(client, contrac
     )
 
     vendor_user1 = User.objects.create_user(
-        email="vendor1.d20@hpe.com", password="Password123!", role=vendor_role, vendor=contract_setup["vendor"]
+        email="vendor1.d20@hpe.com",
+        password="Password123!",
+        role=vendor_role,
+        vendor=contract_setup["vendor"],
     )
     vendor_user2 = User.objects.create_user(
         email="vendor2.d20@hpe.com", password="Password123!", role=vendor_role, vendor=vendor2
@@ -708,28 +792,60 @@ def test_day20_legal_rbac_contract_access_and_restricted_actions(client, contrac
 
     # Auditor GET contract register & detail -> 200 OK
     assert client.get(reverse("contracts_list")).status_code == 200
-    assert client.get(reverse("contract_detail", kwargs={"contract_id": contract.id})).status_code == 200
+    assert (
+        client.get(reverse("contract_detail", kwargs={"contract_id": contract.id})).status_code
+        == 200
+    )
 
     # Auditor POST document upload -> redirected with permission error message
-    resp = client.post(reverse("contract_document_upload", kwargs={"contract_id": contract.id}), {"title": "Doc"}, follow=False)
+    resp = client.post(
+        reverse("contract_document_upload", kwargs={"contract_id": contract.id}),
+        {"title": "Doc"},
+        follow=False,
+    )
     assert resp.status_code == 302
 
     # Auditor POST renew -> redirected with permission error message
-    resp = client.post(reverse("contract_renew", kwargs={"contract_id": contract.id}), {"new_end_date": "2027-12-31"}, follow=False)
+    resp = client.post(
+        reverse("contract_renew", kwargs={"contract_id": contract.id}),
+        {"new_end_date": "2027-12-31"},
+        follow=False,
+    )
     assert resp.status_code == 302
 
     # Auditor POST terminate -> redirected with permission error message
-    resp = client.post(reverse("contract_terminate", kwargs={"contract_id": contract.id}), {"reason": "Auditor terminate"}, follow=False)
+    resp = client.post(
+        reverse("contract_terminate", kwargs={"contract_id": contract.id}),
+        {"reason": "Auditor terminate"},
+        follow=False,
+    )
     assert resp.status_code == 302
 
     # 2. Auditor read-only checks on REST API -> 403 Forbidden
-    resp = client.post(f"/api/v1/contracts/{contract.id}/renew/", {"new_end_date": "2027-12-31"}, content_type="application/json")
+    resp = client.post(
+        f"/api/v1/contracts/{contract.id}/renew/",
+        {"new_end_date": "2027-12-31"},
+        content_type="application/json",
+    )
     assert resp.status_code == 403
 
-    resp = client.post(f"/api/v1/contracts/{contract.id}/amend/", {"amendment_summary": "Bad", "contract_value": "100", "start_date": "2026-01-01", "end_date": "2026-12-31"}, content_type="application/json")
+    resp = client.post(
+        f"/api/v1/contracts/{contract.id}/amend/",
+        {
+            "amendment_summary": "Bad",
+            "contract_value": "100",
+            "start_date": "2026-01-01",
+            "end_date": "2026-12-31",
+        },
+        content_type="application/json",
+    )
     assert resp.status_code == 403
 
-    resp = client.post(f"/api/v1/contracts/{contract.id}/terminate/", {"reason": "Bad"}, content_type="application/json")
+    resp = client.post(
+        f"/api/v1/contracts/{contract.id}/terminate/",
+        {"reason": "Bad"},
+        content_type="application/json",
+    )
     assert resp.status_code == 403
 
     # 3. Vendor User Scoping
@@ -745,12 +861,20 @@ def test_day20_legal_rbac_contract_access_and_restricted_actions(client, contrac
     assert resp.status_code in [403, 404]
 
     # Vendor 2 cannot amend Vendor 1 contract -> 403
-    resp = client.post(f"/api/v1/contracts/{contract.id}/amend/", {"amendment_summary": "Hack"}, content_type="application/json")
+    resp = client.post(
+        f"/api/v1/contracts/{contract.id}/amend/",
+        {"amendment_summary": "Hack"},
+        content_type="application/json",
+    )
     assert resp.status_code == 403
 
     # 4. Requester restricted action: Cannot perform Legal Review approval
     client.force_login(requester_user)
-    resp = client.post(f"/api/v1/contracts/{contract.id}/legal-approve/", {"notes": "Bypass"}, content_type="application/json")
+    resp = client.post(
+        f"/api/v1/contracts/{contract.id}/legal-approve/",
+        {"notes": "Bypass"},
+        content_type="application/json",
+    )
     assert resp.status_code == 403
 
     # 5. Legal Manager access: Full access to dashboard & actions
@@ -780,26 +904,40 @@ def test_day21_contract_integration_and_regression_testing(client, contract_setu
     proc_user = contract_setup["proc_user"]
 
     auditor_role = _get_or_create_role(Role.AUDITOR, "Auditor")
-    auditor_user = User.objects.create_user(email="auditor.d21@hpe.com", password="Password123!", role=auditor_role)
+    auditor_user = User.objects.create_user(
+        email="auditor.d21@hpe.com", password="Password123!", role=auditor_role
+    )
 
     today = timezone.now().date()
 
     # Step 1: Submit to Legal Review & verify initial AuditLog
     client.force_login(legal_user)
-    resp = client.post(reverse("contract_submit_legal", kwargs={"contract_id": contract.id}), {"notes": "Day 21 regression submit"}, follow=True)
+    resp = client.post(
+        reverse("contract_submit_legal", kwargs={"contract_id": contract.id}),
+        {"notes": "Day 21 regression submit"},
+        follow=True,
+    )
     assert resp.status_code == 200
     contract.refresh_from_db()
     assert contract.status == Contract.STATUS_LEGAL_REVIEW
 
     # Step 2: Legal Approval -> BUSINESS_APPROVAL
-    resp = client.post(reverse("contract_legal_approve", kwargs={"contract_id": contract.id}), {"notes": "Legal approved regression"}, follow=True)
+    resp = client.post(
+        reverse("contract_legal_approve", kwargs={"contract_id": contract.id}),
+        {"notes": "Legal approved regression"},
+        follow=True,
+    )
     assert resp.status_code == 200
     contract.refresh_from_db()
     assert contract.status == Contract.STATUS_BUSINESS_APPROVAL
 
     # Step 3: Business Approval -> ACTIVE
     client.force_login(proc_user)
-    resp = client.post(reverse("contract_business_approve", kwargs={"contract_id": contract.id}), {"notes": "Business signoff regression"}, follow=True)
+    resp = client.post(
+        reverse("contract_business_approve", kwargs={"contract_id": contract.id}),
+        {"notes": "Business signoff regression"},
+        follow=True,
+    )
     assert resp.status_code == 200
     contract.refresh_from_db()
     assert contract.status == Contract.STATUS_ACTIVE
@@ -808,7 +946,12 @@ def test_day21_contract_integration_and_regression_testing(client, contract_setu
     client.force_login(legal_user)
     resp = client.post(
         reverse("contract_amend", kwargs={"contract_id": contract.id}),
-        {"amendment_summary": "Day 21 Amendment", "contract_value": "350000.00", "start_date": str(today), "end_date": str(today + timezone.timedelta(days=365))},
+        {
+            "amendment_summary": "Day 21 Amendment",
+            "contract_value": "350000.00",
+            "start_date": str(today),
+            "end_date": str(today + timezone.timedelta(days=365)),
+        },
         follow=True,
     )
     assert resp.status_code == 200
@@ -818,8 +961,20 @@ def test_day21_contract_integration_and_regression_testing(client, contract_setu
     assert ContractVersion.objects.filter(contract=contract).count() == 2
 
     # Step 5: Add Milestone & Obligation
-    m = add_contract_milestone_service(contract=contract, title="Reg Milestone", due_date=today + timezone.timedelta(days=5), amount=Decimal("10000.00"), user=legal_user)
-    o = add_contract_obligation_service(contract=contract, title="Reg Obligation", responsible_party="VENDOR", due_date=today + timezone.timedelta(days=5), user=legal_user)
+    m = add_contract_milestone_service(
+        contract=contract,
+        title="Reg Milestone",
+        due_date=today + timezone.timedelta(days=5),
+        amount=Decimal("10000.00"),
+        user=legal_user,
+    )
+    o = add_contract_obligation_service(
+        contract=contract,
+        title="Reg Obligation",
+        responsible_party="VENDOR",
+        due_date=today + timezone.timedelta(days=5),
+        user=legal_user,
+    )
 
     # Step 6: Celery Beat Scan -> RENEWAL_DUE & Alert generation
     contract.end_date = today + timezone.timedelta(days=10)
@@ -845,12 +1000,32 @@ def test_day21_contract_integration_and_regression_testing(client, contract_setu
     # Step 8: Auditor Read-Only Regression Check
     client.force_login(auditor_user)
     assert client.get(reverse("contracts_list")).status_code == 200
-    assert client.get(reverse("contract_detail", kwargs={"contract_id": contract.id})).status_code == 200
-    assert client.post(reverse("contract_renew", kwargs={"contract_id": contract.id}), {"new_end_date": "2028-01-01"}, follow=False).status_code == 302
-    assert client.post(f"/api/v1/contracts/{contract.id}/renew/", {"new_end_date": "2028-01-01"}, content_type="application/json").status_code == 403
+    assert (
+        client.get(reverse("contract_detail", kwargs={"contract_id": contract.id})).status_code
+        == 200
+    )
+    assert (
+        client.post(
+            reverse("contract_renew", kwargs={"contract_id": contract.id}),
+            {"new_end_date": "2028-01-01"},
+            follow=False,
+        ).status_code
+        == 302
+    )
+    assert (
+        client.post(
+            f"/api/v1/contracts/{contract.id}/renew/",
+            {"new_end_date": "2028-01-01"},
+            content_type="application/json",
+        ).status_code
+        == 403
+    )
 
     # Step 9: Final Audit & Notification Count Verifications
-    assert AuditLog.objects.filter(target_model="Contract", target_object_id=str(contract.id)).count() >= 4
+    assert (
+        AuditLog.objects.filter(target_model="Contract", target_object_id=str(contract.id)).count()
+        >= 4
+    )
     assert Notification.objects.filter(recipient=legal_user).count() >= 1
 
 
@@ -867,6 +1042,7 @@ def test_day22_contract_validation_terms_documents_and_transitions(client, contr
     """
     from django.core.exceptions import ValidationError
     from django.core.files.uploadedfile import SimpleUploadedFile
+
     from apps.contracts.models import Contract
     from apps.contracts.services import (
         approve_business_service,
@@ -897,7 +1073,9 @@ def test_day22_contract_validation_terms_documents_and_transitions(client, contr
         )
 
     # End date before start date
-    with pytest.raises(ValidationError, match="Contract end date cannot be earlier than start date."):
+    with pytest.raises(
+        ValidationError, match="Contract end date cannot be earlier than start date."
+    ):
         create_contract_service(
             title="Invalid Dates Contract",
             vendor=vendor,
@@ -920,7 +1098,9 @@ def test_day22_contract_validation_terms_documents_and_transitions(client, contr
 
     # 2. Document Upload Validation
     # File size limit (> 10MB)
-    large_file = SimpleUploadedFile("too_large.pdf", b"X" * (10 * 1024 * 1024 + 100), content_type="application/pdf")
+    large_file = SimpleUploadedFile(
+        "too_large.pdf", b"X" * (10 * 1024 * 1024 + 100), content_type="application/pdf"
+    )
     with pytest.raises(ValidationError, match="File size exceeds 10MB upload limit"):
         upload_contract_document_service(
             contract=contract,
@@ -930,7 +1110,9 @@ def test_day22_contract_validation_terms_documents_and_transitions(client, contr
         )
 
     # Disallowed file format (.exe)
-    invalid_ext_file = SimpleUploadedFile("malware.exe", b"executable content", content_type="application/x-msdownload")
+    invalid_ext_file = SimpleUploadedFile(
+        "malware.exe", b"executable content", content_type="application/x-msdownload"
+    )
     with pytest.raises(ValidationError, match="Unsupported file extension"):
         upload_contract_document_service(
             contract=contract,
@@ -941,7 +1123,9 @@ def test_day22_contract_validation_terms_documents_and_transitions(client, contr
 
     # 3. Status Transition Guards
     # Cannot approve legal review when status is DRAFT
-    with pytest.raises(ValidationError, match="Cannot perform legal approval on contract in status"):
+    with pytest.raises(
+        ValidationError, match="Cannot perform legal approval on contract in status"
+    ):
         approve_legal_review_service(contract=contract, user=legal_user)
 
     # Move to LEGAL_REVIEW
@@ -961,7 +1145,9 @@ def test_day22_contract_validation_terms_documents_and_transitions(client, contr
     approve_business_service(contract=contract, user=proc_user)
     assert contract.status == Contract.STATUS_ACTIVE
 
-    with pytest.raises(ValidationError, match="Cannot perform business approval on contract in status"):
+    with pytest.raises(
+        ValidationError, match="Cannot perform business approval on contract in status"
+    ):
         approve_business_service(contract=contract, user=proc_user)
 
     # 4. Amendment Validation
@@ -993,11 +1179,19 @@ def test_day22_contract_validation_terms_documents_and_transitions(client, contr
         terminate_contract_service(contract=contract, reason="", user=legal_user)
 
     # Renewal with new end date before contract start date
-    with pytest.raises(ValidationError, match="Renewal end date must be after contract start date."):
-        renew_contract_service(contract=contract, new_end_date=contract.start_date - timezone.timedelta(days=1), user=legal_user)
+    with pytest.raises(
+        ValidationError, match="Renewal end date must be after contract start date."
+    ):
+        renew_contract_service(
+            contract=contract,
+            new_end_date=contract.start_date - timezone.timedelta(days=1),
+            user=legal_user,
+        )
 
     # Valid Termination
-    terminate_contract_service(contract=contract, reason="Contract fulfilled early", user=legal_user)
+    terminate_contract_service(
+        contract=contract, reason="Contract fulfilled early", user=legal_user
+    )
     assert contract.status == Contract.STATUS_TERMINATED
 
 
@@ -1098,7 +1292,9 @@ def test_day23_contract_version_history_and_amendment_audit_trail(client, contra
 
     # 4. Auditor Access Verification
     auditor_role = _get_or_create_role(Role.AUDITOR, "Auditor")
-    auditor_user = User.objects.create_user(email="auditor.d23@hpe.com", password="Password123!", role=auditor_role)
+    auditor_user = User.objects.create_user(
+        email="auditor.d23@hpe.com", password="Password123!", role=auditor_role
+    )
 
     client.force_login(auditor_user)
     # Auditor can view version history
@@ -1118,10 +1314,3 @@ def test_day23_contract_version_history_and_amendment_audit_trail(client, contra
         content_type="application/json",
     )
     assert resp.status_code == 403
-
-
-
-
-
-
-
