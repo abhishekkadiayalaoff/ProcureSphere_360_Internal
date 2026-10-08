@@ -76,11 +76,25 @@ h1, h2, h3, h4, h5, h6, .font-heading {
 }
 
 .glass-card-dark {
-    background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%);
-    color: #FFFFFF;
+    background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%) !important;
+    color: #FFFFFF !important;
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 14px;
     box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.2);
+}
+
+.glass-card-dark h1,
+.glass-card-dark h2,
+.glass-card-dark h3,
+.glass-card-dark h4,
+.glass-card-dark h5,
+.glass-card-dark h6 {
+    color: #FFFFFF !important;
+}
+
+.glass-card-dark p,
+.glass-card-dark .text-white-50 {
+    color: rgba(255, 255, 255, 0.8) !important;
 }
 
 .stat-card {

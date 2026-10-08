@@ -8,6 +8,8 @@ class Notification(TimeStampedModel):
     TYPE_BID_DEADLINE = "BID_DEADLINE"
     TYPE_EXCEPTION_RAISED = "EXCEPTION_RAISED"
     TYPE_CONTRACT_EXPIRATION = "CONTRACT_EXPIRATION"
+    TYPE_CONTRACT_MILESTONE = "CONTRACT_MILESTONE"
+    TYPE_CONTRACT_OBLIGATION = "CONTRACT_OBLIGATION"
     TYPE_PO_ACKNOWLEDGED = "PO_ACKNOWLEDGED"
     TYPE_RFQ_INVITATION = "RFQ_INVITATION"
     TYPE_CLARIFICATION_RESPONSE = "CLARIFICATION_RESPONSE"
@@ -22,6 +24,8 @@ class Notification(TimeStampedModel):
         (TYPE_BID_DEADLINE, "Bid Window Closing"),
         (TYPE_EXCEPTION_RAISED, "3-Way Match Exception"),
         (TYPE_CONTRACT_EXPIRATION, "Contract Expiration Warning"),
+        (TYPE_CONTRACT_MILESTONE, "Contract Milestone Due Warning"),
+        (TYPE_CONTRACT_OBLIGATION, "Contract Obligation Due Warning"),
         (TYPE_PO_ACKNOWLEDGED, "PO Acknowledged"),
         (TYPE_RFQ_INVITATION, "New RFQ/RFP Invitation"),
         (TYPE_CLARIFICATION_RESPONSE, "Clarification Response"),

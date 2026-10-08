@@ -94,11 +94,13 @@ class ContractAlert(TimeStampedModel):
     ALERT_EXPIRATION = "EXPIRATION"
     ALERT_MILESTONE = "MILESTONE"
     ALERT_RENEWAL = "RENEWAL"
+    ALERT_OBLIGATION = "OBLIGATION"
 
     ALERT_CHOICES = [
         (ALERT_EXPIRATION, "Contract Expiration Warning"),
         (ALERT_MILESTONE, "Milestone Due Warning"),
         (ALERT_RENEWAL, "Renewal Notice Required"),
+        (ALERT_OBLIGATION, "Legal Obligation Due Warning"),
     ]
 
     contract = models.ForeignKey(Contract, on_delete=models.CASCADE, related_name="alerts")
