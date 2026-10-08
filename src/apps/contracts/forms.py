@@ -136,6 +136,29 @@ class ContractDocumentForm(forms.ModelForm):
             "file": forms.FileInput(attrs={"class": "form-control"}),
         }
 
+    def clean_file(self):
+        file = self.cleaned_data.get("file")
+        if file:
+            ext = file.name.split(".")[-1].lower()
+            allowed_extensions = [
+                "pdf",
+                "docx",
+                "doc",
+                "xlsx",
+                "xls",
+                "png",
+                "jpg",
+                "jpeg",
+                "txt",
+            ]
+            if ext not in allowed_extensions:
+                raise forms.ValidationError(
+                    f"Unsupported file format '.{ext}'. Allowed formats: PDF, DOCX, XLSX, PNG, JPG, TXT."
+                )
+            if file.size > 10 * 1024 * 1024:
+                raise forms.ValidationError("File size exceeds 10MB upload limit.")
+        return file
+
 
 class ContractRenewalForm(forms.Form):
     new_end_date = forms.DateField(

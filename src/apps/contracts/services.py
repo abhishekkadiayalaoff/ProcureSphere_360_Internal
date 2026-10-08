@@ -1,11 +1,13 @@
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.utils import timezone
 
-from apps.accounts.models import User
+from apps.accounts.models import Role, User
 from apps.audit.models import AuditLog
+from apps.notifications.models import Notification
+from apps.notifications.services import notify_role_users, notify_users
 from apps.vendors.models import Vendor
 
 from .models import (
@@ -32,14 +34,28 @@ def create_contract_service(
     po=None,
 ) -> Contract:
     """
-    Creates a new Contract in DRAFT status.
+    Creates a new Contract in DRAFT status after strict validation of mandatory fields and term dates.
     """
+    if not title or not str(title).strip():
+        raise ValidationError("Contract title is required.")
+    if end_date and start_date and end_date < start_date:
+        raise ValidationError("Contract end date cannot be earlier than start date.")
+    if contract_value is not None:
+        try:
+            val = Decimal(str(contract_value))
+            if val < Decimal("0.00"):
+                raise ValidationError("Contract value cannot be negative.")
+        except (ValueError, TypeError, InvalidOperation):
+            raise ValidationError("Invalid contract value format.")
+    if renewal_notice_days is not None and renewal_notice_days <= 0:
+        raise ValidationError("Renewal notice period must be a positive number of days.")
+
     contract_count = Contract.objects.count() + 1
     contract_number = f"CON-{timezone.now().strftime('%Y')}-{contract_count:05d}"
 
     contract = Contract.objects.create(
         contract_number=contract_number,
-        title=title,
+        title=title.strip(),
         version=1,
         vendor=vendor,
         sourcing_event=sourcing_event,
@@ -102,6 +118,14 @@ def submit_for_legal_review_service(*, contract: Contract, user: User, notes: st
         new_state={"status": contract.status, "notes": notes},
     )
 
+    notify_role_users(
+        role_codes=[Role.LEGAL_MGR],
+        notification_type=Notification.TYPE_APPROVAL_REQUIRED,
+        title=f"Legal Review Required: {contract.contract_number}",
+        message=f"Contract '{contract.contract_number}' ({contract.title}) submitted for legal review.",
+        target_url=f"/contracts/{contract.id}/",
+    )
+
     return contract
 
 
@@ -128,6 +152,21 @@ def approve_legal_review_service(*, contract: Contract, user: User, notes: str =
         new_state={"status": contract.status, "legal_approval_notes": notes},
     )
 
+    notify_role_users(
+        role_codes=[Role.PROC_MGR],
+        notification_type=Notification.TYPE_APPROVAL_REQUIRED,
+        title=f"Legal Review Approved: {contract.contract_number}",
+        message=f"Contract '{contract.contract_number}' passed legal review and requires business approval.",
+        target_url=f"/contracts/{contract.id}/",
+    )
+    notify_users(
+        users=[contract.contract_owner],
+        notification_type=Notification.TYPE_APPROVAL_REQUIRED,
+        title=f"Legal Review Approved: {contract.contract_number}",
+        message=f"Contract '{contract.contract_number}' passed legal review.",
+        target_url=f"/contracts/{contract.id}/",
+    )
+
     return contract
 
 
@@ -136,6 +175,8 @@ def reject_legal_review_service(*, contract: Contract, user: User, reason: str) 
     """
     Rejects legal review, returning contract to DRAFT state for corrections.
     """
+    if not reason or not str(reason).strip():
+        raise ValidationError("Rejection reason is required.")
     if contract.status != Contract.STATUS_LEGAL_REVIEW:
         raise ValidationError(
             f"Cannot reject legal review for contract in status '{contract.status}'."
@@ -151,7 +192,15 @@ def reject_legal_review_service(*, contract: Contract, user: User, reason: str) 
         target_model="Contract",
         target_object_id=str(contract.id),
         previous_state={"status": previous_status},
-        new_state={"status": contract.status, "rejection_reason": reason},
+        new_state={"status": contract.status, "rejection_reason": reason.strip()},
+    )
+
+    notify_users(
+        users=[contract.contract_owner],
+        notification_type=Notification.TYPE_APPROVAL_REQUIRED,
+        title=f"Legal Review Rejected: {contract.contract_number}",
+        message=f"Contract '{contract.contract_number}' legal review was rejected. Reason: {reason.strip()}",
+        target_url=f"/contracts/{contract.id}/",
     )
 
     return contract
@@ -182,6 +231,14 @@ def approve_business_service(*, contract: Contract, user: User, notes: str = "")
         target_object_id=str(contract.id),
         previous_state={"status": previous_status},
         new_state={"status": contract.status, "business_approval_notes": notes},
+    )
+
+    notify_users(
+        users=[contract.contract_owner],
+        notification_type=Notification.TYPE_APPROVAL_REQUIRED,
+        title=f"Contract Activated: {contract.contract_number}",
+        message=f"Contract '{contract.contract_number}' ({contract.title}) has been approved and is now ACTIVE.",
+        target_url=f"/contracts/{contract.id}/",
     )
 
     return contract
@@ -222,13 +279,30 @@ def create_contract_version_service(
     Amends contract by incrementing version number, preserving prior version values,
     and updating active contract values.
     """
+    if not amendment_summary or not str(amendment_summary).strip():
+        raise ValidationError("Amendment summary is required.")
+    if end_date and start_date and end_date < start_date:
+        raise ValidationError("Contract end date cannot be earlier than start date.")
+    if contract_value is not None:
+        try:
+            val = Decimal(str(contract_value))
+            if val < Decimal("0.00"):
+                raise ValidationError("Contract value cannot be negative.")
+        except (ValueError, TypeError, InvalidOperation):
+            raise ValidationError("Invalid contract value format.")
+
+    previous_version = contract.version
+    previous_value = contract.contract_value
+    previous_start = contract.start_date
+    previous_end = contract.end_date
+
     new_version_number = contract.version + 1
 
     # Record historic version snapshot
     version_record = ContractVersion.objects.create(
         contract=contract,
         version_number=new_version_number,
-        amendment_summary=amendment_summary,
+        amendment_summary=amendment_summary.strip(),
         contract_value=contract_value,
         start_date=start_date,
         end_date=end_date,
@@ -249,10 +323,18 @@ def create_contract_version_service(
         action=AuditLog.ACTION_UPDATE,
         target_model="Contract",
         target_object_id=str(contract.id),
+        previous_state={
+            "version": previous_version,
+            "contract_value": str(previous_value),
+            "start_date": str(previous_start),
+            "end_date": str(previous_end),
+        },
         new_state={
             "version": new_version_number,
-            "amendment_summary": amendment_summary,
+            "amendment_summary": amendment_summary.strip(),
             "contract_value": str(contract_value),
+            "start_date": str(start_date),
+            "end_date": str(end_date),
         },
     )
 
@@ -261,17 +343,36 @@ def create_contract_version_service(
 
 @transaction.atomic
 def add_contract_milestone_service(
-    *, contract: Contract, title: str, due_date, amount: Decimal = Decimal("0.00")
+    *, contract: Contract, title: str, due_date, amount: Decimal = Decimal("0.00"), user: User = None
 ) -> ContractMilestone:
     """
-    Adds a tracked milestone to a contract.
+    Adds a tracked milestone to a contract with audit logging.
     """
+    if not title or not str(title).strip():
+        raise ValidationError("Milestone title is required.")
+
     milestone = ContractMilestone.objects.create(
         contract=contract,
-        title=title,
+        title=title.strip(),
         due_date=due_date,
         amount=amount,
     )
+
+    actor = user or contract.contract_owner
+    if actor:
+        AuditLog.objects.create(
+            actor=actor,
+            action=AuditLog.ACTION_CREATE,
+            target_model="ContractMilestone",
+            target_object_id=str(milestone.id),
+            new_state={
+                "contract_number": contract.contract_number,
+                "title": milestone.title,
+                "due_date": str(milestone.due_date),
+                "amount": str(milestone.amount),
+            },
+        )
+
     return milestone
 
 
@@ -299,17 +400,36 @@ def complete_contract_milestone_service(
 
 @transaction.atomic
 def add_contract_obligation_service(
-    *, contract: Contract, title: str, responsible_party: str, due_date
+    *, contract: Contract, title: str, responsible_party: str, due_date, user: User = None
 ) -> ContractObligation:
     """
-    Adds a legal obligation to a contract.
+    Adds a legal obligation to a contract with audit logging.
     """
+    if not title or not str(title).strip():
+        raise ValidationError("Obligation title is required.")
+
     obligation = ContractObligation.objects.create(
         contract=contract,
-        title=title,
+        title=title.strip(),
         responsible_party=responsible_party,
         due_date=due_date,
     )
+
+    actor = user or contract.contract_owner
+    if actor:
+        AuditLog.objects.create(
+            actor=actor,
+            action=AuditLog.ACTION_CREATE,
+            target_model="ContractObligation",
+            target_object_id=str(obligation.id),
+            new_state={
+                "contract_number": contract.contract_number,
+                "title": obligation.title,
+                "responsible_party": obligation.responsible_party,
+                "due_date": str(obligation.due_date),
+            },
+        )
+
     return obligation
 
 
@@ -340,11 +460,26 @@ def upload_contract_document_service(
     *, contract: Contract, user: User, title: str, file
 ) -> ContractDocument:
     """
-    Uploads a signed contract document or appendix.
+    Uploads a signed contract document or appendix after title and format/size validation.
     """
+    if not title or not str(title).strip():
+        raise ValidationError("Document title is required.")
+    if not file:
+        raise ValidationError("Document file is required.")
+
+    if hasattr(file, "size") and file.size > 10 * 1024 * 1024:
+        raise ValidationError("File size exceeds 10MB upload limit.")
+    if hasattr(file, "name") and "." in file.name:
+        ext = file.name.split(".")[-1].lower()
+        allowed_extensions = ["pdf", "docx", "doc", "xlsx", "xls", "png", "jpg", "jpeg", "txt"]
+        if ext not in allowed_extensions:
+            raise ValidationError(
+                f"Unsupported file extension '.{ext}'. Allowed formats: PDF, DOCX, XLSX, PNG, JPG, TXT."
+            )
+
     document = ContractDocument.objects.create(
         contract=contract,
-        title=title,
+        title=title.strip(),
         file=file,
         uploaded_by=user,
     )
@@ -354,7 +489,7 @@ def upload_contract_document_service(
         action=AuditLog.ACTION_CREATE,
         target_model="ContractDocument",
         target_object_id=str(document.id),
-        new_state={"title": title, "file_name": str(file)},
+        new_state={"title": title.strip(), "file_name": str(file)},
     )
 
     return document
@@ -373,6 +508,11 @@ def renew_contract_service(
         Contract.STATUS_EXPIRED,
     ]:
         raise ValidationError(f"Cannot renew contract in status '{contract.status}'.")
+
+    if new_end_date and contract.start_date and new_end_date <= contract.start_date:
+        raise ValidationError("Renewal end date must be after contract start date.")
+    if new_value is not None and new_value < Decimal("0.00"):
+        raise ValidationError("Contract value cannot be negative.")
 
     value = new_value if new_value is not None else contract.contract_value
     previous_status = contract.status
@@ -403,6 +543,14 @@ def renew_contract_service(
         },
     )
 
+    notify_role_users(
+        role_codes=[Role.LEGAL_MGR, Role.PROC_MGR],
+        notification_type=Notification.TYPE_CONTRACT_EXPIRATION,
+        title=f"Contract Renewed: {contract.contract_number}",
+        message=f"Contract '{contract.contract_number}' ({contract.title}) has been renewed until {new_end_date}.",
+        target_url=f"/contracts/{contract.id}/",
+    )
+
     return contract
 
 
@@ -411,6 +559,8 @@ def terminate_contract_service(*, contract: Contract, user: User, reason: str) -
     """
     Terminates a contract.
     """
+    if not reason or not str(reason).strip():
+        raise ValidationError("Termination reason is required.")
     if contract.status == Contract.STATUS_TERMINATED:
         raise ValidationError("Contract is already terminated.")
 
@@ -424,7 +574,15 @@ def terminate_contract_service(*, contract: Contract, user: User, reason: str) -
         target_model="Contract",
         target_object_id=str(contract.id),
         previous_state={"status": previous_status},
-        new_state={"status": Contract.STATUS_TERMINATED, "reason": reason},
+        new_state={"status": Contract.STATUS_TERMINATED, "reason": reason.strip()},
+    )
+
+    notify_role_users(
+        role_codes=[Role.LEGAL_MGR, Role.PROC_MGR],
+        notification_type=Notification.TYPE_CONTRACT_EXPIRATION,
+        title=f"Contract Terminated: {contract.contract_number}",
+        message=f"Contract '{contract.contract_number}' ({contract.title}) was terminated. Reason: {reason.strip()}",
+        target_url=f"/contracts/{contract.id}/",
     )
 
     return contract
@@ -433,14 +591,15 @@ def terminate_contract_service(*, contract: Contract, user: User, reason: str) -
 @transaction.atomic
 def scan_contract_expirations_and_milestones_service() -> int:
     """
-    Scans active contracts for upcoming expirations & milestones.
-    Executes scheduled Celery Beat task logic and logs alerts.
+    Scans active contracts for upcoming expirations, milestones, and legal obligations.
+    Executes scheduled Celery Beat task logic, creates ContractAlert records,
+    and dispatches in-app Notifications to Legal / Contract Managers & Procurement Managers.
     Returns count of generated alerts.
     """
     today = timezone.now().date()
     alerts_created = 0
 
-    # 1. Expiration scan
+    # 1. Expiration notice scan
     active_contracts = Contract.objects.filter(
         status__in=[Contract.STATUS_ACTIVE, Contract.STATUS_RENEWED]
     )
@@ -452,14 +611,23 @@ def scan_contract_expirations_and_milestones_service() -> int:
                 contract=contract, alert_type=ContractAlert.ALERT_RENEWAL
             ).exists()
         ):
+            msg = f"Contract '{contract.contract_number}' is reaching renewal notice period (End date: {contract.end_date})."
             ContractAlert.objects.create(
                 contract=contract,
                 alert_type=ContractAlert.ALERT_RENEWAL,
-                message=f"Contract '{contract.contract_number}' is reaching renewal notice period (End date: {contract.end_date}).",
+                message=msg,
             )
             contract.status = Contract.STATUS_RENEWAL_DUE
             contract.save(update_fields=["status", "updated_at"])
             alerts_created += 1
+
+            notify_role_users(
+                role_codes=[Role.LEGAL_MGR, Role.PROC_MGR],
+                notification_type=Notification.TYPE_CONTRACT_EXPIRATION,
+                title=f"Renewal Notice Due: {contract.contract_number}",
+                message=msg,
+                target_url=f"/contracts/{contract.id}/",
+            )
 
     # 2. Milestone due scan
     pending_milestones = ContractMilestone.objects.select_related("contract").filter(
@@ -471,11 +639,73 @@ def scan_contract_expirations_and_milestones_service() -> int:
             alert_type=ContractAlert.ALERT_MILESTONE,
             message__contains=milestone.title,
         ).exists():
+            msg = f"Milestone '{milestone.title}' for contract '{milestone.contract.contract_number}' is due on {milestone.due_date}."
             ContractAlert.objects.create(
                 contract=milestone.contract,
                 alert_type=ContractAlert.ALERT_MILESTONE,
-                message=f"Milestone '{milestone.title}' for contract '{milestone.contract.contract_number}' is due on {milestone.due_date}.",
+                message=msg,
             )
             alerts_created += 1
+
+            notify_role_users(
+                role_codes=[Role.LEGAL_MGR, Role.PROC_MGR],
+                notification_type=Notification.TYPE_CONTRACT_MILESTONE,
+                title=f"Milestone Due Warning: {milestone.title}",
+                message=msg,
+                target_url=f"/contracts/{milestone.contract.id}/",
+            )
+
+    # 3. Obligation due scan
+    pending_obligations = ContractObligation.objects.select_related("contract").filter(
+        is_fulfilled=False, due_date__lte=today + timezone.timedelta(days=7)
+    )
+    for obligation in pending_obligations:
+        if not ContractAlert.objects.filter(
+            contract=obligation.contract,
+            alert_type=ContractAlert.ALERT_OBLIGATION,
+            message__contains=obligation.title,
+        ).exists():
+            msg = f"Legal Obligation '{obligation.title}' ({obligation.responsible_party}) for contract '{obligation.contract.contract_number}' is due on {obligation.due_date}."
+            ContractAlert.objects.create(
+                contract=obligation.contract,
+                alert_type=ContractAlert.ALERT_OBLIGATION,
+                message=msg,
+            )
+            alerts_created += 1
+
+            notify_role_users(
+                role_codes=[Role.LEGAL_MGR, Role.PROC_MGR],
+                notification_type=Notification.TYPE_CONTRACT_OBLIGATION,
+                title=f"Legal Obligation Warning: {obligation.title}",
+                message=msg,
+                target_url=f"/contracts/{obligation.contract.id}/",
+            )
+
+    # 4. Past end_date expiration scan
+    expired_contracts = Contract.objects.filter(
+        status__in=[Contract.STATUS_ACTIVE, Contract.STATUS_RENEWED, Contract.STATUS_RENEWAL_DUE],
+        end_date__lt=today,
+    )
+    for contract in expired_contracts:
+        if not ContractAlert.objects.filter(
+            contract=contract, alert_type=ContractAlert.ALERT_EXPIRATION
+        ).exists():
+            msg = f"Contract '{contract.contract_number}' has expired as of {contract.end_date}."
+            ContractAlert.objects.create(
+                contract=contract,
+                alert_type=ContractAlert.ALERT_EXPIRATION,
+                message=msg,
+            )
+            contract.status = Contract.STATUS_EXPIRED
+            contract.save(update_fields=["status", "updated_at"])
+            alerts_created += 1
+
+            notify_role_users(
+                role_codes=[Role.LEGAL_MGR, Role.PROC_MGR],
+                notification_type=Notification.TYPE_CONTRACT_EXPIRATION,
+                title=f"Contract Expired: {contract.contract_number}",
+                message=msg,
+                target_url=f"/contracts/{contract.id}/",
+            )
 
     return alerts_created

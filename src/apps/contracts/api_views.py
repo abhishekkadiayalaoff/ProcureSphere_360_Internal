@@ -4,32 +4,50 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from .permissions import CanViewContract, IsLegalManager
+from rest_framework.exceptions import PermissionDenied
+
+from .models import ContractMilestone, ContractObligation
+from .permissions import CanManageContract, CanViewContract, IsLegalManager, IsNotAuditor
 from .selectors import get_contracts_qs
 from .serializers import (
+    ContractDocumentSerializer,
+    ContractMilestoneSerializer,
+    ContractObligationSerializer,
     ContractSerializer,
     ContractVersionSerializer,
 )
 from .services import (
+    add_contract_milestone_service,
+    add_contract_obligation_service,
     approve_business_service,
     approve_legal_review_service,
+    complete_contract_milestone_service,
     create_contract_service,
     create_contract_version_service,
+    fulfill_contract_obligation_service,
     reject_legal_review_service,
     renew_contract_service,
     submit_for_legal_review_service,
     terminate_contract_service,
+    upload_contract_document_service,
 )
 
 
 class ContractViewSet(viewsets.ModelViewSet):
     serializer_class = ContractSerializer
-    permission_classes = [IsAuthenticated, CanViewContract]
+    permission_classes = [IsAuthenticated, CanViewContract, IsNotAuditor]
 
     def get_queryset(self):
         return get_contracts_qs(user=self.request.user)
 
     def perform_create(self, serializer):
+        role_code = getattr(self.request.user, "role_code", None) or (
+            self.request.user.role.code if getattr(self.request.user, "role", None) else None
+        )
+        if role_code == "AUDITOR":
+            raise PermissionDenied(
+                "Permission Denied: Compliance Auditors hold strictly read-only permissions and cannot draft contracts."
+            )
         data = serializer.validated_data
         contract = create_contract_service(
             title=data["title"],
@@ -117,7 +135,12 @@ class ContractViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-    @action(detail=True, methods=["post"], url_path="amend")
+    @action(
+        detail=True,
+        methods=["post"],
+        url_path="amend",
+        permission_classes=[IsAuthenticated, CanViewContract, IsNotAuditor, CanManageContract],
+    )
     def amend(self, request, pk=None):
         contract = self.get_object()
         summary = request.data.get("amendment_summary")
@@ -150,6 +173,93 @@ class ContractViewSet(viewsets.ModelViewSet):
             return Response(
                 {"error": {"code": "INVALID_AMENDMENT", "message": str(e)}},
                 status=status.HTTP_400_BAD_REQUEST,
+            )
+
+    @action(detail=True, methods=["get"], url_path="versions")
+    def versions(self, request, pk=None):
+        contract = self.get_object()
+        version_records = contract.versions.all().order_by("-version_number")
+        return Response(
+            ContractVersionSerializer(version_records, many=True).data,
+            status=status.HTTP_200_OK,
+        )
+
+    @action(detail=True, methods=["post"], url_path="add-milestone")
+    def add_milestone(self, request, pk=None):
+        contract = self.get_object()
+        title = request.data.get("title")
+        due_date = request.data.get("due_date")
+        amount = request.data.get("amount", 0)
+
+        if not title or not due_date:
+            return Response(
+                {"error": {"code": "MISSING_PARAM", "message": "Both title and due_date are required"}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            milestone = add_contract_milestone_service(
+                contract=contract, title=title, due_date=due_date, amount=amount, user=request.user
+            )
+            return Response(ContractMilestoneSerializer(milestone).data, status=status.HTTP_201_CREATED)
+        except ValidationError as e:
+            return Response(
+                {"error": {"code": "INVALID_MILESTONE", "message": str(e)}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+    @action(detail=True, methods=["post"], url_path="complete-milestone/(?P<milestone_id>[^/.]+)")
+    def complete_milestone(self, request, pk=None, milestone_id=None):
+        contract = self.get_object()
+        try:
+            milestone = ContractMilestone.objects.get(id=milestone_id, contract=contract)
+            milestone = complete_contract_milestone_service(milestone=milestone, user=request.user)
+            return Response(ContractMilestoneSerializer(milestone).data, status=status.HTTP_200_OK)
+        except ContractMilestone.DoesNotExist:
+            return Response(
+                {"error": {"code": "NOT_FOUND", "message": "Milestone record not found"}},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+    @action(detail=True, methods=["post"], url_path="add-obligation")
+    def add_obligation(self, request, pk=None):
+        contract = self.get_object()
+        title = request.data.get("title")
+        responsible_party = request.data.get("responsible_party", "VENDOR")
+        due_date = request.data.get("due_date")
+
+        if not title or not due_date:
+            return Response(
+                {"error": {"code": "MISSING_PARAM", "message": "Both title and due_date are required"}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            obligation = add_contract_obligation_service(
+                contract=contract,
+                title=title,
+                responsible_party=responsible_party,
+                due_date=due_date,
+                user=request.user,
+            )
+            return Response(ContractObligationSerializer(obligation).data, status=status.HTTP_201_CREATED)
+        except ValidationError as e:
+            return Response(
+                {"error": {"code": "INVALID_OBLIGATION", "message": str(e)}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+    @action(detail=True, methods=["post"], url_path="fulfill-obligation/(?P<obligation_id>[^/.]+)")
+    def fulfill_obligation(self, request, pk=None, obligation_id=None):
+        contract = self.get_object()
+        try:
+            obligation = ContractObligation.objects.get(id=obligation_id, contract=contract)
+            obligation = fulfill_contract_obligation_service(obligation=obligation, user=request.user)
+            return Response(ContractObligationSerializer(obligation).data, status=status.HTTP_200_OK)
+        except ContractObligation.DoesNotExist:
+            return Response(
+                {"error": {"code": "NOT_FOUND", "message": "Obligation record not found"}},
+                status=status.HTTP_404_NOT_FOUND,
             )
 
     @action(detail=True, methods=["post"], url_path="renew")
@@ -195,5 +305,31 @@ class ContractViewSet(viewsets.ModelViewSet):
         except ValidationError as e:
             return Response(
                 {"error": {"code": "INVALID_TERMINATION", "message": str(e)}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+    @action(detail=True, methods=["post"], url_path="upload-document")
+    def upload_document(self, request, pk=None):
+        contract = self.get_object()
+        title = request.data.get("title")
+        file_obj = request.FILES.get("file") or request.data.get("file")
+
+        if not title or not file_obj:
+            return Response(
+                {"error": {"code": "MISSING_PARAM", "message": "Both title and file are required"}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            document = upload_contract_document_service(
+                contract=contract,
+                user=request.user,
+                title=title,
+                file=file_obj,
+            )
+            return Response(ContractDocumentSerializer(document).data, status=status.HTTP_201_CREATED)
+        except ValidationError as e:
+            return Response(
+                {"error": {"code": "INVALID_DOCUMENT", "message": str(e)}},
                 status=status.HTTP_400_BAD_REQUEST,
             )
