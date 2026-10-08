@@ -66,6 +66,8 @@ def get_sourcing_cycle_time_report():
     for e in events:
         bid_count = e.bids.count()
         invite_count = e.invitations.count()
+        start_dt = e.bid_start_date.strftime("%Y-%m-%d") if e.bid_start_date else "N/A"
+        end_dt = e.bid_end_date.strftime("%Y-%m-%d") if e.bid_end_date else "N/A"
         report_data.append(
             {
                 "event_number": e.event_number,
@@ -74,8 +76,8 @@ def get_sourcing_cycle_time_report():
                 "status": e.status,
                 "invited_vendors": invite_count,
                 "submitted_bids": bid_count,
-                "start_date": str(e.start_date),
-                "end_date": str(e.end_date),
+                "start_date": start_dt,
+                "end_date": end_dt,
             }
         )
     return report_data
@@ -209,11 +211,13 @@ def get_audit_log_report():
 REPORT_DISPATCHER = {
     "pr_aging": get_pr_aging_report,
     "spend_analytics": get_spend_analytics_report,
+    "sourcing_cycle": get_sourcing_cycle_time_report,
     "sourcing_cycle_time": get_sourcing_cycle_time_report,
     "po_status": get_po_status_report,
     "receipt_rejection": get_receipt_rejection_report,
     "invoice_exception_aging": get_invoice_exception_aging_report,
     "contract_expiry": get_contract_expiry_report,
+    "supplier_scorecard": get_supplier_performance_report,
     "supplier_performance": get_supplier_performance_report,
     "audit_log": get_audit_log_report,
 }
@@ -271,34 +275,125 @@ def generate_export_job_service(export_job_id: int) -> ExportJob:
 
             from reportlab.lib import colors
             from reportlab.lib.pagesizes import landscape, letter
-            from reportlab.platypus import SimpleDocTemplate, Table, TableStyle
+            from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+            from reportlab.platypus import (
+                HRFlowable,
+                Paragraph,
+                SimpleDocTemplate,
+                Table,
+                TableStyle,
+            )
 
             output = BytesIO()
-            doc = SimpleDocTemplate(output, pagesize=landscape(letter))
+            # Landscape letter: 792 pt width, 612 pt height.
+            # Margin: 28pt -> Printable width: 736 pt
+            doc = SimpleDocTemplate(
+                output,
+                pagesize=landscape(letter),
+                leftMargin=28,
+                rightMargin=28,
+                topMargin=28,
+                bottomMargin=28,
+            )
 
-            # Prepare table data
-            table_data = [fieldnames]
-            for row in data:
-                table_data.append([str(row.get(f, "")) for f in fieldnames])
+            styles = getSampleStyleSheet()
+            title_style = ParagraphStyle(
+                "PDFReportTitle",
+                parent=styles["Heading1"],
+                fontSize=16,
+                leading=20,
+                textColor=colors.HexColor("#002B49"),
+                spaceAfter=3,
+            )
+            subtitle_style = ParagraphStyle(
+                "PDFReportSubtitle",
+                parent=styles["Normal"],
+                fontSize=8.5,
+                leading=11,
+                textColor=colors.HexColor("#64748B"),
+                spaceAfter=10,
+            )
+            header_cell_style = ParagraphStyle(
+                "PDFHeaderCell",
+                parent=styles["Normal"],
+                fontSize=7.5,
+                leading=9.5,
+                fontName="Helvetica-Bold",
+                textColor=colors.white,
+                alignment=0,
+            )
+            body_cell_style = ParagraphStyle(
+                "PDFBodyCell",
+                parent=styles["Normal"],
+                fontSize=7,
+                leading=8.5,
+                fontName="Helvetica",
+                textColor=colors.HexColor("#1E293B"),
+                alignment=0,
+            )
 
-            t = Table(table_data)
-            t.setStyle(
-                TableStyle(
-                    [
-                        ("BACKGROUND", (0, 0), (-1, 0), colors.grey),
-                        ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
-                        ("ALIGN", (0, 0), (-1, -1), "CENTER"),
-                        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-                        ("FONTSIZE", (0, 0), (-1, 0), 10),
-                        ("BOTTOMPADDING", (0, 0), (-1, 0), 12),
-                        ("BACKGROUND", (0, 1), (-1, -1), colors.beige),
-                        ("GRID", (0, 0), (-1, -1), 1, colors.black),
-                        ("FONTSIZE", (0, 1), (-1, -1), 8),
-                    ]
+            report_title_display = job.report_type.replace("_", " ").title()
+            user_email = job.requested_by.email if job.requested_by else "Compliance Officer"
+            now_str = timezone.now().strftime("%Y-%m-%d %H:%M:%S UTC")
+
+            elements = []
+            elements.append(
+                Paragraph(f"<b>ProcureSphere 360</b> &mdash; {report_title_display}", title_style)
+            )
+            elements.append(
+                Paragraph(
+                    f"Generated: <b>{now_str}</b> | Requested by: <b>{user_email}</b> | Total Records: <b>{len(data)}</b> | Format: <b>Audited PDF</b>",
+                    subtitle_style,
+                )
+            )
+            elements.append(
+                HRFlowable(
+                    width="100%", thickness=1.5, color=colors.HexColor("#00B0B9"), spaceAfter=10
                 )
             )
 
-            elements = [t]
+            num_cols = max(1, len(fieldnames))
+            col_w = 736.0 / num_cols
+
+            table_data = []
+            hdr_row = [
+                Paragraph(f.replace("_", " ").upper(), header_cell_style) for f in fieldnames
+            ]
+            table_data.append(hdr_row)
+
+            for row in data:
+                row_cells = []
+                for f in fieldnames:
+                    val = str(row.get(f, ""))
+                    if val in ["None", "null", ""]:
+                        val = "-"
+                    row_cells.append(Paragraph(val, body_cell_style))
+                table_data.append(row_cells)
+
+            t = Table(table_data, colWidths=[col_w] * num_cols, repeatRows=1)
+            t.setStyle(
+                TableStyle(
+                    [
+                        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#002B49")),
+                        ("ALIGN", (0, 0), (-1, 0), "LEFT"),
+                        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                        ("TOPPADDING", (0, 0), (-1, 0), 5),
+                        ("BOTTOMPADDING", (0, 0), (-1, 0), 5),
+                        (
+                            "ROWBACKGROUNDS",
+                            (0, 1),
+                            (-1, -1),
+                            [colors.white, colors.HexColor("#F8FAFC")],
+                        ),
+                        ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#CBD5E1")),
+                        ("LEFTPADDING", (0, 0), (-1, -1), 4),
+                        ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+                        ("TOPPADDING", (0, 1), (-1, -1), 3),
+                        ("BOTTOMPADDING", (0, 1), (-1, -1), 3),
+                    ]
+                )
+            )
+            elements.append(t)
             doc.build(elements)
 
             filename = f"{job.report_type}_export_{job.id}.pdf"

@@ -118,7 +118,7 @@ def audit_log_view(request):
         "total_pages": total_pages,
         "total_count": total_count,
     }
-    return render(request, "audit/audit_log.html", context)
+    return render(request, "audit/logs.html", context)
 
 
 @login_required

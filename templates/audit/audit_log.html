@@ -1,8 +1,8 @@
-{% extends base_layout|default:'base.html' %}
+{% extends 'audit/base_auditor.html' %}
 
 {% block title %}Append-Only Audit Trail — ProcureSphere 360 ERP{% endblock %}
 
-{% block content %}
+{% block auditor_content %}
 <div class="d-flex align-items-center justify-content-between mb-4">
     <div>
         <h2 class="fw-bold text-dark mb-1"><i class="fa-solid fa-shield-halved text-info me-2"></i> Append-Only Immutable Audit Log Trail</h2>
@@ -128,4 +128,4 @@
         </table>
     </div>
 </div>
-{% endblock %}
+{% endblock auditor_content %}
