@@ -311,7 +311,7 @@ def home_view(request):  # noqa: C901
             now = timezone.now()
             # Find current fiscal period
             current_period = FiscalPeriod.objects.filter(
-                start_date__lte=now, end_date__gte=now, is_active=True
+                start_date__lte=now, end_date__gte=now, is_closed=False
             ).first()
 
             available_budget = 0
@@ -344,49 +344,6 @@ def home_view(request):  # noqa: C901
                 },
                 "pending_prs": [],
             }
-        return render(request, "pages/dashboards/approver_dashboard.html", context)
-        from decimal import Decimal
-
-        from django.utils import timezone as fiscal_timezone
-
-        from apps.budgets.models import Budget
-        from apps.organization.models import FiscalPeriod as ApproverFiscalPeriod
-
-        user_dept = getattr(user, "department", None)
-        statuses = [
-            PurchaseRequisition.STATUS_SUBMITTED,
-            PurchaseRequisition.STATUS_MANAGER_REVIEW,
-            PurchaseRequisition.STATUS_BUDGET_REVIEW,
-        ]
-        dept_prs = PurchaseRequisition.objects.none()
-        budget_qs = Budget.objects.none()
-
-        if user_dept:
-            dept_prs = PurchaseRequisition.objects.filter(department=user_dept)
-            now = fiscal_timezone.now()
-            current_period = ApproverFiscalPeriod.objects.filter(
-                start_date__lte=now, end_date__gte=now, is_closed=False
-            ).first()
-            if current_period:
-                budget_qs = Budget.objects.filter(
-                    cost_center__department=user_dept,
-                    fiscal_period=current_period,
-                )
-
-        pending_prs = dept_prs.filter(status__in=statuses).order_by("-updated_at")
-        available_budget = sum((budget.available_amount for budget in budget_qs), Decimal("0.00"))
-        context = {
-            "user_department": user_dept,
-            "pending_prs": pending_prs[:10],
-            "metrics": {
-                "pending_count": pending_prs.count(),
-                "total_prs_count": dept_prs.count(),
-                "approved_count": dept_prs.filter(
-                    status=PurchaseRequisition.STATUS_APPROVED
-                ).count(),
-                "available_budget": float(available_budget),
-            },
-        }
         return render(request, "pages/dashboards/approver_dashboard.html", context)
 
     # 10. SUPER ADMIN DASHBOARD
