@@ -162,22 +162,132 @@ def get_invoice_exception_aging_report():
     return report_data
 
 
-def get_contract_expiry_report():
-    """7. Contract expiry / renewal / obligation"""
-    contracts = Contract.objects.select_related("vendor").all()
-    now = timezone.now().date()
+def get_contract_expiry_report(status=None, days=None, start_date=None, end_date=None, user=None):
+    """7. Contract expiry / renewal reporting"""
+    from datetime import datetime
+
+    from apps.contracts.selectors import get_contracts_qs
+
+    contracts = get_contracts_qs(user=user)
+
+    if status:
+        contracts = contracts.filter(status=status)
+
+    today = timezone.now().date()
+
+    if days:
+        try:
+            days_int = int(days)
+            future_date = today + timezone.timedelta(days=days_int)
+            contracts = contracts.filter(end_date__lte=future_date)
+        except (ValueError, TypeError):
+            pass
+
+    if start_date:
+        if isinstance(start_date, str):
+            try:
+                start_date = datetime.strptime(start_date, "%Y-%m-%d").date()
+            except ValueError:
+                start_date = None
+        if start_date:
+            contracts = contracts.filter(end_date__gte=start_date)
+
+    if end_date:
+        if isinstance(end_date, str):
+            try:
+                end_date = datetime.strptime(end_date, "%Y-%m-%d").date()
+            except ValueError:
+                end_date = None
+        if end_date:
+            contracts = contracts.filter(end_date__lte=end_date)
+
     report_data = []
     for c in contracts:
-        days_to_expiry = (c.end_date - now).days if c.end_date else 0
+        days_to_expiry = (c.end_date - today).days if c.end_date else 0
+        notice_days = c.renewal_notice_days or 30
+        notice_date = (c.end_date - timezone.timedelta(days=notice_days)) if c.end_date else None
+        in_notice_period = (
+            (today >= notice_date and today <= c.end_date) if notice_date and c.end_date else False
+        )
+        is_expired = (
+            (today > c.end_date or c.status == Contract.STATUS_EXPIRED) if c.end_date else False
+        )
+
         report_data.append(
             {
                 "contract_number": c.contract_number,
                 "title": c.title,
-                "vendor": c.vendor.legal_name,
+                "vendor": c.vendor.legal_name if c.vendor else "N/A",
                 "status": c.status,
+                "status_display": c.get_status_display(),
                 "total_value": float(c.contract_value),
-                "end_date": str(c.end_date),
+                "start_date": str(c.start_date) if c.start_date else None,
+                "end_date": str(c.end_date) if c.end_date else None,
+                "renewal_notice_days": notice_days,
+                "notice_date": str(notice_date) if notice_date else None,
                 "days_to_expiry": days_to_expiry,
+                "in_notice_period": in_notice_period,
+                "is_expired": is_expired,
+            }
+        )
+    return report_data
+
+
+def get_contract_obligation_report(
+    due_status=None, responsible_party=None, start_date=None, end_date=None, user=None
+):
+    """Obligation reporting"""
+    from datetime import datetime
+
+    from apps.contracts.selectors import get_contract_obligations_qs
+
+    if isinstance(start_date, str):
+        try:
+            start_date = datetime.strptime(start_date, "%Y-%m-%d").date()
+        except ValueError:
+            start_date = None
+
+    if isinstance(end_date, str):
+        try:
+            end_date = datetime.strptime(end_date, "%Y-%m-%d").date()
+        except ValueError:
+            end_date = None
+
+    obligations = get_contract_obligations_qs(
+        user=user,
+        due_status=due_status,
+        responsible_party=responsible_party,
+        start_date=start_date,
+        end_date=end_date,
+    )
+
+    today = timezone.now().date()
+    report_data = []
+    for ob in obligations:
+        if ob.is_fulfilled:
+            calc_status = "FULFILLED"
+            days_diff = (ob.fulfilled_at.date() - ob.due_date).days if ob.fulfilled_at else 0
+        elif ob.due_date < today:
+            calc_status = "OVERDUE"
+            days_diff = (today - ob.due_date).days
+        else:
+            calc_status = "UPCOMING"
+            days_diff = (ob.due_date - today).days
+
+        report_data.append(
+            {
+                "contract_number": ob.contract.contract_number,
+                "contract_title": ob.contract.title,
+                "vendor": ob.contract.vendor.legal_name if ob.contract.vendor else "N/A",
+                "obligation_title": ob.title,
+                "responsible_party": ob.responsible_party,
+                "due_date": str(ob.due_date),
+                "is_fulfilled": ob.is_fulfilled,
+                "fulfilled_at": (
+                    ob.fulfilled_at.strftime("%Y-%m-%d %H:%M:%S") if ob.fulfilled_at else None
+                ),
+                "due_status": calc_status,
+                "days_overdue_or_remaining": days_diff,
             }
         )
     return report_data
@@ -237,6 +347,8 @@ REPORT_DISPATCHER = {
     "receipt_rejection": get_receipt_rejection_report,
     "invoice_exception_aging": get_invoice_exception_aging_report,
     "contract_expiry": get_contract_expiry_report,
+    "contract_obligation": get_contract_obligation_report,
+    "obligation": get_contract_obligation_report,
     "supplier_scorecard": get_supplier_performance_report,
     "supplier_performance": get_supplier_performance_report,
     "audit_log": get_audit_log_report,

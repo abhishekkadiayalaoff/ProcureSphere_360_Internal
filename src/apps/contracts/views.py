@@ -1,6 +1,9 @@
+import os
+
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
+from django.http import FileResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
@@ -15,7 +18,7 @@ from .forms import (
     ContractObligationForm,
     ContractRenewalForm,
 )
-from .models import Contract, ContractMilestone, ContractObligation
+from .models import Contract, ContractDocument, ContractMilestone, ContractObligation
 from .selectors import (
     get_contract_by_id,
     get_contracts_qs,
@@ -387,6 +390,66 @@ def document_upload_view(request, contract_id):
     return redirect("contract_detail", contract_id=contract.id)
 
 
+def _can_view_contract(user, contract):
+    if not user or not user.is_authenticated:
+        return False
+    role_code = getattr(user, "role_code", None) or (
+        user.role.code if getattr(user, "role", None) else None
+    )
+    if role_code in [
+        Role.SUPER_ADMIN,
+        Role.LEGAL_MGR,
+        Role.PROC_MGR,
+        Role.PROC_EXEC,
+        Role.AUDITOR,
+    ]:
+        return True
+    if role_code == Role.VENDOR_USER:
+        vendor = getattr(user, "vendor", None)
+        return vendor is not None and contract.vendor_id == vendor.id
+    return contract.contract_owner_id == user.id
+
+
+@login_required(login_url="/login/")
+def document_download_view(request, contract_id, document_id):
+    """
+    Safely downloads/retrieves a contract document with RBAC, object scoping, and audit logging.
+    """
+    contract = get_object_or_404(Contract, id=contract_id)
+    if not _can_view_contract(request.user, contract):
+        messages.error(
+            request,
+            "Permission Denied: You are not authorized to access documents for this contract.",
+        )
+        return redirect("contracts_list")
+
+    document = get_object_or_404(ContractDocument, id=document_id, contract=contract)
+    if (
+        not document.file
+        or not hasattr(document.file, "path")
+        or not os.path.exists(document.file.path)
+    ):
+        messages.error(request, "Requested contract document file was not found on storage.")
+        return redirect("contract_detail", contract_id=contract.id)
+
+    AuditLog.objects.create(
+        actor=request.user,
+        action=AuditLog.ACTION_EXPORT,
+        target_model="ContractDocument",
+        target_object_id=str(document.id),
+        new_state={
+            "document_title": document.title,
+            "file_name": os.path.basename(document.file.name),
+        },
+    )
+
+    return FileResponse(
+        open(document.file.path, "rb"),
+        as_attachment=True,
+        filename=os.path.basename(document.file.name),
+    )
+
+
 @login_required(login_url="/login/")
 @require_POST
 def renew_view(request, contract_id):
@@ -447,19 +510,23 @@ def dashboard_view(request):
     from .selectors import (
         get_active_contract_alerts,
         get_contracts_pending_legal_review,
+        get_contracts_qs,
         get_expiring_contracts,
         get_legal_dashboard_metrics,
         get_pending_obligations,
     )
 
-    active_contracts = Contract.objects.filter(
+    user_contracts = get_contracts_qs(user=request.user)
+    active_contracts = user_contracts.filter(
         status__in=[Contract.STATUS_ACTIVE, Contract.STATUS_RENEWED]
     ).order_by("end_date")
-    pending_legal = get_contracts_pending_legal_review()
-    expiring_contracts = get_expiring_contracts(days=30)
-    pending_obligations = get_pending_obligations()
-    active_alerts = get_active_contract_alerts()
-    metrics = get_legal_dashboard_metrics()
+    pending_legal = get_contracts_pending_legal_review().filter(
+        id__in=user_contracts.values_list("id", flat=True)
+    )
+    expiring_contracts = get_expiring_contracts(days=30, user=request.user)
+    pending_obligations = get_pending_obligations(user=request.user)
+    active_alerts = get_active_contract_alerts(user=request.user)
+    metrics = get_legal_dashboard_metrics(user=request.user)
 
     context = {
         "metrics": metrics,

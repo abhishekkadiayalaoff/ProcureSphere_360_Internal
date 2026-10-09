@@ -1,11 +1,16 @@
+import os
+
 from django.core.exceptions import ValidationError
+from django.http import FileResponse
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from .models import ContractMilestone, ContractObligation
+from apps.audit.models import AuditLog
+
+from .models import ContractDocument, ContractMilestone, ContractObligation
 from .permissions import CanManageContract, CanViewContract, IsLegalManager, IsNotAuditor
 from .selectors import get_contracts_qs
 from .serializers import (
@@ -279,6 +284,24 @@ class ContractViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
+    @action(detail=True, methods=["get"], url_path="milestones")
+    def milestones(self, request, pk=None):
+        contract = self.get_object()
+        milestone_records = contract.milestones.all().order_by("due_date")
+        return Response(
+            ContractMilestoneSerializer(milestone_records, many=True).data,
+            status=status.HTTP_200_OK,
+        )
+
+    @action(detail=True, methods=["get"], url_path="obligations")
+    def obligations(self, request, pk=None):
+        contract = self.get_object()
+        obligation_records = contract.obligations.all().order_by("due_date")
+        return Response(
+            ContractObligationSerializer(obligation_records, many=True).data,
+            status=status.HTTP_200_OK,
+        )
+
     @action(detail=True, methods=["post"], url_path="renew")
     def renew(self, request, pk=None):
         contract = self.get_object()
@@ -352,3 +375,55 @@ class ContractViewSet(viewsets.ModelViewSet):
                 {"error": {"code": "INVALID_DOCUMENT", "message": str(e)}},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+
+    @action(detail=True, methods=["get"], url_path="documents")
+    def documents(self, request, pk=None):
+        contract = self.get_object()
+        documents = contract.documents.all().order_by("-created_at")
+        return Response(
+            ContractDocumentSerializer(documents, many=True).data,
+            status=status.HTTP_200_OK,
+        )
+
+    @action(detail=True, methods=["get"], url_path="documents/(?P<document_id>[^/.]+)/download")
+    def download_document(self, request, pk=None, document_id=None):
+        contract = self.get_object()
+        try:
+            document = ContractDocument.objects.get(id=document_id, contract=contract)
+        except (ContractDocument.DoesNotExist, ValueError):
+            return Response(
+                {"error": {"code": "NOT_FOUND", "message": "Contract document not found"}},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        if (
+            not document.file
+            or not hasattr(document.file, "path")
+            or not os.path.exists(document.file.path)
+        ):
+            return Response(
+                {
+                    "error": {
+                        "code": "FILE_NOT_FOUND",
+                        "message": "Document file not found on storage",
+                    }
+                },
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        AuditLog.objects.create(
+            actor=request.user,
+            action=AuditLog.ACTION_EXPORT,
+            target_model="ContractDocument",
+            target_object_id=str(document.id),
+            new_state={
+                "document_title": document.title,
+                "file_name": os.path.basename(document.file.name),
+            },
+        )
+
+        return FileResponse(
+            open(document.file.path, "rb"),
+            as_attachment=True,
+            filename=os.path.basename(document.file.name),
+        )
