@@ -355,6 +355,10 @@ def add_contract_milestone_service(
     """
     if not title or not str(title).strip():
         raise ValidationError("Milestone title is required.")
+    if not due_date:
+        raise ValidationError("Milestone due date is required.")
+    if amount is not None and Decimal(str(amount)) < Decimal("0.00"):
+        raise ValidationError("Milestone amount cannot be negative.")
 
     milestone = ContractMilestone.objects.create(
         contract=contract,
@@ -388,6 +392,9 @@ def complete_contract_milestone_service(
     """
     Marks a milestone as completed.
     """
+    if milestone.is_completed:
+        raise ValidationError("Milestone is already completed.")
+
     milestone.is_completed = True
     milestone.completed_at = timezone.now()
     milestone.save(update_fields=["is_completed", "completed_at", "updated_at"])
@@ -412,11 +419,15 @@ def add_contract_obligation_service(
     """
     if not title or not str(title).strip():
         raise ValidationError("Obligation title is required.")
+    if not due_date:
+        raise ValidationError("Obligation due date is required.")
+    if not responsible_party or not str(responsible_party).strip():
+        raise ValidationError("Responsible party is required.")
 
     obligation = ContractObligation.objects.create(
         contract=contract,
         title=title.strip(),
-        responsible_party=responsible_party,
+        responsible_party=responsible_party.strip(),
         due_date=due_date,
     )
 
@@ -445,6 +456,9 @@ def fulfill_contract_obligation_service(
     """
     Marks an obligation as fulfilled.
     """
+    if obligation.is_fulfilled:
+        raise ValidationError("Obligation is already fulfilled.")
+
     obligation.is_fulfilled = True
     obligation.fulfilled_at = timezone.now()
     obligation.save(update_fields=["is_fulfilled", "fulfilled_at", "updated_at"])
@@ -467,6 +481,14 @@ def upload_contract_document_service(
     """
     Uploads a signed contract document or appendix after title and format/size validation.
     """
+    role_code = getattr(user, "role_code", None) or (
+        user.role.code if getattr(user, "role", None) else None
+    )
+    if role_code == Role.AUDITOR:
+        raise ValidationError(
+            "Permission Denied: Compliance Auditors hold strictly read-only permissions and cannot upload contract documents."
+        )
+
     if not title or not str(title).strip():
         raise ValidationError("Document title is required.")
     if not file:
@@ -474,13 +496,17 @@ def upload_contract_document_service(
 
     if hasattr(file, "size") and file.size > 10 * 1024 * 1024:
         raise ValidationError("File size exceeds 10MB upload limit.")
-    if hasattr(file, "name") and "." in file.name:
-        ext = file.name.split(".")[-1].lower()
-        allowed_extensions = ["pdf", "docx", "doc", "xlsx", "xls", "png", "jpg", "jpeg", "txt"]
-        if ext not in allowed_extensions:
-            raise ValidationError(
-                f"Unsupported file extension '.{ext}'. Allowed formats: PDF, DOCX, XLSX, PNG, JPG, TXT."
-            )
+
+    file_name = getattr(file, "name", "")
+    if not file_name or "." not in file_name or file_name.startswith("."):
+        raise ValidationError("File must have a valid extension.")
+
+    ext = file_name.rsplit(".", 1)[-1].lower()
+    allowed_extensions = ["pdf", "docx", "doc", "xlsx", "xls", "png", "jpg", "jpeg", "txt"]
+    if ext not in allowed_extensions:
+        raise ValidationError(
+            f"Unsupported file extension '.{ext}'. Allowed formats: PDF, DOCX, XLSX, PNG, JPG, TXT."
+        )
 
     document = ContractDocument.objects.create(
         contract=contract,
@@ -509,15 +535,29 @@ def renew_contract_service(
     """
     if contract.status not in [
         Contract.STATUS_ACTIVE,
+        Contract.STATUS_RENEWED,
         Contract.STATUS_RENEWAL_DUE,
         Contract.STATUS_EXPIRED,
     ]:
         raise ValidationError(f"Cannot renew contract in status '{contract.status}'.")
 
+    if isinstance(new_end_date, str):
+        from datetime import datetime
+
+        try:
+            new_end_date = datetime.strptime(new_end_date, "%Y-%m-%d").date()
+        except ValueError:
+            raise ValidationError("Invalid new end date format. Expected YYYY-MM-DD.")
+
     if new_end_date and contract.start_date and new_end_date <= contract.start_date:
         raise ValidationError("Renewal end date must be after contract start date.")
-    if new_value is not None and new_value < Decimal("0.00"):
-        raise ValidationError("Contract value cannot be negative.")
+    if new_value is not None:
+        try:
+            new_value = Decimal(str(new_value))
+        except Exception:
+            raise ValidationError("Invalid contract value.")
+        if new_value < Decimal("0.00"):
+            raise ValidationError("Contract value cannot be negative.")
 
     value = new_value if new_value is not None else contract.contract_value
     previous_status = contract.status

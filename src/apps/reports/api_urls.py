@@ -10,6 +10,7 @@ from .services import (
     generate_export_job_service,
     get_audit_log_report,
     get_contract_expiry_report,
+    get_contract_obligation_report,
     get_invoice_exception_aging_report,
     get_po_status_report,
     get_pr_aging_report,
@@ -46,13 +47,13 @@ def dashboard_summary_view(request):
     spend_data = get_spend_analytics_report()
     po_data = get_po_status_report()
     inv_data = get_invoice_exception_aging_report()
-    contract_data = get_contract_expiry_report()
+    contract_data = get_contract_expiry_report(user=request.user)
     scorecard_data = get_supplier_performance_report()
 
     summary = {
         "total_prs": len(pr_data),
         "total_pos": len(po_data),
-        "total_spend": sum(item["actual"] for item in spend_data),
+        "total_spend": sum(item.get("actual_spend", item.get("actual", 0)) for item in spend_data),
         "pending_exceptions": len([item for item in inv_data if item["status"] == "OPEN"]),
         "expiring_contracts": len(
             [item for item in contract_data if 0 <= item["days_to_expiry"] <= 60]
@@ -101,7 +102,39 @@ def invoice_exception_report_view(request):
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def contract_expiry_report_view(request):
-    return Response(get_contract_expiry_report(), status=status.HTTP_200_OK)
+    status_param = request.GET.get("status")
+    days_param = request.GET.get("days")
+    start_date = request.GET.get("start_date")
+    end_date = request.GET.get("end_date")
+    return Response(
+        get_contract_expiry_report(
+            status=status_param,
+            days=days_param,
+            start_date=start_date,
+            end_date=end_date,
+            user=request.user,
+        ),
+        status=status.HTTP_200_OK,
+    )
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def contract_obligation_report_view(request):
+    due_status = request.GET.get("due_status")
+    responsible_party = request.GET.get("responsible_party")
+    start_date = request.GET.get("start_date")
+    end_date = request.GET.get("end_date")
+    return Response(
+        get_contract_obligation_report(
+            due_status=due_status,
+            responsible_party=responsible_party,
+            start_date=start_date,
+            end_date=end_date,
+            user=request.user,
+        ),
+        status=status.HTTP_200_OK,
+    )
 
 
 @api_view(["GET"])
@@ -129,6 +162,9 @@ urlpatterns = router.urls + [
     path("receipt-rejection/", receipt_rejection_report_view, name="report-receipt-rejection"),
     path("invoice-exceptions/", invoice_exception_report_view, name="report-invoice-exceptions"),
     path("contract-expiry/", contract_expiry_report_view, name="report-contract-expiry"),
+    path(
+        "contract-obligation/", contract_obligation_report_view, name="report-contract-obligation"
+    ),
     path(
         "supplier-performance/",
         supplier_performance_report_view,

@@ -37,6 +37,11 @@ def dashboard_view(request):
             "desc": "Upcoming contract expirations within 30/60/90 days",
         },
         {
+            "id": "contract_obligation",
+            "name": "Contract Obligation Register",
+            "desc": "Track upcoming, overdue, and fulfilled legal obligations",
+        },
+        {
             "id": "supplier_scorecard",
             "name": "Supplier Scorecard Export",
             "desc": "Comprehensive weighted scorecards for vendor review",

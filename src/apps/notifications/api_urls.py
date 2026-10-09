@@ -14,6 +14,8 @@ HIGH_PRIORITY_TYPES = [
     Notification.TYPE_BID_DEADLINE,
     Notification.TYPE_KYC_REQUEST,
     Notification.TYPE_CONTRACT_EXPIRATION,
+    Notification.TYPE_CONTRACT_MILESTONE,
+    Notification.TYPE_CONTRACT_OBLIGATION,
 ]
 
 

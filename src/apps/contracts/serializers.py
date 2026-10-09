@@ -19,12 +19,20 @@ class ContractVersionSerializer(serializers.ModelSerializer):
 
 
 class ContractMilestoneSerializer(serializers.ModelSerializer):
+    due_status = serializers.ReadOnlyField()
+    is_overdue = serializers.ReadOnlyField()
+    days_remaining = serializers.ReadOnlyField()
+
     class Meta:
         model = ContractMilestone
         fields = "__all__"
 
 
 class ContractObligationSerializer(serializers.ModelSerializer):
+    due_status = serializers.ReadOnlyField()
+    is_overdue = serializers.ReadOnlyField()
+    days_remaining = serializers.ReadOnlyField()
+
     class Meta:
         model = ContractObligation
         fields = "__all__"

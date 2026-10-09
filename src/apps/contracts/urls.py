@@ -53,6 +53,11 @@ urlpatterns = [
         views.document_upload_view,
         name="contract_document_upload",
     ),
+    path(
+        "contracts/<uuid:contract_id>/document/<uuid:document_id>/download/",
+        views.document_download_view,
+        name="contract_document_download",
+    ),
     path("contracts/<uuid:contract_id>/renew/", views.renew_view, name="contract_renew"),
     path(
         "contracts/<uuid:contract_id>/terminate/", views.terminate_view, name="contract_terminate"
