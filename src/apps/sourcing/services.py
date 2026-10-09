@@ -1431,12 +1431,13 @@ def evaluate_and_award_sourcing_event_service(
     """
     if winning_bid.event_id != event.id:
         raise ValidationError("Winning bid does not belong to target sourcing event.")
-    event.refresh_from_db()
+    _lock_and_refresh(event)
+    _get_evaluable_bid(event, winning_bid)
+    _assert_vendor_awardable(winning_bid.vendor)
+    if not (award_reason or "").strip():
+        raise ValidationError("Award justification is required.")
+
     if event.status == SourcingEvent.STATUS_COMMERCIAL_REVIEW:
-        _get_evaluable_bid(event, winning_bid)
-        _assert_vendor_awardable(winning_bid.vendor)
-        if not (award_reason or "").strip():
-            raise ValidationError("Award justification is required.")
         decision = AwardDecision.objects.create(
             event=event,
             winning_bid=winning_bid,
@@ -1448,8 +1449,24 @@ def evaluate_and_award_sourcing_event_service(
         _transition_event(
             event=event, to_status=SourcingEvent.STATUS_AWARD_APPROVAL, actor=approved_by_user
         )
-    elif event.status != SourcingEvent.STATUS_AWARD_APPROVAL:
+    elif event.status == SourcingEvent.STATUS_AWARD_APPROVAL:
+        pending = (
+            AwardDecision.objects.select_for_update()
+            .filter(event=event, status=AwardDecision.STATUS_PENDING)
+            .first()
+        )
+        if not pending:
+            AwardDecision.objects.create(
+                event=event,
+                winning_bid=winning_bid,
+                award_reason=award_reason.strip(),
+                status=AwardDecision.STATUS_PENDING,
+                recommended_by=approved_by_user,
+                created_by=approved_by_user,
+            )
+    else:
         raise ValidationError(f"Event cannot be awarded from status {event.status}.")
+
     decision = approve_award_service(event=event, approver=approved_by_user, comments=award_reason)
     event.refresh_from_db()
     return decision

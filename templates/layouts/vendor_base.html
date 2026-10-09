@@ -71,13 +71,96 @@
 <style>
     @media (min-width: 992px) {
         .vendor-sidebar-desktop {
-            width: 280px !important;
+            width: 260px !important;
             flex-shrink: 0 !important;
             position: sticky !important;
             top: 0;
             height: calc(100vh - 58px);
             overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255,255,255,0.15) transparent;
         }
+        .vendor-sidebar-desktop::-webkit-scrollbar {
+            width: 4px;
+        }
+        .vendor-sidebar-desktop::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.15);
+            border-radius: 4px;
+        }
+    }
+
+    /* Section label style */
+    .nav-section-label {
+        font-size: 0.63rem;
+        letter-spacing: 0.08em;
+        font-weight: 700;
+        text-transform: uppercase;
+        color: rgba(255,255,255,0.3);
+        padding: 0.6rem 0.75rem 0.2rem;
+        margin-top: 0.25rem;
+    }
+
+    /* Subitem indented link */
+    .vendor-subitem {
+        display: flex;
+        align-items: center;
+        padding: 0.28rem 0.75rem 0.28rem 2.6rem;
+        font-size: 0.8rem;
+        color: rgba(255,255,255,0.6);
+        border-radius: 6px;
+        text-decoration: none;
+        transition: background 0.15s, color 0.15s;
+    }
+    .vendor-subitem:hover,
+    .vendor-subitem:focus {
+        background: rgba(255,255,255,0.07);
+        color: #00b0b9;
+    }
+    .vendor-subitem.active-sub {
+        color: #00b0b9;
+        background: rgba(0,176,185,0.1);
+        font-weight: 600;
+    }
+    .vendor-subitem::before {
+        content: '';
+        display: inline-block;
+        width: 5px;
+        height: 5px;
+        border-radius: 50%;
+        background: currentColor;
+        margin-right: 0.5rem;
+        flex-shrink: 0;
+        opacity: 0.6;
+    }
+
+    /* Top-level nav link */
+    .vendor-navlink {
+        display: flex;
+        align-items: center;
+        padding: 0.45rem 0.75rem;
+        border-radius: 8px;
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: rgba(255,255,255,0.75);
+        text-decoration: none;
+        transition: background 0.15s, color 0.15s;
+    }
+    .vendor-navlink:hover,
+    .vendor-navlink:focus {
+        background: rgba(255,255,255,0.08);
+        color: #fff;
+    }
+    .vendor-navlink.active-nav-item {
+        background: #0d6efd;
+        color: #fff;
+        font-weight: 700;
+        box-shadow: 0 2px 8px rgba(13,110,253,0.35);
+    }
+    .vendor-navlink .nav-icon {
+        width: 20px;
+        text-align: center;
+        margin-right: 0.65rem;
+        flex-shrink: 0;
     }
 </style>
 <div class="d-flex align-items-start" style="min-height: calc(100vh - 58px);">
@@ -88,168 +171,99 @@
             <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" data-bs-target="#vendorSidebar" aria-label="Close"></button>
         </div>
         <div class="offcanvas-body p-0 flex-column d-block">
-            <div class="p-3">
-            <div class="d-flex align-items-center justify-content-between px-2 mb-3 text-secondary text-uppercase fw-bold" style="font-size: 0.72rem; letter-spacing: 0.05em;">
-                <span>Vendor Navigation</span>
-                <i class="fa-solid fa-shield-check text-cyan"></i>
-            </div>
+            <div class="px-2 py-3">
 
-            <ul class="nav flex-column gap-1" id="vendor-nav-accordion">
-                <!-- 1. Dashboard -->
-                <li class="nav-item">
-                    <a href="/vendor/" class="nav-link rounded px-3 py-2 d-flex align-items-center {% if active_nav == 'dashboard' %}bg-primary text-white fw-bold shadow-sm{% else %}text-light opacity-75 hover-opacity-100{% endif %}">
-                        <i class="fa-solid fa-gauge-high me-3 text-cyan w-20px text-center"></i>
-                        <span>Dashboard</span>
+                <div class="d-flex align-items-center justify-content-between px-2 mb-3 text-secondary text-uppercase fw-bold" style="font-size: 0.68rem; letter-spacing: 0.06em;">
+                    <span>Vendor Navigation</span>
+                    <i class="fa-solid fa-shield-check text-cyan" style="font-size:0.75rem;"></i>
+                </div>
+
+                <nav class="d-flex flex-column gap-1">
+
+                    <a href="/vendor/"
+                       class="vendor-navlink {% if active_nav == 'dashboard' %}active-nav-item{% endif %}">
+                        <i class="fa-solid fa-gauge-high nav-icon text-cyan"></i>Dashboard
                     </a>
-                </li>
 
-                <!-- 2. Company Profile -->
-                <li class="nav-item mt-1">
-                    <a href="#menu-profile" class="nav-link rounded px-3 py-2 d-flex align-items-center justify-content-between {% if active_nav == 'profile' %}bg-secondary bg-opacity-25 text-white fw-semibold{% else %}text-light opacity-75{% endif %}" data-bs-toggle="collapse" role="button">
+                    <a href="/vendor/profile/"
+                       class="vendor-navlink {% if active_nav == 'profile' %}active-nav-item{% endif %}">
+                        <i class="fa-solid fa-id-card nav-icon text-info"></i>Company Profile
+                    </a>
+
+                    <a href="/vendor/sourcing/"
+                       class="vendor-navlink {% if active_nav == 'sourcing' %}active-nav-item{% endif %}">
+                        <i class="fa-solid fa-gavel nav-icon text-warning"></i>Sourcing Events
+                    </a>
+
+                    <a href="/vendor/bids/"
+                       class="vendor-navlink {% if active_nav == 'bids' %}active-nav-item{% endif %}">
+                        <i class="fa-solid fa-file-invoice-dollar nav-icon text-success"></i>My Bids
+                    </a>
+
+                    <a href="/vendor/clarifications/"
+                       class="vendor-navlink {% if active_nav == 'clarifications' %}active-nav-item{% endif %}">
+                        <i class="fa-solid fa-circle-question nav-icon text-info"></i>Clarifications
+                    </a>
+
+                    <a href="/vendor/purchase-orders/"
+                       class="vendor-navlink {% if active_nav == 'orders' %}active-nav-item{% endif %}">
+                        <i class="fa-solid fa-cart-shopping nav-icon text-cyan"></i>Purchase Orders
+                    </a>
+
+                    <a href="/vendor/invoices/"
+                       class="vendor-navlink {% if active_nav == 'invoices' %}active-nav-item{% endif %}">
+                        <i class="fa-solid fa-file-invoice nav-icon" style="color:#a78bfa;"></i>Invoices
+                    </a>
+
+                    <a href="/vendor/contracts/"
+                       class="vendor-navlink {% if active_nav == 'contracts' %}active-nav-item{% endif %}">
+                        <i class="fa-solid fa-file-contract nav-icon" style="color:#f97316;"></i>Contracts
+                    </a>
+
+                    <a href="/vendor/performance/"
+                       class="vendor-navlink {% if active_nav == 'performance' %}active-nav-item{% endif %}">
+                        <i class="fa-solid fa-chart-line nav-icon text-success"></i>Supplier Performance
+                    </a>
+
+                    <a href="/vendor/documents/"
+                       class="vendor-navlink {% if active_nav == 'documents' %}active-nav-item{% endif %}">
+                        <i class="fa-solid fa-folder-closed nav-icon text-info"></i>Documents
+                    </a>
+
+                    <a href="/vendor/notifications/"
+                       class="vendor-navlink d-flex justify-content-between {% if active_nav == 'notifications' %}active-nav-item{% endif %}">
                         <span class="d-flex align-items-center">
-                            <i class="fa-solid fa-id-card me-3 text-info w-20px text-center"></i>
-                            <span>Company Profile</span>
-                        </span>
-                        <i class="fa-solid fa-chevron-down small opacity-50"></i>
-                    </a>
-                    <div class="collapse {% if active_nav == 'profile' %}show{% endif %}" id="menu-profile">
-                        <ul class="nav flex-column ps-4 pt-1 gap-1 border-start border-secondary ms-3">
-                            <li><a href="/vendor/profile/#company-info" class="nav-link text-light opacity-75 py-1 small hover-text-cyan">&bull; Company Information</a></li>
-                            <li><a href="/vendor/profile/#tax-info" class="nav-link text-light opacity-75 py-1 small hover-text-cyan">&bull; Tax Information</a></li>
-                            <li><a href="/vendor/profile/#bank-info" class="nav-link text-light opacity-75 py-1 small hover-text-cyan">&bull; Bank Information</a></li>
-                            <li><a href="/vendor/profile/#kyc-docs" class="nav-link text-light opacity-75 py-1 small hover-text-cyan">&bull; KYC Documents</a></li>
-                            <li><a href="/vendor/profile/#compliance" class="nav-link text-light opacity-75 py-1 small hover-text-cyan">&bull; Compliance & Status</a></li>
-                        </ul>
-                    </div>
-                </li>
-
-                <!-- 3. Sourcing -->
-                <li class="nav-item mt-1">
-                    <a href="#menu-sourcing" class="nav-link rounded px-3 py-2 d-flex align-items-center justify-content-between {% if active_nav == 'sourcing' %}bg-secondary bg-opacity-25 text-white fw-semibold{% else %}text-light opacity-75{% endif %}" data-bs-toggle="collapse" role="button">
-                        <span class="d-flex align-items-center">
-                            <i class="fa-solid fa-gavel me-3 text-warning w-20px text-center"></i>
-                            <span>Sourcing Events</span>
-                        </span>
-                        <i class="fa-solid fa-chevron-down small opacity-50"></i>
-                    </a>
-                    <div class="collapse {% if active_nav == 'sourcing' %}show{% endif %}" id="menu-sourcing">
-                        <ul class="nav flex-column ps-4 pt-1 gap-1 border-start border-secondary ms-3">
-                            <li><a href="/vendor/sourcing/?tab=invitations" class="nav-link text-light opacity-75 py-1 small hover-text-cyan">&bull; RFQ/RFP Invitations</a></li>
-                            <li><a href="/vendor/sourcing/?tab=active" class="nav-link text-light opacity-75 py-1 small hover-text-cyan">&bull; Active Events</a></li>
-                            <li><a href="/vendor/sourcing/?tab=closing" class="nav-link text-light opacity-75 py-1 small hover-text-cyan">&bull; Closing Events</a></li>
-                            <li><a href="/vendor/sourcing/?tab=closed" class="nav-link text-light opacity-75 py-1 small hover-text-cyan">&bull; Closed Events</a></li>
-                        </ul>
-                    </div>
-                </li>
-
-                <!-- 4. My Bids -->
-                <li class="nav-item mt-1">
-                    <a href="#menu-bids" class="nav-link rounded px-3 py-2 d-flex align-items-center justify-content-between {% if active_nav == 'bids' %}bg-secondary bg-opacity-25 text-white fw-semibold{% else %}text-light opacity-75{% endif %}" data-bs-toggle="collapse" role="button">
-                        <span class="d-flex align-items-center">
-                            <i class="fa-solid fa-file-invoice-dollar me-3 text-success w-20px text-center"></i>
-                            <span>My Bids</span>
-                        </span>
-                        <i class="fa-solid fa-chevron-down small opacity-50"></i>
-                    </a>
-                    <div class="collapse {% if active_nav == 'bids' %}show{% endif %}" id="menu-bids">
-                        <ul class="nav flex-column ps-4 pt-1 gap-1 border-start border-secondary ms-3">
-                            <li><a href="/vendor/bids/?tab=draft" class="nav-link text-light opacity-75 py-1 small hover-text-cyan">&bull; Draft Bids</a></li>
-                            <li><a href="/vendor/bids/?tab=submitted" class="nav-link text-light opacity-75 py-1 small hover-text-cyan">&bull; Submitted Bids</a></li>
-                            <li><a href="/vendor/bids/?tab=amended" class="nav-link text-light opacity-75 py-1 small hover-text-cyan">&bull; Amendments</a></li>
-                            <li><a href="/vendor/bids/?tab=history" class="nav-link text-light opacity-75 py-1 small hover-text-cyan">&bull; Bid History</a></li>
-                        </ul>
-                    </div>
-                </li>
-
-                <!-- 5. Clarifications -->
-                <li class="nav-item mt-1">
-                    <a href="#menu-clarifications" class="nav-link rounded px-3 py-2 d-flex align-items-center justify-content-between {% if active_nav == 'clarifications' %}bg-secondary bg-opacity-25 text-white fw-semibold{% else %}text-light opacity-75{% endif %}" data-bs-toggle="collapse" role="button">
-                        <span class="d-flex align-items-center">
-                            <i class="fa-solid fa-circle-question me-3 text-info w-20px text-center"></i>
-                            <span>Clarifications</span>
-                        </span>
-                        <i class="fa-solid fa-chevron-down small opacity-50"></i>
-                    </a>
-                    <div class="collapse {% if active_nav == 'clarifications' %}show{% endif %}" id="menu-clarifications">
-                        <ul class="nav flex-column ps-4 pt-1 gap-1 border-start border-secondary ms-3">
-                            <li><a href="/vendor/clarifications/?tab=questions" class="nav-link text-light opacity-75 py-1 small hover-text-cyan">&bull; My Questions</a></li>
-                            <li><a href="/vendor/clarifications/?tab=responses" class="nav-link text-light opacity-75 py-1 small hover-text-cyan">&bull; Responses</a></li>
-                        </ul>
-                    </div>
-                </li>
-
-                <!-- 6. Purchase Orders -->
-                <li class="nav-item mt-1">
-                    <a href="#menu-pos" class="nav-link rounded px-3 py-2 d-flex align-items-center justify-content-between {% if active_nav == 'orders' %}bg-secondary bg-opacity-25 text-white fw-semibold{% else %}text-light opacity-75{% endif %}" data-bs-toggle="collapse" role="button">
-                        <span class="d-flex align-items-center">
-                            <i class="fa-solid fa-cart-shopping me-3 text-cyan w-20px text-center"></i>
-                            <span>Purchase Orders</span>
-                        </span>
-                        <i class="fa-solid fa-chevron-down small opacity-50"></i>
-                    </a>
-                    <div class="collapse {% if active_nav == 'orders' %}show{% endif %}" id="menu-pos">
-                        <ul class="nav flex-column ps-4 pt-1 gap-1 border-start border-secondary ms-3">
-                            <li><a href="/vendor/purchase-orders/?tab=new" class="nav-link text-light opacity-75 py-1 small hover-text-cyan">&bull; New POs</a></li>
-                            <li><a href="/vendor/purchase-orders/?tab=pending_ack" class="nav-link text-light opacity-75 py-1 small hover-text-cyan">&bull; Pending Acknowledgement</a></li>
-                            <li><a href="/vendor/purchase-orders/?tab=active" class="nav-link text-light opacity-75 py-1 small hover-text-cyan">&bull; Active POs</a></li>
-                            <li><a href="/vendor/purchase-orders/?tab=amended" class="nav-link text-light opacity-75 py-1 small hover-text-cyan">&bull; Amended POs</a></li>
-                            <li><a href="/vendor/purchase-orders/?tab=completed" class="nav-link text-light opacity-75 py-1 small hover-text-cyan">&bull; Completed POs</a></li>
-                        </ul>
-                    </div>
-                </li>
-
-                <!-- 7. Supplier Performance -->
-                <li class="nav-item mt-1">
-                    <a href="/vendor/performance/" class="nav-link rounded px-3 py-2 d-flex align-items-center {% if active_nav == 'performance' %}bg-primary text-white fw-bold shadow-sm{% else %}text-light opacity-75 hover-opacity-100{% endif %}">
-                        <i class="fa-solid fa-chart-line me-3 text-success w-20px text-center"></i>
-                        <span>Supplier Performance</span>
-                    </a>
-                </li>
-
-                <!-- 8. Documents -->
-                <li class="nav-item mt-1">
-                    <a href="/vendor/documents/" class="nav-link rounded px-3 py-2 d-flex align-items-center {% if active_nav == 'documents' %}bg-primary text-white fw-bold shadow-sm{% else %}text-light opacity-75 hover-opacity-100{% endif %}">
-                        <i class="fa-solid fa-folder-closed me-3 text-info w-20px text-center"></i>
-                        <span>Documents Vault</span>
-                    </a>
-                </li>
-
-                <!-- 9. Notifications -->
-                <li class="nav-item mt-1">
-                    <a href="/vendor/notifications/" class="nav-link rounded px-3 py-2 d-flex align-items-center justify-content-between {% if active_nav == 'notifications' %}bg-primary text-white fw-bold shadow-sm{% else %}text-light opacity-75 hover-opacity-100{% endif %}">
-                        <span class="d-flex align-items-center">
-                            <i class="fa-solid fa-bell me-3 text-warning w-20px text-center"></i>
-                            <span>Notifications</span>
+                            <i class="fa-solid fa-bell nav-icon text-warning"></i>Notifications
                         </span>
                         {% if metrics.unread_notifications and metrics.unread_notifications > 0 %}
-                        <span class="badge bg-danger rounded-pill">{{ metrics.unread_notifications }}</span>
+                        <span class="badge bg-danger rounded-pill" style="font-size:0.65rem;">{{ metrics.unread_notifications }}</span>
                         {% endif %}
                     </a>
-                </li>
 
-                <!-- 10. Reports / History -->
-                <li class="nav-item mt-1">
-                    <a href="/vendor/reports/" class="nav-link rounded px-3 py-2 d-flex align-items-center {% if active_nav == 'reports' %}bg-primary text-white fw-bold shadow-sm{% else %}text-light opacity-75 hover-opacity-100{% endif %}">
-                        <i class="fa-solid fa-clock-rotate-left me-3 text-secondary w-20px text-center"></i>
-                        <span>Reports / History</span>
+                    <a href="/vendor/reports/"
+                       class="vendor-navlink {% if active_nav == 'reports' %}active-nav-item{% endif %}">
+                        <i class="fa-solid fa-clock-rotate-left nav-icon text-secondary"></i>Reports
                     </a>
-                </li>
 
-                <!-- 11. Account & Security -->
-                <li class="nav-item mt-1">
-                    <a href="/vendor/account/" class="nav-link rounded px-3 py-2 d-flex align-items-center {% if active_nav == 'account' %}bg-primary text-white fw-bold shadow-sm{% else %}text-light opacity-75 hover-opacity-100{% endif %}">
-                        <i class="fa-solid fa-shield-halved me-3 text-cyan w-20px text-center"></i>
-                        <span>Account & Security</span>
+                    <a href="/vendor/account/"
+                       class="vendor-navlink {% if active_nav == 'account' %}active-nav-item{% endif %}">
+                        <i class="fa-solid fa-shield-halved nav-icon text-cyan"></i>Account &amp; Security
                     </a>
-                </li>
-            </ul>
 
-            <div class="mt-4 pt-3 border-top border-secondary border-opacity-25 px-2">
-                <div class="d-flex align-items-center text-muted small" style="font-size: 0.7rem;">
-                    <i class="fa-solid fa-lock text-success me-2"></i>
-                    <span>RBAC Backend Enforced &bull; Sealed Bids</span>
+                    <a href="/vendor/profile/"
+                       class="vendor-navlink {% if active_nav == 'settings' %}active-nav-item{% endif %}">
+                        <i class="fa-solid fa-gear nav-icon text-secondary"></i>Profile Settings
+                    </a>
+
+                </nav>
+
+                <div class="mt-4 pt-3 border-top border-secondary border-opacity-25 px-1">
+                    <div class="d-flex align-items-center text-muted small" style="font-size: 0.68rem;">
+                        <i class="fa-solid fa-lock text-success me-2"></i>
+                        <span>RBAC Backend Enforced &bull; Sealed Bids</span>
+                    </div>
                 </div>
-            </div>
+
             </div>
         </div>
     </aside>

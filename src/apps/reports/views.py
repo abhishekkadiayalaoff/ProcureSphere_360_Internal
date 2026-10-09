@@ -41,9 +41,35 @@ def dashboard_view(request):
             "name": "Supplier Scorecard Export",
             "desc": "Comprehensive weighted scorecards for vendor review",
         },
+        {
+            "id": "audit_log",
+            "name": "Audit Trail Register",
+            "desc": "Chronological system change trail and security events",
+        },
     ]
 
-    return render(request, "pages/reports/dashboard.html", {"jobs": jobs, "reports": reports})
+    user = request.user
+    role_code = getattr(user, "role_code", None) or (
+        user.role.code if getattr(user, "role", None) else ""
+    )
+    role_code = str(role_code).upper()
+
+    base_layout = "layouts/finance_base.html"
+    if role_code in ["AUDITOR", "COMPLIANCE_AUDITOR", "AUDIT"]:
+        base_layout = "audit/base_auditor.html"
+    elif role_code in ["PROCUREMENT_MANAGER", "PROC_MGR", "MANAGER", "LEGAL_MGR"]:
+        base_layout = "manager/base_manager.html"
+
+    return render(
+        request,
+        "pages/reports/dashboard.html",
+        {
+            "jobs": jobs,
+            "reports": reports,
+            "base_layout": base_layout,
+            "role_code": role_code,
+        },
+    )
 
 
 # Aliases so both URL names work

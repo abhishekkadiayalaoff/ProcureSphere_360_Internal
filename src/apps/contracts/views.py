@@ -287,6 +287,12 @@ def amend_view(request, contract_id):
 @require_POST
 def milestone_create_view(request, contract_id):
     contract = get_object_or_404(Contract, id=contract_id)
+    if _is_auditor(request.user):
+        messages.error(
+            request,
+            "Permission Denied: Compliance Auditors hold strictly read-only permissions and cannot create milestones.",
+        )
+        return redirect("contract_detail", contract_id=contract.id)
     form = ContractMilestoneForm(request.POST)
     if form.is_valid():
         add_contract_milestone_service(
@@ -294,6 +300,7 @@ def milestone_create_view(request, contract_id):
             title=form.cleaned_data["title"],
             due_date=form.cleaned_data["due_date"],
             amount=form.cleaned_data["amount"],
+            user=request.user,
         )
         messages.success(request, f"Milestone '{form.cleaned_data['title']}' added successfully.")
     else:
@@ -305,6 +312,12 @@ def milestone_create_view(request, contract_id):
 @require_POST
 def milestone_toggle_view(request, contract_id, milestone_id):
     milestone = get_object_or_404(ContractMilestone, id=milestone_id, contract_id=contract_id)
+    if _is_auditor(request.user):
+        messages.error(
+            request,
+            "Permission Denied: Compliance Auditors hold strictly read-only permissions.",
+        )
+        return redirect("contract_detail", contract_id=contract_id)
     complete_contract_milestone_service(milestone=milestone, user=request.user)
     messages.success(request, f"Milestone '{milestone.title}' marked as COMPLETED.")
     return redirect("contract_detail", contract_id=contract_id)
@@ -314,6 +327,12 @@ def milestone_toggle_view(request, contract_id, milestone_id):
 @require_POST
 def obligation_create_view(request, contract_id):
     contract = get_object_or_404(Contract, id=contract_id)
+    if _is_auditor(request.user):
+        messages.error(
+            request,
+            "Permission Denied: Compliance Auditors hold strictly read-only permissions and cannot create obligations.",
+        )
+        return redirect("contract_detail", contract_id=contract.id)
     form = ContractObligationForm(request.POST)
     if form.is_valid():
         add_contract_obligation_service(
@@ -321,6 +340,7 @@ def obligation_create_view(request, contract_id):
             title=form.cleaned_data["title"],
             responsible_party=form.cleaned_data["responsible_party"],
             due_date=form.cleaned_data["due_date"],
+            user=request.user,
         )
         messages.success(request, f"Obligation '{form.cleaned_data['title']}' added successfully.")
     else:
@@ -332,6 +352,12 @@ def obligation_create_view(request, contract_id):
 @require_POST
 def obligation_toggle_view(request, contract_id, obligation_id):
     obligation = get_object_or_404(ContractObligation, id=obligation_id, contract_id=contract_id)
+    if _is_auditor(request.user):
+        messages.error(
+            request,
+            "Permission Denied: Compliance Auditors hold strictly read-only permissions and cannot fulfill obligations.",
+        )
+        return redirect("contract_detail", contract_id=contract_id)
     fulfill_contract_obligation_service(obligation=obligation, user=request.user)
     messages.success(request, f"Obligation '{obligation.title}' marked as FULFILLED.")
     return redirect("contract_detail", contract_id=contract_id)
@@ -341,6 +367,12 @@ def obligation_toggle_view(request, contract_id, obligation_id):
 @require_POST
 def document_upload_view(request, contract_id):
     contract = get_object_or_404(Contract, id=contract_id)
+    if _is_auditor(request.user):
+        messages.error(
+            request,
+            "Permission Denied: Compliance Auditors hold strictly read-only permissions and cannot upload contract documents.",
+        )
+        return redirect("contract_detail", contract_id=contract.id)
     form = ContractDocumentForm(request.POST, request.FILES)
     if form.is_valid():
         upload_contract_document_service(
@@ -359,6 +391,12 @@ def document_upload_view(request, contract_id):
 @require_POST
 def renew_view(request, contract_id):
     contract = get_object_or_404(Contract, id=contract_id)
+    if _is_auditor(request.user):
+        messages.error(
+            request,
+            "Permission Denied: Compliance Auditors hold strictly read-only permissions and cannot renew contracts.",
+        )
+        return redirect("contract_detail", contract_id=contract.id)
     form = ContractRenewalForm(request.POST)
     if form.is_valid():
         try:
@@ -383,6 +421,12 @@ def renew_view(request, contract_id):
 @require_POST
 def terminate_view(request, contract_id):
     contract = get_object_or_404(Contract, id=contract_id)
+    if _is_auditor(request.user):
+        messages.error(
+            request,
+            "Permission Denied: Compliance Auditors hold strictly read-only permissions and cannot terminate contracts.",
+        )
+        return redirect("contract_detail", contract_id=contract.id)
     reason = request.POST.get("reason", "").strip()
     if not reason:
         messages.error(request, "Termination reason is required.")
@@ -426,4 +470,3 @@ def dashboard_view(request):
         "active_alerts_list": active_alerts[:10],
     }
     return render(request, "pages/dashboards/legal_dashboard.html", context)
-

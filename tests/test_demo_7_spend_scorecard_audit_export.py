@@ -110,6 +110,19 @@ def test_demo_7_spend_scorecard_and_audited_report_export():
     assert scorecard.quality_score == Decimal("80.00")  # 4 accepted out of 5 received
 
     # 2. Spend analytics report & Supplier performance report
+    from apps.invoices.models import SupplierInvoice
+
+    SupplierInvoice.objects.create(
+        vendor=vendor,
+        po=po,
+        invoice_number="INV-OMNI-001",
+        invoice_date=timezone.now().date(),
+        due_date=timezone.now().date() + timezone.timedelta(days=30),
+        subtotal=Decimal("10000.00"),
+        total_amount=Decimal("10000.00"),
+        status=SupplierInvoice.STATUS_RECEIVED,
+    )
+
     spend_report = get_spend_analytics_report()
     assert len(spend_report) >= 1
 

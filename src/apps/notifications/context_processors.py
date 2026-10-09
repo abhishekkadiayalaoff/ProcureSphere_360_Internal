@@ -18,35 +18,33 @@ def notifications_processor(request):
     role_code = getattr(user, "role_code", None)
 
     # 1. Calculate unread notifications count for recipient
-    unread_count = Notification.objects.filter(
-        recipient=user, is_read=False
-    ).count()
+    unread_count = Notification.objects.filter(recipient=user, is_read=False).count()
 
-    # 2. Calculate pending approvals count for DEPT_APPROVER or PROC_MGR
+    # 2. Calculate pending approvals count for DEPT_APPROVER, PROC_MGR, or SUPER_ADMIN
     pending_count = 0
-    if role_code in [Role.DEPT_APPROVER, Role.PROC_MGR]:
+    statuses = [
+        PurchaseRequisition.STATUS_SUBMITTED,
+        PurchaseRequisition.STATUS_MANAGER_REVIEW,
+        PurchaseRequisition.STATUS_BUDGET_REVIEW,
+    ]
+    if role_code == Role.DEPT_APPROVER:
         user_dept = getattr(user, "department", None)
-        statuses = [
-            PurchaseRequisition.STATUS_SUBMITTED,
-            PurchaseRequisition.STATUS_MANAGER_REVIEW,
-            PurchaseRequisition.STATUS_BUDGET_REVIEW,
-        ]
         if user_dept:
             pending_count = PurchaseRequisition.objects.filter(
                 department=user_dept, status__in=statuses
             ).count()
             if pending_count == 0:
-                pending_count = PurchaseRequisition.objects.filter(
-                    status__in=statuses
-                ).count()
+                pending_count = PurchaseRequisition.objects.filter(status__in=statuses).count()
         else:
-            pending_count = PurchaseRequisition.objects.filter(
-                status__in=statuses
-            ).count()
+            pending_count = PurchaseRequisition.objects.filter(status__in=statuses).count()
+    elif role_code in [Role.PROC_MGR, Role.SUPER_ADMIN]:
+        pending_count = PurchaseRequisition.objects.filter(status__in=statuses).count()
+    elif role_code == Role.LEGAL_MGR:
+        from apps.contracts.models import Contract
 
-    recent_notifications = Notification.objects.filter(
-        recipient=user
-    ).order_by("-created_at")[:5]
+        pending_count = Contract.objects.filter(status=Contract.STATUS_LEGAL_REVIEW).count()
+
+    recent_notifications = Notification.objects.filter(recipient=user).order_by("-created_at")[:5]
 
     return {
         "unread_notifications_count": unread_count,

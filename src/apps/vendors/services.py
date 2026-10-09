@@ -210,6 +210,11 @@ def set_vendor_status_governance_service(
 
     Vendor.objects.select_for_update().filter(pk=vendor.pk).first()
     vendor.refresh_from_db()
+    if vendor.status == new_status:
+        if (notes or "").strip():
+            vendor.status_notes = notes.strip()
+            vendor.save(update_fields=["status_notes", "updated_at"])
+        return vendor
     capability = VENDOR_GOVERNANCE_TRANSITIONS.get((vendor.status, new_status))
     if capability is None:
         raise ValidationError(f"Invalid vendor status transition {vendor.status} -> {new_status}.")

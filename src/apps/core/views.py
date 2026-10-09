@@ -83,23 +83,9 @@ def home_view(request):  # noqa: C901
         return render(request, "pages/dashboards/requester_dashboard.html", context)
 
     elif role_code == Role.PROC_MGR:
-        pending_prs = PurchaseRequisition.objects.filter(
-            status__in=["SUBMITTED", "MANAGER_REVIEW", "BUDGET_REVIEW"]
-        ).order_by("-updated_at")
-        open_sourcing = SourcingEvent.objects.filter(status__in=["PUBLISHED", "BID_WINDOW"]).count()
-        kyc_vendors = Vendor.objects.filter(status="KYC_REVIEW")
-        active_pos = PurchaseOrder.objects.filter(status="ISSUED").count()
-        context = {
-            "metrics": {
-                "pending_approvals": pending_prs.count(),
-                "open_sourcing": open_sourcing,
-                "kyc_reviews": kyc_vendors.count(),
-                "active_pos": active_pos,
-            },
-            "pending_prs": pending_prs[:5],
-            "kyc_vendors": kyc_vendors[:5],
-        }
-        return render(request, "pages/dashboards/manager_dashboard.html", context)
+        from apps.core.manager_views import manager_dashboard_view
+
+        return manager_dashboard_view(request)
 
     # 4. STORES / RECEIVER DASHBOARD
     elif role_code == Role.STORES_RECEIVER:
@@ -193,9 +179,12 @@ def home_view(request):  # noqa: C901
         from apps.budgets.models import SpendLedger
         from apps.invoices.models import MatchException, SupplierInvoice
 
-        open_exceptions = MatchException.objects.filter(status=MatchException.STATUS_OPEN).order_by(
-            "-created_at"
-        )
+        open_match_exceptions = MatchException.objects.filter(
+            status=MatchException.STATUS_OPEN
+        ).order_by("-created_at")
+        open_budget_exceptions = PurchaseRequisition.objects.filter(
+            status=PurchaseRequisition.STATUS_BUDGET_REVIEW
+        ).order_by("-updated_at")
         ready_for_payment = SupplierInvoice.objects.filter(
             status=SupplierInvoice.STATUS_READY_FOR_PAYMENT
         ).count()
@@ -213,12 +202,14 @@ def home_view(request):  # noqa: C901
         )
         context = {
             "metrics": {
-                "pending_exceptions": open_exceptions.count(),
+                "pending_match_exceptions": open_match_exceptions.count(),
+                "pending_budget_exceptions": open_budget_exceptions.count(),
                 "ready_for_payment": ready_for_payment,
                 "committed_spend": float(committed_spend),
                 "actual_spend": float(actual_spend),
             },
-            "open_exceptions": open_exceptions[:10],
+            "open_match_exceptions": open_match_exceptions[:10],
+            "open_budget_exceptions": open_budget_exceptions[:10],
         }
         return render(request, "pages/dashboards/finance_dashboard.html", context)
 
@@ -303,12 +294,8 @@ def home_view(request):  # noqa: C901
 
         metrics = get_legal_dashboard_metrics()
         return render(request, "pages/dashboards/legal_dashboard.html", {"metrics": metrics})
-    elif role_code == Role.FINANCE_AP:
-        return render(request, "pages/dashboards/finance_dashboard.html")
-    elif role_code == Role.PROC_EXEC:
-        return render(request, "pages/dashboards/procurement_dashboard.html")
-    elif role_code == Role.STORES_RECEIVER:
-        return render(request, "pages/dashboards/stores_dashboard.html")
+
+    # 9. DEPARTMENT APPROVER DASHBOARD
     elif role_code == Role.DEPT_APPROVER:
         user_department = getattr(user, "department", None)
         if user_department:
@@ -358,12 +345,71 @@ def home_view(request):  # noqa: C901
                 "pending_prs": [],
             }
         return render(request, "pages/dashboards/approver_dashboard.html", context)
+        from decimal import Decimal
+
+        from django.utils import timezone as fiscal_timezone
+
+        from apps.budgets.models import Budget
+        from apps.organization.models import FiscalPeriod as ApproverFiscalPeriod
+
+        user_dept = getattr(user, "department", None)
+        statuses = [
+            PurchaseRequisition.STATUS_SUBMITTED,
+            PurchaseRequisition.STATUS_MANAGER_REVIEW,
+            PurchaseRequisition.STATUS_BUDGET_REVIEW,
+        ]
+        dept_prs = PurchaseRequisition.objects.none()
+        budget_qs = Budget.objects.none()
+
+        if user_dept:
+            dept_prs = PurchaseRequisition.objects.filter(department=user_dept)
+            now = fiscal_timezone.now()
+            current_period = ApproverFiscalPeriod.objects.filter(
+                start_date__lte=now, end_date__gte=now, is_closed=False
+            ).first()
+            if current_period:
+                budget_qs = Budget.objects.filter(
+                    cost_center__department=user_dept,
+                    fiscal_period=current_period,
+                )
+
+        pending_prs = dept_prs.filter(status__in=statuses).order_by("-updated_at")
+        available_budget = sum((budget.available_amount for budget in budget_qs), Decimal("0.00"))
+        context = {
+            "user_department": user_dept,
+            "pending_prs": pending_prs[:10],
+            "metrics": {
+                "pending_count": pending_prs.count(),
+                "total_prs_count": dept_prs.count(),
+                "approved_count": dept_prs.filter(
+                    status=PurchaseRequisition.STATUS_APPROVED
+                ).count(),
+                "available_budget": float(available_budget),
+            },
+        }
+        return render(request, "pages/dashboards/approver_dashboard.html", context)
+
+    # 10. SUPER ADMIN DASHBOARD
     elif role_code == Role.SUPER_ADMIN:
         return render(request, "pages/dashboards/superadmin_dashboard.html")
-    elif role_code == Role.VENDOR_USER:
-        return render(request, "pages/dashboards/vendor_dashboard.html")
+
+    # 11. COMPLIANCE AUDITOR DASHBOARD
     elif role_code == Role.AUDITOR:
-        return render(request, "pages/dashboards/auditor_dashboard.html")
+        from apps.audit.views import auditor_dashboard_view
+
+        return auditor_dashboard_view(request)
 
     # Fallback for all other unknown roles
     return render(request, "pages/dashboards/requester_dashboard.html")
+
+
+def custom_404_view(request, exception=None):
+    return render(request, "404.html", status=404)
+
+
+def custom_500_view(request):
+    return render(request, "500.html", status=500)
+
+
+def custom_403_view(request, exception=None):
+    return render(request, "403.html", status=403)
