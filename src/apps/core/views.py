@@ -103,24 +103,81 @@ def home_view(request):  # noqa: C901
 
     # 4. STORES / RECEIVER DASHBOARD
     elif role_code == Role.STORES_RECEIVER:
-        from apps.receipts.models import GoodsReceipt, InspectionRecord, RejectionRecord
+        from decimal import Decimal
+
+        from apps.receipts.models import GoodsReceipt, ReceiptLine, RejectionRecord
 
         total_grns = GoodsReceipt.objects.count()
-        pending_deliveries = PurchaseOrder.objects.filter(
-            status__in=["ISSUED", "ACKNOWLEDGED", "PARTIAL_RECEIPT"]
-        ).count()
-        total_inspections = InspectionRecord.objects.count()
+        pending_deliveries_qs = (
+            PurchaseOrder.objects.filter(
+                status__in=[
+                    PurchaseOrder.STATUS_ISSUED,
+                    PurchaseOrder.STATUS_ACKNOWLEDGED,
+                    PurchaseOrder.STATUS_PARTIAL_RECEIPT,
+                ]
+            )
+            .select_related("vendor", "cost_center")
+            .prefetch_related("lines")
+            .order_by("-updated_at")
+        )
+        pending_deliveries_count = pending_deliveries_qs.count()
+
+        pending_inspections_qs = (
+            GoodsReceipt.objects.filter(lines__inspection__isnull=True)
+            .select_related("po__vendor", "received_by")
+            .prefetch_related("lines__po_line", "lines__inspection")
+            .distinct()
+            .order_by("-received_date")
+        )
+        pending_inspections_count = pending_inspections_qs.count()
+
+        pending_handoffs_qs = (
+            GoodsReceipt.objects.filter(
+                lines__quantity_accepted__gt=Decimal("0.00"),
+                lines__stock_handoff__isnull=True,
+            )
+            .select_related("po__vendor", "received_by")
+            .prefetch_related(
+                "lines__po_line", "lines__stock_handoff", "lines__inspection", "lines__rejections"
+            )
+            .distinct()
+            .order_by("-received_date")
+        )
+        pending_handoffs_count = pending_handoffs_qs.count()
+
+        rejections_qs = (
+            ReceiptLine.objects.filter(
+                Q(quantity_rejected__gt=Decimal("0.00")) | Q(rejections__isnull=False)
+            )
+            .select_related("receipt__po__vendor", "po_line", "inspection__inspected_by")
+            .prefetch_related("rejections")
+            .distinct()
+            .order_by("-created_at")
+        )
         total_rejections = RejectionRecord.objects.count()
-        recent_grns = GoodsReceipt.objects.select_related("po", "received_by").order_by(
-            "-received_date"
-        )[:10]
+        pending_returns_count = RejectionRecord.objects.filter(returned_to_vendor=False).count()
+
+        recent_grns = (
+            GoodsReceipt.objects.select_related("po__vendor", "received_by")
+            .prefetch_related(
+                "lines__po_line", "lines__inspection", "lines__rejections", "lines__stock_handoff"
+            )
+            .order_by("-received_date")[:10]
+        )
+
         context = {
             "metrics": {
                 "total_grns": total_grns,
-                "pending_deliveries": pending_deliveries,
-                "total_inspections": total_inspections,
+                "pending_deliveries": pending_deliveries_count,
+                "pending_inspections": pending_inspections_count,
+                "pending_stock_handoffs": pending_handoffs_count,
                 "total_rejections": total_rejections,
+                "pending_returns": pending_returns_count,
             },
+            "pending_deliveries": pending_deliveries_qs[:5],
+            "pending_inspections": pending_inspections_qs[:5],
+            "pending_handoffs": pending_handoffs_qs[:5],
+            "pending_rejections": rejections_qs[:5],
             "recent_grns": recent_grns,
         }
         return render(request, "pages/dashboards/stores_dashboard.html", context)
