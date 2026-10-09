@@ -222,3 +222,27 @@ h1, h2, h3, h4, h5, h6, .font-heading {
         display: none !important;
     }
 }
+
+/* Notification feed micro-interactions (HTMX mark-as-read fade-out) */
+.notif-item {
+    transition: opacity 0.4s ease, transform 0.4s ease, background-color 0.3s ease;
+}
+.notif-item.htmx-swapping {
+    opacity: 0;
+    transform: translateX(24px);
+}
+.notif-read-btn {
+    width: 30px;
+    height: 30px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+}
+.notif-read-btn:hover {
+    transform: scale(1.08);
+}
+.notif-feed-scroll {
+    max-height: 380px;
+    overflow-y: auto;
+}

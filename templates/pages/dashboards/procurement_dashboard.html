@@ -79,6 +79,46 @@
     </div>
 </div>
 
+<!-- Live notification & escalation widgets (DB-backed via apps/notifications, HTMX polled) -->
+<div class="row g-3 mb-4">
+    <div class="col-xl-6">
+        <div class="glass-card p-4 shadow-sm h-100">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h3 class="h6 fw-bold mb-0"><i class="fa-solid fa-list-check text-warning me-2"></i>Pending Actions
+                    <span class="badge bg-warning text-dark rounded-pill ms-1" id="pending-actions-count">…</span>
+                </h3>
+                <a href="{% url 'notification_list' %}" class="small link-secondary text-decoration-none">Inbox →</a>
+            </div>
+            <div id="pending-actions-widget"
+                 class="notif-feed-scroll"
+                 hx-get="{% url 'proc_exec_pending_actions' %}"
+                 hx-trigger="load, every 60s, notification-read from:body"
+                 hx-swap="innerHTML"
+                 aria-live="polite">
+                <div class="text-center py-3 text-muted small"><span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Loading pending actions…</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-6">
+        <div class="glass-card p-4 shadow-sm h-100">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h3 class="h6 fw-bold mb-0"><i class="fa-solid fa-bell text-success me-2"></i>Recent Activity / System Notifications
+                    <span class="badge bg-success rounded-pill ms-1" id="notif-unread-badge">…</span>
+                </h3>
+                <a href="{% url 'notification_list' %}" class="small link-secondary text-decoration-none">View all →</a>
+            </div>
+            <div id="proc-exec-notif-feed"
+                 class="notif-feed-scroll"
+                 hx-get="{% url 'proc_exec_notifications_feed' %}"
+                 hx-trigger="load, every 60s, notification-read from:body"
+                 hx-swap="innerHTML"
+                 aria-live="polite">
+                <div class="text-center py-3 text-muted small"><span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Loading notifications…</div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <h2 class="h6 fw-bold text-uppercase text-muted mb-2">RFQ / RFP sourcing</h2>
 <div class="row g-3 mb-4">
     {% with m=sourcing %}
