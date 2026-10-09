@@ -73,9 +73,7 @@ def mark_notification_as_read(*, user, notification_id) -> Notification:
     """
     if user is None or not getattr(user, "is_authenticated", False):
         raise PermissionDenied("Authentication required to update notifications.")
-    notification = Notification.objects.select_for_update().get(
-        pk=notification_id, recipient=user
-    )
+    notification = Notification.objects.select_for_update().get(pk=notification_id, recipient=user)
     if not notification.is_read:
         notification.is_read = True
         notification.save(update_fields=["is_read", "updated_at"])
