@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ProcureSphere 360 - {% block title %}ERP Dashboard{% endblock %}</title>
-    
+
     <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Font Awesome -->
@@ -133,7 +133,7 @@
         {% endif %}
         {% if user.is_authenticated and user.role_code == 'STORES_RECEIVER' %}
         <!-- Stores Receiver Desktop Sidebar (>= 992px) -->
-        <aside class="stores-sidebar bg-dark text-white d-none d-lg-flex flex-column border-end border-secondary border-opacity-25 shadow-sm" style="width: 260px; flex-shrink: 0; min-height: calc(100vh - 56px);">
+        <aside class="stores-sidebar bg-dark text-white d-none d-lg-flex flex-column border-end border-secondary border-opacity-25 shadow-sm" style="width: 260px; flex-shrink: 0; height: calc(100vh - 56px); position: sticky; top: 56px; overflow-y: auto; z-index: 1000;">
             <div class="d-flex flex-column flex-grow-1 px-3 pt-3 text-white">
                 <ul class="nav nav-pills flex-column gap-1 w-100" id="storesSidebarMenu">
                     <li class="nav-item">
@@ -155,13 +155,13 @@
 
                     <li class="nav-item mt-2">
                         <div class="text-uppercase text-secondary text-opacity-75 fw-bold px-2 pt-2 pb-1" style="font-size: 0.68rem; letter-spacing: 0.08em;">Quality & Inventory</div>
-                        <a href="{% url 'receipts_list' %}?status=PENDING" class="nav-link rounded-3 d-flex align-items-center py-2 px-3 mb-1 {% if 'status=PENDING' in request.get_full_path %}active bg-warning text-dark fw-bold shadow-sm{% else %}text-light text-opacity-75 hover-link{% endif %}">
+                        <a href="{% url 'receipts_inspection_queue' %}" class="nav-link rounded-3 d-flex align-items-center py-2 px-3 mb-1 {% if '/receipts/inspections/' in request.path or '/inspect/' in request.path %}active bg-warning text-dark fw-bold shadow-sm{% else %}text-light text-opacity-75 hover-link{% endif %}">
                             <i class="fa-solid fa-microscope me-2 text-warning text-center" style="width: 20px;"></i> Quality Inspection
                         </a>
-                        <a href="{% url 'receipts_list' %}?status=PASSED" class="nav-link rounded-3 d-flex align-items-center py-2 px-3 mb-1 {% if 'status=PASSED' in request.get_full_path %}active bg-success text-white fw-bold shadow-sm{% else %}text-light text-opacity-75 hover-link{% endif %}">
+                        <a href="{% url 'receipts_stock_handoff_queue' %}" class="nav-link rounded-3 d-flex align-items-center py-2 px-3 mb-1 {% if '/receipts/handoffs/' in request.path or '/handoff/' in request.path %}active bg-success text-white fw-bold shadow-sm{% else %}text-light text-opacity-75 hover-link{% endif %}">
                             <i class="fa-solid fa-dolly me-2 text-success text-center" style="width: 20px;"></i> Stock Handoff
                         </a>
-                        <a href="{% url 'receipts_list' %}?status=FAILED" class="nav-link rounded-3 d-flex align-items-center py-2 px-3 {% if 'status=FAILED' in request.get_full_path %}active bg-danger text-white fw-bold shadow-sm{% else %}text-light text-opacity-75 hover-link{% endif %}">
+                        <a href="{% url 'receipts_rejections_queue' %}" class="nav-link rounded-3 d-flex align-items-center py-2 px-3 {% if '/receipts/rejections/' in request.path or '/receipts/returns/' in request.path %}active bg-danger text-white fw-bold shadow-sm{% else %}text-light text-opacity-75 hover-link{% endif %}">
                             <i class="fa-solid fa-ban me-2 text-danger text-center" style="width: 20px;"></i> Rejections & Returns
                         </a>
                     </li>
@@ -199,20 +199,20 @@
                         <a href="{% url 'orders_list' %}" class="nav-link rounded-3 d-flex align-items-center py-2 px-3 mb-1 {% if '/purchase-orders/' in request.path %}active bg-primary text-white fw-bold{% else %}text-light text-opacity-75{% endif %}">
                             <i class="fa-solid fa-truck-ramp-box me-2 text-center" style="width: 20px;"></i> Pending Deliveries
                         </a>
-                        <a href="{% url 'receipts_list' %}" class="nav-link rounded-3 d-flex align-items-center py-2 px-3 {% if '/receipts/' in request.path and not 'status=' in request.get_full_path %}active bg-primary text-white fw-bold{% else %}text-light text-opacity-75{% endif %}">
+                        <a href="{% url 'receipts_list' %}" class="nav-link rounded-3 d-flex align-items-center py-2 px-3 {% if request.path == '/receipts/' %}active bg-primary text-white fw-bold{% else %}text-light text-opacity-75{% endif %}">
                             <i class="fa-solid fa-boxes-stacked me-2 text-center" style="width: 20px;"></i> Goods Receipts (GRN)
                         </a>
                     </li>
 
                     <li class="nav-item mt-2">
                         <div class="text-uppercase text-secondary text-opacity-75 fw-bold px-2 pt-1 pb-1" style="font-size: 0.68rem; letter-spacing: 0.08em;">Quality & Inventory</div>
-                        <a href="{% url 'receipts_list' %}?status=PENDING" class="nav-link rounded-3 d-flex align-items-center py-2 px-3 mb-1 {% if 'status=PENDING' in request.get_full_path %}active bg-warning text-dark fw-bold{% else %}text-light text-opacity-75{% endif %}">
+                        <a href="{% url 'receipts_inspection_queue' %}" class="nav-link rounded-3 d-flex align-items-center py-2 px-3 mb-1 {% if '/receipts/inspections/' in request.path or '/inspect/' in request.path %}active bg-warning text-dark fw-bold{% else %}text-light text-opacity-75{% endif %}">
                             <i class="fa-solid fa-microscope me-2 text-warning text-center" style="width: 20px;"></i> Quality Inspection
                         </a>
-                        <a href="{% url 'receipts_list' %}?status=PASSED" class="nav-link rounded-3 d-flex align-items-center py-2 px-3 mb-1 {% if 'status=PASSED' in request.get_full_path %}active bg-success text-white fw-bold{% else %}text-light text-opacity-75{% endif %}">
+                        <a href="{% url 'receipts_stock_handoff_queue' %}" class="nav-link rounded-3 d-flex align-items-center py-2 px-3 mb-1 {% if '/receipts/handoffs/' in request.path or '/handoff/' in request.path %}active bg-success text-white fw-bold{% else %}text-light text-opacity-75{% endif %}">
                             <i class="fa-solid fa-dolly me-2 text-success text-center" style="width: 20px;"></i> Stock Handoff
                         </a>
-                        <a href="{% url 'receipts_list' %}?status=FAILED" class="nav-link rounded-3 d-flex align-items-center py-2 px-3 {% if 'status=FAILED' in request.get_full_path %}active bg-danger text-white fw-bold{% else %}text-light text-opacity-75{% endif %}">
+                        <a href="{% url 'receipts_rejections_queue' %}" class="nav-link rounded-3 d-flex align-items-center py-2 px-3 {% if '/receipts/rejections/' in request.path or '/receipts/returns/' in request.path %}active bg-danger text-white fw-bold{% else %}text-light text-opacity-75{% endif %}">
                             <i class="fa-solid fa-ban me-2 text-danger text-center" style="width: 20px;"></i> Rejections & Returns
                         </a>
                     </li>
@@ -244,7 +244,7 @@
         </main>
     </div>
     {% endblock layout %}
-    
+
     <!-- HTMX Modal Container -->
     <div id="modal-container" class="modal fade" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered modal-lg">
@@ -253,7 +253,7 @@
             </div>
         </div>
     </div>
-    
+
     <!-- Bootstrap JS Bundle -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <!-- Custom Application JS -->
