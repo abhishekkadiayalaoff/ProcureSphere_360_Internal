@@ -388,7 +388,7 @@ def sync_event_window_status(*, event: SourcingEvent, now=None) -> SourcingEvent
                 actor=None,
                 extra={"trigger": "bid_start_reached"},
             )
-        if event.status == SourcingEvent.STATUS_BID_WINDOW and event.bid_end_date < now:
+        if event.status == SourcingEvent.STATUS_BID_WINDOW and event.bid_end_date <= now:
             _transition_event(
                 event=event,
                 to_status=SourcingEvent.STATUS_TECHNICAL_REVIEW,
@@ -400,7 +400,7 @@ def sync_event_window_status(*, event: SourcingEvent, now=None) -> SourcingEvent
                 notification_type=Notification.TYPE_BID_DEADLINE,
                 title=f"Bid Deadline Passed: {event.event_number}",
                 message=f"Bidding window has closed for {event.event_number} ({event.title}). Sourcing event is now in Technical Review.",
-                target_url=f"/sourcing/{event.id}/",
+                target_url=f"/sourcing-events/{event.id}/",
             )
     return event
 
@@ -410,7 +410,7 @@ def sync_all_event_windows(now=None) -> int:
     now = now or timezone.now()
     due = SourcingEvent.objects.filter(
         status=SourcingEvent.STATUS_PUBLISHED, bid_start_date__lte=now
-    ) | SourcingEvent.objects.filter(status=SourcingEvent.STATUS_BID_WINDOW, bid_end_date__lt=now)
+    ) | SourcingEvent.objects.filter(status=SourcingEvent.STATUS_BID_WINDOW, bid_end_date__lte=now)
     changed = 0
     for event in due:
         before = event.status
@@ -423,23 +423,34 @@ def sync_all_event_windows(now=None) -> int:
 @transaction.atomic
 def close_bid_window_service(*, event: SourcingEvent, user: User) -> SourcingEvent:
     """
-    Bid closure (BID_WINDOW -> TECHNICAL_REVIEW). Only permitted once the server-side deadline
-    has passed; early closure is not supported (docs/assumptions.md ASSUMP-010).
+    Bid closure (BID_WINDOW -> TECHNICAL_REVIEW).
+    Can be manually closed by authorized users (e.g. Procurement Executive/Manager)
+    at any time while the bid window is open, or automatically when the deadline passes.
     """
     _lock_and_refresh(event)
     if event.status != SourcingEvent.STATUS_BID_WINDOW:
         raise ValidationError(f"Bid window is not open (current: {event.status}).")
-    if timezone.now() <= event.bid_end_date:
-        raise ValidationError(
-            f"Bid window cannot be closed before the deadline "
-            f"({event.bid_end_date:%Y-%m-%d %H:%M})."
-        )
-    return _transition_event(
+
+    now = timezone.now()
+    early_close = now < event.bid_end_date
+    if early_close:
+        event.bid_end_date = now
+        event.save(update_fields=["bid_end_date", "updated_at"])
+
+    res = _transition_event(
         event=event,
         to_status=SourcingEvent.STATUS_TECHNICAL_REVIEW,
         actor=user,
-        extra={"trigger": "manual_close_after_deadline"},
+        extra={"trigger": "manual_close_early" if early_close else "manual_close"},
     )
+    notify_role_users(
+        role_codes=[Role.PROC_EXEC, Role.PROC_MGR, Role.SUPER_ADMIN],
+        notification_type=Notification.TYPE_BID_DEADLINE,
+        title=f"Bid Window Closed: {event.event_number}",
+        message=f"Bidding window has been closed for {event.event_number} ({event.title}) by {user.get_full_name() or user.username}. Sourcing event is now in Technical Review.",
+        target_url=f"/sourcing-events/{event.id}/",
+    )
+    return res
 
 
 def _invite_error(event: SourcingEvent, vendor_id, vendor):

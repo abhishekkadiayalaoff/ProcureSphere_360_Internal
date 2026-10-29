@@ -290,7 +290,12 @@
                         <div class="fw-bold fs-6 {% if is_open %}text-danger{% else %}text-muted{% endif %}">
                             {{ event.bid_end_date|date:"F d, Y — H:i" }}
                         </div>
-                        <small class="text-muted">Enforced strictly server-side.</small>
+                        {% if is_open %}
+                        <div id="vendorBidWindowCountdown" class="badge bg-danger-subtle text-danger border border-danger-subtle mt-1 py-1 px-2" data-end="{{ event.bid_end_date|date:'c' }}">
+                            <i class="fa-solid fa-clock me-1"></i>Calculating time left...
+                        </div>
+                        {% endif %}
+                        <small class="text-muted d-block mt-1">Enforced strictly server-side.</small>
                     </div>
                     <div>
                         <label class="text-muted small fw-semibold text-uppercase">Current Server Time</label>
@@ -409,3 +414,48 @@
     </div>
 </div>
 {% endblock vendor_content %}
+
+{% block extra_js %}
+{{ block.super }}
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const countdownEl = document.getElementById("vendorBidWindowCountdown");
+    if (!countdownEl) return;
+
+    const endDateStr = countdownEl.getAttribute("data-end");
+    if (!endDateStr) return;
+
+    const endDate = new Date(endDateStr).getTime();
+    let reloaded = false;
+
+    function updateCountdown() {
+        const now = new Date().getTime();
+        const diff = endDate - now;
+
+        if (diff <= 0) {
+            countdownEl.innerHTML = '<i class="fa-solid fa-lock me-1"></i>Bid Window Ended (Closing...)';
+            if (!reloaded) {
+                reloaded = true;
+                setTimeout(function () {
+                    window.location.reload();
+                }, 1500);
+            }
+            return;
+        }
+
+        const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+        let text = "";
+        if (days > 0) text += days + (days === 1 ? "d " : "d ");
+        text += hours + "h " + minutes + "m " + seconds + "s left";
+        countdownEl.innerHTML = '<i class="fa-solid fa-clock me-1"></i>' + text;
+    }
+
+    updateCountdown();
+    setInterval(updateCountdown, 1000);
+});
+</script>
+{% endblock extra_js %}
