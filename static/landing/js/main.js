@@ -68,6 +68,10 @@
       let timeout;
       const show = () => {
         clearTimeout(timeout);
+        if (item.getAttribute('data-state') === 'closed') return;
+        item.classList.remove('menu-closed');
+        menu.classList.remove('menu-closed');
+        menu.style.display = '';
         menu.classList.add('is-open');
         const chevron = link.querySelector('.nav-chevron');
         if (chevron) chevron.style.transform = 'rotate(180deg)';
@@ -77,12 +81,60 @@
           menu.classList.remove('is-open');
           const chevron = link.querySelector('.nav-chevron');
           if (chevron) chevron.style.transform = '';
+          item.classList.remove('menu-closed');
+          menu.classList.remove('menu-closed');
+          item.removeAttribute('data-state');
+          menu.style.display = '';
         }, 120);
       };
-      item.addEventListener('mouseenter', show);
+      const forceClose = () => {
+        clearTimeout(timeout);
+        item.setAttribute('data-state', 'closed');
+        item.classList.add('menu-closed');
+        menu.classList.add('menu-closed');
+        menu.classList.remove('is-open');
+        menu.style.display = 'none';
+        const chevron = link.querySelector('.nav-chevron');
+        if (chevron) {
+          chevron.style.transform = 'rotate(0deg)';
+        }
+        if (document.activeElement) {
+          document.activeElement.blur();
+        }
+      };
+
+      item.addEventListener('mouseenter', () => {
+        item.removeAttribute('data-state');
+        menu.style.display = '';
+        show();
+      });
       item.addEventListener('mouseleave', hide);
-      menu.addEventListener('mouseenter', show);
-      menu.addEventListener('mouseleave', hide);
+
+      // Close immediately when any link inside the dropdown is clicked
+      menu.querySelectorAll('a').forEach(dropdownLink => {
+        dropdownLink.addEventListener('click', () => {
+          forceClose();
+        });
+      });
+    });
+
+    // Close dropdowns on outside click
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.nav-item.has-dropdown')) {
+        document.querySelectorAll('.nav-item.has-dropdown').forEach(item => {
+          const menu = item.querySelector('.nav-dropdown-menu');
+          const link = item.querySelector('.nav-link');
+          const chevron = link ? link.querySelector('.nav-chevron') : null;
+          if (menu) {
+            menu.classList.remove('is-open');
+            menu.classList.remove('menu-closed');
+            menu.style.display = '';
+          }
+          item.classList.remove('menu-closed');
+          item.removeAttribute('data-state');
+          if (chevron) chevron.style.transform = '';
+        });
+      }
     });
   })();
 
@@ -570,113 +622,51 @@
   })();
 
   /* ─────────────────────────────────────────────
-     10. TRUST CARDS INTERACTION & SCROLL SEQUENCE (Uiverse style)
+     10. ENTERPRISE BENTO METRICS (Spotlight & Hover Micro-Interactions)
   ──────────────────────────────────────────────*/
-  (function initTrustCardsSequence() {
-    const container = document.getElementById('trust-cards-container');
-    const cards = document.querySelectorAll('.trust-cards-grid .u-card');
+  (function initBentoMetrics() {
+    const cards = document.querySelectorAll('.metric-bento-card');
     if (!cards.length) return;
 
-    let hoveredCardIndex = null;
-    let userOverrides = {};
-    let targetCardsToOpen = 0;
-    let currentCardsToOpen = 0;
-    let staggerTimer = null;
-
-    function updateTrustCards() {
-      cards.forEach((card, index) => {
-        const isHovered = (hoveredCardIndex === index);
-        const isScrollOpened = (index < currentCardsToOpen);
-        const isOpen = isHovered || isScrollOpened;
-        const effectiveOpen = (userOverrides[index] !== undefined) ? userOverrides[index] : isOpen;
-
-        if (effectiveOpen) {
-          card.classList.add('force-open');
-          card.setAttribute('aria-expanded', 'true');
-        } else {
-          card.classList.remove('force-open');
-          card.setAttribute('aria-expanded', 'false');
-        }
+    // Interactive cursor spotlight tracking
+    cards.forEach((card) => {
+      card.addEventListener('mousemove', (e) => {
+        const rect = card.getBoundingClientRect();
+        const x = ((e.clientX - rect.left) / rect.width) * 100;
+        const y = ((e.clientY - rect.top) / rect.height) * 100;
+        card.style.setProperty('--mouse-x', `${x}%`);
+        card.style.setProperty('--mouse-y', `${y}%`);
       });
-    }
 
-    function stepStagger() {
-      if (staggerTimer) clearTimeout(staggerTimer);
-      if (currentCardsToOpen === targetCardsToOpen) {
-        updateTrustCards();
-        return;
-      }
-      if (currentCardsToOpen < targetCardsToOpen) {
-        currentCardsToOpen++;
-      } else if (currentCardsToOpen > targetCardsToOpen) {
-        currentCardsToOpen--;
-      }
-      updateTrustCards();
-      if (currentCardsToOpen !== targetCardsToOpen) {
-        staggerTimer = setTimeout(stepStagger, 110);
-      }
-    }
+      card.addEventListener('mouseleave', () => {
+        card.style.removeProperty('--mouse-x');
+        card.style.removeProperty('--mouse-y');
+      });
+    });
 
-    let ticking = false;
-    function onScroll() {
-      if (!ticking) {
-        window.requestAnimationFrame(() => {
-          if (container) {
-            const rect = container.getBoundingClientRect();
-            const windowHeight = window.innerHeight;
-            const scrollDist = rect.height - windowHeight;
-            if (scrollDist > 0) {
-              let progress = -rect.top / scrollDist;
-              progress = Math.max(0, Math.min(1, progress));
-              const target = progress >= 0.70 ? 5 :
-                             progress >= 0.54 ? 4 :
-                             progress >= 0.38 ? 3 :
-                             progress >= 0.22 ? 2 :
-                             progress >= 0.08 ? 1 : 0;
-              if (target !== targetCardsToOpen) {
-                targetCardsToOpen = target;
-                stepStagger();
-              }
+    // Animate numbers smoothly on first scroll into viewport
+    if ('IntersectionObserver' in window) {
+      const observer = new IntersectionObserver((entries, obs) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            const statEl = entry.target.querySelector('.mb-stat-number');
+            if (statEl && !statEl.classList.contains('counted')) {
+              statEl.classList.add('counted');
+              statEl.animate([
+                { transform: 'translateY(8px)', opacity: 0.3 },
+                { transform: 'translateY(-2px)', opacity: 1, offset: 0.7 },
+                { transform: 'translateY(0)', opacity: 1 }
+              ], {
+                duration: 500,
+                easing: 'cubic-bezier(0.16, 1, 0.3, 1)'
+              });
             }
           }
-          ticking = false;
         });
-        ticking = true;
-      }
+      }, { threshold: 0.2 });
+
+      cards.forEach(c => observer.observe(c));
     }
-
-    window.addEventListener('scroll', onScroll, { passive: true });
-    // Initial check on page load
-    onScroll();
-
-    // Hover controllers
-    window.onTrustCardHover = function (index) {
-      hoveredCardIndex = index;
-      updateTrustCards();
-    };
-
-    window.onTrustCardLeave = function (index) {
-      if (hoveredCardIndex === index) {
-        hoveredCardIndex = null;
-        updateTrustCards();
-      }
-    };
-
-    // Toggle click controller
-    window.toggleTrustCard = function (index) {
-      const isHovered = (hoveredCardIndex === index);
-      const isScrollOpened = (index < currentCardsToOpen);
-      const isOpen = isHovered || isScrollOpened;
-      const currentEffective = (userOverrides[index] !== undefined) ? userOverrides[index] : isOpen;
-      userOverrides[index] = !currentEffective;
-      updateTrustCards();
-    };
-
-    // Also bind event listeners directly to cards
-    cards.forEach((card, index) => {
-      card.addEventListener('mouseenter', () => window.onTrustCardHover(index));
-      card.addEventListener('mouseleave', () => window.onTrustCardLeave(index));
-    });
   })();
 
   /* ─────────────────────────────────────────────
@@ -742,6 +732,7 @@
       if (video.paused) video.play().catch(() => {});
     };
 
+    tryPlay();
     video.addEventListener('canplay', tryPlay);
     video.addEventListener('loadeddata', tryPlay);
 

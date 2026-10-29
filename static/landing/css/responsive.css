@@ -546,35 +546,10 @@
     top: 50% !important;
   }
 
-  /* Tap cue on cards - mobile only */
-  .card-tap-cue {
-    position: absolute !important;
-    bottom: 12px !important;
-    left: 50% !important;
-    transform: translateX(-50%) !important;
-    background: rgba(255, 255, 255, 0.25) !important;
-    border: 1px solid rgba(255, 255, 255, 0.4) !important;
-    backdrop-filter: blur(8px) !important;
-    -webkit-backdrop-filter: blur(8px) !important;
-    color: #ffffff !important;
-    font-size: 11px !important;
-    font-weight: 700 !important;
-    padding: 3px 10px !important;
-    border-radius: 999px !important;
-    white-space: nowrap !important;
-    pointer-events: none !important;
-    z-index: 5 !important;
-    letter-spacing: 0.02em !important;
-    transition: opacity 0.3s ease, background 0.3s ease !important;
-    display: block !important;
-  }
-
-  /* Active tap state (toggled on mobile click) */
+  /* Tap cue on cards - hidden as requested */
+  .card-tap-cue,
   .uiverse-card.is-active .card-tap-cue {
-    background: rgba(0, 0, 0, 0.4) !important;
-    border-color: rgba(255, 255, 255, 0.2) !important;
-    bottom: 10px !important;
-    z-index: 10 !important;
+    display: none !important;
   }
 
   .uiverse-card.is-active .box {

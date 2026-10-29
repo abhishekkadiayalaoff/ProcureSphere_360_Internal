@@ -75,7 +75,7 @@
 .sol-content-wrapper {
   max-width: 1240px;
   margin: 0 auto;
-  padding: 0 24px 100px;
+  padding: 0 24px 30px;
 }
 
 /* ============================================================
@@ -378,106 +378,281 @@
 }
 
 /* ============================================================
-   MODULE DEEP DIVE LIFECYCLE
+   MODULE DEEP DIVE LIFECYCLE HEADER
    ============================================================ */
 .sol-deepdive-header {
   text-align: center;
-  margin-bottom: 36px;
-  scroll-margin-top: 100px;
+  margin-top: 24px;
+  margin-bottom: 22px;
+  scroll-margin-top: 80px;
+}
+
+.sol-deepdive-header .sol-eyebrow {
+  font-size: 13.5px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  color: #2563eb;
+  margin-bottom: 12px;
 }
 
 .sol-deepdive-header h2 {
   font-family: 'Playfair Display', serif;
-  font-size: 32px;
+  font-size: clamp(32px, 3.5vw, 42px);
   color: #0f172a;
-  font-weight: 600;
+  font-weight: 800;
   margin: 0 0 10px;
   line-height: 1.2;
+  letter-spacing: -0.02em;
 }
 
 .sol-deepdive-header p {
-  color: #64748b;
-  font-size: 16px;
-  margin: 0;
+  color: #475569;
+  font-size: 17.5px;
+  max-width: 840px;
+  margin: 0 auto;
   line-height: 1.6;
+  font-weight: 500;
 }
 
-/* Step Selector Horizontal Bar */
-.sol-step-selector {
+/* ============================================================
+   SPLIT VIEW LIFECYCLE (Master-Detail Layout)
+   Left: Clean Modern Navigation Sidebar, Exact Same Height
+   Right: Signature Deep Blue Active Stage Details Card
+   ============================================================ */
+.sol-lifecycle-split-container {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 14px;
-  margin-bottom: 36px;
+  grid-template-columns: 310px 1fr;
+  gap: 22px;
+  align-items: stretch; /* LEFT & RIGHT SIDES SPAN THE EXACT SAME FULL HEIGHT */
+  margin-top: 16px;
+  margin-bottom: 24px;
+  scroll-margin-top: 80px;
 }
 
-.sol-step-btn {
+/* Left Sidebar Navigation - Clean, Modern & Balanced UX */
+.sol-stages-sidebar {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: #ffffff;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 20px;
+  padding: 14px 12px;
+  box-shadow: 0 20px 48px -8px rgba(15, 27, 45, 0.16), 0 8px 20px -4px rgba(15, 27, 45, 0.08), 0 0 0 1px rgba(15, 27, 45, 0.04);
+  box-sizing: border-box;
+}
+
+.sol-stages-sidebar-header {
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1.5px solid #f1f5f9;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+
+.sol-stages-sidebar-tag {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  font-weight: 800;
+  color: #2563eb;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  display: block;
+}
+
+.sol-stages-sidebar-title {
+  font-size: 14.5px;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+.sol-sidebar-hint-pill {
+  font-family: 'DM Mono', monospace;
+  font-size: 10.5px;
+  font-weight: 800;
+  color: #1d4ed8;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  padding: 3px 8px;
+  border-radius: 6px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  display: inline-block;
+}
+
+.sol-stages-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1; /* Stretches to fill entire vertical height */
+  justify-content: space-between;
+  min-height: 0;
+}
+
+.sol-stage-nav-item {
+  flex: 1; /* Every stage shares equal height to match the right card */
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
   background: #ffffff;
   color: #0f172a;
-  border: 2px solid #cbd5e1;
-  border-radius: 16px;
-  padding: 18px 16px;
+  border: 1.5px solid #cbd5e1; /* Clear, visible border */
+  border-radius: 10px;
+  padding: 7px 12px;
   text-align: left;
   cursor: pointer;
-  transition: all 0.25s ease;
-  box-shadow: 0 8px 24px rgba(15, 27, 45, 0.08), 0 2px 6px rgba(15, 27, 45, 0.04);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 2px 5px rgba(15, 27, 45, 0.05);
+  box-sizing: border-box;
 }
 
-.sol-step-btn.is-active {
-  background: #2456D6;
-  color: #ffffff;
-  border: 3px solid #1d4ed8;
-  box-shadow: 0 16px 36px rgba(36, 86, 214, 0.28), 0 4px 12px rgba(36, 86, 214, 0.14);
+.sol-stage-nav-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+  gap: 2px;
+  justify-content: center;
 }
 
-.sol-step-btn:hover:not(.is-active) {
-  border-color: #93c5fd;
-  transform: translateY(-2px);
-  box-shadow: 0 12px 30px rgba(15, 27, 45, 0.12);
-}
-
-.sol-step-num {
-  font-size: 12px;
+.sol-stage-nav-badge {
+  font-size: 10px;
   font-weight: 800;
-  opacity: 0.7;
   font-family: 'DM Mono', monospace;
+  color: #1d4ed8;
+  letter-spacing: 0.06em;
+  background: #eff6ff;
+  padding: 2px 7px;
+  border-radius: 4px;
+  border: 1.5px solid #93c5fd; /* Clear, visible badge outline */
+  display: inline-block;
+  align-self: flex-start;
+  transition: all 0.2s ease;
+  line-height: 1.2;
+}
+
+.sol-stage-nav-name {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #0f172a; /* Deep slate-900, highly readable */
+  line-height: 1.25;
   display: block;
-  margin-bottom: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  letter-spacing: -0.01em;
+  -webkit-font-smoothing: antialiased;
 }
 
-.sol-step-btn.is-active .sol-step-num {
-  opacity: 0.95;
+.sol-stage-nav-arrow {
+  color: #64748b; /* Clear slate arrow */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
 }
 
-.sol-step-label {
-  font-size: 15px;
+.sol-stage-nav-item:hover:not(.is-active) {
+  background: #f8fbff;
+  border-color: #3b82f6;
+  transform: translateX(2px);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.12);
+}
+
+.sol-stage-nav-item:hover:not(.is-active) .sol-stage-nav-name {
+  color: #1d4ed8;
+}
+
+.sol-stage-nav-item:hover:not(.is-active) .sol-stage-nav-arrow {
+  color: #2563eb;
+  transform: translateX(2px);
+}
+
+/* Active Nav State - Soft Light Blue Pill with Royal Blue Left Accent */
+.sol-stage-nav-item.is-active {
+  background: #eff6ff;
+  border: 2px solid #2563eb;
+  border-left: 5px solid #2563eb;
+  color: #1d4ed8;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.16);
+  transform: translateX(2px);
+}
+
+.sol-stage-nav-item.is-active .sol-stage-nav-badge {
+  background: #2563eb;
+  color: #ffffff;
+  border: 1.5px solid #1d4ed8;
   font-weight: 800;
-  display: block;
-  line-height: 1.35;
 }
 
-/* Detail Panels */
+.sol-stage-nav-item.is-active .sol-stage-nav-name {
+  color: #1d4ed8;
+  font-weight: 800;
+  font-size: 14px;
+}
+
+.sol-stage-nav-item.is-active .sol-stage-nav-arrow {
+  color: #2563eb;
+  transform: translateX(2px);
+}
+
+/* Right Detail Display Container */
+.sol-stage-detail-container {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+/* Detail Panels — Signature Deep Blue Enterprise Theme */
 .sol-detail-panel {
   display: none;
-  background: #ffffff;
-  border: 2px solid #cbd5e1;
-  border-radius: 26px;
-  padding: 48px;
-  box-shadow: 0 24px 56px rgba(15, 27, 45, 0.16), 0 8px 20px rgba(15, 27, 45, 0.08);
-  grid-template-columns: 1.2fr 0.8fr;
-  gap: 40px;
-  animation: sol-fade-in 0.35s ease;
+  background: linear-gradient(145deg, #0d1b3e 0%, #172554 45%, #0f172a 100%);
+  border: 1.5px solid rgba(147, 197, 253, 0.35);
+  border-radius: 20px;
+  padding: 26px 30px;
+  box-shadow: 0 24px 60px rgba(15, 27, 45, 0.35), 0 0 0 1px rgba(147, 197, 253, 0.12);
+  grid-template-columns: minmax(0, 1fr) 260px;
+  gap: 28px;
+  position: relative;
+  color: #ffffff;
+  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+  box-sizing: border-box;
 }
 
 .sol-detail-panel.is-active {
   display: grid;
+  height: 100%;
+  flex: 1;
+  box-sizing: border-box;
+  animation: solDetailFadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-@keyframes sol-fade-in {
-  from { opacity: 0; transform: translateY(16px); }
-  to   { opacity: 1; transform: translateY(0); }
+@keyframes solDetailFadeIn {
+  0% {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
-/* Left Column */
+.sol-detail-panel:hover {
+  border-color: #60a5fa;
+  box-shadow: 0 30px 70px rgba(15, 27, 45, 0.45);
+}
+
+/* Left Column Inside Blue Detail Card */
 .sol-detail-tags {
   display: flex;
   align-items: center;
@@ -487,50 +662,63 @@
 }
 
 .sol-detail-tag-cat {
-  background: #eff6ff;
-  color: #2563eb;
-  font-size: 11px;
+  background: rgba(30, 58, 138, 0.85);
+  color: #93c5fd;
+  font-size: 11.5px;
   font-weight: 800;
   padding: 4px 10px;
   border-radius: 6px;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   font-family: 'DM Mono', monospace;
+  border: 1px solid rgba(147, 197, 253, 0.45);
 }
 
 .sol-detail-tag-status {
-  background: #ecfdf5;
-  color: #059669;
-  font-size: 11px;
+  background: rgba(5, 150, 105, 0.25);
+  color: #6ee7b7;
+  font-size: 11.5px;
   font-weight: 700;
   padding: 4px 10px;
   border-radius: 6px;
   letter-spacing: 0.04em;
+  border: 1px solid rgba(110, 231, 183, 0.45);
+}
+
+.sol-detail-left {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 100%;
+  min-width: 0;
 }
 
 .sol-detail-left h2 {
   font-family: 'Playfair Display', Georgia, serif;
-  font-size: clamp(24px, 3vw, 32px);
-  font-weight: 600;
-  color: #0f172a;
-  margin: 0 0 16px 0;
-  line-height: 1.25;
+  font-size: clamp(26px, 2.6vw, 32px);
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0 0 12px 0;
+  line-height: 1.22;
+  letter-spacing: -0.01em;
 }
 
-.sol-detail-left > p {
-  font-size: 18px;
-  color: #1e293b;
-  line-height: 1.7;
-  margin-bottom: 28px;
+.sol-detail-desc {
+  font-size: 16px;
+  color: #e2e8f0;
+  line-height: 1.6;
+  margin-bottom: 18px;
+  font-weight: 400;
 }
 
 .sol-features-label {
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 800;
-  color: #0f172a;
-  letter-spacing: 0.06em;
+  color: #93c5fd;
+  letter-spacing: 0.09em;
   text-transform: uppercase;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
+  font-family: 'DM Mono', monospace;
 }
 
 .sol-features-list {
@@ -539,42 +727,97 @@
   margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 11px;
 }
 
 .sol-feature-item {
   display: flex;
   align-items: flex-start;
   gap: 12px;
-  font-size: 16px;
-  color: #1e293b;
-  line-height: 1.6;
+  font-size: 15.5px;
+  color: #ffffff;
+  line-height: 1.45;
+  font-weight: 500;
 }
 
 .sol-check-icon {
   width: 22px;
   height: 22px;
   border-radius: 50%;
-  background: #eff6ff;
-  color: #2456D6;
+  background: rgba(59, 130, 246, 0.3);
+  color: #93c5fd;
+  border: 1.5px solid rgba(147, 197, 253, 0.5);
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
   font-weight: 800;
   font-size: 13px;
+  margin-top: 1px;
 }
 
-/* Right Column: Metric Callout */
+/* Detail Pager Navigation on Blue Card */
+.sol-detail-pager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  gap: 12px;
+}
+
+.sol-pager-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 16px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  border: 1px solid rgba(147, 197, 253, 0.35);
+  background: rgba(255, 255, 255, 0.08);
+  color: #e2e8f0;
+  transition: all 0.2s ease;
+}
+
+.sol-pager-btn:hover {
+  background: rgba(255, 255, 255, 0.18);
+  border-color: #93c5fd;
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+
+.sol-pager-next {
+  background: #2563eb;
+  border-color: #3b82f6;
+  color: #ffffff;
+  margin-left: auto;
+}
+
+.sol-pager-next:hover {
+  background: #1d4ed8;
+  border-color: #60a5fa;
+  color: #ffffff;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);
+}
+
+/* Right Column: Metric Callout Card Inside Blue Detail Panel (Compact & Sized Appropriately) */
 .sol-metric-card {
-  background: #f8fafc;
-  border: 2px solid #cbd5e1;
-  border-radius: 22px;
-  padding: 36px;
+  background: rgba(15, 23, 42, 0.75);
+  border: 1.5px solid rgba(147, 197, 253, 0.25);
+  backdrop-filter: blur(12px);
+  border-radius: 16px;
+  padding: 16px 16px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  gap: 24px;
+  gap: 12px;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.35);
+  color: #ffffff;
+  height: 100%;
+  box-sizing: border-box;
 }
 
 .sol-metric-header {
@@ -584,79 +827,113 @@
 }
 
 .sol-metric-label-top {
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 800;
-  color: #1e293b;
-  letter-spacing: 0.1em;
+  color: #93c5fd;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   font-family: 'DM Mono', monospace;
 }
 
 .sol-metric-live-dot {
-  width: 10px;
-  height: 10px;
+  width: 9px;
+  height: 9px;
   border-radius: 50%;
   background: #10b981;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.7), 0 0 0 2px rgba(16, 185, 129, 0.25);
+  display: inline-block;
+  flex-shrink: 0;
 }
 
 .sol-metric-value-card {
-  background: #ffffff;
-  border-radius: 18px;
-  padding: 32px 24px;
-  border: 2px solid #93c5fd;
+  background: rgba(30, 58, 138, 0.55);
+  border-radius: 12px;
+  padding: 14px 12px;
+  border: 1.5px solid rgba(147, 197, 253, 0.4);
   text-align: center;
-  box-shadow: 0 12px 30px rgba(37, 99, 235, 0.12);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
 }
 
 .sol-metric-value-label {
-  font-size: 15px;
-  color: #475569;
+  font-size: 11px;
+  color: #bfdbfe;
   font-weight: 700;
   text-transform: uppercase;
-  margin-bottom: 10px;
+  letter-spacing: 0.05em;
+  margin-bottom: 4px;
 }
 
 .sol-metric-value-num {
-  font-size: clamp(36px, 4vw, 52px);
+  font-size: clamp(26px, 2.4vw, 34px);
   font-weight: 800;
-  color: #2456D6;
+  color: #ffffff;
   font-family: 'DM Mono', monospace;
   line-height: 1.1;
+  text-shadow: 0 0 24px rgba(59, 130, 246, 0.75);
 }
 
 .sol-metric-footer {
-  border-top: 1px solid #e2e8f0;
-  padding-top: 18px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  padding-top: 12px;
 }
 
 .sol-metric-footer-title {
-  font-size: 15px;
+  font-size: 12px;
   font-weight: 700;
-  color: #0f172a;
-  margin-bottom: 8px;
+  color: #ffffff;
+  margin-bottom: 4px;
 }
 
 .sol-metric-footer p {
-  font-size: 15px;
-  color: #475569;
-  line-height: 1.6;
+  font-size: 11.5px;
+  color: #cbd5e1;
+  line-height: 1.45;
   margin: 0;
+}
+
+.sol-metric-audit-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(59, 130, 246, 0.2);
+  border: 1px solid rgba(147, 197, 253, 0.35);
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: #93c5fd;
+  margin-top: 8px;
+  line-height: 1.35;
 }
 
 /* ============================================================
    RESPONSIVE - TABLET & MOBILE
    ============================================================ */
-@media (min-width: 600px) and (max-width: 1280px) {
-  .sol-step-selector {
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+@media (max-width: 992px) {
+  .sol-lifecycle-split-container {
+    grid-template-columns: 1fr;
+    gap: 20px;
   }
-}
-
-@media (max-width: 900px) {
+  .sol-stages-sidebar {
+    height: auto;
+    padding: 14px;
+  }
+  .sol-stages-nav {
+    display: flex;
+    flex-direction: row;
+    overflow-x: auto;
+    gap: 8px;
+    padding-bottom: 8px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+  }
+  .sol-stage-nav-item {
+    flex: 0 0 220px;
+  }
   .sol-detail-panel {
     grid-template-columns: 1fr;
-    padding: 32px 24px;
-    gap: 28px;
+    padding: 24px 18px;
+    gap: 22px;
   }
 }
 
@@ -719,15 +996,14 @@
   }
 }
 
-@media (max-width: 400px) {
-  .sol-step-selector {
-    grid-template-columns: 1fr 1fr;
+@media (max-width: 480px) {
+  .sol-stage-nav-item {
+    flex: 0 0 200px;
+    padding: 12px 14px;
   }
-  .sol-step-btn {
-    padding: 12px 10px;
-  }
-  .sol-step-label {
-    font-size: 12px;
+  .sol-detail-panel {
+    padding: 22px 16px;
+    border-radius: 18px;
   }
 }
 </style>
@@ -738,15 +1014,15 @@
   <main class="sol-main">
 
     <!-- PAGE HERO SECTION (Exact React PageLayout) -->
-    <section class="sol-hero-section">
+    <section class="sol-hero-section" id="solutions-overview" style="scroll-margin-top: 115px;">
       <div class="sol-eyebrow">
         <span class="sol-eyebrow-line"></span>
         CONNECTED SOLUTIONS
         <span class="sol-eyebrow-line"></span>
       </div>
-      <h1 class="sol-hero-title">Source-to-Pay Operating System</h1>
+      <h1 class="sol-hero-title">Solutions Portfolio</h1>
       <p class="sol-hero-subtitle">
-        From the first departmental request to the final settled payment, every transaction is synchronized in one verifiable architecture.
+        Source-to-Pay Operating System: From the first departmental request to the final settled payment, every transaction is synchronized in one verifiable architecture.
       </p>
     </section>
 
@@ -786,85 +1062,131 @@
       </div>
 
       <!-- MODULE DEEP DIVE LIFECYCLE TARGET ANCHOR -->
-      <div id="lifecycle-detail" class="sol-deepdive-header">
+      <div id="lifecycle-detail" class="sol-deepdive-header" style="scroll-margin-top: 115px;">
         <div class="sol-eyebrow" style="margin-bottom: 14px;">
           <span class="sol-eyebrow-line"></span>
           MODULE DEEP DIVE
           <span class="sol-eyebrow-line"></span>
         </div>
-        <h2>Interactive Source-to-Pay Lifecycle</h2>
-        <p>Select any stage to inspect the workflow automation, verification controls, and business rules.</p>
+        <h2>Enterprise Solutions Suite</h2>
+        <p>Explore all seven core functional modules below or click any module to inspect its verification controls.</p>
       </div>
 
-      <!-- STEP SELECTOR HORIZONTAL BAR -->
-      <div class="sol-step-selector" id="sol-step-selector">
-        {% for step in s2p_steps %}
-        <button
-          type="button"
-          class="sol-step-btn {% if forloop.first %}is-active{% endif %}"
-          id="sol-step-btn-{{ step.id }}"
-          onclick="solSelectStep('{{ step.id }}')"
-          data-step="{{ step.id }}"
-          aria-pressed="{% if forloop.first %}true{% else %}false{% endif %}"
-        >
-          <span class="sol-step-num">STAGE {{ step.number }}</span>
-          <span class="sol-step-label">{{ step.title|truncatechars:30 }}</span>
-        </button>
-        {% endfor %}
-      </div>
-
-      <!-- STEP DETAIL CARDS -->
-      {% for step in s2p_steps %}
-      <div
-        class="sol-detail-panel {% if forloop.first %}is-active{% endif %}"
-        id="sol-detail-{{ step.id }}"
-        role="region"
-        aria-label="{{ step.title }}"
-      >
-        <!-- Left Column: Details -->
-        <div class="sol-detail-left">
-          <div class="sol-detail-tags">
-            <span class="sol-detail-tag-cat">{{ step.category }}</span>
-            <span class="sol-detail-tag-status">  {{ step.status_tag }}</span>
+      <!-- SPLIT VIEW INTERACTIVE LIFECYCLE (Left: Stages Nav, Right: Selected Stage Detail) -->
+      <div class="sol-lifecycle-split-container" id="sol-lifecycle-split">
+        
+        <!-- Left Sidebar: Stage Navigation -->
+        <aside class="sol-stages-sidebar" aria-label="Functional Modules">
+          <div class="sol-stages-sidebar-header">
+            <div>
+              <span class="sol-stages-sidebar-tag">SOLUTIONS SUITE</span>
+              <h3 class="sol-stages-sidebar-title">Core Modules</h3>
+            </div>
+            <span class="sol-sidebar-hint-pill">Click to Inspect &rarr;</span>
           </div>
-
-          <h2>{{ step.title }}</h2>
-          <p>{{ step.summary }}</p>
-
-          <div class="sol-features-label">Core Functional Controls:</div>
-          <ul class="sol-features-list">
-            {% for feature in step.features %}
-            <li class="sol-feature-item">
-              <span class="sol-check-icon" aria-hidden="true">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true">
-                  <path d="m5 12 4 4L19 6"/>
+          <nav class="sol-stages-nav" id="sol-step-selector" role="tablist" aria-label="Source-to-Pay stages">
+            {% for step in s2p_steps %}
+            <button
+              type="button"
+              class="sol-stage-nav-item sol-step-btn {% if forloop.first %}is-active{% endif %}"
+              id="sol-step-btn-{{ step.id }}"
+              onclick="solSelectStep('{{ step.id }}')"
+              data-step="{{ step.id }}"
+              aria-selected="{% if forloop.first %}true{% else %}false{% endif %}"
+              role="tab"
+            >
+              <div class="sol-stage-nav-info">
+                <span class="sol-stage-nav-badge">STAGE {{ step.number }}</span>
+                <span class="sol-stage-nav-name">{{ step.title }}</span>
+              </div>
+              <div class="sol-stage-nav-arrow" aria-hidden="true">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="m9 18 6-6-6-6"/>
                 </svg>
-              </span>
-              <span>{{ feature }}</span>
-            </li>
+              </div>
+            </button>
             {% endfor %}
-          </ul>
+          </nav>
+        </aside>
+
+        <!-- Right Main: Active Stage Detail Panels -->
+        <div class="sol-stage-detail-container" id="sol-stages-display">
+          {% for step in s2p_steps %}
+          <section
+            class="sol-detail-panel {% if forloop.first %}is-active{% endif %}"
+            id="{{ step.id }}"
+            role="tabpanel"
+            aria-labelledby="sol-step-btn-{{ step.id }}"
+          >
+            <!-- Left Sub-column: Detailed Information -->
+            <div class="sol-detail-left">
+              <div class="sol-detail-tags">
+                <span class="sol-detail-tag-cat">{{ step.category }}</span>
+                <span class="sol-detail-tag-status">{{ step.status_tag }}</span>
+              </div>
+
+              <h2>{{ step.title }}</h2>
+              <p class="sol-detail-desc">{{ step.summary }}</p>
+
+              <div class="sol-features-label">Core Functional Controls:</div>
+              <ul class="sol-features-list">
+                {% for feature in step.features %}
+                <li class="sol-feature-item">
+                  <span class="sol-check-icon" aria-hidden="true">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true">
+                      <path d="m5 12 4 4L19 6"/>
+                    </svg>
+                  </span>
+                  <span>{{ feature }}</span>
+                </li>
+                {% endfor %}
+              </ul>
+
+              <!-- Quick Pager Navigation between stages -->
+              <div class="sol-detail-pager">
+                {% if not forloop.first %}
+                <button type="button" class="sol-pager-btn sol-pager-prev" onclick="solSelectPrevStage('{{ step.id }}')">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+                  <span>Previous Stage</span>
+                </button>
+                {% else %}
+                <div></div>
+                {% endif %}
+                {% if not forloop.last %}
+                <button type="button" class="sol-pager-btn sol-pager-next" onclick="solSelectNextStage('{{ step.id }}')">
+                  <span>Next Stage</span>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+                </button>
+                {% endif %}
+              </div>
+            </div>
+
+            <!-- Right Sub-column: Live Metric Callout -->
+            <div class="sol-metric-card">
+              <div class="sol-metric-header">
+                <span class="sol-metric-label-top">ENTERPRISE METRIC IMPACT</span>
+                <span class="sol-metric-live-dot" aria-hidden="true"></span>
+              </div>
+
+              <div class="sol-metric-value-card">
+                <div class="sol-metric-value-label">{{ step.metric_label }}</div>
+                <div class="sol-metric-value-num">{{ step.metric_value }}</div>
+              </div>
+
+              <div class="sol-metric-footer">
+                <div class="sol-metric-footer-title">System Verification Controls:</div>
+                <p>Actions are evaluated server-side with budget threshold checking, boundary validation, and structured audit event logging.</p>
+                <div class="sol-metric-audit-badge">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                  <span>Immutable Audit Logged · RBAC Enforced</span>
+                </div>
+              </div>
+            </div>
+          </section>
+          {% endfor %}
         </div>
 
-        <!-- Right Column: Metric Callout -->
-        <div class="sol-metric-card">
-          <div class="sol-metric-header">
-            <span class="sol-metric-label-top">ENTERPRISE METRIC IMPACT</span>
-            <span class="sol-metric-live-dot" aria-hidden="true"></span>
-          </div>
-
-          <div class="sol-metric-value-card">
-            <div class="sol-metric-value-label">{{ step.metric_label }}</div>
-            <div class="sol-metric-value-num">{{ step.metric_value }}</div>
-          </div>
-
-          <div class="sol-metric-footer">
-            <div class="sol-metric-footer-title">System Verification Controls:</div>
-            <p>Actions are evaluated server-side with budget threshold checking, boundary validation, and structured audit event logging.</p>
-          </div>
-        </div>
-      </div>
-      {% endfor %}
+      </div><!-- /sol-lifecycle-split-container -->
 
     </div><!-- /sol-content-wrapper -->
   </main>
@@ -1001,11 +1323,7 @@
     if (!currentActiveModalMod) return;
     var targetStep = currentActiveModalMod.stepId || currentActiveModalMod.id;
     closeModal();
-    window.solSelectStep(targetStep);
-    var el = document.getElementById('lifecycle-detail');
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
+    window.solSelectStepFromModal(targetStep);
   });
 
   /* Card Deck Animation & Positioning (Exact React AnimatedModulesStack Math) */
@@ -1265,78 +1583,192 @@
     }, { passive: true });
   }
 
-  /* Lifecycle Step Selector */
-  window.solSelectStep = function(stepId) {
-    document.querySelectorAll('.sol-detail-panel').forEach(function(el) {
-      el.classList.remove('is-active');
-    });
-    var detail = document.getElementById('sol-detail-' + stepId);
-    if (detail) {
-      detail.classList.add('is-active');
+  /* Lifecycle Step Navigation - Split View Master/Detail */
+  var stageIds = ['vendors', 'pr', 'sourcing', 'po', 'grn', 'match', 'clm'];
+
+  function syncLifecycleHeights() {
+    var sidebar = document.querySelector('.sol-stages-sidebar');
+    var activePanel = document.querySelector('.sol-detail-panel.is-active');
+    var detailContainer = document.querySelector('.sol-stage-detail-container');
+    if (!sidebar || !activePanel) return;
+
+    if (window.innerWidth <= 992) {
+      sidebar.style.height = '';
+      activePanel.style.height = '';
+      if (detailContainer) detailContainer.style.height = '';
+      return;
     }
 
-    document.querySelectorAll('.sol-step-btn').forEach(function(btn) {
-      var isActive = btn.dataset.step === stepId;
+    // Reset inline heights so we can measure unconstrained natural contents
+    sidebar.style.height = '';
+    activePanel.style.height = '';
+    if (detailContainer) detailContainer.style.height = '';
+
+    // Measure natural content height of both elements
+    var panelH = activePanel.scrollHeight;
+    var sidebarH = sidebar.scrollHeight;
+
+    // Both sides are set to the EXACT SAME matching pixel height, filling vertical space
+    var targetH = Math.max(panelH, sidebarH, 520);
+    sidebar.style.height = targetH + 'px';
+    activePanel.style.height = targetH + 'px';
+    if (detailContainer) detailContainer.style.height = targetH + 'px';
+  }
+
+  function solSetActiveStep(stepId) {
+    // 1. Update active button in left sidebar
+    var navButtons = document.querySelectorAll('.sol-stage-nav-item, .sol-step-btn');
+    navButtons.forEach(function(btn) {
+      var isActive = (btn.dataset.step === stepId);
       btn.classList.toggle('is-active', isActive);
+      btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
       btn.setAttribute('aria-pressed', isActive ? 'true' : 'false');
     });
+
+    // 2. Switch active detail panel on right
+    var panels = document.querySelectorAll('.sol-detail-panel');
+    var targetPanel = document.getElementById(stepId);
+    panels.forEach(function(p) {
+      p.classList.remove('is-active');
+    });
+
+    if (targetPanel) {
+      targetPanel.classList.add('is-active');
+    }
+
+    // 3. Immediately enforce exact pixel-perfect height parity
+    syncLifecycleHeights();
+  }
+
+  // Phase 1 (Screenshot 3): Only when user clicks 'Explore [Module] ->' in popup modal,
+  // scroll down to show the full section heading:
+  // MODULE DEEP DIVE / Interactive Source-to-Pay Lifecycle
+  function scrollToLifecycleWithHeading() {
+    var headerEl = document.getElementById('lifecycle-detail');
+    if (!headerEl) return;
+    var navHeader = document.querySelector('.nav-header') || document.querySelector('header');
+    var navHeight = navHeader ? navHeader.offsetHeight : 76;
+    var rect = headerEl.getBoundingClientRect();
+    var targetY = window.pageYOffset + rect.top - navHeight - 14;
+    window.scrollTo({ top: Math.max(0, targetY), behavior: 'smooth' });
+  }
+
+  window.solSelectStepFromModal = function(stepId) {
+    if (!stepId) return;
+    solSetActiveStep(stepId);
+    setTimeout(function() {
+      scrollToLifecycleWithHeading();
+    }, 50);
+  };
+
+  // Phase 2 (Screenshot 4): When user clicks any stage button on the left or Next/Prev,
+  // show the cards in full view without showing the heading again.
+  // If the cards are already in full view, DO NOT scroll at all!
+  function ensureLifecycleCardsFullView(forceScroll) {
+    var splitEl = document.getElementById('sol-lifecycle-split');
+    if (!splitEl) return;
+
+    var navHeader = document.querySelector('.nav-header') || document.querySelector('header');
+    var navHeight = navHeader ? navHeader.offsetHeight : 76;
+    var rect = splitEl.getBoundingClientRect();
+
+    // Check if the split cards container is already comfortably visible on screen (Screenshot 4)
+    var isAlreadyInFullView = (rect.top >= navHeight - 60 && rect.top <= navHeight + 90);
+    if (!forceScroll && isAlreadyInFullView) {
+      return; // Already in full card view - smoothly switch tabs in-place with zero scroll jumping
+    }
+
+    // If not yet in full view, align top of cards with subtitle just below navbar (Screenshot 4)
+    var targetY = window.pageYOffset + rect.top - navHeight - 36;
+    window.scrollTo({ top: Math.max(0, targetY), behavior: 'smooth' });
+  }
+
+  window.solSelectStep = function(stepId, shouldScroll) {
+    if (!stepId) return;
+    solSetActiveStep(stepId);
+    ensureLifecycleCardsFullView(shouldScroll);
+  };
+  var solSelectStep = window.solSelectStep;
+  var solSelectStepFromModal = window.solSelectStepFromModal;
+
+  window.solSelectPrevStage = function(currentId) {
+    var idx = stageIds.indexOf(currentId);
+    if (idx > 0) {
+      window.solSelectStep(stageIds[idx - 1], false);
+    }
+  };
+
+  window.solSelectNextStage = function(currentId) {
+    var idx = stageIds.indexOf(currentId);
+    if (idx !== -1 && idx < stageIds.length - 1) {
+      window.solSelectStep(stageIds[idx + 1], false);
+    }
   };
 
   function handleUrlStep() {
+    var hash = window.location.hash.replace('#', '');
     var params = new URLSearchParams(window.location.search);
     var stepParam = params.get('step');
-    var hash = window.location.hash.replace('#', '');
+    var targetId = hash || stepParam;
 
-    // Only scroll to the detail section if a specific ?step= or #hash was explicitly provided in the URL
-    if (stepParam || hash) {
-      var target = stepParam || hash;
-      var validIds = ['vendors', 'pr', 'sourcing', 'po', 'grn', 'match', 'clm'];
-      if (validIds.indexOf(target) !== -1) {
-        window.solSelectStep(target);
+    if (targetId) {
+      if (targetId === 'solutions-overview') {
+        var overviewEl = document.getElementById('solutions-overview');
+        if (overviewEl) overviewEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        syncLifecycleHeights();
+        return;
+      }
+      if (stageIds.indexOf(targetId) !== -1) {
         setTimeout(function() {
-          var el = document.getElementById('lifecycle-detail');
-          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }, 150);
+          window.solSelectStep(targetId, true);
+        }, 120);
       }
-    } else {
-      // Normal visit from navbar to /solutions/: start at the very top of the page with Stage 01 selected
-      window.solSelectStep('vendors');
-      if ('scrollRestoration' in history) {
-        history.scrollRestoration = 'manual';
-      }
-      window.scrollTo(0, 0);
-      document.documentElement.scrollTop = 0;
-      document.body.scrollTop = 0;
     }
   }
 
   window.addEventListener('resize', function() {
     applyDeckTransforms();
+    syncLifecycleHeights();
+  });
+
+  window.addEventListener('load', function() {
+    syncLifecycleHeights();
   });
 
   // Handle in-page navigation when already on the solutions page
   document.addEventListener('click', function(e) {
-    var overviewLink = e.target.closest('a.nav-dropdown-link--overview');
-    if (overviewLink && window.location.pathname.startsWith('/solutions')) {
-      e.preventDefault();
-      history.pushState(null, '', '/solutions/');
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-      window.solSelectStep('vendors');
-      return;
-    }
-
-    var link = e.target.closest('a[href*="/solutions/?step="]');
+    var link = e.target.closest('a[href*="/solutions/#"], a[href*="/solutions/?step="]');
     if (link && window.location.pathname.startsWith('/solutions')) {
-      var url = new URL(link.href, window.location.origin);
-      var step = url.searchParams.get('step');
-      if (step) {
+      var hash = link.hash ? link.hash.replace('#', '') : '';
+      if (!hash && link.search) {
+        var p = new URLSearchParams(link.search);
+        hash = p.get('step') || '';
+      }
+      if (hash) {
         e.preventDefault();
         history.pushState(null, '', link.href);
-        window.solSelectStep(step);
-        setTimeout(function() {
-          var el = document.getElementById('lifecycle-detail');
+        document.querySelectorAll('.nav-item.has-dropdown').forEach(function(item) {
+          item.setAttribute('data-state', 'closed');
+          item.classList.add('menu-closed');
+        });
+        document.querySelectorAll('.nav-dropdown-menu').forEach(function(m) {
+          m.style.display = 'none';
+          m.classList.add('menu-closed');
+          m.classList.remove('is-open');
+        });
+        document.querySelectorAll('.nav-chevron').forEach(function(c) {
+          c.style.transform = 'rotate(0deg)';
+        });
+        if (document.activeElement) {
+          document.activeElement.blur();
+        }
+        if (hash === 'solutions-overview') {
+          var el = document.getElementById('solutions-overview');
           if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }, 50);
+          syncLifecycleHeights();
+        } else {
+          window.solSelectStep(hash, true);
+        }
       }
     }
   });
@@ -1344,8 +1776,10 @@
   /* Init */
   buildDesktopDeck();
   renderMobileCarousel();
+  syncLifecycleHeights();
   handleUrlStep();
   window.addEventListener('popstate', handleUrlStep);
+  window.addEventListener('hashchange', handleUrlStep);
 
 })();
 </script>

@@ -1,12 +1,234 @@
 {% extends 'landing/base.html' %}
 {% load static %}
 
+{% block extra_css %}
+<link rel="preload" as="image" href="{% static 'landing/images/hero_poster.webp' %}?v=1" type="image/webp" />
+<link rel="preload" as="video" href="{% static 'landing/videos/hero-video-matched.mp4' %}" type="video/mp4" />
+<script>
+// Prevent modern browsers from restoring old scroll position on page refresh
+if ('scrollRestoration' in history) {
+  history.scrollRestoration = 'manual';
+}
+</script>
+<style>
+/* ── Core Design Philosophy Banner (Matching Screenshot & About Page) ── */
+.home-philosophy-banner {
+  background: linear-gradient(135deg, #1e3a8a 0%, #0f172a 100%);
+  border-radius: 26px;
+  padding: clamp(38px, 5.2vw, 56px) clamp(24px, 4.2vw, 46px);
+  color: #ffffff;
+  text-align: center;
+  box-shadow: 0 24px 60px rgba(15, 27, 45, 0.35), 0 0 0 1px rgba(147, 197, 253, 0.15);
+  position: relative;
+  overflow: hidden;
+}
+.home-philosophy-banner::before {
+  content: '';
+  position: absolute;
+  top: -40%;
+  left: -20%;
+  width: 140%;
+  height: 180%;
+  background: radial-gradient(circle at 35% 25%, rgba(59, 130, 246, 0.28) 0%, transparent 65%);
+  pointer-events: none;
+}
+.home-philosophy-eyebrow {
+  font-size: 14px;
+  font-weight: 800;
+  color: #93c5fd;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  display: block;
+  margin-bottom: 6px;
+  position: relative;
+  z-index: 2;
+}
+.home-philosophy-title {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: clamp(28px, 3.2vw, 40px);
+  margin: 14px 0 18px 0;
+  color: #ffffff;
+  font-weight: 700;
+  line-height: 1.22;
+  position: relative;
+  z-index: 2;
+}
+.home-philosophy-text {
+  font-size: clamp(16px, 1.3vw, 20px);
+  color: #f1f5f9;
+  max-width: 800px;
+  margin: 0 auto;
+  line-height: 1.75;
+  font-weight: 500;
+  position: relative;
+  z-index: 2;
+}
+
+/* ── Upgraded Blue Background: Roles Section (#roles) ── */
+#roles.roles {
+  background: linear-gradient(135deg, #102a6b 0%, #0d1e48 50%, #0a1128 100%) !important;
+  color: #ffffff !important;
+  position: relative;
+  overflow: hidden;
+  border-top: 1px solid rgba(147, 197, 253, 0.15);
+  border-bottom: 1px solid rgba(147, 197, 253, 0.15);
+}
+#roles::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 100%;
+  background: radial-gradient(circle at 50% 0%, rgba(59, 130, 246, 0.2) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+#roles .roles-top,
+#roles #role-interface-wrapper {
+  position: relative;
+  z-index: 2;
+}
+#roles .roles-badge {
+  background: rgba(30, 58, 138, 0.75) !important;
+  color: #93c5fd !important;
+  border: 1.5px solid rgba(147, 197, 253, 0.4) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3) !important;
+}
+#roles .roles-badge span {
+  background: #60a5fa !important;
+  box-shadow: 0 0 10px #60a5fa !important;
+}
+#roles .roles-title {
+  color: #ffffff !important;
+}
+#roles .roles-desc {
+  color: #cbd5e1 !important;
+}
+#roles .role-avatar-btn span {
+  color: #94a3b8 !important;
+  transition: all 0.3s ease;
+}
+#roles .role-avatar-btn.is-active span {
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  text-shadow: 0 0 16px rgba(147, 197, 253, 0.6);
+}
+#roles .role-avatar-circle {
+  border: 1.5px solid rgba(255, 255, 255, 0.12) !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+  transition: all 0.3s ease !important;
+}
+#roles .role-avatar-circle.is-active {
+  background: rgba(30, 58, 138, 0.85) !important;
+  border: 2px solid #60a5fa !important;
+  box-shadow: 0 0 28px rgba(59, 130, 246, 0.6), inset 0 0 14px rgba(59, 130, 246, 0.3) !important;
+  transform: scale(1.05);
+}
+#roles .role-scroll-track {
+  background: rgba(255, 255, 255, 0.15) !important;
+}
+#roles .role-scroll-thumb {
+  background: #3b82f6 !important;
+}
+#roles .role-interface {
+  border: 1.5px solid rgba(147, 197, 253, 0.28) !important;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.1) !important;
+}
+
+/* ── Upgraded Blue Background: FAQ Section (#faq) ── */
+#faq.faq {
+  background: linear-gradient(135deg, #0d1b3e 0%, #172554 50%, #0f172a 100%) !important;
+  color: #ffffff !important;
+  position: relative;
+  border-top: 1px solid rgba(147, 197, 253, 0.15);
+  border-bottom: 1px solid rgba(147, 197, 253, 0.15);
+}
+#faq::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 100%, rgba(59, 130, 246, 0.18) 0%, transparent 65%);
+  pointer-events: none;
+}
+#faq .faq-badge {
+  background: rgba(30, 58, 138, 0.75) !important;
+  color: #93c5fd !important;
+  border: 1.5px solid rgba(147, 197, 253, 0.4) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3) !important;
+}
+#faq .faq-badge span {
+  background: #60a5fa !important;
+  box-shadow: 0 0 10px #60a5fa !important;
+}
+#faq .faq-title {
+  color: #ffffff !important;
+}
+#faq .faq-desc {
+  color: #cbd5e1 !important;
+}
+#faq .home-faq-item {
+  background: rgba(15, 23, 42, 0.8) !important;
+  border: 1.5px solid rgba(147, 197, 253, 0.22) !important;
+  backdrop-filter: blur(14px) !important;
+  -webkit-backdrop-filter: blur(14px) !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35) !important;
+}
+#faq .home-faq-item.is-open {
+  border-color: #3b82f6 !important;
+  background: rgba(15, 23, 42, 0.95) !important;
+  box-shadow: 0 20px 50px rgba(30, 58, 138, 0.5), 0 0 0 1px rgba(96, 165, 250, 0.4) !important;
+}
+#faq .home-faq-toggle {
+  color: #ffffff !important;
+}
+#faq .home-faq-icon {
+  background: rgba(59, 130, 246, 0.2) !important;
+  color: #93c5fd !important;
+  border: 1px solid rgba(147, 197, 253, 0.3) !important;
+}
+#faq .home-faq-item.is-open .home-faq-icon {
+  background: #2563eb !important;
+  color: #ffffff !important;
+  border-color: #3b82f6 !important;
+}
+#faq .home-faq-answer-inner {
+  border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+#faq .home-faq-answer-content {
+  color: #e2e8f0 !important;
+  line-height: 1.7 !important;
+}
+
+/* Responsive tweaks */
+@media (max-width: 768px) {
+  .home-philosophy-banner {
+    padding: 36px 20px !important;
+    border-radius: 20px !important;
+  }
+  .home-philosophy-title {
+    font-size: 26px !important;
+  }
+  .home-philosophy-text {
+    font-size: 15px !important;
+  }
+}
+
+/* Hide card-tap-cue on cards as requested */
+.card-tap-cue,
+.uiverse-card .card-tap-cue,
+.uiverse-card.is-active .card-tap-cue {
+  display: none !important;
+}
+</style>
+{% endblock %}
+
 {% block intro_screen %}
 <!-- Intro Video Screen -->
 <div class="intro-screen" id="intro-screen">
   <video
     id="intro-video"
-    src="{% static 'landing/videos/intro.mp4' %}"
+    src="{% static 'landing/videos/intro.mp4' %}?v=4"
     autoplay
     muted
     playsinline
@@ -52,9 +274,12 @@
     <div class="hero-visual">
       <video
         id="hero-video"
+        autoplay
         muted
         loop
         playsinline
+        preload="auto"
+        poster="{% static 'landing/images/hero_poster.webp' %}?v=1"
         class="hero-video"
         style="width:100%;max-width:920px;height:auto;object-fit:contain;mask-image:linear-gradient(to bottom,#000 82%,rgba(0,0,0,0.2) 87%,transparent 91%),linear-gradient(135deg,#000 78%,rgba(0,0,0,0.2) 84%,transparent 88%);-webkit-mask-image:linear-gradient(to bottom,#000 82%,rgba(0,0,0,0.2) 87%,transparent 91%),linear-gradient(135deg,#000 78%,rgba(0,0,0,0.2) 84%,transparent 88%);mask-composite:intersect;-webkit-mask-composite:destination-in;mix-blend-mode:multiply;"
       >
@@ -62,8 +287,8 @@
       </video>
 
       <div class="hero-stat">
-        <strong class="animated-text" id="hero-stat-num"><span style="animation-delay:3.20s">1</span><span style="animation-delay:3.33s">3</span><span style="animation-delay:3.46s">,</span><span style="animation-delay:3.59s">0</span><span style="animation-delay:3.72s">0</span><span style="animation-delay:3.85s">0</span><span style="animation-delay:3.98s">+</span></strong>
-        <span class="hero-stat-caption" style="opacity:0;animation:slideUpFade 0.7s cubic-bezier(0.16,1,0.3,1) forwards;animation-delay:4.05s;">ENTERPRISES USE OUR PROCUREMENT PLATFORM</span>
+        <strong id="hero-stat-num">13,000+</strong>
+        <span class="hero-stat-caption" style="opacity:1;">ENTERPRISES USE OUR PROCUREMENT PLATFORM</span>
       </div>
     </div>
   </section>
@@ -95,7 +320,7 @@
           <div style="display:flex;flex-direction:column;">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;font-size:13px;color:#475569;font-weight:650;">
               <span>Select or hover on any module below:</span>
-              <span id="active-module-label" style="color:#0052cc;font-weight:750;">Purchase &amp; Approvals selected →</span>
+              <span id="active-module-label" style="color:#0052cc;font-weight:750;">Purchase and Approvals selected →</span>
             </div>
             <div class="cinematic-cards-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
               {% for mod in platform_modules %}
@@ -116,17 +341,12 @@
                   <div class="logo" style="top:14px;left:16px;width:28px;height:28px;">
                     {% include 'landing/partials/icon.html' with name=mod.icon size=22 %}
                   </div>
-                  <div class="title" style="font-size:clamp(1.2rem,1.35vw,1.45rem);top:50%;font-weight:800;">{{ mod.name }}</div>
-                  <div class="card-tap-cue" style="position:absolute;bottom:10px;width:100%;text-align:center;">
-                    <span style="font-size:11px;color:rgba(255,255,255,0.95);font-weight:{% if forloop.first %}750{% else %}600{% endif %}">
-                      {% if forloop.first %}● Viewing Details →{% else %}Hover to view details ↗{% endif %}
-                    </span>
-                  </div>
+                  <div class="title" style="font-size:clamp(1.2rem,1.35vw,1.45rem);top:50%;font-weight:800;">{{ mod.name_html|default:mod.name|safe }}</div>
                   <div class="box box3"></div>
                   <div class="box box2"></div>
                   <div class="box box1">
                     <div class="content" style="padding:1rem;">
-                      <span class="box-title" style="font-size:1.1rem;margin-bottom:6px;">{{ mod.name }}</span>
+                      <span class="box-title" style="font-size:1.1rem;margin-bottom:6px;">{{ mod.name_html|default:mod.name|safe }}</span>
                       <span class="box-text" style="font-size:0.85rem;line-height:1.4;">{{ mod.short_desc }}</span>
                     </div>
                   </div>
@@ -148,7 +368,7 @@
                       <div style="width:42px;height:42px;border-radius:11px;background:{{ mod.theme_color }}18;color:{{ mod.theme_color }};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                         {% include 'landing/partials/icon.html' with name=mod.icon size=24 %}
                       </div>
-                      <h3 style="margin:0;font-size:25px;font-weight:800;font-family:'Playfair Display','Georgia',serif;color:#0F1B2D;line-height:1.2;">{{ mod.name }}</h3>
+                      <h3 style="margin:0;font-size:25px;font-weight:800;font-family:'Playfair Display','Georgia',serif;color:#0F1B2D;line-height:1.2;">{{ mod.name_html|default:mod.name|safe }}</h3>
                     </div>
                     <span style="font-size:11.5px;font-weight:750;color:{{ mod.theme_color }};background:{{ mod.theme_color }}14;padding:5px 11px;border-radius:6px;font-family:'DM Mono',monospace;letter-spacing:0.04em;">ENTERPRISE CAPABILITY</span>
                   </div>
@@ -196,59 +416,59 @@
           </p>
         </div>
         <div class="trust-animation-container">
-          <img src="{% static 'landing/images/animation.webp' %}" alt="ProcureSphere Animation" />
+          <img src="{% static 'landing/images/enterprise_collaboration.png' %}?v=1" alt="Enterprise Procurement Collaboration" />
         </div>
       </div>
 
-      <!-- Scroll-animated Trust Cards -->
-      <div id="trust-cards-container" class="trust-sequence-container" style="height:240vh;position:relative;width:100%;">
-        <div class="trust-sequence-sticky" style="position:sticky;top:0px;display:flex;flex-direction:column;justify-content:center;min-height:100vh;padding-top:60px;padding-bottom:80px;background:#ffffff;z-index:5;box-sizing:border-box;">
-          <div class="trust-cards-grid" style="width:100%;margin:0 auto 80px auto;max-width:1300px;padding:0 20px;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:20px;">
+      <!-- Executive Metric Showcase (Clean, Instant, Interactive Bento Grid) -->
+      <div id="trust-cards-container" class="enterprise-metrics-section" style="position:relative;width:100%;padding:40px 0 54px;background:#ffffff;">
+        <div class="metrics-inner" style="max-width:1380px;margin:0 auto;padding:0 clamp(20px, 3.5vw, 44px);box-sizing:border-box;">
+          <div class="bento-metrics-grid">
             {% for card in trust_cards %}
             <div
-              class="u-card"
+              class="metric-bento-card"
               id="trust-card-{{ forloop.counter0 }}"
               data-card-index="{{ forloop.counter0 }}"
-              role="button"
-              tabindex="0"
-              aria-expanded="false"
-              style="border:1px solid {{ card.color }}50;cursor:pointer;"
-              onclick="toggleTrustCard({{ forloop.counter0 }})"
-              onmouseenter="onTrustCardHover({{ forloop.counter0 }})"
-              onmouseleave="onTrustCardLeave({{ forloop.counter0 }})"
-              onkeydown="if(event.key==='Enter'||event.key===' ')toggleTrustCard({{ forloop.counter0 }})"
+              style="--card-accent: {{ card.color }};"
             >
-              <button class="mail" aria-label="Open card details" onclick="event.stopPropagation();toggleTrustCard({{ forloop.counter0 }})">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 7l10 10M17 7v10H7"/></svg>
-              </button>
-              <div class="profile-pic" style="background:{{ card.color }}15;color:{{ card.color }};">
-                {% if card.icon == 'badge' %}
-                <svg width="30" height="30" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/></svg>
-                {% elif card.icon == 'chart' %}
-                <svg width="30" height="30" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/></svg>
-                {% elif card.icon == 'receipt' %}
-                <svg width="30" height="30" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M18 17H6v-2h12v2zm0-4H6v-2h12v2zm0-4H6V7h12v2zM3 22l1.5-1.5L6 22l1.5-1.5L9 22l1.5-1.5L12 22l1.5-1.5L15 22l1.5-1.5L18 22l1.5-1.5L21 22V2l-1.5 1.5L18 2l-1.5 1.5L15 2l-1.5 1.5L12 2l-1.5 1.5L9 2 7.5 3.5 6 2 4.5 3.5 3 2v20z"/></svg>
-                {% elif card.icon == 'savings' %}
-                <svg width="30" height="30" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"/></svg>
-                {% else %}
-                <svg width="30" height="30" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
-                {% endif %}
-              </div>
-              <div class="u-card-base-title">
-                <span class="u-card-base-label">{{ card.label }}</span>
-                <span class="u-card-tap-cue">Tap for stats ↗</span>
-              </div>
-              <div class="bottom">
-                <div class="content">
-                  <span class="name">{{ card.stat }}</span>
-                  <span class="label">{{ card.label }}</span>
-                  <span class="about-me">{{ card.desc }}</span>
-                  <span class="u-card-close-cue">Tap to close ✕</span>
+              <!-- Top Row: Icon + Business Metric Tag -->
+              <div class="mb-top-row">
+                <div class="mb-icon-box" style="background: {{ card.color }}18; color: {{ card.color }};">
+                  {% if card.icon == 'building' or card.icon == 'badge' %}
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 7V3H2v18h20V7H12zM6 19H4v-2h2v2zm0-4H4v-2h2v2zm0-4H4V9h2v2zm0-4H4V5h2v2zm4 12H8v-2h2v2zm0-4H8v-2h2v2zm0-4H8V9h2v2zm0-4H8V5h2v2zm10 12h-8v-2h2v-2h-2v-2h2v-2h-2V9h8v10zm-2-8h-2v2h2v-2zm0 4h-2v2h2v-2z"/></svg>
+                  {% elif card.icon == 'chart' %}
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/></svg>
+                  {% elif card.icon == 'receipt' %}
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M18 17H6v-2h12v2zm0-4H6v-2h12v2zm0-4H6V7h12v2zM3 22l1.5-1.5L6 22l1.5-1.5L9 22l1.5-1.5L12 22l1.5-1.5L15 22l1.5-1.5L18 22l1.5-1.5L21 22V2l-1.5 1.5L18 2l-1.5 1.5L15 2l-1.5 1.5L12 2l-1.5 1.5L9 2 7.5 3.5 6 2 4.5 3.5 3 2v20z"/></svg>
+                  {% elif card.icon == 'savings' %}
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"/></svg>
+                  {% else %}
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
+                  {% endif %}
                 </div>
+                <div class="mb-pill-chip" style="color: {{ card.color }}; border-color: {{ card.color }}35; background: {{ card.color }}10;">
+                  {{ card.tag|default:"METRIC" }}
+                </div>
+              </div>
+
+              <!-- Metric Number & Title -->
+              <div class="mb-stat-wrap">
+                <div class="mb-stat-number" data-target="{{ card.stat }}">{{ card.stat }}</div>
+                <div class="mb-stat-label">{{ card.label }}</div>
+              </div>
+
+              <!-- Description -->
+              <p class="mb-stat-desc">{{ card.desc }}</p>
+
+              <!-- Interactive Progress Sparkline -->
+              <div class="mb-progress-track">
+                <div class="mb-progress-bar" style="background: linear-gradient(90deg, {{ card.color }}, {{ card.color }}aa);"></div>
               </div>
             </div>
             {% endfor %}
           </div>
+        </div>
+      </div>
 
           <!-- Trusted Brands -->
           <div class="trusted-brands animate-on-scroll" style="margin-top:0;position:relative;padding-top:10px;padding-bottom:20px;">
@@ -275,9 +495,18 @@
               </div>
             </div>
           </div>
-        </div>
-      </div>
     </section>
+
+    <!-- ── Core Design Philosophy Banner (Matching Screenshot & About Page) ── -->
+    <div class="home-philosophy-wrap animate-on-scroll" style="width:100%;max-width:1300px;margin:50px auto 40px;padding:0 clamp(20px, 3.5vw, 40px);box-sizing:border-box;">
+      <div class="home-philosophy-banner" id="design-philosophy">
+        <span class="home-philosophy-eyebrow">CORE DESIGN PHILOSOPHY</span>
+        <h2 class="home-philosophy-title">Built for clarity. Designed for control.</h2>
+        <p class="home-philosophy-text">
+          Every critical action captures the actor, state change, and timestamp — ensuring audit-readiness and enterprise governance without slowing down daily business operations.
+        </p>
+      </div>
+    </div>
 
     <!-- Modules Stack Section -->
     <div id="modules">
@@ -296,14 +525,14 @@
 <section class="roles section-pad role-requester" id="roles" style="padding-top:clamp(40px,4.5vh,54px);">
   <div class="roles-top" style="flex-direction:column;align-items:center;text-align:center;gap:48px;">
     <div style="text-align:center;margin-bottom:0;" class="animate-on-scroll">
-      <div style="display:inline-flex;align-items:center;gap:10px;padding:9px 26px;border-radius:999px;background:#dbeafe;color:#0b40ad;border:1.5px solid #93c5fd;box-shadow:0 2px 10px rgba(11,64,173,0.12);font-size:16px;font-weight:850;letter-spacing:0.08em;margin-bottom:14px;text-transform:uppercase;">
+      <div class="roles-badge" style="display:inline-flex;align-items:center;gap:10px;padding:9px 26px;border-radius:999px;background:#dbeafe;color:#0b40ad;border:1.5px solid #93c5fd;box-shadow:0 2px 10px rgba(11,64,173,0.12);font-size:16px;font-weight:850;letter-spacing:0.08em;margin-bottom:14px;text-transform:uppercase;">
         <span style="width:9px;height:9px;border-radius:50%;background:#0b40ad;box-shadow:0 0 8px rgba(11,64,173,0.7);flex-shrink:0;"></span>
         WHO IS IT FOR
       </div>
-      <h2 style="font-family:'Playfair Display',Georgia,serif;font-size:clamp(30px,3.8vw,44px);color:#0F1B2D;font-weight:700;margin:0 0 14px 0;line-height:1.2;">
+      <h2 class="roles-title" style="font-family:'Playfair Display',Georgia,serif;font-size:clamp(30px,3.8vw,44px);color:#0F1B2D;font-weight:700;margin:0 0 14px 0;line-height:1.2;">
         One platform. Every team.
       </h2>
-      <p style="color:#334155;font-size:18px;max-width:780px;margin:0 auto;line-height:1.6;font-weight:500;">
+      <p class="roles-desc" style="color:#334155;font-size:18px;max-width:780px;margin:0 auto;line-height:1.6;font-weight:500;">
         One connected system adapts to the decisions each team owns.
       </p>
     </div>
@@ -412,16 +641,16 @@
 </section>
 
 <!-- ===== FAQ ===== -->
-<section class="faq section-pad" id="faq" style="background:var(--soft);padding-top:60px;padding-bottom:100px;">
+<section class="faq section-pad" id="faq" style="padding-top:60px;padding-bottom:100px;">
   <div style="text-align:center;margin-bottom:44px;" class="animate-on-scroll">
-    <div style="display:inline-flex;align-items:center;gap:10px;padding:9px 26px;border-radius:999px;background:#dbeafe;color:#0b40ad;border:1.5px solid #93c5fd;box-shadow:0 2px 10px rgba(11,64,173,0.12);font-size:16px;font-weight:850;letter-spacing:0.08em;margin-bottom:14px;text-transform:uppercase;">
+    <div class="faq-badge" style="display:inline-flex;align-items:center;gap:10px;padding:9px 26px;border-radius:999px;background:#dbeafe;color:#0b40ad;border:1.5px solid #93c5fd;box-shadow:0 2px 10px rgba(11,64,173,0.12);font-size:16px;font-weight:850;letter-spacing:0.08em;margin-bottom:14px;text-transform:uppercase;">
       <span style="width:9px;height:9px;border-radius:50%;background:#0b40ad;box-shadow:0 0 8px rgba(11,64,173,0.7);flex-shrink:0;"></span>
       FAQ
     </div>
-    <h2 style="font-family:'Playfair Display',Georgia,serif;font-size:clamp(30px,3.8vw,44px);color:#0F1B2D;font-weight:700;margin:0 0 14px 0;line-height:1.2;">
+    <h2 class="faq-title" style="font-family:'Playfair Display',Georgia,serif;font-size:clamp(30px,3.8vw,44px);color:#0F1B2D;font-weight:700;margin:0 0 14px 0;line-height:1.2;">
       Clarity before the first conversation.
     </h2>
-    <p style="color:#334155;font-size:18px;max-width:780px;margin:0 auto;line-height:1.6;font-weight:500;">
+    <p class="faq-desc" style="color:#334155;font-size:18px;max-width:780px;margin:0 auto;line-height:1.6;font-weight:500;">
       A few practical answers for teams evaluating a connected procurement operating system.
     </p>
   </div>
@@ -517,8 +746,17 @@
 
 {% block extra_js %}
 <script>
+// Prevent modern browsers from restoring old scroll position on page refresh
+if ('scrollRestoration' in history) {
+  history.scrollRestoration = 'manual';
+}
+
 // Home page specific JS
 document.addEventListener('DOMContentLoaded', function() {
+  if ('scrollRestoration' in history) {
+    history.scrollRestoration = 'manual';
+  }
+
   // Intro screen handling: plays EVERY TIME on refresh, skips when clicking Home
   const introScreen = document.getElementById('intro-screen');
   const introVideo  = document.getElementById('intro-video');
@@ -548,6 +786,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const shouldSkip = !isReload && clickedHome;
 
     if (shouldSkip) {
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
       introScreen.style.display = 'none';
       if (siteShell) { siteShell.classList.add('intro-finished'); }
       if (heroVideo) { heroVideo.play().catch(() => {}); }
@@ -555,6 +796,10 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Play intro video
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+
     if (siteShell) { siteShell.classList.remove('intro-finished'); }
     introScreen.style.display = 'flex';
     introScreen.classList.remove('slide-up');
@@ -569,9 +814,25 @@ document.addEventListener('DOMContentLoaded', function() {
     const finishIntro = () => {
       if (isFinished) return;
       isFinished = true;
+
+      // Always reset scroll to the very top when intro finishes
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+
       introScreen.classList.add('slide-up');
       if (siteShell) { siteShell.classList.add('intro-finished'); }
+
+      requestAnimationFrame(() => {
+        window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+        document.documentElement.scrollTop = 0;
+        document.body.scrollTop = 0;
+      });
+
       setTimeout(() => {
+        window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+        document.documentElement.scrollTop = 0;
+        document.body.scrollTop = 0;
         introScreen.style.display = 'none';
         if (heroVideo) { heroVideo.play().catch(() => {}); }
       }, 750);
@@ -579,6 +840,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
     introVideo.onended = finishIntro;
     introVideo.onerror = () => setTimeout(finishIntro, 500);
+
+    // Transition when video reaches its 3.7s cut
+    introVideo.addEventListener('timeupdate', () => {
+      if (introVideo.currentTime >= 3.7) {
+        finishIntro();
+      }
+    });
 
     // Allow user to tap/click anywhere on intro screen to skip
     introScreen.addEventListener('click', finishIntro, { once: true });
@@ -600,12 +868,12 @@ document.addEventListener('DOMContentLoaded', function() {
       playIntro();
     }
 
-    // Safety fallback: intro.mp4 is 6s; fallback at 7.5s if stalls
+    // Safety fallback: intro.mp4 is 3.5s; fallback at 4s if stalls
     setTimeout(() => {
-      if (!isFinished && (introVideo.paused || introVideo.ended)) {
+      if (!isFinished) {
         finishIntro();
       }
-    }, 7500);
+    }, 4000);
   }
 });
 
