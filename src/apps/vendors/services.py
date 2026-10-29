@@ -364,6 +364,7 @@ def _lock_reviewable_document(document: VendorDocument, reviewer: User) -> Vendo
 
 
 
+@transaction.atomic
 def verify_vendor_document_decision_service(
     *,
     document: VendorDocument = None,
