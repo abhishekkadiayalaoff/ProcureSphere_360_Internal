@@ -4,11 +4,18 @@
 
     <!-- Left: Brand + Desktop Nav -->
     <div class="nav-left-group">
-      <a class="brand nav-brand" href="/" aria-label="ProcureSphere 360 Home" style="display:inline-flex;align-items:center;text-decoration:none;">
+      <a class="brand nav-brand" href="/" aria-label="ProcureSphere 360 Home" style="display:inline-flex;align-items:center;gap:12px;text-decoration:none;">
         <img
-          src="{% static 'landing/images/procuresphere_360_nav_brand.png' %}?v=8"
+          src="{% static 'landing/images/procuresphere_360_emblem.png' %}?v=12"
+          alt="ProcureSphere 360 Logo"
+          class="nav-brand-emblem"
+          style="height:56px;max-height:58px;width:auto;object-fit:contain;display:block;transition:transform 0.2s ease;"
+        />
+        <img
+          src="{% static 'landing/images/procuresphere_360_wordmark.png' %}?v=12"
           alt="ProcureSphere 360"
-          style="height:62px;max-height:64px;width:auto;object-fit:contain;display:block;transition:transform 0.2s ease;"
+          class="nav-brand-wordmark"
+          style="height:32px;max-height:34px;width:auto;object-fit:contain;display:block;transition:opacity 0.2s ease;"
         />
       </a>
 

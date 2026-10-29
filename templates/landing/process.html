@@ -28,16 +28,16 @@
   <div style="max-width:1080px;margin:0 auto;padding:0 24px 60px;">
 
     <!-- Timeline Subtitle / Interaction Instruction Hint -->
-    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:28px;padding:14px 20px;background:#ffffff;border:1.5px solid #e2e8f0;border-radius:14px;box-shadow:0 4px 12px rgba(15,27,45,0.04);">
-      <div style="display:flex;align-items:center;gap:10px;">
-        <span style="display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;background:#eff6ff;color:#2456D6;border-radius:50%;font-size:14px;font-weight:800;">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px;margin-bottom:28px;padding:16px 24px;background:#ffffff;border:1.5px solid #cbd5e1;border-left:5px solid #2456D6;border-radius:14px;box-shadow:0 8px 24px rgba(15,27,45,0.06);">
+      <div style="display:flex;align-items:center;gap:14px;">
+        <span style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;background:#2456D6;color:#ffffff;border-radius:50%;font-size:15px;font-weight:800;box-shadow:0 2px 8px rgba(36,86,214,0.3);flex-shrink:0;">
           i
         </span>
-        <span style="font-size:14.5px;color:#334155;font-weight:600;">
-          Standard Operating Procedure (SOP) — Click any phase to view operational controls, actions, and deliverables.
+        <span style="font-size:15.5px;color:#0f172a;line-height:1.55;">
+          <strong style="color:#2456D6;font-weight:800;font-size:16px;">Standard Operating Procedure (SOP)</strong> — <span style="font-weight:600;">Click any phase to inspect operational controls, key activities, and verified deliverables.</span>
         </span>
       </div>
-      <span style="font-size:12.5px;color:#64748b;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;font-family:'DM Mono',monospace;">
+      <span style="font-size:12.5px;color:#ffffff;background:#2456D6;font-weight:800;text-transform:uppercase;letter-spacing:0.06em;font-family:'DM Mono',monospace;padding:6px 14px;border-radius:20px;box-shadow:0 2px 8px rgba(36,86,214,0.25);flex-shrink:0;">
         6 Operating Stages
       </span>
     </div>
@@ -58,13 +58,13 @@
         </div>
 
         <!-- Timeline Card Content -->
-        <div class="proc-card" onclick="openProcessModal('{{ stage.id }}')" role="button" tabindex="0" aria-label="Open details for Phase {{ stage.stepNum }}: {{ stage.title }}">
+        <div class="proc-card" onclick="openProcessModal('{{ stage.id }}')" role="button" tabindex="0" aria-label="Open details for {{ stage.title }}">
           <div class="proc-card-header">
             <div class="proc-card-tags">
-              <span class="proc-phase-pill">PHASE {{ stage.stepNum }} • {{ stage.subtitle|upper }}</span>
+              <span class="proc-phase-pill">{{ stage.subtitle|upper }}</span>
               <span class="proc-timeline-pill">{{ stage.timeline }}</span>
             </div>
-            <div class="proc-card-action-icon">
+            <div class="proc-card-action-icon" aria-hidden="true">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M7 17L17 7M17 7H7M17 7V17"/>
               </svg>
@@ -77,7 +77,7 @@
 
           <div class="proc-card-footer">
             <div class="proc-deliverable-chip">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2456D6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2456D6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                 <polyline points="20 6 9 17 4 12"></polyline>
               </svg>
               <span>{{ stage.output }}</span>
@@ -94,19 +94,22 @@
 
     <!-- Operational Principles Across the Lifecycle -->
     <div style="margin-top:54px;">
-      <h3 style="font-family:'Playfair Display',Georgia,serif;font-size:28px;color:#0f172a;font-weight:700;margin-bottom:24px;text-align:center;">
+      <h3 style="font-family:'Playfair Display',Georgia,serif;font-size:30px;color:#0f172a;font-weight:800;margin-bottom:26px;text-align:center;letter-spacing:-0.01em;">
         Operational Principles Across the Lifecycle
       </h3>
       <div class="process-principles-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:24px;">
         {% for p in principles %}
-        <div style="background:#ffffff;border:1.5px solid #cbd5e1;border-radius:20px;padding:26px;box-shadow:0 12px 32px rgba(15,27,45,0.08),0 4px 10px rgba(15,27,45,0.04);transition:transform 0.2s,box-shadow 0.2s;"
-          onmouseenter="this.style.transform='translateY(-3px)';this.style.boxShadow='0 18px 40px rgba(15,27,45,0.14),0 6px 14px rgba(15,27,45,0.06)'"
-          onmouseleave="this.style.transform='none';this.style.boxShadow='0 12px 32px rgba(15,27,45,0.08),0 4px 10px rgba(15,27,45,0.04)'"
+        <div class="proc-principle-card" style="background:#ffffff;border:1.5px solid #cbd5e1;border-top:4.5px solid #2456D6;border-radius:20px;padding:28px;box-shadow:0 12px 32px rgba(15,27,45,0.08),0 4px 10px rgba(15,27,45,0.04);transition:transform 0.22s ease,box-shadow 0.22s ease,border-color 0.22s ease;"
+          onmouseenter="this.style.transform='translateY(-4px)';this.style.borderColor='#2456D6';this.style.boxShadow='0 20px 48px rgba(36,86,214,0.16),0 6px 16px rgba(15,27,45,0.06)'"
+          onmouseleave="this.style.transform='none';this.style.borderColor='#cbd5e1';this.style.borderTopColor='#2456D6';this.style.boxShadow='0 12px 32px rgba(15,27,45,0.08),0 4px 10px rgba(15,27,45,0.04)'"
         >
-          <h4 style="font-size:19px;color:#0f172a;margin:0 0 12px 0;font-weight:800;">
+          <div style="display:inline-flex;align-items:center;gap:6px;background:#eff6ff;border:1.5px solid #bfdbfe;color:#1e40af;font-family:'DM Mono',monospace;font-size:12px;font-weight:800;padding:4px 11px;border-radius:6px;margin-bottom:14px;text-transform:uppercase;letter-spacing:0.06em;">
+            <span>PRINCIPLE 0{{ forloop.counter }}</span>
+          </div>
+          <h4 style="font-size:22px;color:#0f172a;margin:0 0 12px 0;font-weight:800;line-height:1.3;letter-spacing:-0.01em;">
             {{ p.title }}
           </h4>
-          <p style="font-size:16px;color:#334155;line-height:1.65;margin:0;font-weight:500;">
+          <p style="font-size:17px;color:#1e293b;line-height:1.7;margin:0;font-weight:500;">
             {{ p.desc }}
           </p>
         </div>
@@ -136,7 +139,7 @@
       <!-- Modal Header -->
       <div class="proc-modal-header">
         <div class="proc-modal-badge-row">
-          <span class="proc-modal-phase-tag" id="proc-modal-phase-tag">PHASE 01 • REQUISITION INITIALIZATION</span>
+          <span class="proc-modal-phase-tag" id="proc-modal-phase-tag">REQUISITION INITIALIZATION</span>
           <span class="proc-modal-timeline-tag" id="proc-modal-timeline-tag">Real-Time Policy &amp; Budget Verification</span>
         </div>
         <h2 class="proc-modal-title" id="proc-modal-title">Requirement &amp; Budget Verification</h2>
@@ -214,8 +217,8 @@
 
 .proc-timeline-item {
   display: grid;
-  grid-template-columns: 56px 1fr;
-  gap: 20px;
+  grid-template-columns: 60px 1fr;
+  gap: 22px;
   position: relative;
 }
 
@@ -228,8 +231,8 @@
 }
 
 .proc-step-node {
-  width: 44px;
-  height: 44px;
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
   background: linear-gradient(135deg, #2456D6 0%, #1d4ed8 100%);
   color: #ffffff;
@@ -237,9 +240,9 @@
   align-items: center;
   justify-content: center;
   font-family: 'DM Mono', monospace;
-  font-size: 15px;
+  font-size: 16.5px;
   font-weight: 800;
-  box-shadow: 0 4px 14px rgba(36, 86, 214, 0.35), 0 0 0 4px #eff6ff, 0 0 0 6px #cbd5e1;
+  box-shadow: 0 4px 16px rgba(36, 86, 214, 0.35), 0 0 0 4px #eff6ff, 0 0 0 7px #bfdbfe;
   cursor: pointer;
   z-index: 2;
   transition: all 0.25s ease;
@@ -247,43 +250,47 @@
 }
 
 .proc-timeline-item:hover .proc-step-node {
-  transform: scale(1.1);
-  box-shadow: 0 6px 18px rgba(36, 86, 214, 0.5), 0 0 0 4px #dbeafe, 0 0 0 6px #93c5fd;
+  transform: scale(1.12);
+  box-shadow: 0 8px 24px rgba(36, 86, 214, 0.5), 0 0 0 4px #dbeafe, 0 0 0 8px #93c5fd;
 }
 
 .proc-connector-line {
-  width: 2.5px;
-  background: #cbd5e1;
+  width: 3.5px;
+  background: linear-gradient(180deg, #2456D6 0%, #60a5fa 50%, #2456D6 100%);
+  opacity: 0.75;
+  border-radius: 4px;
   flex: 1;
   margin: 6px 0;
   min-height: 40px;
+  box-shadow: 0 0 8px rgba(36, 86, 214, 0.2);
 }
 
-/* Interactive Phase Card (Concise overview) */
+/* Interactive Phase Card (Prominent White Elevation with Rich Shadows) */
 .proc-card {
   background: #ffffff;
-  border: 1.5px solid #cbd5e1;
+  border: 2px solid #cbd5e1;
+  border-left: 6px solid #2456D6;
   border-radius: 18px;
-  padding: 22px 24px;
-  box-shadow: 0 8px 22px rgba(15, 27, 45, 0.05), 0 2px 6px rgba(15, 27, 45, 0.02);
+  padding: 26px 30px;
+  box-shadow: 0 12px 32px rgba(15, 27, 45, 0.08), 0 3px 8px rgba(15, 27, 45, 0.04);
   margin-bottom: 24px;
   cursor: pointer;
   transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 14px;
   outline: none;
 }
 
 .proc-card:hover {
-  transform: translateY(-3px);
+  transform: translateY(-4px) translateX(2px);
   border-color: #2456D6;
-  box-shadow: 0 18px 40px rgba(36, 86, 214, 0.12), 0 4px 12px rgba(15, 27, 45, 0.06);
+  box-shadow: 0 20px 48px rgba(36, 86, 214, 0.16), 0 6px 16px rgba(15, 27, 45, 0.08);
 }
 
 .proc-card:focus-visible {
   border-color: #2456D6;
-  box-shadow: 0 0 0 3px rgba(36, 86, 214, 0.25);
+  box-shadow: 0 0 0 3.5px rgba(36, 86, 214, 0.3);
 }
 
 /* Card Header */
@@ -298,59 +305,70 @@
 .proc-card-tags {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   flex-wrap: wrap;
 }
 
 .proc-phase-pill {
   font-family: 'DM Mono', monospace;
-  font-size: 11px;
+  font-size: 12.5px;
   font-weight: 800;
-  color: #1d4ed8;
+  color: #1e40af;
   background: #eff6ff;
-  border: 1px solid #bfdbfe;
-  padding: 3px 9px;
+  border: 1.5px solid #93c5fd;
+  padding: 5px 12px;
   border-radius: 6px;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
 .proc-timeline-pill {
-  font-size: 12px;
-  font-weight: 600;
-  color: #475569;
-  background: #f1f5f9;
-  border: 1px solid #e2e8f0;
-  padding: 3px 9px;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #0f172a;
+  background: #f8fafc;
+  border: 1.5px solid #cbd5e1;
+  padding: 5px 12px;
   border-radius: 6px;
 }
 
 .proc-card-action-icon {
-  color: #94a3b8;
-  transition: color 0.2s ease, transform 0.2s ease;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #eff6ff;
+  border: 1.5px solid #bfdbfe;
+  color: #2456D6;
   display: flex;
   align-items: center;
+  justify-content: center;
+  transition: all 0.22s ease;
+  flex-shrink: 0;
 }
 
 .proc-card:hover .proc-card-action-icon {
-  color: #2456D6;
-  transform: translate(2px, -2px);
+  background: #2456D6;
+  border-color: #1d4ed8;
+  color: #ffffff;
+  transform: translate(2px, -2px) scale(1.08);
+  box-shadow: 0 4px 12px rgba(36, 86, 214, 0.35);
 }
 
 /* Card Title & Summary */
 .proc-card-title {
   font-family: 'Playfair Display', Georgia, serif;
-  font-size: clamp(20px, 2vw, 24px);
-  font-weight: 700;
-  color: #0f172a;
-  margin: 0;
-  line-height: 1.3;
+  font-size: clamp(23px, 2.5vw, 29px);
+  font-weight: 800;
+  color: #0b1329;
+  margin: 2px 0 6px 0;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
 }
 
 .proc-card-summary {
-  font-size: 15px;
-  color: #334155;
-  line-height: 1.6;
+  font-size: 17.5px;
+  color: #0f172a;
+  line-height: 1.7;
   margin: 0;
   font-weight: 500;
 }
@@ -362,37 +380,51 @@
   justify-content: space-between;
   gap: 12px;
   flex-wrap: wrap;
-  padding-top: 10px;
-  border-top: 1px solid #f1f5f9;
-  margin-top: 4px;
+  padding-top: 14px;
+  border-top: 1.5px solid #e2e8f0;
+  margin-top: 6px;
 }
 
 .proc-deliverable-chip {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  font-size: 13px;
+  gap: 10px;
+  font-size: 14.5px;
   color: #0f172a;
   font-weight: 700;
   background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  padding: 5px 11px;
-  border-radius: 8px;
+  border: 1.5px solid #cbd5e1;
+  padding: 8px 16px;
+  border-radius: 9px;
+  box-shadow: 0 2px 6px rgba(15, 27, 45, 0.04);
+}
+
+.proc-deliverable-chip svg {
+  width: 17px;
+  height: 17px;
+  stroke: #2456D6;
+  stroke-width: 2.8;
 }
 
 .proc-view-cta {
-  font-size: 13.5px;
-  font-weight: 700;
-  color: #2456D6;
+  font-size: 14.5px;
+  font-weight: 800;
+  color: #ffffff;
+  background: #2456D6;
+  border: 1.5px solid #1d4ed8;
+  padding: 9px 20px;
+  border-radius: 9px;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  transition: gap 0.2s ease;
+  gap: 8px;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 14px rgba(36, 86, 214, 0.28);
 }
 
 .proc-card:hover .proc-view-cta {
-  gap: 10px;
-  color: #1d4ed8;
+  background: #1d4ed8;
+  gap: 12px;
+  box-shadow: 0 6px 18px rgba(36, 86, 214, 0.4);
 }
 
 /* ============================================================
@@ -427,15 +459,17 @@
 }
 
 .proc-modal-card {
-  background: #ffffff;
+  background: linear-gradient(145deg, #0d1b3e 0%, #172554 45%, #0f172a 100%);
   border-radius: 24px;
-  box-shadow: 0 25px 60px -12px rgba(15, 27, 45, 0.35), 0 0 0 1px rgba(15, 27, 45, 0.08);
-  border: 1.5px solid #cbd5e1;
+  box-shadow: 0 25px 60px -12px rgba(10, 18, 36, 0.7), 0 0 0 1px rgba(147, 197, 253, 0.2);
+  border: 1.5px solid rgba(147, 197, 253, 0.35);
+  border-top: 5px solid #2563eb;
   max-height: 88vh;
   display: flex;
   flex-direction: column;
   position: relative;
   overflow: hidden;
+  color: #ffffff;
 }
 
 .proc-modal-close {
@@ -445,9 +479,9 @@
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: #f1f5f9;
-  border: 1px solid #cbd5e1;
-  color: #475569;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(147, 197, 253, 0.3);
+  color: #cbd5e1;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -457,14 +491,15 @@
 }
 
 .proc-modal-close:hover {
-  background: #e2e8f0;
-  color: #0f172a;
+  background: rgba(255, 255, 255, 0.2);
+  border-color: #93c5fd;
+  color: #ffffff;
   transform: rotate(90deg);
 }
 
 .proc-modal-header {
   padding: 28px 28px 18px;
-  border-bottom: 1.5px solid #f1f5f9;
+  border-bottom: 1.5px solid rgba(147, 197, 253, 0.2);
 }
 
 .proc-modal-badge-row {
@@ -478,34 +513,35 @@
 
 .proc-modal-phase-tag {
   font-family: 'DM Mono', monospace;
-  font-size: 11.5px;
+  font-size: 12.5px;
   font-weight: 800;
-  color: #1d4ed8;
-  background: #eff6ff;
-  border: 1.5px solid #93c5fd;
-  padding: 4px 10px;
+  color: #93c5fd;
+  background: rgba(30, 58, 138, 0.85);
+  border: 1.5px solid rgba(147, 197, 253, 0.45);
+  padding: 5px 12px;
   border-radius: 6px;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
 .proc-modal-timeline-tag {
-  font-size: 12.5px;
+  font-size: 13.5px;
   font-weight: 700;
-  color: #334155;
-  background: #f8fafc;
-  border: 1px solid #cbd5e1;
-  padding: 4px 10px;
+  color: #cbd5e1;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(147, 197, 253, 0.25);
+  padding: 5px 12px;
   border-radius: 6px;
 }
 
 .proc-modal-title {
   font-family: 'Playfair Display', Georgia, serif;
-  font-size: clamp(24px, 3vw, 30px);
-  font-weight: 700;
-  color: #0f172a;
+  font-size: clamp(26px, 3.2vw, 34px);
+  font-weight: 800;
+  color: #ffffff;
   margin: 0;
-  line-height: 1.25;
+  line-height: 1.22;
+  letter-spacing: -0.015em;
 }
 
 .proc-modal-body {
@@ -518,18 +554,18 @@
 
 .proc-modal-section-eyebrow {
   font-family: 'DM Mono', monospace;
-  font-size: 11.5px;
+  font-size: 12.5px;
   font-weight: 800;
-  color: #2456D6;
-  letter-spacing: 0.08em;
+  color: #93c5fd;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   margin-bottom: 8px;
 }
 
 .proc-modal-summary-text {
-  font-size: 16px;
-  color: #1e293b;
-  line-height: 1.65;
+  font-size: 17.5px;
+  color: #f1f5f9;
+  line-height: 1.7;
   margin: 0;
   font-weight: 500;
 }
@@ -540,50 +576,50 @@
   margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
 }
 
 .proc-modal-activity-item {
   display: flex;
   align-items: flex-start;
-  gap: 10px;
-  font-size: 15px;
-  color: #1e293b;
-  line-height: 1.5;
+  gap: 12px;
+  font-size: 16.5px;
+  color: #ffffff;
+  line-height: 1.6;
   font-weight: 500;
 }
 
 .proc-modal-activity-icon {
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
-  background: #eff6ff;
-  color: #2456D6;
-  border: 1px solid #93c5fd;
+  background: rgba(37, 99, 235, 0.25);
+  color: #93c5fd;
+  border: 1px solid rgba(147, 197, 253, 0.4);
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  margin-top: 1px;
+  margin-top: 2px;
 }
 
 .proc-modal-deliverable-box {
-  background: #f0fdf4;
-  border: 1.5px solid #86efac;
+  background: rgba(15, 23, 42, 0.85);
+  border: 1.5px solid rgba(147, 197, 253, 0.35);
   border-radius: 14px;
-  padding: 16px 18px;
+  padding: 18px 20px;
   display: flex;
   align-items: center;
   gap: 14px;
-  box-shadow: 0 4px 14px rgba(22, 101, 52, 0.06);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
 }
 
 .proc-modal-deliverable-icon {
-  width: 34px;
-  height: 34px;
+  width: 38px;
+  height: 38px;
   border-radius: 10px;
-  background: #dcfce7;
-  color: #15803d;
+  background: rgba(30, 58, 138, 0.8);
+  color: #93c5fd;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -591,20 +627,20 @@
 }
 
 .proc-modal-deliverable-icon svg {
-  stroke: #16a34a;
+  stroke: #93c5fd;
 }
 
 .proc-modal-deliverable-text {
-  font-size: 15.5px;
-  color: #0f172a;
+  font-size: 17px;
+  color: #ffffff;
   font-weight: 700;
-  line-height: 1.4;
+  line-height: 1.45;
 }
 
 .proc-modal-footer {
   padding: 16px 28px;
-  background: #f8fafc;
-  border-top: 1.5px solid #e2e8f0;
+  background: rgba(10, 18, 36, 0.85);
+  border-top: 1.5px solid rgba(147, 197, 253, 0.2);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -620,37 +656,37 @@
   font-size: 13px;
   font-weight: 700;
   cursor: pointer;
-  border: 1.5px solid #cbd5e1;
-  background: #ffffff;
-  color: #334155;
+  border: 1px solid rgba(147, 197, 253, 0.3);
+  background: rgba(255, 255, 255, 0.08);
+  color: #cbd5e1;
   transition: all 0.2s ease;
 }
 
 .proc-modal-pager-btn:hover {
-  background: #f1f5f9;
-  border-color: #94a3b8;
-  color: #0f172a;
+  background: rgba(255, 255, 255, 0.18);
+  border-color: #93c5fd;
+  color: #ffffff;
 }
 
 .proc-modal-pager-next {
-  background: #2456D6;
-  border-color: #1d4ed8;
+  background: #2563eb;
+  border-color: #3b82f6;
   color: #ffffff;
   margin-left: auto;
 }
 
 .proc-modal-pager-next:hover {
   background: #1d4ed8;
-  border-color: #1e40af;
+  border-color: #60a5fa;
   color: #ffffff;
-  box-shadow: 0 4px 12px rgba(36, 86, 214, 0.3);
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);
 }
 
 .proc-modal-counter {
   font-family: 'DM Mono', monospace;
   font-size: 12px;
   font-weight: 700;
-  color: #64748b;
+  color: #94a3b8;
   text-transform: uppercase;
 }
 
@@ -718,7 +754,7 @@
     currentModalStageIndex = index;
     var stage = stages[index];
 
-    phaseTag.textContent = 'PHASE ' + stage.stepNum + ' • ' + (stage.subtitle || '').toUpperCase();
+    phaseTag.textContent = (stage.subtitle || '').toUpperCase();
     timelineTag.textContent = stage.timeline || '';
     titleEl.textContent = stage.title || '';
     summaryEl.textContent = stage.summary || '';
