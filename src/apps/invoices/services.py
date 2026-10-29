@@ -119,6 +119,54 @@ def create_supplier_invoice_service(
         },
     )
 
+    from apps.accounts.models import Role, User
+    from apps.notifications.models import Notification
+
+    # 1. Notify Finance & AP
+    fin_users = User.objects.filter(role__code=Role.FINANCE_AP, is_active=True)
+    for fin_u in fin_users:
+        Notification.objects.create(
+            recipient=fin_u,
+            notification_type=Notification.TYPE_GOODS_RECEIVED,
+            title=f"New Supplier Invoice Submitted: {invoice.invoice_number}",
+            message=(
+                f"Vendor '{vendor.legal_name}' has submitted invoice {invoice.invoice_number} "
+                f"for PO {po.po_number} (Total: ${invoice.total_amount}). "
+                f"Ready for 3-way match validation and payment."
+            ),
+            target_url=f"/invoices/{invoice.id}/",
+        )
+
+    # 2. Notify Procurement Executive
+    pe_users = User.objects.filter(role__code=Role.PROC_EXEC, is_active=True)
+    for pe_u in pe_users:
+        Notification.objects.create(
+            recipient=pe_u,
+            notification_type=Notification.TYPE_GOODS_RECEIVED,
+            title=f"Supplier Invoice Submitted: {invoice.invoice_number}",
+            message=(
+                f"Vendor '{vendor.legal_name}' has submitted invoice {invoice.invoice_number} "
+                f"for PO {po.po_number} (Total: ${invoice.total_amount}). "
+                f"You may view the invoice details in read-only mode."
+            ),
+            target_url=f"/invoices/{invoice.id}/",
+        )
+
+    # 3. Notify Procurement Manager
+    pm_users = User.objects.filter(role__code=Role.PROC_MGR, is_active=True)
+    for pm_u in pm_users:
+        Notification.objects.create(
+            recipient=pm_u,
+            notification_type=Notification.TYPE_GOODS_RECEIVED,
+            title=f"Supplier Invoice Submitted: {invoice.invoice_number}",
+            message=(
+                f"Vendor '{vendor.legal_name}' has submitted invoice {invoice.invoice_number} "
+                f"for PO {po.po_number} (Total: ${invoice.total_amount}). "
+                f"You may view the invoice details in read-only mode."
+            ),
+            target_url=f"/invoices/{invoice.id}/",
+        )
+
     return invoice
 
 
