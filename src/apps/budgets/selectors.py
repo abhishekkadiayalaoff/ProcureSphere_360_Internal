@@ -12,6 +12,8 @@ def scope_budgets_queryset(qs, user):
     - Internal roles (Auditor, Procurement Manager, Finance AP, etc.):
       Restricted to their effective_organization. Cannot see other organizations' budgets.
     """
+    if qs is None:
+        qs = Budget.objects.select_related("cost_center", "fiscal_period").order_by("-created_at")
     if not user or not user.is_authenticated:
         return qs.none()
     if user.is_superuser:
@@ -24,7 +26,14 @@ def scope_budgets_queryset(qs, user):
     if getattr(user, "is_vendor", False) or role_code == Role.VENDOR_USER:
         return qs.none()
 
-    if role_code in [Role.REQUESTER, Role.DEPT_APPROVER] and getattr(user, "department_id", None):
+    if role_code == Role.REQUESTER:
+        if getattr(user, "cost_center_id", None):
+            return qs.filter(cost_center_id=user.cost_center_id)
+        if getattr(user, "department_id", None):
+            return qs.filter(cost_center__department_id=user.department_id)
+        return qs.none()
+
+    if role_code == Role.DEPT_APPROVER and getattr(user, "department_id", None):
         return qs.filter(cost_center__department_id=user.department_id)
 
     scoped_org = getattr(user, "effective_organization", None)
@@ -58,7 +67,14 @@ def scope_spend_ledger_queryset(qs, user):
     if getattr(user, "is_vendor", False) or role_code == Role.VENDOR_USER:
         return qs.none()
 
-    if role_code in [Role.REQUESTER, Role.DEPT_APPROVER] and getattr(user, "department_id", None):
+    if role_code == Role.REQUESTER:
+        if getattr(user, "cost_center_id", None):
+            return qs.filter(budget__cost_center_id=user.cost_center_id)
+        if getattr(user, "department_id", None):
+            return qs.filter(budget__cost_center__department_id=user.department_id)
+        return qs.none()
+
+    if role_code == Role.DEPT_APPROVER and getattr(user, "department_id", None):
         return qs.filter(budget__cost_center__department_id=user.department_id)
 
     scoped_org = getattr(user, "effective_organization", None)

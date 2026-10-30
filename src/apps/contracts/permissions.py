@@ -64,7 +64,6 @@ class CanManageContract(permissions.BasePermission):
             Role.SUPER_ADMIN,
             Role.LEGAL_MGR,
             Role.PROC_MGR,
-            Role.PROC_EXEC,
         ]
 
     def has_object_permission(self, request, view, obj):

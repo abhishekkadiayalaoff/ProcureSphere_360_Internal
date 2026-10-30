@@ -91,6 +91,7 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "apps.core.middleware.VendorPortalIsolationMiddleware",
     "apps.accounts.middleware.PasswordChangeRequiredMiddleware",
     "apps.core.middleware.AuditContextMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",

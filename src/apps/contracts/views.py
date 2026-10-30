@@ -51,9 +51,9 @@ def _enforce_internal_contracts_access(request):
         raise PermissionDenied("Authentication required.")
     if user.is_superuser:
         return
-    if role_code == Role.VENDOR_USER and not getattr(user, "vendor_id", None):
+    if role_code == Role.VENDOR_USER or getattr(user, "is_vendor", False):
         from django.core.exceptions import PermissionDenied
-        raise PermissionDenied("External vendors without a linked vendor record are not authorized to access contracts.")
+        raise PermissionDenied("External vendors are not authorized to access internal contracts. Use the Vendor Portal.")
 
 
 
@@ -75,7 +75,7 @@ def _can_view_contract_list(user):
     if user.is_superuser:
         return True
     role_code = _get_user_role(user)
-    if role_code in [Role.REQUESTER, Role.DEPT_APPROVER, Role.STORES_RECEIVER]:
+    if role_code in [Role.REQUESTER, Role.DEPT_APPROVER, Role.STORES_RECEIVER, Role.VENDOR_USER]:
         return False
     return role_code in [
         Role.SUPER_ADMIN,
@@ -84,7 +84,6 @@ def _can_view_contract_list(user):
         Role.PROC_EXEC,
         Role.FINANCE_AP,
         Role.AUDITOR,
-        Role.VENDOR_USER,
     ]
 
 

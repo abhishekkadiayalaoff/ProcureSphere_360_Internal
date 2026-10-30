@@ -24,6 +24,9 @@ def list_view(request):
         user.role.code if hasattr(user, "role") and user.role else None
     )
 
+    if role_code == Role.VENDOR_USER:
+        raise PermissionDenied("Vendors must access purchase orders via the Vendor Portal (/vendor/purchase-orders/).")
+
     scoped_qs = scope_purchase_orders_queryset(PurchaseOrder.objects.all(), user)
     if role_code == Role.STORES_RECEIVER:
         # Stores / Receiver sees only POs eligible for receiving
@@ -89,16 +92,8 @@ def detail_view(request, pk):
         )
         return redirect("orders_list")
 
-    # Scoping check: Vendor portal user can only view their own POs
-    if (
-        role_code == Role.VENDOR_USER
-        and getattr(user, "vendor", None)
-        and po.vendor_id != user.vendor_id
-    ):
-        messages.error(
-            request, "You do not have permission to view this purchase order."
-        )
-        return redirect("orders_list")
+    if role_code == Role.VENDOR_USER:
+        raise PermissionDenied("Vendors must access purchase orders via the Vendor Portal (/vendor/purchase-orders/).")
 
     lines = po.lines.all()
     delivery_schedules = po.delivery_schedules.select_related("po_line").all()

@@ -2,6 +2,7 @@ from decimal import Decimal
 
 from django.core.exceptions import ValidationError
 from django.db import models, transaction
+from django.utils import timezone
 
 from apps.accounts.models import Role
 from apps.audit.models import AuditLog
@@ -67,7 +68,18 @@ def create_supplier_invoice_service(
         raise ValidationError("Invoice must contain at least one line item.")
 
     for item in line_items:
-        po_line = item.get("po_line")
+        po_line_raw = item.get("po_line") or item.get("po_line_id")
+        po_line = None
+        if po_line_raw:
+            if hasattr(po_line_raw, "id"):
+                po_line = po_line_raw
+            else:
+                from apps.orders.models import POLine
+                try:
+                    po_line = POLine.objects.filter(pk=po_line_raw, po=po).first()
+                except Exception:
+                    po_line = None
+
         item_desc = item.get(
             "item_description", getattr(po_line, "item_description", "Line Item")
         )
@@ -394,9 +406,17 @@ def resolve_match_exception_service(
 
 
 @transaction.atomic
-def mark_invoice_paid_service(*, invoice: SupplierInvoice, user) -> SupplierInvoice:
+def mark_invoice_paid_service(
+    *,
+    invoice: SupplierInvoice,
+    user,
+    payment_reference: str = None,
+    payment_method: str = "ACH_TRANSFER",
+    payment_date=None,
+) -> SupplierInvoice:
     """
-    Marks invoice as PAID and transitions SpendLedger from COMMITMENT to ACTUAL.
+    Marks invoice as PAID, creates a PaymentStatus record (DEF-017),
+    and transitions SpendLedger from COMMITMENT to ACTUAL.
     """
     if invoice.vendor.status in (Vendor.STATUS_ON_HOLD, Vendor.STATUS_SUSPENDED):
         raise ValidationError(
@@ -424,6 +444,21 @@ def mark_invoice_paid_service(*, invoice: SupplierInvoice, user) -> SupplierInvo
     invoice.status = SupplierInvoice.STATUS_PAID
     invoice.save(update_fields=["status", "updated_at"])
 
+    # Create immutable PaymentStatus record
+    from apps.invoices.models import PaymentStatus
+    ref = payment_reference or f"PAY-{invoice.invoice_number}-{timezone.now().strftime('%Y%m%d%H%M%S')}"
+    pay_date = payment_date or timezone.now().date()
+    payment_record, _ = PaymentStatus.objects.update_or_create(
+        invoice=invoice,
+        defaults={
+            "payment_reference": ref,
+            "payment_date": pay_date,
+            "amount_paid": invoice.total_amount,
+            "payment_method": payment_method or "ACH_TRANSFER",
+            "paid_by": user,
+        },
+    )
+
     # Convert spend ledger commitment -> actual
     convert_commitment_to_actual_service(po=invoice.po, invoice=invoice, user=user)
 
@@ -433,7 +468,12 @@ def mark_invoice_paid_service(*, invoice: SupplierInvoice, user) -> SupplierInvo
         target_model="SupplierInvoice",
         target_object_id=str(invoice.id),
         previous_state={"status": previous_status},
-        new_state={"status": invoice.status},
+        new_state={
+            "status": invoice.status,
+            "payment_reference": payment_record.payment_reference,
+            "payment_method": payment_record.payment_method,
+            "amount_paid": str(payment_record.amount_paid),
+        },
     )
 
     return invoice
