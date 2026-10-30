@@ -302,8 +302,8 @@ def test_legal_rejection_revokes_eligibility_and_notifies(test_setup):
     assert vendor.is_event_eligible is False
     assert vendor.event_eligibility_status == Vendor.ELIGIBILITY_INELIGIBLE
 
-    # Vendor login blocked
-    assert dispatch.user.is_active is False
+    # Vendor user remains active to view feedback and submit corrections
+    assert dispatch.user.is_active is True
 
     # Notifications dispatched to both
     assert Notification.objects.filter(recipient=dispatch.user).exists()
@@ -493,7 +493,7 @@ def test_approval_blocked_when_mandatory_documents_missing(test_setup):
     assert dispatch.legal_verification_status == VendorCredentialDispatch.LEGAL_STATUS_PENDING
     vendor.refresh_from_db()
     assert vendor.is_event_eligible is False
-    assert dispatch.user.is_active is False
+    assert dispatch.user.is_active is True
 
 
 def test_approval_blocked_when_mandatory_documents_unverified(test_setup):

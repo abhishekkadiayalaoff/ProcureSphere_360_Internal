@@ -229,6 +229,28 @@ def vendor_profile_view(request):
                 messages.error(request, "Please select a valid document file to upload.")
             else:
                 try:
+                    # Enforce document-only upload restrictions (reject image formats)
+                    file_name = getattr(doc_file, "name", "")
+                    ext = os.path.splitext(file_name)[1][1:].lower() if "." in file_name else ""
+                    raw_content_type = (getattr(doc_file, "content_type", "") or "").split(";")[0].strip().lower()
+
+                    DISALLOWED_IMAGE_EXTENSIONS = {
+                        "png", "jpg", "jpeg", "gif", "webp", "bmp", "svg", "tiff", "ico", "avif"
+                    }
+                    SUPPORTED_DOCUMENT_EXTENSIONS = {"pdf", "doc", "docx", "xlsx", "csv"}
+
+                    if ext in DISALLOWED_IMAGE_EXTENSIONS or raw_content_type.startswith("image/"):
+                        raise ValidationError(
+                            f"Image files (.{ext or 'image'}) are not supported for KYC compliance documents. "
+                            "Please upload supported document files only (PDF, DOC, DOCX, XLSX, CSV)."
+                        )
+
+                    if ext not in SUPPORTED_DOCUMENT_EXTENSIONS:
+                        raise ValidationError(
+                            f"File extension '.{ext}' is not permitted. "
+                            "Please upload a supported document file (PDF, DOC, DOCX, XLSX, CSV)."
+                        )
+
                     upload_vendor_document_service(
                         vendor=vendor,
                         user=request.user,
