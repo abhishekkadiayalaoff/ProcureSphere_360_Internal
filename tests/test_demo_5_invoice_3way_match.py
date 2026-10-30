@@ -150,7 +150,7 @@ def test_demo_5_invoice_3way_match_and_exception_resolution():
     assert invoice.status == SupplierInvoice.STATUS_READY_FOR_PAYMENT
 
     # 7. Execute payment and verify Spend Ledger actual spend transition
-    paid_invoice = mark_invoice_paid_service(invoice=invoice, user=finance_user)
+    paid_invoice = mark_invoice_paid_service(invoice=invoice, user=finance_user, payment_reference="UTR-2026-00110")
     assert paid_invoice.status == SupplierInvoice.STATUS_PAID
 
     budget.refresh_from_db()

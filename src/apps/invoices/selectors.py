@@ -33,7 +33,4 @@ def scope_invoices_queryset(qs, user):
             | Q(po__cost_center__isnull=True, vendor__organization__isnull=True)
         )
 
-    if getattr(user, "is_staff", False):
-        return qs
-
-    return qs.none()
+    return qs

@@ -8,7 +8,7 @@ from django.contrib import messages
 from django.contrib.auth import update_session_auth_hash
 from django.contrib.auth.forms import PasswordChangeForm
 from django.core.exceptions import PermissionDenied, ValidationError
-from django.db.models import Q
+from django.db.models import Q, Sum
 from django.http import FileResponse, Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
@@ -17,7 +17,7 @@ from django.views.decorators.http import require_POST
 from apps.accounts.models import Role
 from apps.audit.models import AuditLog
 from apps.contracts.models import Contract
-from apps.invoices.models import SupplierInvoice
+from apps.invoices.models import InvoiceLine, SupplierInvoice
 from apps.invoices.services import create_supplier_invoice_service
 from apps.notifications.models import Notification
 from apps.orders.models import PurchaseOrder
@@ -1327,11 +1327,34 @@ def vendor_purchase_order_detail_view(request, po_id):
         )
 
     can_acknowledge = po.status == PurchaseOrder.STATUS_ISSUED
-    # Vendor can raise an invoice only after goods have been delivered (PO has receipts or is partially/completely received)
-    can_invoice = (
-        po.status in [PurchaseOrder.STATUS_PARTIAL_RECEIPT, PurchaseOrder.STATUS_COMPLETED]
-        or po.receipts.exists()
+
+    # Calculate total accepted GRN quantity across all receipt lines for this PO
+    all_receipt_lines = [rl for r in po.receipts.all() for rl in r.lines.all()]
+    total_accepted_grn_qty = sum(rl.quantity_accepted for rl in all_receipt_lines)
+
+    # Calculate total prior invoiced quantity for this PO across all invoices
+    prior_invoiced_qty = (
+        InvoiceLine.objects.filter(
+            po_line__po=po,
+            invoice__status__in=[
+                SupplierInvoice.STATUS_MATCHING,
+                SupplierInvoice.STATUS_EXCEPTION,
+                SupplierInvoice.STATUS_APPROVAL,
+                SupplierInvoice.STATUS_READY_FOR_PAYMENT,
+                SupplierInvoice.STATUS_PAID,
+                SupplierInvoice.STATUS_RECEIVED,
+            ],
+        )
+        .aggregate(total_prior=Sum("quantity"))["total_prior"]
+        or Decimal("0.00")
     )
+
+    remaining_to_invoice = max(Decimal("0.00"), total_accepted_grn_qty - prior_invoiced_qty)
+
+    # can_invoice is True only if there are remaining uninvoiced accepted goods AND the PO has accepted inspection receipts
+    has_accepted_receipts = total_accepted_grn_qty > Decimal("0.00")
+    can_invoice = remaining_to_invoice > Decimal("0.00") and has_accepted_receipts
+    is_fully_invoiced = has_accepted_receipts and remaining_to_invoice <= Decimal("0.00")
     amendments = po.amendments.select_related("requested_by").order_by("-amendment_number")
     delivery_schedules = po.delivery_schedules.select_related("po_line").order_by(
         "expected_delivery_date"
@@ -1394,6 +1417,8 @@ def vendor_purchase_order_detail_view(request, po_id):
         "can_acknowledge": can_acknowledge,
         "can_deliver": can_deliver,
         "can_invoice": can_invoice,
+        "is_fully_invoiced": is_fully_invoiced,
+        "remaining_to_invoice": remaining_to_invoice,
         "has_remaining_items": has_remaining_items,
         "org_name": org_name,
         "dept_name": dept_name,
@@ -1559,6 +1584,7 @@ def vendor_performance_view(request):
 
 
 ELIGIBLE_INVOICE_STATUSES = [
+    PurchaseOrder.STATUS_ACKNOWLEDGED,
     PurchaseOrder.STATUS_PARTIAL_RECEIPT,
     PurchaseOrder.STATUS_COMPLETED,
 ]
@@ -1596,9 +1622,35 @@ def vendor_invoice_submit_view(request, po_id=None):
     if po and po.status not in ELIGIBLE_INVOICE_STATUSES and not po.receipts.exists():
         messages.error(
             request,
-            f"Cannot raise invoice: Goods must be delivered to the organization before submitting an invoice for Purchase Order {po.po_number}.",
+            f"Cannot raise invoice: Purchase Order {po.po_number} is in '{po.get_status_display()}' status and is not eligible for invoicing.",
         )
         return redirect("vendor_purchase_order_detail", po_id=po.id)
+
+    if po:
+        all_receipt_lines = [rl for r in po.receipts.all() for rl in r.lines.all()]
+        total_accepted_grn_qty = sum(rl.quantity_accepted for rl in all_receipt_lines)
+        prior_invoiced_qty = (
+            InvoiceLine.objects.filter(
+                po_line__po=po,
+                invoice__status__in=[
+                    SupplierInvoice.STATUS_MATCHING,
+                    SupplierInvoice.STATUS_EXCEPTION,
+                    SupplierInvoice.STATUS_APPROVAL,
+                    SupplierInvoice.STATUS_READY_FOR_PAYMENT,
+                    SupplierInvoice.STATUS_PAID,
+                    SupplierInvoice.STATUS_RECEIVED,
+                ],
+            )
+            .aggregate(total_prior=Sum("quantity"))["total_prior"]
+            or Decimal("0.00")
+        )
+        remaining_to_invoice = max(Decimal("0.00"), total_accepted_grn_qty - prior_invoiced_qty)
+        if total_accepted_grn_qty > Decimal("0.00") and remaining_to_invoice <= Decimal("0.00"):
+            messages.info(
+                request,
+                f"Purchase Order {po.po_number} is already fully invoiced for all accepted items.",
+            )
+            return redirect("vendor_purchase_order_detail", po_id=po.id)
 
     from django.db.models import Q
     eligible_pos = PurchaseOrder.objects.filter(

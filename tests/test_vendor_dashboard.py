@@ -1080,7 +1080,7 @@ def test_vendor_submit_partial_invoice(client, vendor_setup):
         vendor=v1,
         cost_center=cost_center,
         created_by=proc_exec,
-        status=PurchaseOrder.STATUS_ACKNOWLEDGED,
+        status=PurchaseOrder.STATUS_PARTIAL_RECEIPT,
         total_amount=Decimal("300.00"),
     )
     po_line1 = POLine.objects.create(
@@ -1421,12 +1421,32 @@ def test_purchase_order_detail_page_renders_without_url_errors(client, vendor_se
     """10. The Purchase Order detail page renders without URL reversal errors."""
     v1 = vendor_setup["vendor_a"]
     u1 = vendor_setup["user_vendor_a"]
+    from apps.receipts.models import GoodsReceipt, ReceiptLine
     po = PurchaseOrder.objects.create(
         po_number="PO-DETAIL-2026",
         vendor=v1,
         cost_center=vendor_setup["cost_center"],
-        status=PurchaseOrder.STATUS_ACKNOWLEDGED,
+        status=PurchaseOrder.STATUS_PARTIAL_RECEIPT,
         total_amount=Decimal("3500.00"),
+    )
+    po_line = POLine.objects.create(
+        po=po,
+        item_description="Server Blades",
+        quantity=Decimal("10"),
+        unit_price=Decimal("350.00"),
+        line_total=Decimal("3500.00"),
+    )
+    grn = GoodsReceipt.objects.create(
+        po=po,
+        grn_number="GRN-DETAIL-2026",
+        received_by=vendor_setup["proc_exec"],
+        received_date=timezone.now(),
+    )
+    ReceiptLine.objects.create(
+        receipt=grn,
+        po_line=po_line,
+        quantity_received=Decimal("5"),
+        quantity_accepted=Decimal("5"),
     )
 
     client.force_login(u1)
