@@ -1874,11 +1874,11 @@ button { border: 0; cursor: pointer; }
 
 .trust-animation-container {
   width: 100%;
-  max-width: 500px;
+  max-width: 410px;
   margin: 0 auto;
   border-radius: 20px;
   overflow: hidden;
-  box-shadow: 0 20px 40px rgba(0,0,0,0.12);
+  box-shadow: 0 16px 36px rgba(0,0,0,0.10);
   border: 1px solid rgba(0,0,0,0.06);
   background: white;
 }
