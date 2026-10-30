@@ -4,14 +4,13 @@ from django.core.exceptions import ValidationError
 from django.db import models, transaction
 from django.utils import timezone
 
-from apps.accounts.models import Role
+from apps.accounts.models import Role, User
 from apps.audit.models import AuditLog
 from apps.budgets.services import convert_commitment_to_actual_service
 from apps.orders.models import PurchaseOrder
 from apps.receipts.models import ReceiptLine
 from apps.vendors.models import Vendor
-
-from .models import InvoiceLine, MatchException, SupplierInvoice
+from .models import InvoiceLine, MatchException, PaymentStatus, SupplierInvoice
 
 
 def _get_user_role_code(user):
@@ -417,7 +416,19 @@ def mark_invoice_paid_service(
     """
     Marks invoice as PAID, creates a PaymentStatus record (DEF-017),
     and transitions SpendLedger from COMMITMENT to ACTUAL.
+    Requires a payment reference (UTR / Check #). Creates a PaymentStatus record
+    for transaction evidence and audit trail.
     """
+    if not payment_reference:
+        raise ValidationError("Transaction / Payment Reference ID (UTR / Check #) is required.")
+
+    # Check for unique payment_reference in PaymentStatus
+    if PaymentStatus.objects.filter(payment_reference=payment_reference).exists():
+        raise ValidationError(
+            f"Payment reference '{payment_reference}' already exists. "
+            "Each payment must have a unique transaction/UTR ID."
+        )
+
     if invoice.vendor.status in (Vendor.STATUS_ON_HOLD, Vendor.STATUS_SUSPENDED):
         raise ValidationError(
             f"Cannot pay invoice: Vendor '{invoice.vendor.legal_name}' is currently {invoice.vendor.get_status_display().lower()}."
@@ -444,22 +455,18 @@ def mark_invoice_paid_service(
     invoice.status = SupplierInvoice.STATUS_PAID
     invoice.save(update_fields=["status", "updated_at"])
 
-    # Create immutable PaymentStatus record
-    from apps.invoices.models import PaymentStatus
-    ref = payment_reference or f"PAY-{invoice.invoice_number}-{timezone.now().strftime('%Y%m%d%H%M%S')}"
-    pay_date = payment_date or timezone.now().date()
-    payment_record, _ = PaymentStatus.objects.update_or_create(
+    # Create and persist PaymentStatus record linked to the invoice (DEF-017)
+    payment_record = PaymentStatus.objects.create(
         invoice=invoice,
-        defaults={
-            "payment_reference": ref,
-            "payment_date": pay_date,
-            "amount_paid": invoice.total_amount,
-            "payment_method": payment_method or "ACH_TRANSFER",
-            "paid_by": user,
-        },
+        payment_reference=payment_reference,
+        payment_date=payment_date or timezone.now().date(),
+        amount_paid=invoice.total_amount,
+        payment_method=payment_method or "ACH_TRANSFER",
+        paid_by=user,
     )
 
     # Convert spend ledger commitment -> actual
+    from apps.budgets.services import convert_commitment_to_actual_service
     convert_commitment_to_actual_service(po=invoice.po, invoice=invoice, user=user)
 
     AuditLog.objects.create(

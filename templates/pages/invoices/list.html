@@ -3,6 +3,18 @@
 {% block title %}Supplier Invoices — ProcureSphere 360{% endblock %}
 
 {% block content %}
+<style>
+    /* Responsive table: under 768px transforms to stacked cards */
+    @media (max-width: 767.98px) {
+        .responsive-table thead { display: none; }
+        .responsive-table tbody tr { display: block; margin-bottom: 1rem; border: 1px solid #dee2e6; border-radius: 0.5rem; background-color: #fff; box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,0.075); }
+        .responsive-table tbody td { display: flex; justify-content: space-between; padding: 0.75rem 1rem; border: none; border-bottom: 1px solid #e9ecef; }
+        .responsive-table tbody td:last-child { border-bottom: none; justify-content: flex-start; }
+        .responsive-table tbody td .label { font-weight: bold; font-size: 0.875rem; color: #333; flex-shrink: 0; }
+        .responsive-table tbody td .value { flex-grow: 1; font-weight: normal; font-size: 0.875rem; text-align: right; color: #444; }
+        .responsive-table tbody tr:last-child td { border-bottom: none; }
+    }
+</style>
 <div class="container-fluid px-0">
     <!-- Header Banner -->
     <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
@@ -49,17 +61,17 @@
     <div class="card border-0 shadow-sm rounded-4 bg-white overflow-hidden">
         <div class="card-body p-0">
             <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0">
+                <table class="table table-hover align-middle mb-0 responsive-table">
                     <thead class="table-light small text-uppercase text-secondary">
                         <tr>
-                            <th scope="col" class="ps-4 py-3">Invoice Number</th>
-                            <th scope="col" class="py-3">Vendor / Supplier</th>
-                            <th scope="col" class="py-3">PO Reference</th>
-                            <th scope="col" class="py-3 text-end">Total Amount</th>
-                            <th scope="col" class="py-3">Invoice Date</th>
-                            <th scope="col" class="py-3">Due Date</th>
-                            <th scope="col" class="py-3 text-center">Status</th>
-                            <th scope="col" class="pe-4 text-end py-3">Action</th>
+                            <th scope="col" class="ps-4 py-3" data-label="Invoice Number">Invoice Number</th>
+                            <th scope="col" class="py-3" data-label="Vendor / Supplier">Vendor / Supplier</th>
+                            <th scope="col" class="py-3" data-label="PO Reference">PO Reference</th>
+                            <th scope="col" class="py-3 text-end" data-label="Total Amount">Total Amount</th>
+                            <th scope="col" class="py-3" data-label="Invoice Date">Invoice Date</th>
+                            <th scope="col" class="py-3" data-label="Due Date">Due Date</th>
+                            <th scope="col" class="py-3 text-center" data-label="Status">Status</th>
+                            <th scope="col" class="pe-4 text-end py-3" data-label="Action">Action</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -83,13 +95,13 @@
                                 <span class="text-muted small">None</span>
                                 {% endif %}
                             </td>
-                            <td class="py-3 text-end fw-bold text-dark font-monospace">
+                            <td class="py-3 text-end fw-bold text-dark font-monospace" data-label="Total Amount">
                                 ${{ inv.total_amount|floatformat:2 }}
                             </td>
-                            <td class="py-3 small text-muted">
+                            <td class="py-3 small text-muted" data-label="Invoice Date">
                                 {{ inv.invoice_date|date:"M d, Y" }}
                             </td>
-                            <td class="py-3 small text-muted">
+                            <td class="py-3 small text-muted" data-label="Due Date">
                                 {{ inv.due_date|date:"M d, Y" }}
                             </td>
                             <td class="py-3 text-center">
@@ -115,7 +127,7 @@
                                 </span>
                                 {% endif %}
                             </td>
-                            <td class="pe-4 text-end py-3">
+                            <td class="pe-4 text-end py-3" data-label="Action">
                                 <a href="{% url 'invoice_detail' inv.id %}" class="btn btn-sm btn-outline-primary rounded-pill px-3 fw-semibold">
                                     View <i class="fa-solid fa-arrow-right ms-1"></i>
                                 </a>

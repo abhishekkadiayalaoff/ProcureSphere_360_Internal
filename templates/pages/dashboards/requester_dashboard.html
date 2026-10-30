@@ -14,6 +14,16 @@
         transform: translateY(-3px);
         box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.08) !important;
     }
+    /* Responsive table: under 768px transforms to stacked cards */
+    @media (max-width: 767.98px) {
+        .responsive-table thead { display: none; }
+        .responsive-table tbody tr { display: block; margin-bottom: 1rem; border: 1px solid #dee2e6; border-radius: 0.5rem; background-color: #fff; box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,0.075); }
+        .responsive-table tbody td { display: flex; justify-content: space-between; padding: 0.75rem 1rem; border: none; border-bottom: 1px solid #e9ecef; }
+        .responsive-table tbody td:last-child { border-bottom: none; justify-content: flex-start; }
+        .responsive-table tbody td .label { font-weight: bold; font-size: 0.875rem; color: #333; flex-shrink: 0; }
+        .responsive-table tbody td .value { flex-grow: 1; font-weight: normal; font-size: 0.875rem; text-align: right; color: #444; }
+        .responsive-table tbody tr:last-child td { border-bottom: none; }
+    }
 </style>
 
 <div class="container-fluid px-0">
@@ -121,14 +131,14 @@
         <div class="card-body p-0">
             {% if my_recent_prs %}
             <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0 text-nowrap">
+                <table class="table table-hover align-middle mb-0 text-nowrap responsive-table">
                     <thead class="table-light">
                         <tr>
-                            <th class="text-uppercase text-secondary small fw-bold px-4 py-3">PR Number</th>
-                            <th class="text-uppercase text-secondary small fw-bold py-3">Title</th>
-                            <th class="text-uppercase text-secondary small fw-bold py-3">Date</th>
-                            <th class="text-uppercase text-secondary small fw-bold text-end py-3">Amount</th>
-                            <th class="text-uppercase text-secondary small fw-bold text-center px-4 py-3">Status</th>
+                            <th class="text-uppercase text-secondary small fw-bold px-4 py-3" data-label="PR Number">PR Number</th>
+                            <th class="text-uppercase text-secondary small fw-bold py-3" data-label="Title">Title</th>
+                            <th class="text-uppercase text-secondary small fw-bold py-3" data-label="Date">Date</th>
+                            <th class="text-uppercase text-secondary small fw-bold text-end py-3" data-label="Amount">Amount</th>
+                            <th class="text-uppercase text-secondary small fw-bold text-center px-4 py-3" data-label="Status">Status</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -139,10 +149,10 @@
                                     <code>{{ pr.pr_number }}</code>
                                 </a>
                             </td>
-                            <td class="py-3 text-dark fw-medium">{{ pr.title|truncatechars:40 }}</td>
-                            <td class="py-3 text-muted small">{{ pr.created_at|date:"M d, Y" }}</td>
-                            <td class="py-3 text-end fw-semibold text-dark">${{ pr.total_amount|floatformat:2 }}</td>
-                            <td class="px-4 py-3 text-center">
+                            <td class="py-3 text-dark fw-medium" data-label="{{ pr.title|truncatechars:40 }}">{{ pr.title|truncatechars:40 }}</td>
+                            <td class="py-3 text-muted small" data-label="Date">{{ pr.created_at|date:"M d, Y" }}</td>
+                            <td class="py-3 text-end fw-semibold text-dark" data-label="Amount">${{ pr.total_amount|floatformat:2 }}</td>
+                            <td class="px-4 py-3 text-center" data-label="Status">
                                 <span class="badge rounded-pill {% if pr.status == 'APPROVED' %}bg-success{% elif pr.status == 'REJECTED' %}bg-danger{% elif pr.status == 'DRAFT' %}bg-secondary{% else %}bg-warning text-dark{% endif %} px-3 py-1">
                                     {{ pr.get_status_display }}
                                 </span>

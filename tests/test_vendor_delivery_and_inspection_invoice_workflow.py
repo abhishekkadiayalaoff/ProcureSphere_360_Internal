@@ -1,6 +1,7 @@
 from decimal import Decimal
 
 import pytest
+from django.utils import timezone
 from django.urls import reverse
 
 from apps.accounts.models import Role, User
@@ -366,7 +367,11 @@ def test_complete_vendor_delivery_stores_inspection_invoice_workflow(client, wor
         invoice.save()
 
     # Finance pays invoice
-    fin_pay_resp = client.post(pay_url)
+    fin_pay_resp = client.post(pay_url, {
+        'payment_reference': 'UTR-2026-TEST-9999',
+        'payment_method': 'ACH_TRANSFER',
+        'payment_date': timezone.now().date().isoformat(),
+    })
     assert fin_pay_resp.status_code == 302
 
     invoice.refresh_from_db()

@@ -218,7 +218,7 @@ class TestVendorHoldWorkflow:
 
         # Attempt to pay invoice -> blocked
         with pytest.raises(ValidationError, match="on hold"):
-            invoice_svc.mark_invoice_paid_service(invoice=inv, user=s["finance"])
+            invoice_svc.mark_invoice_paid_service(invoice=inv, user=s["finance"], payment_reference="UTR-HOLD-001")
 
         # Release hold -> payment succeeds
         set_vendor_status_governance_service(
@@ -228,7 +228,7 @@ class TestVendorHoldWorkflow:
             notes="Bank verified",
         )
         inv.refresh_from_db()
-        paid_inv = invoice_svc.mark_invoice_paid_service(invoice=inv, user=s["finance"])
+        paid_inv = invoice_svc.mark_invoice_paid_service(invoice=inv, user=s["finance"], payment_reference="PAY-2026-001")
         assert paid_inv.status == SupplierInvoice.STATUS_PAID
 
 
