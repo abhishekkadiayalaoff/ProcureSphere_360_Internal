@@ -128,7 +128,7 @@
     </aside>
     <div class="sa-main flex-grow-1 d-flex flex-column min-vh-100">
         <header
-            class="sa-topbar sticky-top bg-white border-bottom px-3 px-md-4 py-2 d-flex align-items-center justify-content-between gap-2">
+            class="sa-topbar sticky-top bg-white border-bottom px-2 px-sm-3 px-md-4 py-2 d-flex align-items-center justify-content-between gap-2">
             <div class="d-flex align-items-center gap-2 min-width-0">
                 <button
                     class="btn btn-outline-secondary btn-sm rounded-3 d-lg-none d-flex align-items-center justify-content-center flex-shrink-0"
@@ -136,6 +136,10 @@
                     style="width: 36px; height: 36px;">
                     <i class="fa-solid fa-bars"></i>
                 </button>
+                <a href="/superadmin/" class="d-lg-none d-flex align-items-center text-dark text-decoration-none min-width-0 ms-1">
+                    <i class="fa-solid fa-shield-halved text-warning me-1.5 fs-6 flex-shrink-0"></i>
+                    <span class="fw-bold text-dark text-truncate" style="font-size: 0.9rem;">ProcureSphere <span class="fw-light">360</span></span>
+                </a>
             </div>
             <div class="d-flex align-items-center gap-2 flex-shrink-0 ms-auto">
                 <span class="sa-avatar bg-primary text-white shadow-sm"><i class="fa-solid fa-user-shield"></i></span>
@@ -351,7 +355,8 @@
             height: 100vh;
             z-index: 1050;
             transform: translateX(-105%);
-            transition: transform 0.25s ease;
+            transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+            -webkit-overflow-scrolling: touch;
         }
 
         .sa-sidebar.show {
@@ -366,6 +371,7 @@
             z-index: 1040;
             opacity: 0;
             visibility: hidden;
+            transition: opacity 0.25s ease, visibility 0.25s ease;
         }
 
         .sa-backdrop.show {
@@ -376,7 +382,7 @@
 
     @media (max-width: 767.98px) {
         .sa-page {
-            padding: 0.85rem !important;
+            padding: 0.75rem 0.85rem !important;
         }
 
         .sa-page h2 {
@@ -392,19 +398,16 @@
         }
 
         .sa-page .metric-value {
-            font-size: 1.25rem !important;
+            font-size: clamp(1.35rem, 4.5vw, 1.75rem) !important;
         }
 
-        .sa-page .row.mb-4>.col-12.d-flex,
-        .sa-page .card-header.d-flex {
-            flex-direction: column;
-            align-items: stretch !important;
+        .sa-page .stat-card {
+            padding: 1rem !important;
         }
 
-        .sa-page .card-header .d-flex {
+        .sa-page .row.mb-4>.col-12.d-flex {
             flex-direction: column;
             align-items: stretch !important;
-            width: 100%;
         }
 
         .sa-page .card-header .form-select {
@@ -412,24 +415,39 @@
             width: 100%;
         }
 
-        .sa-page .row.mb-4>.col-12.d-flex>.btn,
-        .sa-page .card-header .btn {
-            width: 100%;
+        .sa-page .btn {
+            min-height: 36px;
+        }
+    }
+
+    @media (max-width: 575.98px) {
+        .modal-dialog {
+            margin: 0.5rem;
         }
     }
 </style>
 
 <script>
     function toggleSaSidebar() {
-        document.getElementById("saSidebar").classList.toggle("show");
-        document.getElementById("saSidebarBackdrop").classList.toggle("show");
+        var sidebar = document.getElementById("saSidebar");
+        var backdrop = document.getElementById("saSidebarBackdrop");
+        if (sidebar && backdrop) {
+            sidebar.classList.toggle("show");
+            backdrop.classList.toggle("show");
+            document.body.style.overflow = sidebar.classList.contains("show") ? "hidden" : "";
+        }
     }
     document.querySelectorAll("#saSidebar a.nav-link").forEach(function (link) {
         link.addEventListener("click", function () {
-            if (window.innerWidth < 992 && document.getElementById("saSidebar").classList.contains("show")) {
+            if (window.innerWidth < 992 && document.getElementById("saSidebar") && document.getElementById("saSidebar").classList.contains("show")) {
                 toggleSaSidebar();
             }
         });
+    });
+    document.addEventListener("keydown", function (e) {
+        if (e.key === "Escape" && document.getElementById("saSidebar") && document.getElementById("saSidebar").classList.contains("show")) {
+            toggleSaSidebar();
+        }
     });
 </script>
 {% endblock %}
