@@ -42,6 +42,11 @@ def create_purchase_requisition_service(
             f"Requester '{requester.email}' is only authorized to create requisitions for Cost Center '{requester.cost_center.code}'."
         )
 
+    if cost_center.department_id != department.id:
+        raise ValidationError(
+            f"Cost Center '{cost_center.code}' ({cost_center.name}) does not belong to Department '{department.name}'."
+        )
+
     if requested_delivery_date:
         from datetime import date, datetime
 
@@ -245,6 +250,11 @@ def approve_purchase_requisition_service(
         PurchaseRequisition.STATUS_MANAGER_REVIEW,
         PurchaseRequisition.STATUS_BUDGET_REVIEW,
     ]
+    requisition = (
+        PurchaseRequisition.objects.select_for_update()
+        .select_related("department", "cost_center", "requester")
+        .get(id=requisition.id)
+    )
     if requisition.status not in allowed_statuses:
         raise ValidationError(f"Cannot approve requisition in status '{requisition.status}'.")
 
@@ -398,6 +408,7 @@ def reject_purchase_requisition_service(
         PurchaseRequisition.STATUS_MANAGER_REVIEW,
         PurchaseRequisition.STATUS_BUDGET_REVIEW,
     ]
+    requisition = PurchaseRequisition.objects.select_for_update().get(id=requisition.id)
     if requisition.status not in allowed_statuses:
         raise ValidationError(f"Cannot reject requisition in status '{requisition.status}'.")
 

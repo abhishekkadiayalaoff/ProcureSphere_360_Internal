@@ -66,15 +66,47 @@ class SpendLedgerSerializer(serializers.ModelSerializer):
 
 
 class BudgetViewSet(viewsets.ModelViewSet):
-    queryset = Budget.objects.select_related("cost_center", "fiscal_period").all()
     serializer_class = BudgetSerializer
     permission_classes = [IsAuthenticated, CanManageBudget]
 
+    def get_queryset(self):
+        user = self.request.user
+        role_code = getattr(user, "role_code", None) or (
+            user.role.code if hasattr(user, "role") and user.role else None
+        )
+        base_qs = Budget.objects.select_related("cost_center", "fiscal_period").order_by("-created_at")
+        if user.is_superuser or role_code in [Role.SUPER_ADMIN, Role.FINANCE_AP, Role.AUDITOR]:
+            return base_qs.all()
+        if role_code == Role.REQUESTER:
+            if getattr(user, "cost_center", None):
+                return base_qs.filter(cost_center=user.cost_center)
+            if getattr(user, "department", None):
+                return base_qs.filter(cost_center__department=user.department)
+            return base_qs.none()
+        if role_code == Role.DEPT_APPROVER and getattr(user, "department", None):
+            return base_qs.filter(cost_center__department=user.department)
+        return base_qs.all()
+
 
 class SpendLedgerViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = SpendLedger.objects.select_related("budget").order_by("-created_at")
     serializer_class = SpendLedgerSerializer
     permission_classes = [IsAuthenticated, IsNotVendorUser]
+
+    def get_queryset(self):
+        user = self.request.user
+        role_code = getattr(user, "role_code", None) or (
+            user.role.code if hasattr(user, "role") and user.role else None
+        )
+        base_qs = SpendLedger.objects.select_related("budget").order_by("-created_at")
+        if user.is_superuser or role_code in [Role.SUPER_ADMIN, Role.FINANCE_AP, Role.AUDITOR]:
+            return base_qs
+        if role_code == Role.REQUESTER:
+            if getattr(user, "cost_center", None):
+                return base_qs.filter(budget__cost_center=user.cost_center)
+            if getattr(user, "department", None):
+                return base_qs.filter(budget__cost_center__department=user.department)
+            return base_qs.none()
+        return base_qs
 
 
 router = DefaultRouter()

@@ -79,6 +79,16 @@ class POLineSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
 
+    def validate_quantity(self, value):
+        if value is not None and value <= Decimal("0.00"):
+            raise serializers.ValidationError("Quantity must be greater than zero.")
+        return value
+
+    def validate_unit_price(self, value):
+        if value is not None and value < Decimal("0.00"):
+            raise serializers.ValidationError("Unit price cannot be negative.")
+        return value
+
 
 class POAmendmentSerializer(serializers.ModelSerializer):
     requested_by_email = serializers.CharField(source="requested_by.email", read_only=True)
@@ -225,6 +235,26 @@ class PurchaseOrderSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
+
+    def validate(self, attrs):
+        vendor = attrs.get("vendor")
+        if vendor and vendor.status != "ACTIVE":
+            raise serializers.ValidationError(
+                {"vendor": f"Vendor '{vendor.legal_name}' is in status '{vendor.get_status_display()}' and cannot be issued Purchase Orders. Vendor must be ACTIVE."}
+            )
+        lines_data = self.initial_data.get("lines", [])
+        if lines_data and isinstance(lines_data, list):
+            for i, line in enumerate(lines_data):
+                try:
+                    q = Decimal(str(line.get("quantity", "1")))
+                    p = Decimal(str(line.get("unit_price", "0.00")))
+                except Exception:
+                    raise serializers.ValidationError({"lines": f"Line item {i+1} quantity and unit price must be valid numbers."})
+                if q <= Decimal("0.00"):
+                    raise serializers.ValidationError({"lines": f"Line item {i+1} quantity must be greater than zero."})
+                if p < Decimal("0.00"):
+                    raise serializers.ValidationError({"lines": f"Line item {i+1} unit price cannot be negative."})
+        return attrs
 
     def create(self, validated_data):
         lines_data = self.initial_data.get("lines", [])
@@ -577,6 +607,17 @@ class PurchaseOrderViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["post"], url_path="amend")
     def amend(self, request, pk=None):
         po = self.get_object()
+        if po.status in (PurchaseOrder.STATUS_CANCELLED, PurchaseOrder.STATUS_DRAFT):
+            return Response(
+                {
+                    "error": {
+                        "code": "VALIDATION_ERROR",
+                        "message": f"Purchase orders in '{po.get_status_display()}' status cannot be amended.",
+                    }
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         reason = str(request.data.get("reason", "")).strip()
         if not reason:
             return Response(

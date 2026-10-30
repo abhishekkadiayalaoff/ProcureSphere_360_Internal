@@ -33,9 +33,9 @@ def generate_purchase_order_service(
     """
     from apps.core.services import generate_document_number
 
-    if vendor.status in (Vendor.STATUS_ON_HOLD, Vendor.STATUS_SUSPENDED):
+    if vendor.status != Vendor.STATUS_ACTIVE:
         raise ValidationError(
-            f"Vendor '{vendor.legal_name}' is {vendor.get_status_display().lower()} and cannot be issued POs."
+            f"Vendor '{vendor.legal_name}' is in status '{vendor.get_status_display()}' and cannot be issued Purchase Orders. Vendor must be ACTIVE."
         )
 
     po_number = generate_document_number(PurchaseOrder, "po_number", "PO")
@@ -56,11 +56,18 @@ def generate_purchase_order_service(
 
     subtotal = Decimal("0.00")
     for item in line_items:
+        qty = Decimal(str(item["quantity"]))
+        unit_price = Decimal(str(item["unit_price"]))
+        if qty <= Decimal("0.00"):
+            raise ValidationError(f"Quantity for line item '{item.get('item_description', '')}' must be positive.")
+        if unit_price < Decimal("0.00"):
+            raise ValidationError(f"Unit price for line item '{item.get('item_description', '')}' cannot be negative.")
+
         line = POLine.objects.create(
             po=po,
             item_description=item["item_description"],
-            quantity=Decimal(str(item["quantity"])),
-            unit_price=Decimal(str(item["unit_price"])),
+            quantity=qty,
+            unit_price=unit_price,
             unit_of_measure=item.get("unit_of_measure", "EA"),
         )
         subtotal += line.line_total
@@ -211,12 +218,14 @@ def amend_purchase_order_service(
     if not reason:
         raise ValidationError("Amendment justification reason is required.")
 
-    if po.status == PurchaseOrder.STATUS_CANCELLED:
-        raise ValidationError("Cancelled purchase orders cannot be amended.")
-
-    if po.vendor.status == Vendor.STATUS_SUSPENDED:
+    if po.status in (PurchaseOrder.STATUS_CANCELLED, PurchaseOrder.STATUS_DRAFT):
         raise ValidationError(
-            f"Vendor '{po.vendor.legal_name}' is suspended and PO cannot be amended."
+            f"Purchase orders in '{po.get_status_display()}' status cannot be amended."
+        )
+
+    if po.vendor.status != Vendor.STATUS_ACTIVE:
+        raise ValidationError(
+            f"Vendor '{po.vendor.legal_name}' is not active and PO cannot be amended."
         )
 
     role_code = getattr(requested_by_user, "role_code", None) or (

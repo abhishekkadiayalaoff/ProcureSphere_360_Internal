@@ -238,7 +238,7 @@ class SupplierInvoiceViewSet(viewsets.ModelViewSet):
                 created_by_user=request.user,
             )
             return Response(SupplierInvoiceSerializer(invoice).data, status=status.HTTP_201_CREATED)
-        except ValidationError as e:
+        except (ValidationError, ValueError) as e:
             msg = e.messages if hasattr(e, "messages") else [str(e)]
             return Response(
                 {
@@ -279,8 +279,17 @@ class SupplierInvoiceViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["post"], url_path="pay")
     def pay_invoice(self, request, pk=None):
         invoice = self.get_object()
+        payment_reference = request.data.get("payment_reference")
+        payment_method = request.data.get("payment_method", "ACH_TRANSFER")
+        payment_date = request.data.get("payment_date")
         try:
-            paid_invoice = mark_invoice_paid_service(invoice=invoice, user=request.user)
+            paid_invoice = mark_invoice_paid_service(
+                invoice=invoice,
+                user=request.user,
+                payment_reference=payment_reference,
+                payment_method=payment_method,
+                payment_date=payment_date,
+            )
             return Response(SupplierInvoiceSerializer(paid_invoice).data, status=status.HTTP_200_OK)
         except ValidationError as e:
             msg = e.messages if hasattr(e, "messages") else [str(e)]
