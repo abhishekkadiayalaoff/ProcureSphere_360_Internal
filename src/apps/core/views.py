@@ -510,6 +510,7 @@ def protected_media_view(request, file_path):
     """
     import mimetypes
     import os
+
     from django.conf import settings
     from django.http import FileResponse, Http404, HttpResponseForbidden
 
@@ -548,8 +549,8 @@ def protected_media_view(request, file_path):
         if not vendor:
             return HttpResponseForbidden("Access denied: No linked vendor profile.")
 
-        from apps.vendors.models import VendorDocument
         from apps.sourcing.models import BidAttachment
+        from apps.vendors.models import VendorDocument
 
         is_vendor_doc = VendorDocument.objects.filter(
             vendor=vendor, file__endswith=os.path.basename(normalized_path)

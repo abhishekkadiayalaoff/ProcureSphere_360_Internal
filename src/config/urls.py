@@ -1,4 +1,3 @@
-from django.conf import settings
 from django.contrib import admin
 from django.http import JsonResponse
 from django.urls import include, path, re_path
@@ -13,10 +12,10 @@ from apps.accounts.views import (
 )
 from apps.core.views import (
     custom_404_view,
-    custom_500_view,
     protected_media_view,
     protected_vendor_document_view,
 )
+
 from .healthchecks import health, readyz
 
 urlpatterns = [

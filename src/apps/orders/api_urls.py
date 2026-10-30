@@ -96,15 +96,6 @@ class POLineSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
 
-    def validate_quantity(self, value):
-        if value is not None and value <= Decimal("0.00"):
-            raise serializers.ValidationError("Quantity must be greater than zero.")
-        return value
-
-    def validate_unit_price(self, value):
-        if value is not None and value < Decimal("0.00"):
-            raise serializers.ValidationError("Unit price cannot be negative.")
-        return value
 
 
 class POAmendmentSerializer(serializers.ModelSerializer):
