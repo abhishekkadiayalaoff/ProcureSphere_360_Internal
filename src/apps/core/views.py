@@ -502,3 +502,77 @@ def custom_403_view(request, exception=None):
             status=403,
         )
     return render(request, "403.html", status=403)
+
+
+def protected_media_view(request, file_path):
+    """
+    Secure media delivery endpoint enforcing authentication, directory traversal
+    protection, and object-level/role-based access control (DEF-002).
+    """
+    import mimetypes
+    import os
+    from django.conf import settings
+    from django.http import FileResponse, Http404, HttpResponseForbidden
+
+    if not request.user or not request.user.is_authenticated:
+        if _is_api_request(request):
+            return JsonResponse(
+                {
+                    "error": {
+                        "code": "AUTHENTICATION_REQUIRED",
+                        "message": "Authentication required to access media documents.",
+                    }
+                },
+                status=401,
+            )
+        return HttpResponseForbidden("Authentication required to access media documents.")
+
+    user = request.user
+    role_code = getattr(user, "role_code", None) or (
+        user.role.code if hasattr(user, "role") and user.role else None
+    )
+
+    # 1. Path traversal hardening
+    normalized_path = os.path.normpath(file_path).lstrip("/\\")
+    if normalized_path.startswith("..") or ".." in normalized_path.split(os.path.sep):
+        return HttpResponseForbidden("Access denied: Invalid file path.")
+
+    full_path = os.path.join(settings.MEDIA_ROOT, normalized_path)
+    if not os.path.exists(full_path) or not os.path.isfile(full_path):
+        raise Http404("Document not found.")
+
+    # 2. RBAC and Ownership Enforcement
+    if user.is_superuser or role_code == Role.SUPER_ADMIN:
+        pass  # Super Admin has full administrative access
+    elif role_code == Role.VENDOR_USER:
+        vendor = getattr(user, "vendor", None)
+        if not vendor:
+            return HttpResponseForbidden("Access denied: No linked vendor profile.")
+
+        from apps.vendors.models import VendorDocument
+        from apps.sourcing.models import BidAttachment
+
+        is_vendor_doc = VendorDocument.objects.filter(
+            vendor=vendor, file__endswith=os.path.basename(normalized_path)
+        ).exists()
+        is_bid_att = BidAttachment.objects.filter(
+            bid__vendor=vendor, file__endswith=os.path.basename(normalized_path)
+        ).exists()
+
+        if not (is_vendor_doc or is_bid_att or str(vendor.id) in normalized_path):
+            return HttpResponseForbidden("Access denied: Vendors may only access their own documents.")
+    elif role_code in [Role.REQUESTER, Role.DEPT_APPROVER, Role.STORES_RECEIVER]:
+        norm_lower = normalized_path.lower()
+        if "contracts" in norm_lower:
+            return HttpResponseForbidden("Access denied: Legal contracts are restricted to Legal and Procurement.")
+        if "vendor_docs" in norm_lower or "kyc" in norm_lower:
+            return HttpResponseForbidden("Access denied: Vendor KYC records are restricted to Procurement and Legal.")
+    elif role_code in [Role.PROC_EXEC, Role.PROC_MGR, Role.LEGAL_MGR, Role.FINANCE_AP, Role.AUDITOR]:
+        pass
+
+    content_type, _ = mimetypes.guess_type(full_path)
+    filename = os.path.basename(full_path)
+    response = FileResponse(open(full_path, "rb"), content_type=content_type or "application/octet-stream")
+    response["Content-Disposition"] = f'inline; filename="{filename}"'
+    return response
+

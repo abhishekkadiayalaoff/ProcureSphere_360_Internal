@@ -34,6 +34,11 @@ def list_view(request):
     search_q = request.GET.get("q", "").strip()
     status_filter = request.GET.get("status", "").strip()
 
+    if role_code == Role.VENDOR_USER:
+        from django.core.exceptions import PermissionDenied
+
+        raise PermissionDenied("Vendors are not permitted to view internal Purchase Requisitions.")
+
     if role_code == Role.REQUESTER:
         items = PurchaseRequisition.objects.filter(requester=user).order_by("-created_at")
     elif role_code == Role.DEPT_APPROVER:
