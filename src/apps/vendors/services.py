@@ -411,19 +411,17 @@ def verify_vendor_document_decision_service(
     previous_is_verified = document.is_verified
     previous_review_status = document.review_status
 
+    now = timezone.now()
     document.status = new_status
     document.is_verified = bool(new_status == VendorDocument.STATUS_VERIFIED)
     document.verified_by = reviewer
-    now = timezone.now()
+    document.reviewed_at = now
     if decision == "VERIFY":
         document.verified_at = now
-        document.reviewed_at = now
         document.review_status = VendorDocument.REVIEW_VERIFIED
     elif decision == "REJECT":
-        document.reviewed_at = now
         document.review_status = VendorDocument.REVIEW_REJECTED
     else:  # REQUEST_CORRECTION
-        document.reviewed_at = now
         document.review_status = VendorDocument.REVIEW_PENDING
     document.reviewer_notes = resolved_notes
     document.review_notes = resolved_notes
@@ -433,6 +431,9 @@ def verify_vendor_document_decision_service(
             "is_verified",
             "verified_by",
             "verified_at",
+            "reviewed_at",
+            "review_status",
+            "review_notes",
             "reviewer_notes",
             "review_notes",
             "review_status",
@@ -459,6 +460,7 @@ def verify_vendor_document_decision_service(
             "status": previous_status,
             "review_status": previous_review_status,
             "is_verified": previous_is_verified,
+            "review_status": document.review_status,
             "document_type": document.document_type,
             "vendor": document.vendor.legal_name,
         },
@@ -466,6 +468,7 @@ def verify_vendor_document_decision_service(
             "status": new_status,
             "review_status": document.review_status,
             "is_verified": document.is_verified,
+            "review_status": document.review_status,
             "decision": decision,
             "notes": resolved_notes,
             "vendor": document.vendor.legal_name,
@@ -618,7 +621,15 @@ def approve_vendor_service(*, vendor: Vendor, manager: User, notes: str = "") ->
     vendor.status_notes = notes
     vendor.is_event_eligible = True
     vendor.event_eligibility_status = Vendor.ELIGIBILITY_ELIGIBLE
-    vendor.save(update_fields=["status", "status_notes", "is_event_eligible", "event_eligibility_status", "updated_at"])
+    vendor.save(
+        update_fields=[
+            "status",
+            "status_notes",
+            "is_event_eligible",
+            "event_eligibility_status",
+            "updated_at",
+        ]
+    )
 
     create_audit_log_service(
         actor=manager,
@@ -1036,9 +1047,13 @@ def issue_vendor_credentials_service(
     Creates (or resets) the vendor's portal login with a temporary password and emails the
     credentials plus portal login link(s) to the vendor's registered email.
 
-    By default (auto_activate=False), the account is created in an inactive state (is_active=False)
-    and the dispatch is placed in the Legal Manager's verification queue (legal_verification_status=PENDING).
-    Upon Legal Manager verification & approval, the user account is activated and vendor status set to ACTIVE.
+    The vendor's portal user account is activated immediately (is_active=True) so newly created vendors
+    can log in immediately using the credentials sent to their registered email, set their password,
+    and access the Vendor Dashboard to submit KYC and profile details without waiting for Legal Manager approval.
+
+    The credential dispatch is placed in the Legal Manager's verification queue (legal_verification_status=PENDING)
+    to preserve independent legal compliance review. Upon Legal Manager verification & approval, the vendor
+    status transitions to ACTIVE and becomes eligible for sourcing events.
 
     The password exists only in memory for the email; it is never stored or audited.
     Raises ValidationError on rule violations or if the email could not be delivered
@@ -1066,7 +1081,7 @@ def issue_vendor_credentials_service(
         if existing:
             existing.set_password(password)
             existing.must_change_password = True
-            existing.is_active = auto_activate
+            existing.is_active = True
             existing.save(update_fields=["password", "must_change_password", "is_active"])
             user, action = existing, "credentials_reset"
         else:
@@ -1076,7 +1091,7 @@ def issue_vendor_credentials_service(
                 role=role,
                 vendor=vendor,
                 must_change_password=True,
-                is_active=auto_activate,
+                is_active=True,
             )
             action = "credentials_created"
 
@@ -1104,7 +1119,7 @@ def issue_vendor_credentials_service(
                 "login_id": email,
                 "vendor_number": vendor.vendor_number,
                 "legal_verification_status": legal_status,
-                "user_active": auto_activate,
+                "user_active": True,
             },
         )
 
@@ -1426,10 +1441,7 @@ def legal_reject_vendor_credentials_service(
         ]
     )
 
-    # Ensure user is inactive
-    if user:
-        user.is_active = False
-        user.save(update_fields=["is_active"])
+    # Vendor user account remains active so vendor can log in to view feedback and submit corrections.
 
     previous_vendor_status = vendor.status
     vendor.status = Vendor.STATUS_CHANGES_REQUIRED

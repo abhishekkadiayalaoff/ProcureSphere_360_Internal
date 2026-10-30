@@ -289,8 +289,10 @@
                         <input type="date" name="expiry_date" class="form-control form-control-sm">
                     </div>
                     <div class="mb-3">
-                        <label class="form-label small fw-semibold">Select File (PDF, PNG, JPG &le; 10MB)</label>
-                        <input type="file" name="kyc_file" class="form-control form-control-sm" required>
+                        <label class="form-label small fw-semibold" for="kycFileInput">Select File (PDF, DOC, DOCX, XLSX, CSV &le; 10MB)</label>
+                        <input type="file" name="kyc_file" id="kycFileInput" class="form-control form-control-sm" accept=".pdf,.doc,.docx,.xlsx,.csv,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv" required>
+                        <div id="kycFileFeedback" class="invalid-feedback small mt-1" style="display: none;"></div>
+                        <div class="form-text small text-muted">Supported formats: PDF, DOC, DOCX, XLSX, CSV (&le; 10MB). Image files (PNG, JPG, JPEG, GIF, WebP) are not permitted.</div>
                     </div>
                 </div>
                 <div class="modal-footer border-top bg-light py-2 px-4 d-flex justify-content-end gap-2">
@@ -303,4 +305,117 @@
         </div>
     </div>
 </div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const fileInput = document.getElementById("kycFileInput");
+    const feedback = document.getElementById("kycFileFeedback");
+    const form = fileInput ? fileInput.closest("form") : null;
+    const modalEl = document.getElementById("uploadKycModal");
+
+    if (!fileInput || !form) return;
+
+    const ALLOWED_DOC_EXTENSIONS = ["pdf", "doc", "docx", "xlsx", "csv"];
+    const DISALLOWED_IMAGE_EXTENSIONS = [
+        "png", "jpg", "jpeg", "gif", "webp", "bmp", "svg", "tiff", "ico", "avif", "heic", "heif"
+    ];
+    const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
+
+    function showError(message) {
+        fileInput.classList.add("is-invalid");
+        fileInput.value = "";
+        if (feedback) {
+            feedback.textContent = message;
+            feedback.style.display = "block";
+        }
+    }
+
+    function clearError() {
+        fileInput.classList.remove("is-invalid");
+        if (feedback) {
+            feedback.textContent = "";
+            feedback.style.display = "none";
+        }
+    }
+
+    function validateFile(file) {
+        if (!file) {
+            return { valid: false, message: "Please select a document file to upload." };
+        }
+
+        // 10 MB limit check
+        if (file.size > MAX_FILE_SIZE_BYTES) {
+            return {
+                valid: false,
+                message: "File size exceeds the maximum allowed limit of 10 MB."
+            };
+        }
+        if (file.size === 0) {
+            return {
+                valid: false,
+                message: "Uploaded file is empty. Zero-byte files are not permitted."
+            };
+        }
+
+        const fileName = file.name || "";
+        const ext = fileName.includes(".") ? fileName.split(".").pop().toLowerCase() : "";
+        const mimeType = (file.type || "").toLowerCase();
+
+        // Reject image files explicitly by extension or MIME type
+        if (
+            DISALLOWED_IMAGE_EXTENSIONS.includes(ext) ||
+            mimeType.startsWith("image/")
+        ) {
+            const extLabel = ext ? ext.toUpperCase() : "Image";
+            return {
+                valid: false,
+                message: `Unsupported file type (${extLabel}). Image files (PNG, JPG, JPEG, GIF, WebP) are not allowed. Please upload a supported document file (PDF, DOC, DOCX, XLSX, CSV).`
+            };
+        }
+
+        // Validate that the extension is an explicitly supported document format
+        if (!ALLOWED_DOC_EXTENSIONS.includes(ext)) {
+            return {
+                valid: false,
+                message: `File extension '.${ext}' is not permitted. Only document files (PDF, DOC, DOCX, XLSX, CSV) are allowed.`
+            };
+        }
+
+        return { valid: true };
+    }
+
+    fileInput.addEventListener("change", function () {
+        clearError();
+        const file = fileInput.files && fileInput.files[0];
+        if (!file) return;
+
+        const result = validateFile(file);
+        if (!result.valid) {
+            showError(result.message);
+        }
+    });
+
+    form.addEventListener("submit", function (e) {
+        const file = fileInput.files && fileInput.files[0];
+        if (!file) {
+            e.preventDefault();
+            showError("Please select a valid document file before uploading.");
+            return false;
+        }
+
+        const result = validateFile(file);
+        if (!result.valid) {
+            e.preventDefault();
+            showError(result.message);
+            return false;
+        }
+    });
+
+    if (modalEl) {
+        modalEl.addEventListener("hidden.bs.modal", function () {
+            clearError();
+        });
+    }
+});
+</script>
 {% endblock %}

@@ -91,36 +91,7 @@ def test_vendor_logs_in_and_is_forced_to_change_password(client, procurement_wor
     temp = _temp_password(mail.outbox[0].body)
     vendor_user = User.objects.get(vendor=w["vendor_draft"])
 
-    # Attempting login before legal approval is blocked with warning message
-    blocked_resp = client.post("/login/", {"email": vendor_user.email, "password": temp})
-    assert blocked_resp.status_code == 200
-    assert "pending Legal Manager verification and approval" in blocked_resp.content.decode()
-
-    # Attach mandatory verified KYC documents so legal validation passes compliance checks
-    from django.core.files.uploadedfile import SimpleUploadedFile
-    dummy_pdf = SimpleUploadedFile("doc.pdf", b"%PDF-1.4 dummy", content_type="application/pdf")
-    for doc_type, title in [
-        (VendorDocument.DOC_TYPE_CERT, "Certificate of Incorporation"),
-        (VendorDocument.DOC_TYPE_TAX, "Tax Clearance Certificate"),
-        (VendorDocument.DOC_TYPE_BANK, "Bank Verification Document"),
-    ]:
-        VendorDocument.objects.create(
-            vendor=w["vendor_draft"],
-            document_type=doc_type,
-            title=title,
-            file=dummy_pdf,
-            status=VendorDocument.STATUS_VERIFIED,
-            is_verified=True,
-        )
-
-    # Legal Manager validates and approves credentials
-    legal_mgr = User.objects.create_user(
-        email="legal.mgr@test.local",
-        password="Password123!",
-        role=Role.objects.get(code=Role.LEGAL_MGR),
-    )
-    legal_validate_vendor_credentials_service(dispatch_id=dispatch.id, legal_user=legal_mgr)
-
+    # Newly created vendor can log in immediately without waiting for Legal Manager approval
     _login(client, vendor_user, temp)
     resp = client.get("/")
     assert resp.status_code == 302 and resp.url in (reverse("password_change"), "/accounts/change-password/")
@@ -151,6 +122,11 @@ def test_vendor_logs_in_and_is_forced_to_change_password(client, procurement_wor
     assert vendor_user.must_change_password is False
     assert vendor_user.check_password("BrandNew#Pass2026")
     assert client.get("/").status_code != 302 or client.get("/").url != reverse("password_change")
+
+    # Vendor can access the vendor dashboard to complete profile & upload KYC documents
+    dash_resp = client.get("/vendor/")
+    assert dash_resp.status_code == 200
+    assert w["vendor_draft"].legal_name in dash_resp.content.decode()
 
 
 def test_resend_resets_password_and_keeps_single_user(procurement_world):
