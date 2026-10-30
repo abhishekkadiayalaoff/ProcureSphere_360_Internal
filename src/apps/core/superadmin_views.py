@@ -767,40 +767,7 @@ def org_delete_view(request, org_id):
     )
 
 
-@login_required
-@super_admin_required
-def org_resend_credentials_view(request, org_id):
-    org = get_object_or_404(Organization.objects.select_related("admin_user"), pk=org_id)
-    if not org.admin_user:
-        messages.error(request, "This organization does not have an assigned administrator.")
-        return HttpResponse("<script>window.location.reload();</script>")
 
-    role, _ = Role.objects.get_or_create(code=Role.SUPER_ADMIN, defaults={"name": "Super Admin"})
-    admin_user = org.admin_user
-    admin_user.role = role
-    admin_user.organization = org
-    admin_user.is_staff = True
-    admin_user.is_active = True
-
-    new_password = generate_secure_password()
-    admin_user.set_password(new_password)
-    admin_user.must_change_password = True
-    admin_user.save()
-
-    email_status, email_error = send_user_welcome_email(
-        user=admin_user,
-        temporary_password=new_password,
-        request=request,
-    )
-
-    if email_status == "SENT":
-        messages.success(request, f"New credentials successfully emailed to {admin_user.email} via Brevo.")
-    elif email_status == "QUEUED":
-        messages.info(request, f"Credentials email queued for delivery to {admin_user.email}.")
-    else:
-        messages.warning(request, f"Password updated, but email could not be sent: {email_error}")
-
-    return HttpResponse("<script>window.location.reload();</script>")
 
 
 

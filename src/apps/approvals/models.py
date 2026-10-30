@@ -21,8 +21,10 @@ class ApprovalPolicy(TimeStampedModel):
         (MODULE_SOURCING, "Sourcing Award"),
         (MODULE_INVOICE, "Invoice Match Exception"),
         (MODULE_VENDOR, "Vendor KYC Approval"),
-        (MODULE_PO_AMENDMENT, "PO Amendment"),
-        (MODULE_CONTRACT, "Contract"),
+
+        (MODULE_PO_AMENDMENT, "Purchase Order Amendment"),
+        (MODULE_CONTRACT, "Contract Approval"),
+
         (MODULE_BUDGET_EXCEPTION, "Budget Exception"),
     ]
 
@@ -42,8 +44,14 @@ class ApprovalPolicy(TimeStampedModel):
         blank=True,
         related_name="approval_policies",
     )
-    min_amount = models.DecimalField(max_digits=14, decimal_places=2, default=Decimal("0.00"))
-    max_amount = models.DecimalField(max_digits=14, decimal_places=2, null=True, blank=True)
+
+    min_amount = models.DecimalField(
+        max_digits=14, decimal_places=2, default=Decimal("0.00")
+    )
+    max_amount = models.DecimalField(
+        max_digits=14, decimal_places=2, null=True, blank=True
+    )
+
     is_active = models.BooleanField(default=True)
 
     def __str__(self):
@@ -51,7 +59,9 @@ class ApprovalPolicy(TimeStampedModel):
 
 
 class ApprovalStep(TimeStampedModel):
-    policy = models.ForeignKey(ApprovalPolicy, on_delete=models.CASCADE, related_name="steps")
+    policy = models.ForeignKey(
+        ApprovalPolicy, on_delete=models.CASCADE, related_name="steps"
+    )
     step_number = models.PositiveIntegerField()
     approver_role = models.ForeignKey(
         "accounts.Role", on_delete=models.PROTECT, related_name="approval_steps"
@@ -70,7 +80,9 @@ class ApprovalStep(TimeStampedModel):
         unique_together = ("policy", "step_number")
 
     def __str__(self):
-        return f"Step {self.step_number}: {self.approver_role.name} for {self.policy.name}"
+        return (
+            f"Step {self.step_number}: {self.approver_role.name} for {self.policy.name}"
+        )
 
 
 class ApprovalAction(TimeStampedModel):
@@ -86,7 +98,9 @@ class ApprovalAction(TimeStampedModel):
         (ACTION_DELEGATE, "Delegated"),
     ]
 
-    policy_step = models.ForeignKey(ApprovalStep, on_delete=models.SET_NULL, null=True, blank=True)
+    policy_step = models.ForeignKey(
+        ApprovalStep, on_delete=models.SET_NULL, null=True, blank=True
+    )
     target_object_id = models.UUIDField(db_index=True)
     target_model_name = models.CharField(max_length=100)
     actor = models.ForeignKey(

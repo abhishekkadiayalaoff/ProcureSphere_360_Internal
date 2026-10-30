@@ -71,11 +71,15 @@ def resolve_active_delegate(approver: User) -> User:
     return approver
 
 
-def evaluate_approval_chain(*, module: str, amount: Decimal, department=None, cost_center=None):
+
+def evaluate_approval_chain(
+    *, module: str, amount: Decimal, department=None, cost_center=None
+):
     """
     Evaluates server-side approval routing policies for a module & amount threshold.
-    Specificity: cost_center > department > global (department=None, cost_center=None).
-    Returns list of step dicts.
+    Supports cost-center routing, department routing, and global fallback policies.
+    Returns list of tuples: [(step, target_approver_role, effective_approver_user)]
+
     """
     policies = ApprovalPolicy.objects.filter(
         models.Q(max_amount__isnull=True) | models.Q(max_amount__gte=amount),
@@ -87,10 +91,18 @@ def evaluate_approval_chain(*, module: str, amount: Decimal, department=None, co
     selected_policy = None
     if cost_center:
         selected_policy = policies.filter(cost_center=cost_center).first()
+
+
     if not selected_policy and department:
-        selected_policy = policies.filter(department=department, cost_center__isnull=True).first()
+        selected_policy = policies.filter(
+            department=department, cost_center__isnull=True
+        ).first()
+
     if not selected_policy:
-        selected_policy = policies.filter(department__isnull=True, cost_center__isnull=True).first()
+        selected_policy = policies.filter(
+            department__isnull=True, cost_center__isnull=True
+        ).first()
+
 
     if not selected_policy:
         return []
@@ -143,6 +155,7 @@ def evaluate_approval_chain(*, module: str, amount: Decimal, department=None, co
         )
 
     chain = []
+
     for step in steps:
         effective_user = None
         if step.specific_approver:
@@ -227,7 +240,9 @@ def set_approval_delegate_service(
 
 
 @transaction.atomic
-def process_approval_action_service(*, target_object, actor: User, action: str, comments: str = ""):
+def process_approval_action_service(
+    *, target_object, actor: User, action: str, comments: str = ""
+):
     """
     Processes an approval action (APPROVE or REJECT) on a target object (e.g. PurchaseRequisition).
     Always returns the persisted ApprovalAction record.

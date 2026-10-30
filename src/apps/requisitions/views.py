@@ -31,6 +31,9 @@ def list_view(request):
     role_code = getattr(user, "role_code", None) or (
         user.role.code if hasattr(user, "role") and user.role else Role.SUPER_ADMIN
     )
+    if getattr(user, "is_vendor", False) or role_code == Role.VENDOR_USER:
+        from django.core.exceptions import PermissionDenied
+        raise PermissionDenied("Vendors are not permitted to view internal Purchase Requisitions.")
     search_q = request.GET.get("q", "").strip()
     status_filter = request.GET.get("status", "").strip()
 

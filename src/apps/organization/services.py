@@ -219,10 +219,11 @@ def delete_organization_service(*, organization: Organization, actor=None, reque
     3. An immutable AuditLog entry with ACTION_DELETE is preserved.
     """
     from django.db.models import ProtectedError
+
     from apps.audit.models import AuditLog
     from apps.audit.services import create_audit_log_service
-    from apps.requisitions.models import PurchaseRequisition
     from apps.orders.models import PurchaseOrder
+    from apps.requisitions.models import PurchaseRequisition
 
     effective_actor = actor or (request.user if request and getattr(request, "user", None) and request.user.is_authenticated else None)
 

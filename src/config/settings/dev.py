@@ -13,7 +13,7 @@ EMAIL_BACKEND = env(  # noqa: F405
     default="django.core.mail.backends.console.EmailBackend",
 )
 # Dev-only Celery beat tasks
-CELERY_BEAT_SCHEDULE["test-beat-task-every-minute"] = {
+CELERY_BEAT_SCHEDULE["test-beat-task-every-minute"] = {  # noqa: F405
     "task": "apps.notifications.tasks.test_celery_beat_task",
     "schedule": 60.0,
 }

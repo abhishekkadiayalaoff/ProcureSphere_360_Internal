@@ -1037,6 +1037,14 @@ def amend_vendor_bid_service(
     for item in line_items:
         qty = Decimal(str(item["quantity"]))
         unit_price = Decimal(str(item["quoted_unit_price"]))
+        if qty <= Decimal("0.00"):
+            raise ValidationError(
+                f"Quantity for line item '{item.get('item_description', '')}' must be greater than zero."
+            )
+        if unit_price < Decimal("0.00"):
+            raise ValidationError(
+                f"Quoted unit price for line item '{item.get('item_description', '')}' cannot be negative."
+            )
         line = BidLine.objects.create(
             bid=bid,
             pr_line=item.get("pr_line"),
@@ -1463,6 +1471,12 @@ def approve_award_service(
     decision = _pending_decision(event)
     _assert_vendor_awardable(decision.winning_bid.vendor)
 
+    if decision.recommended_by_id and decision.recommended_by_id == approver.id:
+        if not getattr(approver, "is_superuser", False):
+            raise ValidationError(
+                "Separation of duties violation: Award recommender cannot approve their own recommendation."
+            )
+
     decision.status = AwardDecision.STATUS_APPROVED
     decision.approved_by = approver
     decision.decided_at = timezone.now()
@@ -1548,7 +1562,12 @@ def reject_award_service(*, event: SourcingEvent, approver: User, comments: str)
 
 @transaction.atomic
 def evaluate_and_award_sourcing_event_service(
-    *, event: SourcingEvent, winning_bid: VendorBid, award_reason: str, approved_by_user: User
+    *,
+    event: SourcingEvent,
+    winning_bid: VendorBid,
+    award_reason: str,
+    approved_by_user: User,
+    recommended_by: User = None,
 ) -> AwardDecision:
     """
     Direct award by an approver (Procurement Manager): records the recommendation and its
@@ -1563,14 +1582,20 @@ def evaluate_and_award_sourcing_event_service(
     if not (award_reason or "").strip():
         raise ValidationError("Award justification is required.")
 
+    recommender = recommended_by or event.created_by or approved_by_user
+    if recommender.id == approved_by_user.id and not getattr(approved_by_user, "is_superuser", False):
+        raise ValidationError(
+            "Separation of duties violation: Award approver cannot be the same user who recommended or created the event without independent recommendation."
+        )
+
     if event.status == SourcingEvent.STATUS_COMMERCIAL_REVIEW:
         decision = AwardDecision.objects.create(
             event=event,
             winning_bid=winning_bid,
             award_reason=award_reason.strip(),
             status=AwardDecision.STATUS_PENDING,
-            recommended_by=approved_by_user,
-            created_by=approved_by_user,
+            recommended_by=recommender,
+            created_by=recommender,
         )
         _transition_event(
             event=event, to_status=SourcingEvent.STATUS_AWARD_APPROVAL, actor=approved_by_user

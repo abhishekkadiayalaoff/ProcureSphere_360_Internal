@@ -4,6 +4,7 @@ from django.db.models import Q
 from django.utils.html import format_html
 
 from apps.accounts.models import Role, User
+
 from .models import CostCenter, Department, FiscalPeriod, Organization
 from .services import create_organization_with_admin_service
 
@@ -443,8 +444,10 @@ def _admin_index(request, extra_context=None):
 
     try:
         from decimal import Decimal
+
         from django.db.models import Sum
         from django.utils import timezone
+
         from apps.accounts.models import User
         from apps.audit.models import AuditLog
         from apps.budgets.models import Budget

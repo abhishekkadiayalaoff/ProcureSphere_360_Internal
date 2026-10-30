@@ -15,6 +15,8 @@ from apps.invoices.services import (
 from apps.orders.models import PurchaseOrder
 from apps.vendors.models import Vendor
 
+from .selectors import scope_invoices_queryset
+
 
 def _enforce_internal_invoice_access(request, allowed_roles=None):
     user = request.user
@@ -52,6 +54,7 @@ def list_view(request):
             Role.AUDITOR,
             Role.PROC_MGR,
             Role.PROC_EXEC,
+            Role.STORES_RECEIVER,
             "FINANCE_AP",
             "SUPER_ADMIN",
             "AUDITOR",
@@ -59,7 +62,9 @@ def list_view(request):
             "PROC_EXEC",
         ],
     )
-    items = SupplierInvoice.objects.select_related("vendor", "po").order_by("-created_at")
+    items = scope_invoices_queryset(
+        SupplierInvoice.objects.select_related("vendor", "po"), request.user
+    ).order_by("-created_at")
     user_role = _get_user_role(request.user) or ""
     is_finance = request.user.is_superuser or user_role in [Role.FINANCE_AP, "FINANCE_AP"]
     is_proc = user_role in [Role.PROC_EXEC, Role.PROC_MGR, "PROC_EXEC", "PROC_MGR"]
@@ -118,12 +123,15 @@ def tolerance_settings_view(request):
 def invoice_detail_view(request, invoice_id):
     _enforce_internal_invoice_access(request)
     invoice = get_object_or_404(
-        SupplierInvoice.objects.select_related("vendor", "po").prefetch_related(
-            "lines__po_line",
-            "exceptions",
-            "po__receipts__received_by",
-            "po__receipts__lines__inspection",
-            "po__receipts__lines__po_line",
+        scope_invoices_queryset(
+            SupplierInvoice.objects.select_related("vendor", "po").prefetch_related(
+                "lines__po_line",
+                "exceptions",
+                "po__receipts__received_by",
+                "po__receipts__lines__inspection",
+                "po__receipts__lines__po_line",
+            ),
+            request.user,
         ),
         id=invoice_id,
     )
@@ -174,16 +182,18 @@ def validate_invoice_view(request, invoice_id):
 @login_required(login_url="/login/")
 def exceptions_list_view(request):
     _enforce_internal_invoice_access(request)
-    exceptions = MatchException.objects.filter(status=MatchException.STATUS_OPEN).order_by(
-        "-created_at"
-    )
+    scoped_invoices = scope_invoices_queryset(SupplierInvoice.objects.all(), request.user)
+    exceptions = MatchException.objects.filter(
+        invoice__in=scoped_invoices, status=MatchException.STATUS_OPEN
+    ).order_by("-created_at")
     return render(request, "pages/invoices/exceptions_list.html", {"exceptions": exceptions})
 
 
 @login_required(login_url="/login/")
 def exception_detail_view(request, exception_id):
     _enforce_internal_invoice_access(request)
-    exception = get_object_or_404(MatchException, id=exception_id)
+    scoped_invoices = scope_invoices_queryset(SupplierInvoice.objects.all(), request.user)
+    exception = get_object_or_404(MatchException.objects.filter(invoice__in=scoped_invoices), id=exception_id)
     return render(request, "pages/invoices/exception_detail.html", {"exception": exception})
 
 

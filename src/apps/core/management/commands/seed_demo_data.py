@@ -189,7 +189,10 @@ class Command(BaseCommand):
 
         # ── 7. Multi-Step Approval Policy ─────────────────────────────────────
         from apps.approvals.models import ApprovalPolicy
-        from apps.approvals.services import add_approval_step_service, create_approval_policy_service
+        from apps.approvals.services import (
+            add_approval_step_service,
+            create_approval_policy_service,
+        )
 
         if not ApprovalPolicy.objects.filter(module=ApprovalPolicy.MODULE_PR, is_active=True).exists():
             policy = create_approval_policy_service(

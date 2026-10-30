@@ -6,7 +6,6 @@ from apps.accounts.password_utils import generate_secure_password
 from apps.approvals.models import ApprovalPolicy
 from apps.budgets.models import Budget
 from apps.organization.models import CostCenter, Department, FiscalPeriod, Organization
-from django.db.models import Q
 
 
 def _get_form_scoped_org(request):

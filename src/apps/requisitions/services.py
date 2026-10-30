@@ -14,6 +14,7 @@ from apps.budgets.services import (
     release_budget_reservation_service,
 )
 from apps.core.validators import validate_pr_attachment
+from apps.notifications.models import Notification
 from apps.organization.models import CostCenter, Department
 
 from .models import PRAttachment, PRLine, PurchaseRequisition
