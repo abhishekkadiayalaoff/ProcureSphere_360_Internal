@@ -289,8 +289,18 @@ class PurchaseRequisitionViewSet(viewsets.ModelViewSet):
             Role.AUDITOR,
         ]:
             qs = self.queryset
-        elif role_code == Role.DEPT_APPROVER and user.department_id:
-            qs = self.queryset.filter(department_id=user.department_id)
+        elif role_code == Role.DEPT_APPROVER:
+            from django.db.models import Q
+            if user.department_id:
+                qs = self.queryset.filter(
+                    Q(department_id=user.department_id) | Q(cost_center__manager=user)
+                ).distinct()
+            elif getattr(user, "organization", None):
+                qs = self.queryset.filter(
+                    Q(department__organization=user.organization) | Q(cost_center__manager=user)
+                ).distinct()
+            else:
+                qs = self.queryset.all()
         else:
             # Requesters are strictly scoped to their own requisitions (prevents IDOR)
             qs = self.queryset.filter(requester=user)

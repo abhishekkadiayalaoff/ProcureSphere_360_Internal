@@ -45,6 +45,17 @@
                     PROCUREMENT
                 </li>
                 <li class="nav-item">
+                    <a href="/approvals/inbox/" class="nav-link manager-nav-link rounded-3 py-2 px-3 small d-flex align-items-center justify-content-between {% if '/approvals/' in request.path %}active bg-primary text-white fw-bold{% else %}text-light text-opacity-75{% endif %}">
+                        <span class="d-flex align-items-center">
+                            <i class="fa-solid fa-square-check me-2"></i>
+                            <span>Pending Approvals</span>
+                        </span>
+                        {% if pending_approvals_count and pending_approvals_count > 0 %}
+                        <span class="badge bg-warning text-dark rounded-pill fw-bold ms-auto" style="font-size: 0.68rem;">{{ pending_approvals_count }}</span>
+                        {% endif %}
+                    </a>
+                </li>
+                <li class="nav-item">
                     <a href="/manager/pipeline/" class="nav-link manager-nav-link rounded-3 py-2 px-3 small {% if '/manager/pipeline/' in request.path %}active bg-primary text-white fw-bold{% else %}text-light text-opacity-75{% endif %}">
                         <i class="fa-solid fa-filter-circle-dollar me-2"></i>
                         <span>Procurement Pipeline</span>
@@ -185,9 +196,11 @@
                 <!-- Notifications Quick Indicator -->
                 <a href="/manager/notifications/" class="btn btn-sm btn-light border rounded-circle d-flex align-items-center justify-content-center position-relative shadow-2xs" style="width: 36px; height: 36px;" title="Notifications & Escalations">
                     <i class="fa-solid fa-bell text-secondary"></i>
-                    <span id="topbarNotificationBadge" class="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle d-none">
-                        <span class="visually-hidden">New alerts</span>
+                    {% if unread_notifications_count and unread_notifications_count > 0 %}
+                    <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger border border-light" style="font-size: 0.6rem;">
+                        {{ unread_notifications_count }}
                     </span>
+                    {% endif %}
                 </a>
 
                 <!-- User Profile Pill -->
