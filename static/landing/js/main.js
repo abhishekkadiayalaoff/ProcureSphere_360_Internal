@@ -13,11 +13,15 @@
   ──────────────────────────────────────────────*/
   (function introNavTracker() {
     document.addEventListener('click', function (e) {
-      const link = e.target.closest('a');
+      const link = e.target.closest('a, button');
       if (!link) return;
-      const href = link.getAttribute('href');
+      const href = link.getAttribute('href') || '';
       if (href === '/' || href === window.location.origin + '/' || href === window.location.origin) {
         sessionStorage.setItem('ps360_clicked_home', 'true');
+      }
+      if (href.includes('/logout') || href.includes('/admin/logout')) {
+        sessionStorage.setItem('ps360_logged_out', 'true');
+        document.cookie = "ps360_just_logged_out=1; path=/; max-age=60; SameSite=Lax";
       }
     }, true);
   })();

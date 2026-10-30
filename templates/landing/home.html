@@ -11,6 +11,34 @@ if ('scrollRestoration' in history) {
 }
 </script>
 <style>
+/* ── Hero Stat 13,000+ Deep Obsidian Navy Accent ── */
+.hero-stat,
+.hero-stat > strong,
+#hero-stat-num,
+.hero-stat > span,
+.hero-stat-caption {
+  color: #0f172a !important;
+}
+
+/* ── Mobile View: Remove Intro Video Completely ── */
+@media (max-width: 768px) {
+  .intro-screen,
+  #intro-screen {
+    display: none !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+    z-index: -9999 !important;
+    height: 0 !important;
+    width: 0 !important;
+    overflow: hidden !important;
+  }
+  .intro-video,
+  #intro-video {
+    display: none !important;
+  }
+}
+
 /* ── Core Design Philosophy Banner (Matching Screenshot & About Page) ── */
 .home-philosophy-banner {
   background: linear-gradient(135deg, #1e3a8a 0%, #0f172a 100%);
@@ -224,6 +252,7 @@ if ('scrollRestoration' in history) {
 {% endblock %}
 
 {% block intro_screen %}
+{% if not request.GET.logged_out and not request.GET.logout and not request.COOKIES.ps360_just_logged_out %}
 <!-- Intro Video Screen -->
 <div class="intro-screen" id="intro-screen">
   <video
@@ -236,6 +265,7 @@ if ('scrollRestoration' in history) {
     class="intro-video"
   ></video>
 </div>
+{% endif %}
 {% endblock %}
 
 {% block content %}
@@ -287,8 +317,8 @@ if ('scrollRestoration' in history) {
       </video>
 
       <div class="hero-stat">
-        <strong id="hero-stat-num">13,000+</strong>
-        <span class="hero-stat-caption" style="opacity:1;">ENTERPRISES USE OUR PROCUREMENT PLATFORM</span>
+        <strong id="hero-stat-num" style="color:#0f172a !important;">13,000+</strong>
+        <span class="hero-stat-caption" style="color:#0f172a !important;opacity:1;">ENTERPRISES USE OUR PROCUREMENT PLATFORM</span>
       </div>
     </div>
   </section>
@@ -757,24 +787,92 @@ document.addEventListener('DOMContentLoaded', function() {
     history.scrollRestoration = 'manual';
   }
 
-  // Intro screen handling: plays EVERY TIME on refresh, skips when clicking Home
+  // Intro screen handling: plays EVERY TIME on desktop refresh, skips when clicking Home or logging out
   const introScreen = document.getElementById('intro-screen');
   const introVideo  = document.getElementById('intro-video');
   const siteShell   = document.querySelector('.site-shell');
   const heroVideo   = document.getElementById('hero-video');
 
-  if (introScreen && introVideo) {
-    // Detect reload (F5 / Ctrl+R / browser reload button)
-    let isReload = false;
+  // Detect reload (F5 / Ctrl+R / browser reload button)
+  let isReload = false;
+  try {
+    const navEntries = performance.getEntriesByType('navigation');
+    if (navEntries && navEntries.length > 0) {
+      isReload = (navEntries[0].type === 'reload');
+    } else if (window.performance && window.performance.navigation) {
+      isReload = (window.performance.navigation.type === 1);
+    }
+  } catch (e) {
+    isReload = false;
+  }
+
+  // 1. LOGOUT DETECTION: Normal production behavior - never show intro video on logout
+  const urlParams = new URLSearchParams(window.location.search);
+  const hasLogoutParam = urlParams.has('logged_out') || urlParams.get('logout') === 'success';
+  const hasLogoutCookie = document.cookie.split(';').some(c => c.trim().startsWith('ps360_just_logged_out=1'));
+  const hasLogoutSession = sessionStorage.getItem('ps360_logged_out') === 'true';
+  const referrer = document.referrer || '';
+  const cameFromDashboard = referrer.includes('/logout') ||
+                            referrer.includes('/superadmin') ||
+                            referrer.includes('/manager') ||
+                            referrer.includes('/vendor') ||
+                            referrer.includes('/admin') ||
+                            referrer.includes('/approvals') ||
+                            referrer.includes('/requisitions') ||
+                            referrer.includes('/orders') ||
+                            referrer.includes('/receipts') ||
+                            referrer.includes('/invoices') ||
+                            referrer.includes('/contracts') ||
+                            referrer.includes('/reports');
+
+  const isAfterLogout = hasLogoutParam || hasLogoutCookie || hasLogoutSession || (cameFromDashboard && !isReload);
+
+  if (isAfterLogout || !introScreen || !introVideo) {
+    // Clear logout storage & cookies
     try {
-      const navEntries = performance.getEntriesByType('navigation');
-      if (navEntries && navEntries.length > 0) {
-        isReload = (navEntries[0].type === 'reload');
-      } else if (window.performance && window.performance.navigation) {
-        isReload = (window.performance.navigation.type === 1);
+      sessionStorage.removeItem('ps360_logged_out');
+      sessionStorage.removeItem('ps360_clicked_home');
+      document.cookie = "ps360_just_logged_out=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+    } catch (e) {}
+
+    // Clean URL bar via replaceState so user sees clean '/'
+    if (window.history && window.history.replaceState && (urlParams.has('logged_out') || urlParams.has('logout'))) {
+      urlParams.delete('logged_out');
+      urlParams.delete('logout');
+      const cleanQuery = urlParams.toString();
+      const cleanUrl = window.location.pathname + (cleanQuery ? '?' + cleanQuery : '') + window.location.hash;
+      window.history.replaceState(null, '', cleanUrl || '/');
+    }
+
+    if (introScreen) {
+      introScreen.style.display = 'none';
+      introScreen.classList.add('slide-up');
+      if (introVideo) {
+        try {
+          introVideo.pause();
+          introVideo.removeAttribute('src');
+        } catch (e) {}
       }
-    } catch (e) {
-      isReload = false;
+    }
+    if (siteShell) { siteShell.classList.add('intro-finished'); }
+    if (heroVideo) { heroVideo.play().catch(() => {}); }
+    return; // Exit immediately - no intro video after logout or when screen is omitted
+  }
+
+  if (introScreen && introVideo) {
+    // 0. MOBILE ONLY: Completely disable and remove intro video on mobile screens (<= 768px)
+    const isMobileDevice = (window.innerWidth <= 768) || (window.matchMedia && window.matchMedia('(max-width: 768px)').matches);
+    if (isMobileDevice) {
+      introScreen.style.display = 'none';
+      introScreen.classList.add('slide-up');
+      try {
+        introVideo.pause();
+        introVideo.removeAttribute('src');
+        introVideo.load();
+      } catch (e) {}
+      if (siteShell) { siteShell.classList.add('intro-finished'); }
+      if (heroVideo) { heroVideo.play().catch(() => {}); }
+      return; // Exit immediately - no intro video on mobile!
     }
 
     // Check if arrived via clicking an internal "Home" link

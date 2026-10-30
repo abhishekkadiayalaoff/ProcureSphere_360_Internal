@@ -911,99 +911,427 @@
    ============================================================ */
 @media (max-width: 992px) {
   .sol-lifecycle-split-container {
-    grid-template-columns: 1fr;
-    gap: 20px;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    gap: 16px;
+    box-sizing: border-box;
+    overflow: hidden;
   }
   .sol-stages-sidebar {
-    height: auto;
-    padding: 14px;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    height: auto !important;
+    padding: 12px 14px;
+    box-sizing: border-box;
+    overflow: hidden;
+  }
+  .sol-stages-sidebar-header {
+    margin-bottom: 8px;
+    padding-bottom: 8px;
   }
   .sol-stages-nav {
     display: flex;
     flex-direction: row;
     overflow-x: auto;
+    overflow-y: hidden;
     gap: 8px;
-    padding-bottom: 8px;
+    padding: 2px 2px 6px 2px;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
     -webkit-overflow-scrolling: touch;
-    scrollbar-width: thin;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .sol-stages-nav::-webkit-scrollbar {
+    display: none;
   }
   .sol-stage-nav-item {
-    flex: 0 0 220px;
+    flex: 0 0 auto;
+    width: auto;
+    min-width: 180px;
+    max-width: 240px;
+    padding: 9px 12px;
+    border-radius: 10px;
+    box-sizing: border-box;
+  }
+  .sol-stage-nav-name {
+    font-size: 13px;
+    white-space: normal;
+    line-height: 1.25;
+  }
+  .sol-stage-detail-container {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    height: auto !important;
+    box-sizing: border-box;
   }
   .sol-detail-panel {
-    grid-template-columns: 1fr;
-    padding: 24px 18px;
-    gap: 22px;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    overflow: hidden;
+  }
+  .sol-detail-panel.is-active {
+    display: flex !important;
+    flex-direction: column !important;
+    height: auto !important;
+    padding: 22px 18px;
+    gap: 20px;
+  }
+  .sol-detail-left {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    height: auto !important;
+  }
+  .sol-metric-card {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    height: auto !important;
+    padding: 16px 16px;
+    margin-top: 4px;
   }
 }
 
-@media (max-width: 600px) {
+@media (max-width: 768px) {
   .sol-main {
-    padding-top: 90px;
+    padding-top: 96px;
   }
   .sol-hero-section {
-    padding: 24px 16px 30px;
+    padding: 24px 16px 28px;
   }
   .sol-content-wrapper {
-    padding: 0 16px 60px;
+    padding: 0 16px 50px;
   }
   #modules {
-    padding: 10px 16px 40px;
+    padding: 10px 0 40px;
   }
-
-  /* Switch desktop deck to swipeable mobile carousel */
   .sol-deck-stage {
     display: none !important;
   }
   .sol-carousel-wrap {
     display: flex !important;
   }
-
-  .sol-step-selector {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 10px;
+  .sol-detail-left h2 {
+    font-size: clamp(22px, 5.5vw, 26px);
   }
-  .sol-step-btn {
-    padding: 14px 12px;
-    border-radius: 12px;
-  }
-  .sol-step-label {
-    font-size: 13px;
-  }
-
-  .sol-detail-panel {
-    padding: 24px 20px;
-    border-radius: 18px;
-    gap: 20px;
-  }
-  .sol-detail-left > p {
-    font-size: 16px;
+  .sol-detail-desc {
+    font-size: 14.5px;
+    line-height: 1.55;
   }
   .sol-feature-item {
-    font-size: 15px;
-  }
-  .sol-metric-card {
-    padding: 20px;
-  }
-  .sol-metric-value-card {
-    padding: 24px 16px;
+    font-size: 14px;
   }
   .sol-metric-value-num {
-    font-size: clamp(28px, 8vw, 40px);
-  }
-  .sol-deepdive-header h2 {
-    font-size: clamp(22px, 6vw, 28px);
+    font-size: 28px !important;
   }
 }
 
-@media (max-width: 480px) {
-  .sol-stage-nav-item {
-    flex: 0 0 200px;
-    padding: 12px 14px;
+@media (max-width: 600px) {
+  .sol-main {
+    padding-top: 86px;
+    width: 100%;
+    max-width: 100vw;
+    overflow-x: hidden;
   }
-  .sol-detail-panel {
-    padding: 22px 16px;
-    border-radius: 18px;
+  .sol-page-layout {
+    width: 100%;
+    max-width: 100vw;
+    overflow-x: hidden;
+  }
+  .sol-hero-section {
+    padding: 20px 14px 24px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .sol-eyebrow {
+    font-size: 11.5px;
+    margin-bottom: 12px;
+    gap: 8px;
+  }
+  .sol-hero-title {
+    font-size: clamp(25px, 7vw, 34px);
+    margin-bottom: 12px;
+    line-height: 1.18;
+  }
+  .sol-hero-subtitle {
+    font-size: 14px;
+    line-height: 1.55;
+    padding: 0 4px;
+  }
+  .sol-content-wrapper {
+    padding: 0 12px 40px;
+    width: 100%;
+    max-width: 100vw;
+    box-sizing: border-box;
+    overflow-x: hidden;
+  }
+  .sol-deck-wrap {
+    margin-bottom: 36px;
+  }
+  #modules {
+    padding: 6px 0 24px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .sol-carousel-viewport {
+    width: calc(100% - 28px);
+    max-width: 290px;
+    min-height: 290px;
+  }
+  .sol-carousel-card {
+    min-height: 280px;
+    padding: 24px 16px;
+    border-radius: 20px;
+  }
+  .sol-carousel-nav {
+    width: 32px;
+    height: 32px;
+  }
+  .sol-carousel-nav.prev { left: -12px; }
+  .sol-carousel-nav.next { right: -12px; }
+
+  /* Deep Dive Header */
+  .sol-deepdive-header {
+    margin-top: 10px;
+    margin-bottom: 14px;
+    padding: 0 4px;
+    box-sizing: border-box;
+  }
+  .sol-deepdive-header h2 {
+    font-size: clamp(21px, 6vw, 26px);
+    margin-bottom: 8px;
+  }
+  .sol-deepdive-header p {
+    font-size: 13.5px;
+    line-height: 1.5;
+  }
+
+  /* Lifecycle Split Container */
+  .sol-lifecycle-split-container {
+    gap: 14px;
+    margin-top: 8px;
+    margin-bottom: 20px;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  /* Stages Sidebar */
+  .sol-stages-sidebar {
+    padding: 10px 10px;
+    border-radius: 14px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .sol-stages-sidebar-header {
+    margin-bottom: 6px;
+    padding-bottom: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .sol-stages-sidebar-tag {
+    font-size: 10px;
+    letter-spacing: 0.07em;
+  }
+  .sol-stages-sidebar-title {
+    font-size: 13.5px;
+  }
+  .sol-sidebar-hint-pill {
+    font-size: 9.5px;
+    padding: 2px 6px;
+  }
+  .sol-stages-nav {
+    gap: 6px;
+    padding: 2px 0 4px;
+  }
+  .sol-stage-nav-item {
+    min-width: 155px;
+    max-width: 200px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    gap: 6px;
+  }
+  .sol-stage-nav-badge {
+    font-size: 9px;
+    padding: 1px 5px;
+  }
+  .sol-stage-nav-name {
+    font-size: 12.5px;
+    line-height: 1.22;
+  }
+  .sol-stage-nav-arrow {
+    display: none;
+  }
+
+  /* Detail Panel */
+  .sol-detail-panel.is-active {
+    padding: 16px 12px;
+    border-radius: 14px;
+    gap: 16px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .sol-detail-tags {
+    gap: 6px;
+    margin-bottom: 8px;
+  }
+  .sol-detail-tag-cat,
+  .sol-detail-tag-status {
+    font-size: 10px;
+    padding: 2px 7px;
+    border-radius: 4px;
+  }
+  .sol-detail-left h2 {
+    font-size: 21px;
+    margin-bottom: 8px;
+    line-height: 1.22;
+    word-break: break-word;
+    overflow-wrap: break-word;
+  }
+  .sol-detail-desc {
+    font-size: 13.5px;
+    line-height: 1.5;
+    margin-bottom: 12px;
+    word-break: break-word;
+    overflow-wrap: break-word;
+  }
+  .sol-features-label {
+    font-size: 11px;
+    margin-bottom: 8px;
+    letter-spacing: 0.08em;
+  }
+  .sol-features-list {
+    gap: 8px;
+  }
+  .sol-feature-item {
+    font-size: 13px;
+    line-height: 1.4;
+    gap: 8px;
+    word-break: break-word;
+    overflow-wrap: break-word;
+  }
+  .sol-check-icon {
+    width: 18px;
+    height: 18px;
+    font-size: 10px;
+    margin-top: 1px;
+  }
+  .sol-detail-pager {
+    margin-top: 12px;
+    padding-top: 10px;
+    gap: 6px;
+  }
+  .sol-pager-btn {
+    padding: 6px 10px;
+    font-size: 11.5px;
+    border-radius: 7px;
+  }
+
+  /* Metric Card */
+  .sol-metric-card {
+    padding: 12px 10px;
+    border-radius: 12px;
+    gap: 10px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .sol-metric-label-top {
+    font-size: 10px;
+  }
+  .sol-metric-value-card {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    padding: 12px 8px !important;
+    border-radius: 9px !important;
+    min-height: 64px !important;
+    background: rgba(30, 58, 138, 0.7) !important;
+    border: 1.5px solid rgba(147, 197, 253, 0.5) !important;
+    text-align: center !important;
+  }
+  .sol-metric-value-label {
+    display: block !important;
+    font-size: 10px !important;
+    font-weight: 700 !important;
+    color: #bfdbfe !important;
+    margin-bottom: 3px !important;
+    letter-spacing: 0.05em !important;
+    text-transform: uppercase !important;
+    text-align: center !important;
+    width: 100% !important;
+  }
+  .sol-metric-value-num {
+    display: block !important;
+    font-size: 24px !important;
+    font-weight: 800 !important;
+    color: #ffffff !important;
+    font-family: 'DM Mono', monospace !important;
+    line-height: 1.15 !important;
+    text-shadow: 0 0 18px rgba(59, 130, 246, 0.75) !important;
+    text-align: center !important;
+    width: 100% !important;
+    word-break: break-word !important;
+  }
+  .sol-metric-footer {
+    padding-top: 8px;
+  }
+  .sol-metric-footer-title {
+    font-size: 11px;
+    margin-bottom: 3px;
+  }
+  .sol-metric-footer p {
+    font-size: 10.5px;
+    line-height: 1.4;
+    word-break: break-word;
+    overflow-wrap: break-word;
+  }
+  .sol-metric-audit-badge {
+    font-size: 9.5px;
+    padding: 3px 6px;
+    margin-top: 6px;
+    gap: 4px;
+    white-space: normal;
+    word-break: break-word;
+  }
+}
+
+@media (max-width: 420px) {
+  .sol-content-wrapper {
+    padding: 0 10px 36px;
+  }
+  .sol-sidebar-hint-pill {
+    display: none;
+  }
+  .sol-stage-nav-item {
+    min-width: 145px;
+    max-width: 180px;
+    padding: 7px 8px;
+  }
+  .sol-detail-panel.is-active {
+    padding: 14px 10px;
+    border-radius: 12px;
+  }
+  .sol-detail-left h2 {
+    font-size: 19px;
+  }
+  .sol-metric-value-num {
+    font-size: 22px !important;
   }
 }
 </style>
@@ -1623,6 +1951,11 @@
       btn.classList.toggle('is-active', isActive);
       btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
       btn.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+      if (isActive && window.innerWidth <= 992) {
+        try {
+          btn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+        } catch (e) {}
+      }
     });
 
     // 2. Switch active detail panel on right

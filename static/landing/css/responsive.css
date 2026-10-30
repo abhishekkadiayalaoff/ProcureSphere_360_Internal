@@ -64,6 +64,23 @@
    BREAKPOINT: <= 900px (Tablets & Mobile Landscape)
    -------------------------------------------------------------------------- */
 @media (max-width: 900px) {
+  /* Completely remove and hide intro video on mobile */
+  .intro-screen,
+  #intro-screen {
+    display: none !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+    z-index: -9999 !important;
+    height: 0 !important;
+    width: 0 !important;
+    overflow: hidden !important;
+  }
+  .intro-video,
+  #intro-video {
+    display: none !important;
+  }
+
   /* Navigation Bar */
   .site-nav {
     top: 0 !important;
@@ -378,7 +395,7 @@
     font-size: clamp(30px, 8vw, 40px) !important;
     font-weight: 800 !important;
     line-height: 1.1 !important;
-    color: var(--blue) !important;
+    color: #0f172a !important;
     text-align: center !important;
     display: block !important;
     margin: 0 auto !important;
@@ -397,7 +414,7 @@
     font-weight: 700 !important;
     letter-spacing: 0.05em !important;
     text-transform: uppercase !important;
-    color: var(--blue) !important;
+    color: #0f172a !important;
     text-align: center !important;
     display: block !important;
     margin-top: 4px !important;

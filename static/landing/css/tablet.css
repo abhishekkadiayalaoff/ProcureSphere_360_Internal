@@ -279,7 +279,7 @@
     font-size: clamp(34px, 5.2vw, 44px) !important;
     font-weight: 800 !important;
     line-height: 1.1 !important;
-    color: var(--blue) !important;
+    color: #0f172a !important;
     text-align: center !important;
     display: block !important;
     margin: 0 auto !important;
@@ -298,7 +298,7 @@
     font-weight: 700 !important;
     letter-spacing: 0.07em !important;
     text-transform: uppercase !important;
-    color: var(--blue) !important;
+    color: #0f172a !important;
     text-align: center !important;
     display: block !important;
     margin-top: 3px !important;
