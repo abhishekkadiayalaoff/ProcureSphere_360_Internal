@@ -31,13 +31,12 @@
             .unified-sidebar-desktop,
             .approver-sidebar-desktop,
             .requester-sidebar-desktop,
-            .superadmin-sidebar-desktop,
             .stores-desk-nav,
             .finance-sidebar-desktop,
             .legal-sidebar-desktop,
             .manager-sidebar-desktop,
             .auditor-sidebar,
-            aside.bg-dark {
+            aside.bg-dark:not(.approver-sidebar):not(#saSidebar):not(.sa-sidebar) {
                 width: 260px !important;
                 min-width: 260px !important;
                 flex-shrink: 0 !important;
@@ -116,9 +115,8 @@
         aside.bg-dark nav a.active-nav-item,
         aside.bg-dark nav a.active,
         aside.bg-dark .sidebar-nav-container a.active,
-        aside.bg-dark .sidebar-nav-container a.active-nav-item,
-        aside.bg-dark a.nav-link.active,
-        aside.bg-dark a.nav-link.active-nav-item {
+        aside.bg-dark:not(#saSidebar):not(.sa-sidebar) a.nav-link.active,
+        aside.bg-dark:not(#saSidebar):not(.sa-sidebar) a.nav-link.active-nav-item {
             background: #0D6EFD !important;
             color: #FFFFFF !important;
             font-weight: 700 !important;
@@ -156,10 +154,10 @@
             margin-bottom: 0 !important;
         }
 
-        aside.bg-dark .sidebar-footer a,
-        aside.bg-dark a.sidebar-signout-btn,
-        aside.bg-dark .sidebar-footer a:hover,
-        aside.bg-dark a.sidebar-signout-btn:hover {
+        aside.bg-dark:not(.approver-sidebar) .sidebar-footer a,
+        aside.bg-dark:not(.approver-sidebar) a.sidebar-signout-btn,
+        aside.bg-dark:not(.approver-sidebar) .sidebar-footer a:hover,
+        aside.bg-dark:not(.approver-sidebar) a.sidebar-signout-btn:hover {
             display: inline-flex !important;
             align-items: center !important;
             justify-content: center !important;
@@ -427,5 +425,6 @@
             }
         }, true);
     </script>
+    {% block extra_js %}{% endblock extra_js %}
 </body>
 </html>

@@ -26,6 +26,7 @@ from apps.contracts.selectors import (
     get_pending_vendor_verifications_qs,
 )
 from apps.notifications.models import Notification
+from apps.organization.models import Organization
 from apps.sourcing.models import BidInvite, SourcingEvent, VendorBid
 from apps.sourcing.services import (
     _assert_vendor_awardable,
@@ -71,12 +72,17 @@ def setup_environment(settings):
 @pytest.fixture
 def test_setup(db, db_roles):
     """Sets up cross-role users, category, and registered vendor."""
+    org, _ = Organization.objects.get_or_create(
+        code="HPE-PROC",
+        defaults={"name": "HPE Procurement", "tax_identifier": "US-HPE-001", "is_active": True},
+    )
     proc_exec = User.objects.create_user(
         email="pe.officer@test.local",
         password="Password123!",
         first_name="Proc",
         last_name="Exec",
         role=db_roles[Role.PROC_EXEC],
+        organization=org,
     )
     legal_mgr = User.objects.create_user(
         email="legal.counsel@test.local",
@@ -84,6 +90,7 @@ def test_setup(db, db_roles):
         first_name="Legal",
         last_name="Manager",
         role=db_roles[Role.LEGAL_MGR],
+        organization=org,
     )
     stores_user = User.objects.create_user(
         email="stores.user@test.local",
@@ -91,6 +98,7 @@ def test_setup(db, db_roles):
         first_name="Stores",
         last_name="Receiver",
         role=db_roles[Role.STORES_RECEIVER],
+        organization=org,
     )
     category = VendorCategory.objects.create(name="Cloud Solutions", code="IT")
     vendor = register_vendor_service(
@@ -102,12 +110,15 @@ def test_setup(db, db_roles):
         address="100 Tech Park, Silicon Way",
         created_by_user=proc_exec,
     )
+    vendor.organization = org
+    vendor.save(update_fields=["organization"])
     return {
         "proc_exec": proc_exec,
         "legal_mgr": legal_mgr,
         "stores_user": stores_user,
         "vendor": vendor,
         "category": category,
+        "org": org,
     }
 
 
@@ -1041,4 +1052,128 @@ def test_notification_failures_and_repeated_processing_idempotence(test_setup, m
     scan2 = scan_vendor_document_expirations_service()
     assert scan1["suspended_vendors"] == 0
     assert scan2["suspended_vendors"] == 0
+
+
+def test_manual_eligibility_restore_when_legal_verifies_docs(test_setup):
+    """Manual test case: Vendor ACTIVE with PENDING eligibility becomes ELIGIBLE after Legal verifies mandatory docs.
+
+    Scenario: Vendor onboarding complete, vendor ACTIVE, but event_eligibility_status = PENDING
+    (Pending Legal Review). Legal Manager reviews and verifies all 3 mandatory KYC documents
+    (Certificate of Incorporation, Tax Clearance, Bank Verification). After verification,
+    is_event_eligible flips to True and event_eligibility_status becomes ELIGIBLE,
+    enabling the vendor to be invited to RFQ/RFP events.
+    """
+    setup = test_setup
+    vendor = setup["vendor"]
+    proc_exec = setup["proc_exec"]
+    legal_mgr = setup["legal_mgr"]
+    org = setup["org"]
+    category = setup["category"]
+
+# Create vendor portal user first so notify_vendor_users can dispatch notifications
+    User.objects.create_user(
+        email="vendor.portal.user@omnicloud.test",
+        password="Password123!",
+        vendor=vendor,
+        role=Role.objects.get(code=Role.VENDOR_USER),
+    )
+
+    # Induce ACTIVE status with PENDING eligibility (simulating post-onboarding state
+    # where Legal review hasn't yet been performed)
+    vendor.status = Vendor.STATUS_ACTIVE
+    vendor.is_event_eligible = False
+    vendor.event_eligibility_status = Vendor.ELIGIBILITY_PENDING
+    vendor.save()
+
+    # Create 3 mandatory KYC documents with PENDING status (uploaded but not yet verified)
+    doc_cert = VendorDocument.objects.create(
+        vendor=vendor,
+        document_type=VendorDocument.DOC_TYPE_CERT,
+        title="Certificate of Incorporation",
+        file=SimpleUploadedFile("cert.pdf", b"incert data", content_type="application/pdf"),
+        status=VendorDocument.STATUS_PENDING,
+        is_verified=False,
+    )
+    doc_tax = VendorDocument.objects.create(
+        vendor=vendor,
+        document_type=VendorDocument.DOC_TYPE_TAX,
+        title="Tax Clearance Certificate",
+        file=SimpleUploadedFile("tax.pdf", b"tax data", content_type="application/pdf"),
+        status=VendorDocument.STATUS_PENDING,
+        is_verified=False,
+    )
+    doc_bank = VendorDocument.objects.create(
+        vendor=vendor,
+        document_type=VendorDocument.DOC_TYPE_BANK,
+        title="Bank Verification Document",
+        file=SimpleUploadedFile("bank.pdf", b"bank data", content_type="application/pdf"),
+        status=VendorDocument.STATUS_PENDING,
+        is_verified=False,
+    )
+
+    # Initial state: vendor should be non-eligible with PENDING status
+    vendor.refresh_from_db()
+    assert vendor.is_event_eligible is False
+    assert vendor.event_eligibility_status == Vendor.ELIGIBILITY_PENDING
+
+    # Legal Manager verifies all 3 mandatory documents via the service
+    verify_vendor_document_decision_service(
+        document=doc_cert, reviewer=legal_mgr, decision="VERIFY", notes="Incorporation cert verified"
+    )
+    verify_vendor_document_decision_service(
+        document=doc_tax, reviewer=legal_mgr, decision="VERIFY", notes="Tax clearance verified"
+    )
+    verify_vendor_document_decision_service(
+        document=doc_bank, reviewer=legal_mgr, decision="VERIFY", notes="Bank verification verified"
+    )
+
+    # After verifying all mandatory docs, vendor eligibility should be restored
+    vendor.refresh_from_db()
+    assert vendor.is_event_eligible is True, (
+        f"Expected is_event_eligible=True after full KYC compliance, got {vendor.is_event_eligible}"
+    )
+    assert vendor.event_eligibility_status == Vendor.ELIGIBILITY_ELIGIBLE, (
+        f"Expected event_eligibility_status=ELIGIBLE, got {vendor.event_eligibility_status}"
+    )
+
+    # AuditLog should record the eligibility restoration
+    assert AuditLog.objects.filter(
+        target_model="Vendor",
+        target_object_id=str(vendor.id),
+        new_state__event_eligibility_status="ELIGIBLE",
+    ).exists(), "AuditLog entry for eligibility restoration not found"
+
+    # Dual notifications should be dispatched to vendor and proc exec
+    assert Notification.objects.filter(
+        notification_type=Notification.TYPE_KYC_REQUEST,
+        title__contains="Eligibility Restored",
+    ).exists(), "Eligibility restoration notification not dispatched"
+
+    # Sourcing should now allow vendor invitation
+    from apps.sourcing.services import invite_vendors_to_event_service
+    from datetime import timedelta
+    from django.utils import timezone
+
+    now = timezone.now()
+    event = create_sourcing_event_service(
+        title="Manual Test RFQ",
+        description="Testing manual eligibility restore",
+        event_type="RFQ",
+        created_by_user=proc_exec,
+        bid_start_date=now - timedelta(hours=1),
+        bid_end_date=now + timedelta(days=5),
+    )
+
+    # This should succeed - vendor is now ELIGIBLE and ACTIVE
+    invite_result = invite_vendors_to_event_service(
+        event=event,
+        vendor_ids=[vendor.id],
+        invited_by=proc_exec,
+    )
+
+    # Verify the vendor appears in the event's invited list (BidInvite created)
+    from apps.sourcing.models import BidInvite, VendorBid
+    vendor_invite = BidInvite.objects.filter(event=event, vendor=vendor).first()
+    vendor_bid = VendorBid.objects.filter(event=event, vendor=vendor).first()
+    assert vendor_invite is not None, "Vendor was not invited to the sourcing event (no BidInvite)"
 

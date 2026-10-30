@@ -12,15 +12,11 @@ EMAIL_BACKEND = env(  # noqa: F405
     "EMAIL_BACKEND",
     default="django.core.mail.backends.console.EmailBackend",
 )
-# Development hosts & public tunnels (Cloudflare / ngrok)
-ALLOWED_HOSTS = ["*"]
-
-CSRF_TRUSTED_ORIGINS = [
-    "https://*.trycloudflare.com",
-    "http://*.trycloudflare.com",
-    "http://localhost:8000",
-    "http://127.0.0.1:8000",
-]
+# Dev-only Celery beat tasks
+CELERY_BEAT_SCHEDULE["test-beat-task-every-minute"] = {  # noqa: F405
+    "task": "apps.notifications.tasks.test_celery_beat_task",
+    "schedule": 60.0,
+}
 
 # Restricted CORS configuration (no wildcard *)
 CORS_ALLOW_ALL_ORIGINS = False

@@ -66,8 +66,11 @@ def home_view(request):  # noqa: C901
     """
     user = request.user
     role_code = getattr(user, "role_code", None) or (
-        user.role.code if hasattr(user, "role") and user.role else Role.SUPER_ADMIN
+        user.role.code if hasattr(user, "role") and user.role else None
     )
+
+    if role_code is None and not user.is_superuser:
+        return render(request, "pages/dashboards/no_role.html", status=403)
 
     # 1. REQUESTER ROLE DASHBOARD
     if role_code == Role.REQUESTER:
@@ -221,7 +224,6 @@ def home_view(request):  # noqa: C901
         from apps.notifications.models import Notification
         from apps.sourcing.selectors import get_sourcing_dashboard_metrics
         from apps.sourcing.services import sync_all_event_windows
-        from apps.vendors.filters import annotate_governance
         from apps.vendors.selectors import get_governance_metrics, get_governance_vendor_queryset
 
         sync_all_event_windows()
@@ -384,7 +386,7 @@ def home_view(request):  # noqa: C901
         )
         exceptions_qs = MatchException.objects.filter(status=MatchException.STATUS_OPEN)
         audits_qs = AuditLog.objects.filter(timestamp__date=today)
-        orgs_qs = Organization.objects.order_by("code")
+        orgs_qs = Organization.objects.select_related("admin_user").order_by("code")
 
         if scoped_org:
             users_qs = users_qs.filter(Q(organization=scoped_org) | Q(department__organization=scoped_org))
@@ -403,8 +405,24 @@ def home_view(request):  # noqa: C901
         pending_exceptions = exceptions_qs.count()
         audits_today = audits_qs.count()
 
+        is_global_superadmin = bool(not scoped_org)
+
         context = {
             "organizations": orgs_qs,
+            "scoped_org": scoped_org,
+            "is_global_superadmin": is_global_superadmin,
+            "can_add_organization": is_global_superadmin,
+            "total_organizations": Organization.objects.count() if is_global_superadmin else (1 if scoped_org else 0),
+            "active_organizations": (
+                Organization.objects.filter(is_active=True).count()
+                if is_global_superadmin
+                else (1 if (scoped_org and scoped_org.is_active) else 0)
+            ),
+            "provisioned_admins": (
+                Organization.objects.filter(admin_user__isnull=False).count()
+                if is_global_superadmin
+                else (1 if (scoped_org and scoped_org.admin_user) else 0)
+            ),
             "metrics": {
                 "total_users": total_users,
                 "allocated_budget": allocated_budget,
@@ -483,3 +501,86 @@ def custom_403_view(request, exception=None):
             status=403,
         )
     return render(request, "403.html", status=403)
+
+
+def protected_media_view(request, file_path):
+    """
+    Secure media delivery endpoint enforcing authentication, directory traversal
+    protection, and object-level/role-based access control (DEF-002).
+    """
+    import mimetypes
+    import os
+
+    from django.conf import settings
+    from django.http import FileResponse, Http404, HttpResponseForbidden
+
+    if not request.user or not request.user.is_authenticated:
+        if _is_api_request(request):
+            return JsonResponse(
+                {
+                    "error": {
+                        "code": "AUTHENTICATION_REQUIRED",
+                        "message": "Authentication required to access media documents.",
+                    }
+                },
+                status=401,
+            )
+        return HttpResponseForbidden("Authentication required to access media documents.")
+
+    user = request.user
+    role_code = getattr(user, "role_code", None) or (
+        user.role.code if hasattr(user, "role") and user.role else None
+    )
+
+    # 1. Path traversal hardening
+    normalized_path = os.path.normpath(file_path).lstrip("/\\")
+    if normalized_path.startswith("..") or ".." in normalized_path.split(os.path.sep):
+        return HttpResponseForbidden("Access denied: Invalid file path.")
+
+    full_path = os.path.join(settings.MEDIA_ROOT, normalized_path)
+    if not os.path.exists(full_path) or not os.path.isfile(full_path):
+        raise Http404("Document not found.")
+
+    # 2. RBAC and Ownership Enforcement
+    if user.is_superuser or role_code == Role.SUPER_ADMIN:
+        pass  # Super Admin has full administrative access
+    elif role_code == Role.VENDOR_USER:
+        vendor = getattr(user, "vendor", None)
+        if not vendor:
+            return HttpResponseForbidden("Access denied: No linked vendor profile.")
+
+        from apps.sourcing.models import BidAttachment
+        from apps.vendors.models import VendorDocument
+
+        is_vendor_doc = VendorDocument.objects.filter(
+            vendor=vendor, file__endswith=os.path.basename(normalized_path)
+        ).exists()
+        is_bid_att = BidAttachment.objects.filter(
+            bid__vendor=vendor, file__endswith=os.path.basename(normalized_path)
+        ).exists()
+
+        if not (is_vendor_doc or is_bid_att or str(vendor.id) in normalized_path):
+            return HttpResponseForbidden("Access denied: Vendors may only access their own documents.")
+    elif role_code in [Role.REQUESTER, Role.DEPT_APPROVER, Role.STORES_RECEIVER]:
+        norm_lower = normalized_path.lower()
+        if "contracts" in norm_lower:
+            return HttpResponseForbidden("Access denied: Legal contracts are restricted to Legal and Procurement.")
+        if "vendor_docs" in norm_lower or "kyc" in norm_lower:
+            return HttpResponseForbidden("Access denied: Vendor KYC records are restricted to Procurement and Legal.")
+    elif role_code in [Role.PROC_EXEC, Role.PROC_MGR, Role.LEGAL_MGR, Role.FINANCE_AP, Role.AUDITOR]:
+        pass
+
+    content_type, _ = mimetypes.guess_type(full_path)
+    filename = os.path.basename(full_path)
+    response = FileResponse(open(full_path, "rb"), content_type=content_type or "application/octet-stream")
+    response["Content-Disposition"] = f'inline; filename="{filename}"'
+    return response
+
+
+def protected_vendor_document_view(request, file_path):
+    """Alias for backwards compatibility with vendor_documents specific route."""
+    import os
+    if not file_path.startswith("vendor_documents"):
+        file_path = os.path.join("vendor_documents", file_path)
+    return protected_media_view(request, file_path)
+

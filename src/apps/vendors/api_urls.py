@@ -336,13 +336,13 @@ class VendorViewSet(viewsets.ModelViewSet):
                 return qs.none()
         elif not user.is_superuser:
             scoped_org = getattr(user, "effective_organization", None)
-            if not scoped_org:
-                return qs.none()
-            qs = qs.filter(
-                Q(organization=scoped_org)
-                | Q(created_by__organization=scoped_org)
-                | Q(created_by__department__organization=scoped_org)
-            )
+            if scoped_org:
+                qs = qs.filter(
+                    Q(organization=scoped_org)
+                    | Q(organization__isnull=True)
+                    | Q(created_by__organization=scoped_org)
+                    | Q(created_by__department__organization=scoped_org)
+                )
 
         filterset = VendorFilter(self.request.query_params, queryset=qs)
         if not filterset.is_valid():
@@ -398,7 +398,11 @@ class VendorViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         user = self.request.user if self.request.user.is_authenticated else None
-        scoped_org = getattr(user, "effective_organization", None) if user and not user.is_superuser else None
+        scoped_org = (
+            getattr(user, "effective_organization", None)
+            if user and not user.is_superuser
+            else None
+        )
         vendor = serializer.save(created_by=user, organization=scoped_org)
         from apps.audit.models import AuditLog
 
@@ -599,9 +603,40 @@ class VendorViewSet(viewsets.ModelViewSet):
             for po in pos
         ]
 
+        from .selectors import get_vendor_open_transactions
+        from .services import allowed_governance_transitions
+
+        exposure_data = get_vendor_open_transactions(vendor)
         data = serializer.data
         data["recent_purchase_orders"] = recent_pos_data
+        data["exposure"] = exposure_data["summary"]
+        data["allowed_transitions"] = allowed_governance_transitions(vendor, request.user)
         return Response(data, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=["get"], url_path="exposure")
+    def exposure(self, request, pk=None):
+        """
+        GET /api/v1/vendors/<uuid:pk>/exposure/
+        Returns open transaction counts and allowed transitions for governance status changes.
+        """
+        vendor = self.get_object()
+        from .selectors import get_vendor_open_transactions
+        from .services import allowed_governance_transitions
+
+        exposure_data = get_vendor_open_transactions(vendor)
+        return Response(
+            {
+                "vendor_id": str(vendor.id),
+                "legal_name": vendor.legal_name,
+                "vendor_number": vendor.vendor_number,
+                "status": vendor.status,
+                "status_display": vendor.get_status_display(),
+                "status_notes": vendor.status_notes,
+                "exposure": exposure_data["summary"],
+                "allowed_transitions": allowed_governance_transitions(vendor, request.user),
+            },
+            status=status.HTTP_200_OK,
+        )
 
 
 class VendorCategoryViewSet(viewsets.ModelViewSet):

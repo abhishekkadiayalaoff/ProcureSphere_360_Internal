@@ -388,7 +388,7 @@ def sync_event_window_status(*, event: SourcingEvent, now=None) -> SourcingEvent
                 actor=None,
                 extra={"trigger": "bid_start_reached"},
             )
-        if event.status == SourcingEvent.STATUS_BID_WINDOW and event.bid_end_date < now:
+        if event.status == SourcingEvent.STATUS_BID_WINDOW and event.bid_end_date <= now:
             _transition_event(
                 event=event,
                 to_status=SourcingEvent.STATUS_TECHNICAL_REVIEW,
@@ -400,7 +400,7 @@ def sync_event_window_status(*, event: SourcingEvent, now=None) -> SourcingEvent
                 notification_type=Notification.TYPE_BID_DEADLINE,
                 title=f"Bid Deadline Passed: {event.event_number}",
                 message=f"Bidding window has closed for {event.event_number} ({event.title}). Sourcing event is now in Technical Review.",
-                target_url=f"/sourcing/{event.id}/",
+                target_url=f"/sourcing-events/{event.id}/",
             )
     return event
 
@@ -410,7 +410,7 @@ def sync_all_event_windows(now=None) -> int:
     now = now or timezone.now()
     due = SourcingEvent.objects.filter(
         status=SourcingEvent.STATUS_PUBLISHED, bid_start_date__lte=now
-    ) | SourcingEvent.objects.filter(status=SourcingEvent.STATUS_BID_WINDOW, bid_end_date__lt=now)
+    ) | SourcingEvent.objects.filter(status=SourcingEvent.STATUS_BID_WINDOW, bid_end_date__lte=now)
     changed = 0
     for event in due:
         before = event.status
@@ -423,23 +423,34 @@ def sync_all_event_windows(now=None) -> int:
 @transaction.atomic
 def close_bid_window_service(*, event: SourcingEvent, user: User) -> SourcingEvent:
     """
-    Bid closure (BID_WINDOW -> TECHNICAL_REVIEW). Only permitted once the server-side deadline
-    has passed; early closure is not supported (docs/assumptions.md ASSUMP-010).
+    Bid closure (BID_WINDOW -> TECHNICAL_REVIEW).
+    Can be manually closed by authorized users (e.g. Procurement Executive/Manager)
+    at any time while the bid window is open, or automatically when the deadline passes.
     """
     _lock_and_refresh(event)
     if event.status != SourcingEvent.STATUS_BID_WINDOW:
         raise ValidationError(f"Bid window is not open (current: {event.status}).")
-    if timezone.now() <= event.bid_end_date:
-        raise ValidationError(
-            f"Bid window cannot be closed before the deadline "
-            f"({event.bid_end_date:%Y-%m-%d %H:%M})."
-        )
-    return _transition_event(
+
+    now = timezone.now()
+    early_close = now < event.bid_end_date
+    if early_close:
+        event.bid_end_date = now
+        event.save(update_fields=["bid_end_date", "updated_at"])
+
+    res = _transition_event(
         event=event,
         to_status=SourcingEvent.STATUS_TECHNICAL_REVIEW,
         actor=user,
-        extra={"trigger": "manual_close_after_deadline"},
+        extra={"trigger": "manual_close_early" if early_close else "manual_close"},
     )
+    notify_role_users(
+        role_codes=[Role.PROC_EXEC, Role.PROC_MGR, Role.SUPER_ADMIN],
+        notification_type=Notification.TYPE_BID_DEADLINE,
+        title=f"Bid Window Closed: {event.event_number}",
+        message=f"Bidding window has been closed for {event.event_number} ({event.title}) by {user.get_full_name() or user.username}. Sourcing event is now in Technical Review.",
+        target_url=f"/sourcing-events/{event.id}/",
+    )
+    return res
 
 
 def _invite_error(event: SourcingEvent, vendor_id, vendor):
@@ -1026,6 +1037,14 @@ def amend_vendor_bid_service(
     for item in line_items:
         qty = Decimal(str(item["quantity"]))
         unit_price = Decimal(str(item["quoted_unit_price"]))
+        if qty <= Decimal("0.00"):
+            raise ValidationError(
+                f"Quantity for line item '{item.get('item_description', '')}' must be greater than zero."
+            )
+        if unit_price < Decimal("0.00"):
+            raise ValidationError(
+                f"Quoted unit price for line item '{item.get('item_description', '')}' cannot be negative."
+            )
         line = BidLine.objects.create(
             bid=bid,
             pr_line=item.get("pr_line"),
@@ -1452,6 +1471,12 @@ def approve_award_service(
     decision = _pending_decision(event)
     _assert_vendor_awardable(decision.winning_bid.vendor)
 
+    if decision.recommended_by_id and decision.recommended_by_id == approver.id:
+        if not getattr(approver, "is_superuser", False):
+            raise ValidationError(
+                "Separation of duties violation: Award recommender cannot approve their own recommendation."
+            )
+
     decision.status = AwardDecision.STATUS_APPROVED
     decision.approved_by = approver
     decision.decided_at = timezone.now()
@@ -1537,7 +1562,12 @@ def reject_award_service(*, event: SourcingEvent, approver: User, comments: str)
 
 @transaction.atomic
 def evaluate_and_award_sourcing_event_service(
-    *, event: SourcingEvent, winning_bid: VendorBid, award_reason: str, approved_by_user: User
+    *,
+    event: SourcingEvent,
+    winning_bid: VendorBid,
+    award_reason: str,
+    approved_by_user: User,
+    recommended_by: User = None,
 ) -> AwardDecision:
     """
     Direct award by an approver (Procurement Manager): records the recommendation and its
@@ -1552,14 +1582,20 @@ def evaluate_and_award_sourcing_event_service(
     if not (award_reason or "").strip():
         raise ValidationError("Award justification is required.")
 
+    recommender = recommended_by or event.created_by or approved_by_user
+    if recommender.id == approved_by_user.id and not getattr(approved_by_user, "is_superuser", False):
+        raise ValidationError(
+            "Separation of duties violation: Award approver cannot be the same user who recommended or created the event without independent recommendation."
+        )
+
     if event.status == SourcingEvent.STATUS_COMMERCIAL_REVIEW:
         decision = AwardDecision.objects.create(
             event=event,
             winning_bid=winning_bid,
             award_reason=award_reason.strip(),
             status=AwardDecision.STATUS_PENDING,
-            recommended_by=approved_by_user,
-            created_by=approved_by_user,
+            recommended_by=recommender,
+            created_by=recommender,
         )
         _transition_event(
             event=event, to_status=SourcingEvent.STATUS_AWARD_APPROVAL, actor=approved_by_user

@@ -15,6 +15,8 @@ from apps.invoices.services import (
 from apps.orders.models import PurchaseOrder
 from apps.vendors.models import Vendor
 
+from .selectors import scope_invoices_queryset
+
 
 def _enforce_internal_invoice_access(request, allowed_roles=None):
     user = request.user
@@ -44,9 +46,37 @@ def _get_user_role(user):
 
 @login_required(login_url="/login/")
 def list_view(request):
-    _enforce_internal_invoice_access(request)
-    items = SupplierInvoice.objects.all().order_by("-created_at")
-    return render(request, "pages/invoices/list.html", {"items": items})
+    _enforce_internal_invoice_access(
+        request,
+        allowed_roles=[
+            Role.FINANCE_AP,
+            Role.SUPER_ADMIN,
+            Role.AUDITOR,
+            Role.PROC_MGR,
+            Role.PROC_EXEC,
+            Role.STORES_RECEIVER,
+            "FINANCE_AP",
+            "SUPER_ADMIN",
+            "AUDITOR",
+            "PROC_MGR",
+            "PROC_EXEC",
+        ],
+    )
+    items = scope_invoices_queryset(
+        SupplierInvoice.objects.select_related("vendor", "po"), request.user
+    ).order_by("-created_at")
+    user_role = _get_user_role(request.user) or ""
+    is_finance = request.user.is_superuser or user_role in [Role.FINANCE_AP, "FINANCE_AP"]
+    is_proc = user_role in [Role.PROC_EXEC, Role.PROC_MGR, "PROC_EXEC", "PROC_MGR"]
+    return render(
+        request,
+        "pages/invoices/list.html",
+        {
+            "items": items,
+            "is_finance": is_finance,
+            "is_proc": is_proc,
+        },
+    )
 
 
 @login_required(login_url="/login/")
@@ -93,44 +123,85 @@ def tolerance_settings_view(request):
 def invoice_detail_view(request, invoice_id):
     _enforce_internal_invoice_access(request)
     invoice = get_object_or_404(
-        SupplierInvoice.objects.select_related("vendor", "po").prefetch_related(
-            "lines__po_line",
-            "exceptions",
-            "po__receipts__received_by",
-            "po__receipts__lines__inspection",
-            "po__receipts__lines__po_line",
+        scope_invoices_queryset(
+            SupplierInvoice.objects.select_related("vendor", "po").prefetch_related(
+                "lines__po_line",
+                "exceptions",
+                "po__receipts__received_by",
+                "po__receipts__lines__inspection",
+                "po__receipts__lines__po_line",
+            ),
+            request.user,
         ),
         id=invoice_id,
     )
-    return render(request, "pages/invoices/detail.html", {"invoice": invoice})
+    user_role = getattr(request.user, "role_code", None) or (
+        request.user.role.code if hasattr(request.user, "role") and request.user.role else ""
+    )
+    is_finance = request.user.is_superuser or user_role in [Role.FINANCE_AP, "FINANCE_AP"]
+    is_proc = user_role in [Role.PROC_EXEC, Role.PROC_MGR, "PROC_EXEC", "PROC_MGR"]
+
+    return render(
+        request,
+        "pages/invoices/detail.html",
+        {
+            "invoice": invoice,
+            "is_finance": is_finance,
+            "is_proc": is_proc,
+            "can_validate": is_finance and invoice.status in [
+                SupplierInvoice.STATUS_RECEIVED,
+                SupplierInvoice.STATUS_VALIDATION,
+                SupplierInvoice.STATUS_EXCEPTION,
+            ],
+            "can_pay": is_finance and invoice.status == SupplierInvoice.STATUS_READY_FOR_PAYMENT,
+        },
+    )
+
+
+@login_required(login_url="/login/")
+def validate_invoice_view(request, invoice_id):
+    """
+    Finance validation action:
+    Executes automated 3-way match validation against PO and Goods Receipts.
+    Strictly restricted to Finance & AP and Super Admin.
+    Procurement Executive and Procurement Manager have read-only visibility.
+    """
+    _enforce_internal_invoice_access(
+        request, allowed_roles=[Role.FINANCE_AP, Role.SUPER_ADMIN, "FINANCE_AP", "SUPER_ADMIN"]
+    )
+    invoice = get_object_or_404(SupplierInvoice, id=invoice_id)
+    if request.method == "POST":
+        try:
+            run_3_way_match_service(invoice=invoice, user=request.user)
+            messages.success(request, f"Invoice {invoice.invoice_number} validated successfully.")
+        except Exception as e:
+            messages.error(request, f"Validation failed: {str(e)}")
+    return redirect("invoice_detail", invoice_id=invoice.id)
 
 
 @login_required(login_url="/login/")
 def exceptions_list_view(request):
     _enforce_internal_invoice_access(request)
-    exceptions = MatchException.objects.filter(status=MatchException.STATUS_OPEN).order_by(
-        "-created_at"
-    )
+    scoped_invoices = scope_invoices_queryset(SupplierInvoice.objects.all(), request.user)
+    exceptions = MatchException.objects.filter(
+        invoice__in=scoped_invoices, status=MatchException.STATUS_OPEN
+    ).order_by("-created_at")
     return render(request, "pages/invoices/exceptions_list.html", {"exceptions": exceptions})
 
 
 @login_required(login_url="/login/")
 def exception_detail_view(request, exception_id):
     _enforce_internal_invoice_access(request)
-    exception = get_object_or_404(MatchException, id=exception_id)
+    scoped_invoices = scope_invoices_queryset(SupplierInvoice.objects.all(), request.user)
+    exception = get_object_or_404(MatchException.objects.filter(invoice__in=scoped_invoices), id=exception_id)
     return render(request, "pages/invoices/exception_detail.html", {"exception": exception})
 
 
 @login_required(login_url="/login/")
 def resolve_exception_view(request, exception_id):
-    _enforce_internal_invoice_access(request)
-    role_code = _get_user_role(request.user)
-    if not (request.user.is_superuser or role_code in [Role.FINANCE_AP, Role.SUPER_ADMIN]):
-        messages.error(
-            request,
-            "Permission Denied: Only Finance / AP personnel can resolve invoice match exceptions.",
-        )
-        return redirect("exceptions_list")
+    _enforce_internal_invoice_access(
+        request, allowed_roles=[Role.FINANCE_AP, Role.SUPER_ADMIN, "FINANCE_AP", "SUPER_ADMIN"]
+    )
 
     if request.method == "POST":
         exception = get_object_or_404(MatchException, id=exception_id)
@@ -166,14 +237,9 @@ def ready_for_payment_view(request):
 
 @login_required(login_url="/login/")
 def pay_invoice_view(request, invoice_id):
-    _enforce_internal_invoice_access(request)
-    role_code = _get_user_role(request.user)
-    if not (request.user.is_superuser or role_code in [Role.FINANCE_AP, Role.SUPER_ADMIN]):
-        messages.error(
-            request,
-            "Permission Denied: Only Finance / AP personnel can execute invoice payments.",
-        )
-        return redirect("ready_list")
+    _enforce_internal_invoice_access(
+        request, allowed_roles=[Role.FINANCE_AP, Role.SUPER_ADMIN, "FINANCE_AP", "SUPER_ADMIN"]
+    )
     if request.method == "POST":
         invoice = get_object_or_404(SupplierInvoice, id=invoice_id)
         try:

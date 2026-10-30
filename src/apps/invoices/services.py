@@ -2,6 +2,7 @@ from decimal import Decimal
 
 from django.core.exceptions import ValidationError
 from django.db import models, transaction
+from django.utils import timezone
 
 from apps.accounts.models import Role
 from apps.audit.models import AuditLog
@@ -43,9 +44,10 @@ def create_supplier_invoice_service(
             f"Purchase Order {po.po_number} does not belong to vendor '{vendor.legal_name}'."
         )
 
-    if SupplierInvoice.objects.filter(vendor=vendor, invoice_number=invoice_number).exists():
+    clean_inv_num = str(invoice_number).strip()
+    if SupplierInvoice.objects.filter(vendor=vendor, invoice_number__iexact=clean_inv_num).exists():
         raise ValidationError(
-            f"Duplicate invoice detected: Invoice '{invoice_number}' already exists for vendor '{vendor.legal_name}'."
+            f"Duplicate invoice detected: Invoice '{clean_inv_num}' already exists for vendor '{vendor.legal_name}'."
         )
 
     subtotal = Decimal("0.00")
@@ -66,7 +68,18 @@ def create_supplier_invoice_service(
         raise ValidationError("Invoice must contain at least one line item.")
 
     for item in line_items:
-        po_line = item.get("po_line")
+        po_line_raw = item.get("po_line") or item.get("po_line_id")
+        po_line = None
+        if po_line_raw:
+            if hasattr(po_line_raw, "id"):
+                po_line = po_line_raw
+            else:
+                from apps.orders.models import POLine
+                try:
+                    po_line = POLine.objects.filter(pk=po_line_raw, po=po).first()
+                except Exception:
+                    po_line = None
+
         item_desc = item.get(
             "item_description", getattr(po_line, "item_description", "Line Item")
         )
@@ -119,6 +132,54 @@ def create_supplier_invoice_service(
         },
     )
 
+    from apps.accounts.models import Role, User
+    from apps.notifications.models import Notification
+
+    # 1. Notify Finance & AP
+    fin_users = User.objects.filter(role__code=Role.FINANCE_AP, is_active=True)
+    for fin_u in fin_users:
+        Notification.objects.create(
+            recipient=fin_u,
+            notification_type=Notification.TYPE_GOODS_RECEIVED,
+            title=f"New Supplier Invoice Submitted: {invoice.invoice_number}",
+            message=(
+                f"Vendor '{vendor.legal_name}' has submitted invoice {invoice.invoice_number} "
+                f"for PO {po.po_number} (Total: ${invoice.total_amount}). "
+                f"Ready for 3-way match validation and payment."
+            ),
+            target_url=f"/invoices/{invoice.id}/",
+        )
+
+    # 2. Notify Procurement Executive
+    pe_users = User.objects.filter(role__code=Role.PROC_EXEC, is_active=True)
+    for pe_u in pe_users:
+        Notification.objects.create(
+            recipient=pe_u,
+            notification_type=Notification.TYPE_GOODS_RECEIVED,
+            title=f"Supplier Invoice Submitted: {invoice.invoice_number}",
+            message=(
+                f"Vendor '{vendor.legal_name}' has submitted invoice {invoice.invoice_number} "
+                f"for PO {po.po_number} (Total: ${invoice.total_amount}). "
+                f"You may view the invoice details in read-only mode."
+            ),
+            target_url=f"/invoices/{invoice.id}/",
+        )
+
+    # 3. Notify Procurement Manager
+    pm_users = User.objects.filter(role__code=Role.PROC_MGR, is_active=True)
+    for pm_u in pm_users:
+        Notification.objects.create(
+            recipient=pm_u,
+            notification_type=Notification.TYPE_GOODS_RECEIVED,
+            title=f"Supplier Invoice Submitted: {invoice.invoice_number}",
+            message=(
+                f"Vendor '{vendor.legal_name}' has submitted invoice {invoice.invoice_number} "
+                f"for PO {po.po_number} (Total: ${invoice.total_amount}). "
+                f"You may view the invoice details in read-only mode."
+            ),
+            target_url=f"/invoices/{invoice.id}/",
+        )
+
     return invoice
 
 
@@ -141,6 +202,8 @@ def run_3_way_match_service(
         price_tolerance_pct = policy.price_tolerance_pct
     if qty_tolerance_pct is None:
         qty_tolerance_pct = policy.qty_tolerance_pct
+    price_tolerance_amount = policy.price_tolerance_amount
+    qty_tolerance_amount = policy.qty_tolerance_amount
 
     invoice.status = SupplierInvoice.STATUS_MATCHING
     invoice.save(update_fields=["status", "updated_at"])
@@ -183,8 +246,12 @@ def run_3_way_match_service(
 
         remaining_accepted_qty = max(Decimal("0.00"), accepted_qty_agg - prior_invoiced_qty)
         max_allowed_qty = remaining_accepted_qty * (Decimal("1.00") + qty_tolerance_pct)
+        qty_within_amount = (
+            qty_tolerance_amount is not None
+            and (inv_line.quantity - remaining_accepted_qty) <= qty_tolerance_amount
+        )
 
-        if inv_line.quantity > max_allowed_qty:
+        if inv_line.quantity > max_allowed_qty and not qty_within_amount:
             qty_diff = inv_line.quantity - remaining_accepted_qty
             variance = qty_diff * inv_line.unit_price
             exc = MatchException.objects.create(
@@ -200,7 +267,12 @@ def run_3_way_match_service(
 
         # 2. Price Variance check (Billed Unit Price vs PO Line Unit Price)
         max_allowed_price = po_line.unit_price * (Decimal("1.00") + price_tolerance_pct)
-        if inv_line.unit_price > max_allowed_price:
+        price_within_amount = (
+            price_tolerance_amount is not None
+            and (inv_line.unit_price - po_line.unit_price) <= price_tolerance_amount
+        )
+
+        if inv_line.unit_price > max_allowed_price and not price_within_amount:
             unit_diff = inv_line.unit_price - po_line.unit_price
             variance = unit_diff * inv_line.quantity
             exc = MatchException.objects.create(
@@ -334,9 +406,17 @@ def resolve_match_exception_service(
 
 
 @transaction.atomic
-def mark_invoice_paid_service(*, invoice: SupplierInvoice, user) -> SupplierInvoice:
+def mark_invoice_paid_service(
+    *,
+    invoice: SupplierInvoice,
+    user,
+    payment_reference: str = None,
+    payment_method: str = "ACH_TRANSFER",
+    payment_date=None,
+) -> SupplierInvoice:
     """
-    Marks invoice as PAID and transitions SpendLedger from COMMITMENT to ACTUAL.
+    Marks invoice as PAID, creates a PaymentStatus record (DEF-017),
+    and transitions SpendLedger from COMMITMENT to ACTUAL.
     """
     if invoice.vendor.status in (Vendor.STATUS_ON_HOLD, Vendor.STATUS_SUSPENDED):
         raise ValidationError(
@@ -364,6 +444,21 @@ def mark_invoice_paid_service(*, invoice: SupplierInvoice, user) -> SupplierInvo
     invoice.status = SupplierInvoice.STATUS_PAID
     invoice.save(update_fields=["status", "updated_at"])
 
+    # Create immutable PaymentStatus record
+    from apps.invoices.models import PaymentStatus
+    ref = payment_reference or f"PAY-{invoice.invoice_number}-{timezone.now().strftime('%Y%m%d%H%M%S')}"
+    pay_date = payment_date or timezone.now().date()
+    payment_record, _ = PaymentStatus.objects.update_or_create(
+        invoice=invoice,
+        defaults={
+            "payment_reference": ref,
+            "payment_date": pay_date,
+            "amount_paid": invoice.total_amount,
+            "payment_method": payment_method or "ACH_TRANSFER",
+            "paid_by": user,
+        },
+    )
+
     # Convert spend ledger commitment -> actual
     convert_commitment_to_actual_service(po=invoice.po, invoice=invoice, user=user)
 
@@ -373,7 +468,12 @@ def mark_invoice_paid_service(*, invoice: SupplierInvoice, user) -> SupplierInvo
         target_model="SupplierInvoice",
         target_object_id=str(invoice.id),
         previous_state={"status": previous_status},
-        new_state={"status": invoice.status},
+        new_state={
+            "status": invoice.status,
+            "payment_reference": payment_record.payment_reference,
+            "payment_method": payment_record.payment_method,
+            "amount_paid": str(payment_record.amount_paid),
+        },
     )
 
     return invoice

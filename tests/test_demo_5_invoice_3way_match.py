@@ -17,7 +17,7 @@ from apps.orders.services import acknowledge_purchase_order_service, generate_pu
 from apps.organization.models import CostCenter, Department, FiscalPeriod, Organization
 from apps.receipts.services import create_goods_receipt_service
 from apps.requisitions.services import create_purchase_requisition_service
-from apps.vendors.models import VendorCategory
+from apps.vendors.models import Vendor, VendorCategory
 from apps.vendors.services import register_vendor_service
 
 
@@ -70,6 +70,8 @@ def test_demo_5_invoice_3way_match_and_exception_resolution():
         email="billing@apex.com",
         address="100 Apex St",
     )
+    vendor.status = Vendor.STATUS_ACTIVE
+    vendor.save(update_fields=["status"])
 
     pr = create_purchase_requisition_service(
         title="Server Racks Purchase",

@@ -74,6 +74,8 @@ def _require_kyc_review(user):
 
 def _get_scoped_vendor_or_404(request, vendor_id, select_category=False):
     from django.db.models import Q
+
+    from apps.accounts.models import Role
     qs = Vendor.objects.all()
     if select_category:
         qs = qs.select_related("category")
@@ -81,11 +83,20 @@ def _get_scoped_vendor_or_404(request, vendor_id, select_category=False):
     if scoped_org:
         qs = qs.filter(
             Q(organization=scoped_org)
+            | Q(organization__isnull=True)
             | Q(created_by__organization=scoped_org)
             | Q(created_by__department__organization=scoped_org)
         )
-    elif not request.user.is_superuser:
-        raise Http404("Vendor not found.")
+    else:
+        role_code = getattr(request.user, "role_code", None) or (
+            request.user.role.code if getattr(request.user, "role", None) else None
+        )
+        if not (
+            request.user.is_superuser
+            or getattr(request.user, "is_staff", False)
+            or role_code in [Role.PROC_MGR, Role.PROC_EXEC, Role.AUDITOR, Role.SUPER_ADMIN, Role.FINANCE_AP]
+        ):
+            raise Http404("Vendor not found.")
     return get_object_or_404(qs, pk=vendor_id)
 
 
@@ -341,9 +352,26 @@ def vendor_kyc_action_view(request, vendor_id, kyc_action):
 @login_required(login_url="/login/")
 def vendor_document_download_view(request, vendor_id, doc_id):
     """Authorised internal download; files are never linked by their storage URL."""
+    import os
+
+    from apps.audit.models import AuditLog
+
     _require_governance_view(request.user)
     vendor = _get_scoped_vendor_or_404(request, vendor_id)
     doc = get_object_or_404(VendorDocument, pk=doc_id, vendor=vendor)
+
+    AuditLog.objects.create(
+        actor=request.user,
+        action=AuditLog.ACTION_EXPORT,
+        target_model="VendorDocument",
+        target_object_id=str(doc.id),
+        new_state={
+            "document_title": doc.title,
+            "filename": os.path.basename(doc.file.name) if getattr(doc, "file", None) else "",
+            "vendor_id": str(vendor.id),
+        },
+    )
+
     try:
         return FileResponse(doc.file.open("rb"), as_attachment=True)
     except (FileNotFoundError, ValueError):
