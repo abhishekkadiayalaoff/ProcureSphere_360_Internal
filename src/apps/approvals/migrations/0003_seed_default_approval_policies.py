@@ -15,55 +15,60 @@ def seed_default_policies(apps, schema_editor):
     )
 
     # 1. Global PR Approval Policy (covers $0.00 and above for all departments without custom policy)
-    pr_policy, created = ApprovalPolicy.objects.get_or_create(
+    pr_policy = ApprovalPolicy.objects.filter(
         module="PR",
-        department=None,
-        cost_center=None,
-        defaults={
-            "name": "Standard PR Approval — Global",
-            "min_amount": Decimal("0.00"),
-            "max_amount": None,
-            "is_active": True,
-        },
-    )
-    if created or not pr_policy.steps.exists():
-        ApprovalStep.objects.get_or_create(
+        department__isnull=True,
+        cost_center__isnull=True,
+    ).first()
+    if not pr_policy:
+        pr_policy = ApprovalPolicy.objects.create(
+            name="Standard PR Approval — Global",
+            module="PR",
+            department=None,
+            cost_center=None,
+            min_amount=Decimal("0.00"),
+            max_amount=None,
+            is_active=True,
+        )
+
+    if not pr_policy.steps.filter(step_number=1).exists():
+        ApprovalStep.objects.create(
             policy=pr_policy,
             step_number=1,
-            defaults={
-                "approver_role": dept_approver_role,
-                "description": "Department Manager Approval",
-            },
+            approver_role=dept_approver_role,
+            description="Department Manager Approval",
         )
-        ApprovalStep.objects.get_or_create(
+    if not pr_policy.steps.filter(step_number=2).exists():
+        ApprovalStep.objects.create(
             policy=pr_policy,
             step_number=2,
-            defaults={
-                "approver_role": proc_mgr_role,
-                "description": "Procurement Manager Approval",
-            },
+            approver_role=proc_mgr_role,
+            description="Procurement Manager Approval",
         )
 
     # 2. Global PO Amendment Policy
-    po_amend_policy, created = ApprovalPolicy.objects.get_or_create(
+    po_amend_policy = ApprovalPolicy.objects.filter(
         module="PO_AMENDMENT",
-        department=None,
-        cost_center=None,
-        defaults={
-            "name": "PO Amendment Approval — Global",
-            "min_amount": Decimal("0.00"),
-            "max_amount": None,
-            "is_active": True,
-        },
-    )
-    if created or not po_amend_policy.steps.exists():
-        ApprovalStep.objects.get_or_create(
+        department__isnull=True,
+        cost_center__isnull=True,
+    ).first()
+    if not po_amend_policy:
+        po_amend_policy = ApprovalPolicy.objects.create(
+            name="PO Amendment Approval — Global",
+            module="PO_AMENDMENT",
+            department=None,
+            cost_center=None,
+            min_amount=Decimal("0.00"),
+            max_amount=None,
+            is_active=True,
+        )
+
+    if not po_amend_policy.steps.filter(step_number=1).exists():
+        ApprovalStep.objects.create(
             policy=po_amend_policy,
             step_number=1,
-            defaults={
-                "approver_role": proc_mgr_role,
-                "description": "Procurement Manager Approval",
-            },
+            approver_role=proc_mgr_role,
+            description="Procurement Manager Approval",
         )
 
 
