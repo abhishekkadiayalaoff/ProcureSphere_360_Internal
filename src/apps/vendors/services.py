@@ -251,6 +251,7 @@ def delete_vendor_service(*, vendor: Vendor, actor: User) -> None:
     # Portal logins: users.vendor is SET_NULL, which would leave a live account with no vendor.
     # Deactivate (not delete) them; other records and the audit trail may reference these users.
     vendor_users = list(vendor.vendor_users.all())
+    vendor_user_ids = [u.id for u in vendor_users]
     # Credential dispatch rows are PROTECT-ed evidence of emails sent to this (never-activated)
     # vendor; they are removed with it, with their count preserved in the audit entry below.
     dispatch_count = vendor.credential_dispatches.count()
@@ -273,12 +274,14 @@ def delete_vendor_service(*, vendor: Vendor, actor: User) -> None:
             "portal_users_deactivated": [u.email for u in vendor_users],
         },
     )
-    for portal_user in vendor_users:
-        portal_user.is_active = False
-        portal_user.must_change_password = True
-        portal_user.save(update_fields=["is_active", "must_change_password"])
+    # Delete dispatches and vendor first. If vendor.delete() raises ProtectedError the
+    # entire @transaction.atomic block rolls back — portal users are never deactivated.
     vendor.credential_dispatches.all().delete()
     vendor.delete()
+    # Only reached if deletion succeeded — now deactivate orphaned portal logins.
+    if vendor_user_ids:
+        User.objects.filter(id__in=vendor_user_ids).update(is_active=False, must_change_password=True)
+
 
 
 @transaction.atomic
@@ -345,8 +348,8 @@ def _lock_reviewable_document(document: VendorDocument, reviewer: User) -> Vendo
 
     if not can_review_kyc(reviewer):
         raise PermissionDenied("Your role is not authorised to review KYC documents.")
-    document = VendorDocument.objects.select_for_update().select_related("vendor").get(
-        pk=document.pk
+    document = (
+        VendorDocument.objects.select_for_update().select_related("vendor").get(pk=document.pk)
     )
     if document.vendor.status not in KYC_DOC_REVIEWABLE_STATUSES:
         raise ValidationError(
@@ -361,6 +364,7 @@ def _lock_reviewable_document(document: VendorDocument, reviewer: User) -> Vendo
 
 
 
+@transaction.atomic
 def verify_vendor_document_decision_service(
     *,
     document: VendorDocument = None,
@@ -405,20 +409,35 @@ def verify_vendor_document_decision_service(
     new_status, audit_action = valid_decisions[decision]
     previous_status = document.status
     previous_is_verified = document.is_verified
+    previous_review_status = document.review_status
 
+    now = timezone.now()
     document.status = new_status
     document.is_verified = bool(new_status == VendorDocument.STATUS_VERIFIED)
     document.verified_by = reviewer
+    document.reviewed_at = now
     if decision == "VERIFY":
-        document.verified_at = timezone.now()
+        document.verified_at = now
+        document.review_status = VendorDocument.REVIEW_VERIFIED
+    elif decision == "REJECT":
+        document.review_status = VendorDocument.REVIEW_REJECTED
+    else:  # REQUEST_CORRECTION
+        document.review_status = VendorDocument.REVIEW_PENDING
     document.reviewer_notes = resolved_notes
+    document.review_notes = resolved_notes
     document.save(
         update_fields=[
             "status",
             "is_verified",
             "verified_by",
             "verified_at",
+            "reviewed_at",
+            "review_status",
+            "review_notes",
             "reviewer_notes",
+            "review_notes",
+            "review_status",
+            "reviewed_at",
             "updated_at",
         ]
     )
@@ -439,13 +458,17 @@ def verify_vendor_document_decision_service(
         target_object_id=str(document.id),
         previous_state={
             "status": previous_status,
+            "review_status": previous_review_status,
             "is_verified": previous_is_verified,
+            "review_status": document.review_status,
             "document_type": document.document_type,
             "vendor": document.vendor.legal_name,
         },
         new_state={
             "status": new_status,
+            "review_status": document.review_status,
             "is_verified": document.is_verified,
+            "review_status": document.review_status,
             "decision": decision,
             "notes": resolved_notes,
             "vendor": document.vendor.legal_name,
@@ -464,14 +487,21 @@ def verify_vendor_document_decision_service(
             action=AuditLog.ACTION_UPDATE,
             target_model="Vendor",
             target_object_id=str(vendor.id),
-            previous_state={"is_event_eligible": True, "event_eligibility_status": previous_eligibility},
+            previous_state={
+                "is_event_eligible": True,
+                "event_eligibility_status": previous_eligibility,
+            },
             new_state={
                 "is_event_eligible": False,
                 "event_eligibility_status": Vendor.ELIGIBILITY_INELIGIBLE,
                 "reason": f"Document compliance failure ({document.title} marked {new_status})",
             },
         )
-    elif eval_result["is_compliant"] and not vendor.is_event_eligible and vendor.status == Vendor.STATUS_ACTIVE:
+    elif (
+        eval_result["is_compliant"]
+        and not vendor.is_event_eligible
+        and vendor.status == Vendor.STATUS_ACTIVE
+    ):
         previous_eligibility = vendor.event_eligibility_status
         vendor.is_event_eligible = True
         vendor.event_eligibility_status = Vendor.ELIGIBILITY_ELIGIBLE
@@ -481,7 +511,10 @@ def verify_vendor_document_decision_service(
             action=AuditLog.ACTION_UPDATE,
             target_model="Vendor",
             target_object_id=str(vendor.id),
-            previous_state={"is_event_eligible": False, "event_eligibility_status": previous_eligibility},
+            previous_state={
+                "is_event_eligible": False,
+                "event_eligibility_status": previous_eligibility,
+            },
             new_state={
                 "is_event_eligible": True,
                 "event_eligibility_status": Vendor.ELIGIBILITY_ELIGIBLE,
@@ -512,10 +545,15 @@ def verify_vendor_document_decision_service(
             )
 
     if decision in ["REJECT", "REQUEST_CORRECTION"]:
+        notif_title = (
+            f"KYC Document Rejected: {document.title}"
+            if decision == "REJECT"
+            else f"KYC Document Feedback: {document.title}"
+        )
         notify_vendor_users(
             vendor=vendor,
             notification_type=Notification.TYPE_KYC_REQUEST,
-            title=f"KYC Document Feedback: {document.title}",
+            title=notif_title,
             message=(
                 f"Document '{document.title}' ({document.get_document_type_display()}) status: "
                 f"{document.get_status_display()}. Reviewer feedback: {document.reviewer_notes}. "
@@ -581,7 +619,17 @@ def approve_vendor_service(*, vendor: Vendor, manager: User, notes: str = "") ->
     previous_status = vendor.status
     vendor.status = Vendor.STATUS_ACTIVE
     vendor.status_notes = notes
-    vendor.save(update_fields=["status", "status_notes", "updated_at"])
+    vendor.is_event_eligible = True
+    vendor.event_eligibility_status = Vendor.ELIGIBILITY_ELIGIBLE
+    vendor.save(
+        update_fields=[
+            "status",
+            "status_notes",
+            "is_event_eligible",
+            "event_eligibility_status",
+            "updated_at",
+        ]
+    )
 
     create_audit_log_service(
         actor=manager,
@@ -607,16 +655,26 @@ def approve_vendor_service(*, vendor: Vendor, manager: User, notes: str = "") ->
 
 # (from_status, to_status) -> capability required. Anything not listed is an invalid transition.
 VENDOR_GOVERNANCE_TRANSITIONS = {
+    # Active & On Hold
     (Vendor.STATUS_ACTIVE, Vendor.STATUS_ON_HOLD): "operate",
     (Vendor.STATUS_ON_HOLD, Vendor.STATUS_ACTIVE): "operate",
     (Vendor.STATUS_ACTIVE, Vendor.STATUS_SUSPENDED): "suspend",
     (Vendor.STATUS_ON_HOLD, Vendor.STATUS_SUSPENDED): "suspend",
+    # Suspended Transitions
     (Vendor.STATUS_SUSPENDED, Vendor.STATUS_ACTIVE): "suspend",
+    (Vendor.STATUS_SUSPENDED, Vendor.STATUS_ON_HOLD): "suspend",
+    # KYC Review & Changes Required
     (Vendor.STATUS_SUBMITTED, Vendor.STATUS_REJECTED): "operate",
     (Vendor.STATUS_KYC_REVIEW, Vendor.STATUS_REJECTED): "operate",
     (Vendor.STATUS_SUBMITTED, Vendor.STATUS_CHANGES_REQUIRED): "operate",
     (Vendor.STATUS_KYC_REVIEW, Vendor.STATUS_CHANGES_REQUIRED): "operate",
     (Vendor.STATUS_CHANGES_REQUIRED, Vendor.STATUS_REJECTED): "operate",
+    # Manager Direct Suspension / Blacklist from any status
+    (Vendor.STATUS_DRAFT, Vendor.STATUS_SUSPENDED): "suspend",
+    (Vendor.STATUS_SUBMITTED, Vendor.STATUS_SUSPENDED): "suspend",
+    (Vendor.STATUS_KYC_REVIEW, Vendor.STATUS_SUSPENDED): "suspend",
+    (Vendor.STATUS_CHANGES_REQUIRED, Vendor.STATUS_SUSPENDED): "suspend",
+    (Vendor.STATUS_REJECTED, Vendor.STATUS_SUSPENDED): "suspend",
 }
 
 
@@ -889,9 +947,7 @@ def upload_vendor_document_service(
             "Please remove obsolete documents or contact procurement."
         )
 
-    current_storage = sum(
-        d.file.size for d in existing_docs if d.file and hasattr(d.file, "size")
-    )
+    current_storage = sum(d.file.size for d in existing_docs if d.file and hasattr(d.file, "size"))
     incoming_size = getattr(file, "size", 0) or 0
     if current_storage + incoming_size > MAX_VENDOR_STORAGE_BYTES:
         max_mb = MAX_VENDOR_STORAGE_BYTES // (1024 * 1024)
@@ -904,7 +960,9 @@ def upload_vendor_document_service(
         title = getattr(file, "name", "Vendor Document")
 
     if not replaces_document and replaces_document_id:
-        replaces_document = VendorDocument.objects.filter(pk=replaces_document_id, vendor=vendor).first()
+        replaces_document = VendorDocument.objects.filter(
+            pk=replaces_document_id, vendor=vendor
+        ).first()
 
     if not replaces_document:
         replaces_document = (
@@ -989,9 +1047,13 @@ def issue_vendor_credentials_service(
     Creates (or resets) the vendor's portal login with a temporary password and emails the
     credentials plus portal login link(s) to the vendor's registered email.
 
-    By default (auto_activate=False), the account is created in an inactive state (is_active=False)
-    and the dispatch is placed in the Legal Manager's verification queue (legal_verification_status=PENDING).
-    Upon Legal Manager verification & approval, the user account is activated and vendor status set to ACTIVE.
+    The vendor's portal user account is activated immediately (is_active=True) so newly created vendors
+    can log in immediately using the credentials sent to their registered email, set their password,
+    and access the Vendor Dashboard to submit KYC and profile details without waiting for Legal Manager approval.
+
+    The credential dispatch is placed in the Legal Manager's verification queue (legal_verification_status=PENDING)
+    to preserve independent legal compliance review. Upon Legal Manager verification & approval, the vendor
+    status transitions to ACTIVE and becomes eligible for sourcing events.
 
     The password exists only in memory for the email; it is never stored or audited.
     Raises ValidationError on rule violations or if the email could not be delivered
@@ -1004,7 +1066,7 @@ def issue_vendor_credentials_service(
             f"Credentials cannot be issued to a {vendor.get_status_display()} vendor."
         )
 
-    email = User.objects.normalize_email((vendor.email or '').strip())
+    email = User.objects.normalize_email((vendor.email or "").strip())
     if not email:
         raise ValidationError(
             f"Vendor {vendor.vendor_number} has no email address. Add one (Edit info) before issuing credentials."
@@ -1019,7 +1081,7 @@ def issue_vendor_credentials_service(
         if existing:
             existing.set_password(password)
             existing.must_change_password = True
-            existing.is_active = auto_activate
+            existing.is_active = True
             existing.save(update_fields=["password", "must_change_password", "is_active"])
             user, action = existing, "credentials_reset"
         else:
@@ -1029,7 +1091,7 @@ def issue_vendor_credentials_service(
                 role=role,
                 vendor=vendor,
                 must_change_password=True,
-                is_active=auto_activate,
+                is_active=True,
             )
             action = "credentials_created"
 
@@ -1057,7 +1119,7 @@ def issue_vendor_credentials_service(
                 "login_id": email,
                 "vendor_number": vendor.vendor_number,
                 "legal_verification_status": legal_status,
-                "user_active": auto_activate,
+                "user_active": True,
             },
         )
 
@@ -1379,10 +1441,7 @@ def legal_reject_vendor_credentials_service(
         ]
     )
 
-    # Ensure user is inactive
-    if user:
-        user.is_active = False
-        user.save(update_fields=["is_active"])
+    # Vendor user account remains active so vendor can log in to view feedback and submit corrections.
 
     previous_vendor_status = vendor.status
     vendor.status = Vendor.STATUS_CHANGES_REQUIRED
@@ -1598,10 +1657,14 @@ def scan_vendor_document_expirations_service(now=None) -> dict:
                 )
                 reminders_sent += 1
 
-    total_suspended_vendors = Vendor.objects.filter(
-        event_eligibility_status__in=[Vendor.ELIGIBILITY_EXPIRED, Vendor.ELIGIBILITY_SUSPENDED],
-        documents__status=VendorDocument.STATUS_EXPIRED,
-    ).distinct().count()
+    total_suspended_vendors = (
+        Vendor.objects.filter(
+            event_eligibility_status__in=[Vendor.ELIGIBILITY_EXPIRED, Vendor.ELIGIBILITY_SUSPENDED],
+            documents__status=VendorDocument.STATUS_EXPIRED,
+        )
+        .distinct()
+        .count()
+    )
 
     return {
         "expired_documents": expired_count,

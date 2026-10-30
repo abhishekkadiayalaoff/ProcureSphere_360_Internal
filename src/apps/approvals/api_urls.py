@@ -29,6 +29,13 @@ class CanManageApprovalPolicy(BasePermission):
             or getattr(request.user, "role_code", None) == Role.VENDOR_USER
         ):
             return False
+
+        role_code = getattr(request.user, "role_code", None) or (
+            request.user.role.code if getattr(request.user, "role", None) else None
+        )
+        if not request.user.is_superuser and role_code in [Role.STORES_RECEIVER, Role.LEGAL_MGR]:
+            return False
+
         if request.method in SAFE_METHODS:
             return True
         return request.user.is_superuser or request.user.role_code in [
@@ -41,6 +48,16 @@ class ApprovalPolicySerializer(serializers.ModelSerializer):
     class Meta:
         model = ApprovalPolicy
         fields = "__all__"
+
+    def validate(self, attrs):
+        from decimal import Decimal
+        min_amount = attrs.get("min_amount", getattr(self.instance, "min_amount", Decimal("0.00")))
+        max_amount = attrs.get("max_amount", getattr(self.instance, "max_amount", None))
+        if max_amount is not None and min_amount is not None and min_amount > max_amount:
+            raise serializers.ValidationError(
+                {"min_amount": ["Minimum amount cannot be greater than maximum amount."]}
+            )
+        return attrs
 
 
 class ApprovalActionSerializer(serializers.ModelSerializer):

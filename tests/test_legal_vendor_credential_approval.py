@@ -2,13 +2,15 @@
 Integration and Unit Tests for Legal Manager Vendor Credential & KYC Verification Workflow.
 
 Workflow:
-1. Procurement Executive issues vendor credentials -> account created with is_active=False.
-2. Vendor attempt to log in before legal verification is blocked with a clear pending legal approval message.
+1. Procurement Executive issues vendor credentials -> account created with is_active=True,
+   and dispatch placed in Legal review queue (legal_verification_status=PENDING).
+2. Vendor can log in immediately using dispatched credentials without waiting for Legal Manager approval,
+   sets their own password, and accesses the Vendor Portal to complete profile and upload KYC documents.
 3. Legal Manager sees the vendor in the "Vendor Credential & KYC Verification Queue" on the Legal Dashboard.
 4. Non-legal roles cannot approve or reject vendor credentials (backend RBAC).
-5. Legal Manager approves & validates -> vendor user activated, vendor status becomes ACTIVE, documents verified, AuditLog recorded.
-6. Vendor can now log in with credentials and access the Vendor Portal dashboard and account details.
-7. Legal Manager can also reject credentials with mandatory notes -> status transitions to CHANGES_REQUIRED.
+5. Legal Manager approves & validates -> vendor status becomes ACTIVE, event-eligible, KYC documents verified, AuditLog recorded.
+6. Legal Manager can also reject credentials with mandatory notes -> status transitions to CHANGES_REQUIRED,
+   and vendor remains able to log in to view feedback and submit corrections.
 """
 
 import re
@@ -133,7 +135,7 @@ def test_procurement_executive_issues_credentials_sets_pending_legal_verificatio
     assert dispatch.legal_verified_at is None
 
     vendor_user = User.objects.get(vendor=vendor)
-    assert vendor_user.is_active is False
+    assert vendor_user.is_active is True
     assert vendor_user.must_change_password is True
     assert vendor_user.role_code == Role.VENDOR_USER
 
@@ -142,18 +144,38 @@ def test_procurement_executive_issues_credentials_sets_pending_legal_verificatio
     temp_pass = _temp_password(mail.outbox[0].body)
     assert vendor_user.check_password(temp_pass)
 
-    # Vendor attempts to log in with correct credentials
+    # Vendor logs in immediately without waiting for Legal Manager approval
     login_resp = client.post("/login/", {"email": vendor_user.email, "password": temp_pass})
-    # Should not redirect to dashboard; should render login page with pending legal review notice
-    assert login_resp.status_code == 200
-    content = login_resp.content.decode()
-    assert "pending Legal Manager verification and approval" in content
-    assert "Access will be activated once legal review is complete" in content
+    assert login_resp.status_code == 302
+    assert login_resp.url in ("/vendor/", "/accounts/change-password/", reverse("accounts:change_password"))
 
-    # Vendor cannot access protected vendor portal
-    dashboard_resp = client.get("/vendor/")
-    assert dashboard_resp.status_code == 302
-    assert "/login/" in dashboard_resp.url
+    # Vendor is redirected to forced password change on first access
+    portal_first_resp = client.get("/vendor/")
+    assert portal_first_resp.status_code == 302
+    assert portal_first_resp.url in (reverse("password_change"), "/accounts/change-password/")
+
+    # Complete password change
+    change_resp = client.post(
+        reverse("password_change"),
+        {
+            "current_password": temp_pass,
+            "new_password1": "SecureNewVendorPass2026!",
+            "new_password2": "SecureNewVendorPass2026!",
+        },
+    )
+    assert change_resp.status_code == 302
+
+    # Vendor can access Vendor Portal Dashboard to complete profile & upload KYC documents
+    portal_resp = client.get("/vendor/")
+    assert portal_resp.status_code == 200
+    portal_content = portal_resp.content.decode()
+    assert vendor.legal_name in portal_content
+    assert vendor.vendor_number in portal_content
+
+    # Vendor compliance remains pending; vendor is not yet event-eligible
+    vendor.refresh_from_db()
+    assert vendor.status == Vendor.STATUS_DRAFT
+    assert vendor.is_event_eligible is False
 
 
 def test_legal_manager_dashboard_displays_pending_verification_queue(client, workflow_setup):
@@ -201,7 +223,9 @@ def test_non_legal_role_cannot_validate_or_reject_credentials(client, workflow_s
     assert resp.status_code == 302
     dispatch.refresh_from_db()
     assert dispatch.legal_verification_status == VendorCredentialDispatch.LEGAL_STATUS_PENDING
-    assert dispatch.user.is_active is False
+    assert dispatch.user.is_active is True
+    vendor.refresh_from_db()
+    assert vendor.is_event_eligible is False
 
     # Direct service call raises PermissionDenied
     with pytest.raises(PermissionDenied):
@@ -352,14 +376,15 @@ def test_legal_manager_rejects_vendor_credentials_workflow(client, workflow_setu
     assert "GST certificate" in dispatch.legal_notes
 
     vendor_user.refresh_from_db()
-    assert vendor_user.is_active is False
+    assert vendor_user.is_active is True
 
     vendor.refresh_from_db()
     assert vendor.status == Vendor.STATUS_CHANGES_REQUIRED
     assert "GST certificate" in vendor.status_notes
+    assert vendor.is_event_eligible is False
 
-    # Vendor login remains blocked
+    # Vendor can still log in to view feedback and submit requested changes
     client.logout()
     login_resp = client.post("/login/", {"email": vendor_user.email, "password": temp_pass})
-    assert login_resp.status_code == 200
-    assert "pending Legal Manager verification and approval" in login_resp.content.decode()
+    assert login_resp.status_code == 302
+    assert login_resp.url in ("/vendor/", "/accounts/change-password/", reverse("accounts:change_password"))

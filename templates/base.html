@@ -31,13 +31,12 @@
             .unified-sidebar-desktop,
             .approver-sidebar-desktop,
             .requester-sidebar-desktop,
-            .superadmin-sidebar-desktop,
             .stores-desk-nav,
             .finance-sidebar-desktop,
             .legal-sidebar-desktop,
             .manager-sidebar-desktop,
             .auditor-sidebar,
-            aside.bg-dark:not(.approver-sidebar):not(.sa-sidebar) {
+            aside.bg-dark:not(.approver-sidebar):not(#saSidebar):not(.sa-sidebar) {
                 width: 260px !important;
                 min-width: 260px !important;
                 flex-shrink: 0 !important;
@@ -116,9 +115,8 @@
         aside.bg-dark nav a.active-nav-item,
         aside.bg-dark nav a.active,
         aside.bg-dark .sidebar-nav-container a.active,
-        aside.bg-dark .sidebar-nav-container a.active-nav-item,
-        aside.bg-dark a.nav-link.active,
-        aside.bg-dark a.nav-link.active-nav-item {
+        aside.bg-dark:not(#saSidebar):not(.sa-sidebar) a.nav-link.active,
+        aside.bg-dark:not(#saSidebar):not(.sa-sidebar) a.nav-link.active-nav-item {
             background: #0D6EFD !important;
             color: #FFFFFF !important;
             font-weight: 700 !important;
@@ -403,7 +401,7 @@
     <!-- Bootstrap JS Bundle -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <!-- Custom Application JS -->
-    <script src="/static/js/app.js"></script>
+    <script src="/static/js/app.js?v=logout_v1"></script>
     <script>
         // Setup HTMX CSRF Token globally
         document.body.addEventListener('htmx:configRequest', (event) => {
@@ -412,6 +410,21 @@
                 event.detail.headers['X-CSRFToken'] = csrfToken[1];
             }
         });
+
+        // Track logout clicks to cleanly bypass intro video on landing page
+        document.addEventListener('click', function(e) {
+            const el = e.target.closest('a, button');
+            if (!el) return;
+            const href = el.getAttribute('href') || '';
+            const action = (el.form && el.form.getAttribute('action')) || '';
+            if (href.includes('/logout') || action.includes('/logout') || el.classList.contains('sidebar-signout-btn')) {
+                try {
+                    sessionStorage.setItem('ps360_logged_out', 'true');
+                    document.cookie = "ps360_just_logged_out=1; path=/; max-age=60; SameSite=Lax";
+                } catch(err) {}
+            }
+        }, true);
     </script>
+    {% block extra_js %}{% endblock extra_js %}
 </body>
 </html>

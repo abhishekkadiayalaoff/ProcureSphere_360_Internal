@@ -84,45 +84,73 @@ class GoodsReceiptSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError(
                     {"lines": ["Receipt must contain at least one line item."]}
                 )
+            if po:
+                po_lines = list(po.lines.all())
+                for idx, item in enumerate(lines):
+                    item_dict = dict(item)
+                    po_line = None
+                    po_line_id = item_dict.get("po_line_id") or item_dict.get("po_line")
+                    if po_line_id:
+                        po_line = po.lines.filter(id=po_line_id).first()
+                    elif idx < len(po_lines):
+                        po_line = po_lines[idx]
+                    elif po_lines:
+                        po_line = po_lines[0]
+
+                    if po_line:
+                        try:
+                            qty_recv = Decimal(str(item_dict.get("quantity_received", po_line.quantity)))
+                        except Exception:
+                            raise serializers.ValidationError({"lines": ["Invalid quantity received."]})
+                        current_received = po_line.quantity_received or Decimal("0.00")
+                        remaining_qty = max(Decimal("0.00"), po_line.quantity - current_received)
+                        if qty_recv > remaining_qty:
+                            raise serializers.ValidationError(
+                                {"lines": [f"Quantity received ({qty_recv}) cannot exceed remaining ordered quantity ({remaining_qty}) for '{po_line.item_description}'."]}
+                            )
+
+        lines = self.initial_data.get("lines", [])
+        if po and lines:
+            po_lines_map = {str(l.id): l for l in po.lines.all()}
+            for item in lines:
+                po_line_id = str(item.get("po_line_id") or item.get("po_line", ""))
+                po_line = po_lines_map.get(po_line_id)
+                try:
+                    qty_recv = Decimal(str(item.get("quantity_received", "0")))
+                except Exception:
+                    raise serializers.ValidationError({"lines": ["Quantity received must be a valid number."]})
+                if qty_recv <= Decimal("0.00"):
+                    raise serializers.ValidationError({"lines": ["Quantity received must be greater than zero."]})
+                if po_line:
+                    rem = po_line.remaining_quantity
+                    if qty_recv > rem:
+                        raise serializers.ValidationError(
+                            {"lines": [f"Quantity received ({qty_recv}) cannot exceed remaining quantity ({rem}) for '{po_line.item_description}'."]}
+                        )
 
         return attrs
 
     def create(self, validated_data):
         lines_data = self.initial_data.get("lines", [])
-        receipt = super().create(validated_data)
-        po = receipt.po
-        po_lines = list(po.lines.all())
+        from apps.receipts.services import create_goods_receipt_service
 
-        for idx, item in enumerate(lines_data):
-            item_dict = dict(item)
-            po_line = None
-            po_line_id = item_dict.get("po_line_id") or item_dict.get("po_line")
-            if po_line_id:
-                po_line = POLine.objects.filter(id=po_line_id).first()
-            if not po_line and idx < len(po_lines):
-                po_line = po_lines[idx]
-            elif not po_line and po_lines:
-                po_line = po_lines[0]
+        po = validated_data["po"]
+        request = self.context.get("request")
+        received_by = validated_data.get("received_by") or (request.user if request else None)
+        delivery_note = validated_data.get("delivery_note_number", "")
+        remarks = validated_data.get("remarks", "")
 
-            if po_line:
-                qty_recv = Decimal(str(item_dict.get("quantity_received", po_line.quantity)))
-                qty_acc = Decimal(str(item_dict.get("quantity_accepted", qty_recv)))
-                qty_rej = qty_recv - qty_acc
-                ReceiptLine.objects.create(
-                    receipt=receipt,
-                    po_line=po_line,
-                    quantity_received=qty_recv,
-                    quantity_accepted=qty_acc,
-                    quantity_rejected=qty_rej,
-                    notes=item_dict.get("notes", ""),
-                )
-                po_line.quantity_received = (po_line.quantity_received or Decimal("0.00")) + qty_acc
-                po_line.save(update_fields=["quantity_received", "updated_at"])
-
-        from .services import _update_po_completion_status
-
-        _update_po_completion_status(po)
-        return receipt
+        try:
+            return create_goods_receipt_service(
+                po=po,
+                received_by=received_by,
+                receipt_items=lines_data,
+                delivery_note_number=delivery_note,
+                remarks=remarks,
+            )
+        except ValidationError as e:
+            msg = e.messages if hasattr(e, "messages") else [str(e)]
+            raise serializers.ValidationError({"lines": msg})
 
 
 class GoodsReceiptPermission(IsAuthenticated):
@@ -143,9 +171,6 @@ class GoodsReceiptPermission(IsAuthenticated):
             request.user.role.code if hasattr(request.user, "role") and request.user.role else None
         )
 
-        if role_code == Role.VENDOR_USER:
-            return False
-
         if request.method in SAFE_METHODS:
             return role_code in [
                 Role.STORES_RECEIVER,
@@ -154,7 +179,11 @@ class GoodsReceiptPermission(IsAuthenticated):
                 Role.PROC_EXEC,
                 Role.PROC_MGR,
                 Role.FINANCE_AP,
+                Role.VENDOR_USER,
             ]
+
+        if role_code == Role.VENDOR_USER:
+            return False
 
         return role_code in [Role.STORES_RECEIVER, Role.SUPER_ADMIN]
 

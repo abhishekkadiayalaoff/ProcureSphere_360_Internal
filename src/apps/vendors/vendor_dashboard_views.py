@@ -8,7 +8,7 @@ from django.contrib import messages
 from django.contrib.auth import update_session_auth_hash
 from django.contrib.auth.forms import PasswordChangeForm
 from django.core.exceptions import PermissionDenied, ValidationError
-from django.db.models import Q
+from django.db.models import Q, Sum
 from django.http import FileResponse, Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
@@ -17,7 +17,7 @@ from django.views.decorators.http import require_POST
 from apps.accounts.models import Role
 from apps.audit.models import AuditLog
 from apps.contracts.models import Contract
-from apps.invoices.models import SupplierInvoice
+from apps.invoices.models import InvoiceLine, SupplierInvoice
 from apps.invoices.services import create_supplier_invoice_service
 from apps.notifications.models import Notification
 from apps.orders.models import PurchaseOrder
@@ -229,6 +229,28 @@ def vendor_profile_view(request):
                 messages.error(request, "Please select a valid document file to upload.")
             else:
                 try:
+                    # Enforce document-only upload restrictions (reject image formats)
+                    file_name = getattr(doc_file, "name", "")
+                    ext = os.path.splitext(file_name)[1][1:].lower() if "." in file_name else ""
+                    raw_content_type = (getattr(doc_file, "content_type", "") or "").split(";")[0].strip().lower()
+
+                    DISALLOWED_IMAGE_EXTENSIONS = {
+                        "png", "jpg", "jpeg", "gif", "webp", "bmp", "svg", "tiff", "ico", "avif"
+                    }
+                    SUPPORTED_DOCUMENT_EXTENSIONS = {"pdf", "doc", "docx", "xlsx", "csv"}
+
+                    if ext in DISALLOWED_IMAGE_EXTENSIONS or raw_content_type.startswith("image/"):
+                        raise ValidationError(
+                            f"Image files (.{ext or 'image'}) are not supported for KYC compliance documents. "
+                            "Please upload supported document files only (PDF, DOC, DOCX, XLSX, CSV)."
+                        )
+
+                    if ext not in SUPPORTED_DOCUMENT_EXTENSIONS:
+                        raise ValidationError(
+                            f"File extension '.{ext}' is not permitted. "
+                            "Please upload a supported document file (PDF, DOC, DOCX, XLSX, CSV)."
+                        )
+
                     upload_vendor_document_service(
                         vendor=vendor,
                         user=request.user,
@@ -1327,20 +1349,109 @@ def vendor_purchase_order_detail_view(request, po_id):
         )
 
     can_acknowledge = po.status == PurchaseOrder.STATUS_ISSUED
-    can_invoice = po.status in [PurchaseOrder.STATUS_ACKNOWLEDGED, PurchaseOrder.STATUS_PARTIAL_RECEIPT, PurchaseOrder.STATUS_COMPLETED]
+
+    # Calculate total accepted GRN quantity across all receipt lines for this PO
+    all_receipt_lines = [rl for r in po.receipts.all() for rl in r.lines.all()]
+    total_accepted_grn_qty = sum(rl.quantity_accepted for rl in all_receipt_lines)
+
+    # Calculate total prior invoiced quantity for this PO across all invoices
+    prior_invoiced_qty = (
+        InvoiceLine.objects.filter(
+            po_line__po=po,
+            invoice__status__in=[
+                SupplierInvoice.STATUS_MATCHING,
+                SupplierInvoice.STATUS_EXCEPTION,
+                SupplierInvoice.STATUS_APPROVAL,
+                SupplierInvoice.STATUS_READY_FOR_PAYMENT,
+                SupplierInvoice.STATUS_PAID,
+                SupplierInvoice.STATUS_RECEIVED,
+            ],
+        )
+        .aggregate(total_prior=Sum("quantity"))["total_prior"]
+        or Decimal("0.00")
+    )
+
+    remaining_to_invoice = max(Decimal("0.00"), total_accepted_grn_qty - prior_invoiced_qty)
+
+    # can_invoice is True only if there are remaining uninvoiced accepted goods AND the PO has accepted inspection receipts
+    has_accepted_receipts = total_accepted_grn_qty > Decimal("0.00")
+    can_invoice = remaining_to_invoice > Decimal("0.00") and has_accepted_receipts
+    is_fully_invoiced = has_accepted_receipts and remaining_to_invoice <= Decimal("0.00")
     amendments = po.amendments.select_related("requested_by").order_by("-amendment_number")
     delivery_schedules = po.delivery_schedules.select_related("po_line").order_by(
         "expected_delivery_date"
     )
 
+    receipts = list(
+        po.receipts.select_related("received_by")
+        .prefetch_related(
+            "lines__po_line",
+            "lines__inspection__inspected_by",
+            "lines__rejections",
+        )
+        .order_by("-received_date")
+    )
+
+    lines = list(po.lines.all())
+    for line in lines:
+        recv = line.quantity_received or Decimal("0.00")
+        line.remaining_qty = max(Decimal("0.00"), line.quantity - recv)
+
+    has_remaining_items = any(line.remaining_qty > Decimal("0.00") for line in lines)
+    can_deliver = (
+        po.status in [PurchaseOrder.STATUS_ACKNOWLEDGED, PurchaseOrder.STATUS_PARTIAL_RECEIPT]
+        and has_remaining_items
+    )
+
+    # Inspection statistics across receipts
+    all_receipt_lines = [rl for r in receipts for rl in r.lines.all()]
+    passed_inspection_lines_count = sum(
+        1 for rl in all_receipt_lines if rl.inspection_status == "PASSED"
+    )
+    failed_inspection_lines_count = sum(
+        1 for rl in all_receipt_lines if rl.inspection_status in ["FAILED", "REJECTED"]
+    )
+    pending_inspection_lines_count = sum(
+        1 for rl in all_receipt_lines if rl.inspection_status == "PENDING"
+    )
+    total_accepted_units = sum(rl.quantity_accepted for rl in all_receipt_lines)
+    total_rejected_units = sum(rl.quantity_rejected for rl in all_receipt_lines)
+    total_delivered_units = sum(rl.quantity_received for rl in all_receipt_lines)
+
+    org_name = (
+        getattr(
+            getattr(getattr(po.cost_center, "department", None), "organization", None), "name", None
+        )
+        or "ProcureSphere 360 Enterprise"
+    )
+    dept_name = (
+        getattr(getattr(po.cost_center, "department", None), "name", None)
+        or "Logistics & Warehouse Operations"
+    )
+
     context = {
         "vendor": vendor,
         "po": po,
-        "lines": po.lines.all(),
+        "lines": lines,
+        "receipts": receipts,
         "amendments": amendments,
         "delivery_schedules": delivery_schedules,
         "can_acknowledge": can_acknowledge,
+        "can_deliver": can_deliver,
         "can_invoice": can_invoice,
+        "is_fully_invoiced": is_fully_invoiced,
+        "remaining_to_invoice": remaining_to_invoice,
+        "has_remaining_items": has_remaining_items,
+        "org_name": org_name,
+        "dept_name": dept_name,
+        "inspection_stats": {
+            "passed_count": passed_inspection_lines_count,
+            "failed_count": failed_inspection_lines_count,
+            "pending_count": pending_inspection_lines_count,
+            "total_accepted": total_accepted_units,
+            "total_rejected": total_rejected_units,
+            "total_delivered": total_delivered_units,
+        },
         "active_nav": "orders",
     }
     return render(request, "pages/vendor/order_detail.html", context)
@@ -1377,6 +1488,85 @@ def vendor_purchase_order_acknowledge_view(request, po_id):
         messages.error(request, f"System Error: {str(e)}")
 
     return redirect("vendor_purchase_order_detail", po_id=po.id)
+
+
+@vendor_required
+@require_POST
+def vendor_purchase_order_deliver_view(request, po_id):
+    """
+    Vendor Deliver Goods Action:
+    Vendor records delivery/dispatch of goods against an acknowledged PO.
+    Creates Goods Receipt in PENDING inspection status and notifies Stores Receiver.
+    """
+    vendor = request.vendor
+    po = get_object_or_404(PurchaseOrder.objects.prefetch_related("lines"), id=po_id)
+
+    if po.vendor != vendor and not request.user.is_superuser:
+        raise PermissionDenied("Access Denied: Unauthorized delivery dispatch attempt.")
+
+    if po.status not in [
+        PurchaseOrder.STATUS_ACKNOWLEDGED,
+        PurchaseOrder.STATUS_PARTIAL_RECEIPT,
+        PurchaseOrder.STATUS_ISSUED,
+    ]:
+        messages.error(
+            request,
+            f"Cannot dispatch delivery: Purchase Order is in '{po.get_status_display()}' status. Must be Acknowledged first.",
+        )
+        return redirect("vendor_purchase_order_detail", po_id=po.id)
+
+    delivery_note_number = request.POST.get("delivery_note_number", "").strip()
+    remarks = request.POST.get("remarks", "").strip()
+
+    delivery_items = []
+    for po_line in po.lines.all():
+        qty_str = request.POST.get(f"qty_deliver_{po_line.id}", "").strip()
+        notes_str = request.POST.get(f"notes_{po_line.id}", "").strip()
+        if qty_str:
+            try:
+                qty = Decimal(qty_str)
+                if qty > Decimal("0.00"):
+                    delivery_items.append({
+                        "po_line_id": str(po_line.id),
+                        "quantity": qty,
+                        "notes": notes_str,
+                    })
+            except Exception:
+                messages.error(
+                    request, f"Invalid delivery quantity for item: {po_line.item_description}"
+                )
+                return redirect("vendor_purchase_order_detail", po_id=po.id)
+
+    if not delivery_items:
+        messages.error(
+            request, "Please specify a delivery quantity greater than 0 for at least one item."
+        )
+        return redirect("vendor_purchase_order_detail", po_id=po.id)
+
+    from apps.receipts.services import vendor_dispatch_delivery_service
+
+    try:
+        receipt = vendor_dispatch_delivery_service(
+            po=po,
+            vendor_user=request.user,
+            delivery_note_number=delivery_note_number,
+            remarks=remarks,
+            delivery_items=delivery_items,
+        )
+        messages.success(
+            request,
+            f"Goods delivery successfully recorded under Goods Receipt Note {receipt.grn_number} "
+            f"(Delivery Note: {receipt.delivery_note_number}). Dispatched to Stores Receiver for quality inspection.",
+        )
+    except ValidationError as ve:
+        messages.error(
+            request, f"Delivery Dispatch Failed: {ve.message if hasattr(ve, 'message') else str(ve)}"
+        )
+    except Exception as e:
+        messages.error(request, f"System Error recording delivery: {str(e)}")
+
+    return redirect("vendor_purchase_order_detail", po_id=po.id)
+
 
 
 # ==============================================================================
@@ -1416,7 +1606,6 @@ def vendor_performance_view(request):
 
 
 ELIGIBLE_INVOICE_STATUSES = [
-    PurchaseOrder.STATUS_ISSUED,
     PurchaseOrder.STATUS_ACKNOWLEDGED,
     PurchaseOrder.STATUS_PARTIAL_RECEIPT,
     PurchaseOrder.STATUS_COMPLETED,
@@ -1427,10 +1616,12 @@ ELIGIBLE_INVOICE_STATUSES = [
 def vendor_invoices_view(request):
     vendor = request.vendor
     invoices = SupplierInvoice.objects.filter(vendor=vendor).order_by("-created_at")
+    from django.db.models import Q
     eligible_pos = PurchaseOrder.objects.filter(
-        vendor=vendor,
-        status__in=ELIGIBLE_INVOICE_STATUSES,
-    ).order_by("-created_at")
+        vendor=vendor
+    ).filter(
+        Q(status__in=ELIGIBLE_INVOICE_STATUSES) | Q(receipts__isnull=False)
+    ).distinct().order_by("-created_at")
 
     context = {
         "vendor": vendor,
@@ -1450,17 +1641,45 @@ def vendor_invoice_submit_view(request, po_id=None):
     if po and po.vendor != vendor and not request.user.is_superuser:
         raise PermissionDenied("Access Denied: Unauthorized invoice submission attempt.")
 
-    if po and po.status not in ELIGIBLE_INVOICE_STATUSES:
+    if po and po.status not in ELIGIBLE_INVOICE_STATUSES and not po.receipts.exists():
         messages.error(
             request,
-            f"Purchase order {po.po_number} is in '{po.get_status_display()}' status and is not eligible for invoicing.",
+            f"Cannot raise invoice: Purchase Order {po.po_number} is in '{po.get_status_display()}' status and is not eligible for invoicing.",
         )
         return redirect("vendor_purchase_order_detail", po_id=po.id)
 
+    if po:
+        all_receipt_lines = [rl for r in po.receipts.all() for rl in r.lines.all()]
+        total_accepted_grn_qty = sum(rl.quantity_accepted for rl in all_receipt_lines)
+        prior_invoiced_qty = (
+            InvoiceLine.objects.filter(
+                po_line__po=po,
+                invoice__status__in=[
+                    SupplierInvoice.STATUS_MATCHING,
+                    SupplierInvoice.STATUS_EXCEPTION,
+                    SupplierInvoice.STATUS_APPROVAL,
+                    SupplierInvoice.STATUS_READY_FOR_PAYMENT,
+                    SupplierInvoice.STATUS_PAID,
+                    SupplierInvoice.STATUS_RECEIVED,
+                ],
+            )
+            .aggregate(total_prior=Sum("quantity"))["total_prior"]
+            or Decimal("0.00")
+        )
+        remaining_to_invoice = max(Decimal("0.00"), total_accepted_grn_qty - prior_invoiced_qty)
+        if total_accepted_grn_qty > Decimal("0.00") and remaining_to_invoice <= Decimal("0.00"):
+            messages.info(
+                request,
+                f"Purchase Order {po.po_number} is already fully invoiced for all accepted items.",
+            )
+            return redirect("vendor_purchase_order_detail", po_id=po.id)
+
+    from django.db.models import Q
     eligible_pos = PurchaseOrder.objects.filter(
-        vendor=vendor,
-        status__in=ELIGIBLE_INVOICE_STATUSES,
-    ).order_by("-created_at")
+        vendor=vendor
+    ).filter(
+        Q(status__in=ELIGIBLE_INVOICE_STATUSES) | Q(receipts__isnull=False)
+    ).distinct().order_by("-created_at")
 
     if request.method == "GET":
         if not po and eligible_pos.exists():
@@ -1937,3 +2156,29 @@ def vendor_account_security_view(request):
         "active_nav": "account",
     }
     return render(request, "pages/vendor/account.html", context)
+
+
+@vendor_required
+def vendor_grn_detail_view(request, grn_id):
+    """
+    Vendor portal view for Goods Receipt Note (GRN) and Quality Inspection Report.
+    Strictly scoped to Purchase Orders belonging to the authenticated vendor.
+    """
+    vendor = request.vendor
+    from apps.receipts.models import GoodsReceipt
+
+    grn = get_object_or_404(
+        GoodsReceipt.objects.select_related("po__vendor", "received_by").prefetch_related(
+            "lines__po_line", "lines__inspection", "lines__rejections"
+        ),
+        id=grn_id,
+        po__vendor=vendor,
+    )
+    context = {
+        "vendor": vendor,
+        "active_nav": "purchase_orders",
+        "grn": grn,
+        "po": grn.po,
+        "lines": grn.lines.all(),
+    }
+    return render(request, "pages/vendor/grn_detail.html", context)

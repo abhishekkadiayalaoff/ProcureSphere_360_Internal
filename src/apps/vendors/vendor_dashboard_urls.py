@@ -56,6 +56,16 @@ urlpatterns = [
         views.vendor_purchase_order_acknowledge_view,
         name="vendor_purchase_order_acknowledge",
     ),
+    path(
+        "purchase-orders/<uuid:po_id>/deliver/",
+        views.vendor_purchase_order_deliver_view,
+        name="vendor_purchase_order_deliver",
+    ),
+    path(
+        "receipts/<uuid:grn_id>/",
+        views.vendor_grn_detail_view,
+        name="vendor_grn_detail",
+    ),
     # Supplier Performance
     path("performance/", views.vendor_performance_view, name="vendor_performance"),
     # Invoices & Payments

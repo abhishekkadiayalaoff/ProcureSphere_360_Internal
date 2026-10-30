@@ -532,6 +532,10 @@ def upload_contract_document_service(
     if not file:
         raise ValidationError("Document file is required.")
 
+    if hasattr(file, "read") or hasattr(file, "size"):
+        from apps.core.validators import validate_file_upload
+        validate_file_upload(file)
+
     file_name = ""
     if hasattr(file, "name"):
         file_name = file.name

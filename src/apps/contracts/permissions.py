@@ -30,6 +30,8 @@ class IsNotAuditor(permissions.BasePermission):
     def has_permission(self, request, view):
         if not request.user or not request.user.is_authenticated:
             return False
+        if request.user.is_superuser:
+            return True
         if request.method in permissions.SAFE_METHODS:
             return True
         role_code = getattr(request.user, "role_code", None) or (
@@ -51,6 +53,8 @@ class CanManageContract(permissions.BasePermission):
     def has_permission(self, request, view):
         if not request.user or not request.user.is_authenticated:
             return False
+        if request.user.is_superuser:
+            return True
         if request.method in permissions.SAFE_METHODS:
             return True
         role_code = getattr(request.user, "role_code", None) or (
@@ -60,10 +64,13 @@ class CanManageContract(permissions.BasePermission):
             Role.SUPER_ADMIN,
             Role.LEGAL_MGR,
             Role.PROC_MGR,
-            Role.PROC_EXEC,
         ]
 
     def has_object_permission(self, request, view, obj):
+        if not request.user or not request.user.is_authenticated:
+            return False
+        if request.user.is_superuser:
+            return True
         return self.has_permission(request, view)
 
 

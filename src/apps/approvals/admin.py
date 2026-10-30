@@ -2,6 +2,7 @@ from django.contrib import admin
 from django.db.models import Q
 
 from apps.organization.models import Department
+
 from .models import ApprovalAction, ApprovalDelegate, ApprovalPolicy, ApprovalStep
 
 

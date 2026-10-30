@@ -185,7 +185,7 @@ def receipt_rejection_report_view(request):
 
 
 @api_view(["GET"])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAuthenticated, IsNotVendorUser])
 def receipt_delivery_summary_view(request):
     start_date = request.GET.get("start_date")
     end_date = request.GET.get("end_date")
@@ -207,7 +207,7 @@ def invoice_exception_report_view(request):
 
 
 @api_view(["GET"])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAuthenticated, IsNotVendorUser])
 def contract_expiry_report_view(request):
     status_param = request.GET.get("status")
     days_param = request.GET.get("days")
@@ -226,7 +226,7 @@ def contract_expiry_report_view(request):
 
 
 @api_view(["GET"])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAuthenticated, IsNotVendorUser])
 def contract_obligation_report_view(request):
     due_status = request.GET.get("due_status")
     responsible_party = request.GET.get("responsible_party")

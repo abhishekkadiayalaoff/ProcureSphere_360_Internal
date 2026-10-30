@@ -2,6 +2,7 @@ from django.contrib import admin
 from django.db.models import Q
 
 from apps.accounts.models import Role
+
 from .models import Vendor, VendorCategory, VendorContact, VendorDocument, VendorRiskRecord
 
 
