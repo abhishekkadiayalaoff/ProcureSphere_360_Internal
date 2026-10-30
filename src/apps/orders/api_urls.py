@@ -97,6 +97,7 @@ class POLineSerializer(serializers.ModelSerializer):
         ]
 
 
+
 class POAmendmentSerializer(serializers.ModelSerializer):
     requested_by_email = serializers.CharField(
         source="requested_by.email", read_only=True
@@ -310,6 +311,7 @@ class PurchaseOrderSerializer(serializers.ModelSerializer):
                                 {"lines": [f"Invalid quantity for line item {idx + 1}."]}
                             )
         return attrs
+
 
     def create(self, validated_data):
         if not validated_data.get("po_number"):
@@ -660,12 +662,12 @@ class PurchaseOrderViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["post"], url_path="amend")
     def amend(self, request, pk=None):
         po = self.get_object()
-        if po.status in [PurchaseOrder.STATUS_CANCELLED, PurchaseOrder.STATUS_COMPLETED]:
+        if po.status in [PurchaseOrder.STATUS_CANCELLED, PurchaseOrder.STATUS_COMPLETED, PurchaseOrder.STATUS_DRAFT]:
             return Response(
                 {
                     "error": {
                         "code": "VALIDATION_ERROR",
-                        "message": f"Cannot amend Purchase Order in '{po.status}' status.",
+                        "message": f"Purchase orders in '{po.get_status_display()}' status cannot be amended.",
                     }
                 },
                 status=status.HTTP_400_BAD_REQUEST,

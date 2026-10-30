@@ -73,18 +73,19 @@ class SpendLedgerSerializer(serializers.ModelSerializer):
 
 
 class BudgetViewSet(viewsets.ModelViewSet):
-    queryset = Budget.objects.select_related("cost_center", "fiscal_period").all()
     serializer_class = BudgetSerializer
     permission_classes = [IsAuthenticated, CanManageBudget]
+    queryset = Budget.objects.select_related("cost_center", "fiscal_period").order_by("-created_at")
 
     def get_queryset(self):
-        return scope_budgets_queryset(self.queryset, self.request.user)
+        qs = self.queryset if self.queryset is not None else Budget.objects.select_related("cost_center", "fiscal_period").order_by("-created_at")
+        return scope_budgets_queryset(qs, self.request.user)
 
 
 class SpendLedgerViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = SpendLedger.objects.select_related("budget").order_by("-created_at")
     serializer_class = SpendLedgerSerializer
     permission_classes = [IsAuthenticated, IsNotVendorUser]
+    queryset = SpendLedger.objects.select_related("budget").order_by("-created_at")
 
     def get_queryset(self):
         return scope_spend_ledger_queryset(self.queryset, self.request.user)
