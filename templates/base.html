@@ -410,6 +410,20 @@
                 event.detail.headers['X-CSRFToken'] = csrfToken[1];
             }
         });
+
+        // Track logout clicks to cleanly bypass intro video on landing page
+        document.addEventListener('click', function(e) {
+            const el = e.target.closest('a, button');
+            if (!el) return;
+            const href = el.getAttribute('href') || '';
+            const action = (el.form && el.form.getAttribute('action')) || '';
+            if (href.includes('/logout') || action.includes('/logout') || el.classList.contains('sidebar-signout-btn')) {
+                try {
+                    sessionStorage.setItem('ps360_logged_out', 'true');
+                    document.cookie = "ps360_just_logged_out=1; path=/; max-age=60; SameSite=Lax";
+                } catch(err) {}
+            }
+        }, true);
     </script>
     {% block extra_js %}{% endblock extra_js %}
 </body>

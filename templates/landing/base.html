@@ -15,7 +15,7 @@
   <meta property="og:type" content="website" />
 
   <!-- Favicon -->
-  <link rel="icon" type="image/svg+xml" href="{% static 'landing/images/procuresphere-mark.svg' %}" />
+  <link rel="icon" type="image/png" href="{% static 'landing/images/procuresphere_360_emblem.png' %}" />
 
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -26,11 +26,11 @@
   <script src="https://unpkg.com/htmx.org@2.0.3/dist/htmx.min.js" defer></script>
 
   <!-- CSS -->
-  <link rel="stylesheet" href="{% static 'landing/css/tokens.css' %}?v=101" />
-  <link rel="stylesheet" href="{% static 'landing/css/global.css' %}?v=101" />
-  <link rel="stylesheet" href="{% static 'landing/css/uiverse.css' %}?v=101" />
-  <link rel="stylesheet" href="{% static 'landing/css/responsive.css' %}?v=101" />
-  <link rel="stylesheet" href="{% static 'landing/css/tablet.css' %}?v=101" />
+  <link rel="stylesheet" href="{% static 'landing/css/tokens.css' %}?v=130" />
+  <link rel="stylesheet" href="{% static 'landing/css/global.css' %}?v=130" />
+  <link rel="stylesheet" href="{% static 'landing/css/uiverse.css' %}?v=130" />
+  <link rel="stylesheet" href="{% static 'landing/css/responsive.css' %}?v=130" />
+  <link rel="stylesheet" href="{% static 'landing/css/tablet.css' %}?v=130" />
 
   {% block extra_css %}{% endblock %}
 </head>
@@ -69,7 +69,7 @@
 {% endblock body %}
 
 <!-- ===== SITE-WIDE JAVASCRIPT ===== -->
-<script src="{% static 'landing/js/main.js' %}"></script>
+<script src="{% static 'landing/js/main.js' %}?v=110"></script>
 <script src="{% static 'landing/js/core_capabilities.js' %}"></script>
 {% block extra_js %}{% endblock %}
 

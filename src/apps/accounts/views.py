@@ -319,7 +319,9 @@ def portal_logout_view(request):
 
     messages.info(request, "You have been logged out successfully.")
 
-    return redirect("/")
+    response = redirect("/?logged_out=1")
+    response.set_cookie("ps360_just_logged_out", "1", max_age=60, path="/", samesite="Lax")
+    return response
 
 
 
