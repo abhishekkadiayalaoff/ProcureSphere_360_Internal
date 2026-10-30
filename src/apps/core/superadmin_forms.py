@@ -457,3 +457,47 @@ class PolicyAdminForm(forms.ModelForm):
         if scoped_org:
             dept_qs = dept_qs.filter(organization=scoped_org)
         self.fields["department"].queryset = dept_qs
+
+    def save(self, commit=True):
+        instance = super().save(commit=commit)
+        if commit:
+            self._ensure_policy_steps(instance)
+        return instance
+
+    def _ensure_policy_steps(self, policy):
+        if policy.steps.exists():
+            return
+        from apps.accounts.models import Role
+        from apps.approvals.models import ApprovalStep
+
+        dept_role = Role.objects.filter(code=Role.DEPT_APPROVER).first()
+        proc_role = Role.objects.filter(code=Role.PROC_MGR).first()
+
+        if policy.module == ApprovalPolicy.MODULE_PR:
+            if dept_role:
+                ApprovalStep.objects.get_or_create(
+                    policy=policy,
+                    step_number=1,
+                    defaults={
+                        "approver_role": dept_role,
+                        "description": "Department Manager Approval",
+                    },
+                )
+            if proc_role:
+                ApprovalStep.objects.get_or_create(
+                    policy=policy,
+                    step_number=2,
+                    defaults={
+                        "approver_role": proc_role,
+                        "description": "Procurement Manager Approval",
+                    },
+                )
+        elif policy.module == ApprovalPolicy.MODULE_PO_AMENDMENT and proc_role:
+            ApprovalStep.objects.get_or_create(
+                policy=policy,
+                step_number=1,
+                defaults={
+                    "approver_role": proc_role,
+                    "description": "Procurement Manager Approval",
+                },
+            )

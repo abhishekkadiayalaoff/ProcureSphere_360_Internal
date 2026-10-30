@@ -95,10 +95,54 @@ def evaluate_approval_chain(*, module: str, amount: Decimal, department=None, co
     if not selected_policy:
         return []
 
-    chain = []
-    steps = selected_policy.steps.select_related("approver_role", "specific_approver").order_by(
-        "step_number"
+    steps = list(
+        selected_policy.steps.select_related("approver_role", "specific_approver").order_by(
+            "step_number"
+        )
     )
+    if not steps:
+        from apps.accounts.models import Role
+        from apps.approvals.models import ApprovalStep
+
+        dept_role = Role.objects.filter(code=Role.DEPT_APPROVER).first()
+        proc_role = Role.objects.filter(code=Role.PROC_MGR).first()
+
+        if selected_policy.module == ApprovalPolicy.MODULE_PR:
+            if dept_role:
+                ApprovalStep.objects.get_or_create(
+                    policy=selected_policy,
+                    step_number=1,
+                    defaults={
+                        "approver_role": dept_role,
+                        "description": "Department Manager Approval",
+                    },
+                )
+            if proc_role:
+                ApprovalStep.objects.get_or_create(
+                    policy=selected_policy,
+                    step_number=2,
+                    defaults={
+                        "approver_role": proc_role,
+                        "description": "Procurement Manager Approval",
+                    },
+                )
+        elif selected_policy.module == ApprovalPolicy.MODULE_PO_AMENDMENT and proc_role:
+            ApprovalStep.objects.get_or_create(
+                policy=selected_policy,
+                step_number=1,
+                defaults={
+                    "approver_role": proc_role,
+                    "description": "Procurement Manager Approval",
+                },
+            )
+
+        steps = list(
+            selected_policy.steps.select_related("approver_role", "specific_approver").order_by(
+                "step_number"
+            )
+        )
+
+    chain = []
     for step in steps:
         effective_user = None
         if step.specific_approver:
