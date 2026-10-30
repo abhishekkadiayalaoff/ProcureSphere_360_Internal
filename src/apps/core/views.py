@@ -224,7 +224,6 @@ def home_view(request):  # noqa: C901
         from apps.notifications.models import Notification
         from apps.sourcing.selectors import get_sourcing_dashboard_metrics
         from apps.sourcing.services import sync_all_event_windows
-        from apps.vendors.filters import annotate_governance
         from apps.vendors.selectors import get_governance_metrics, get_governance_vendor_queryset
 
         sync_all_event_windows()
@@ -502,3 +501,50 @@ def custom_403_view(request, exception=None):
             status=403,
         )
     return render(request, "403.html", status=403)
+
+
+def protected_vendor_document_view(request, file_path):
+    """
+    Protected media view for vendor KYC documents (TC-SEC-014 / DEF-002).
+    Requires authentication; restricts vendor users to their own documents;
+    permits authorized internal staff (Super Admin, Legal, Proc Mgr, Proc Exec, Auditor).
+    """
+    import os
+
+    from django.conf import settings
+    from django.http import FileResponse, Http404, HttpResponseForbidden
+
+    if not request.user or not request.user.is_authenticated:
+        return HttpResponseForbidden("Authentication required to access vendor KYC documents.")
+
+    role_code = getattr(request.user, "role_code", None) or (
+        request.user.role.code if getattr(request.user, "role", None) else None
+    )
+
+    if request.user.is_superuser or role_code in [
+        Role.SUPER_ADMIN,
+        Role.LEGAL_MGR,
+        Role.PROC_MGR,
+        Role.PROC_EXEC,
+        Role.AUDITOR,
+    ]:
+        pass  # Authorized internal personnel
+    elif role_code == Role.VENDOR_USER or getattr(request.user, "is_vendor", False):
+        user_vendor = getattr(request.user, "vendor", None)
+        if not user_vendor:
+            return HttpResponseForbidden("Access denied: vendor account unlinked.")
+        from apps.vendors.models import VendorDocument
+
+        doc_exists = VendorDocument.objects.filter(
+            vendor=user_vendor, file__icontains=os.path.basename(file_path)
+        ).exists()
+        if not doc_exists:
+            return HttpResponseForbidden("Access denied: you cannot view documents belonging to other vendors.")
+    else:
+        return HttpResponseForbidden("Permission denied: insufficient privileges to access KYC documents.")
+
+    full_path = os.path.join(settings.MEDIA_ROOT, "vendor_documents", file_path)
+    if not os.path.exists(full_path):
+        raise Http404("Document not found.")
+    return FileResponse(open(full_path, "rb"))
+

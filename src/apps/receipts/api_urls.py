@@ -84,6 +84,30 @@ class GoodsReceiptSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError(
                     {"lines": ["Receipt must contain at least one line item."]}
                 )
+            if po:
+                po_lines = list(po.lines.all())
+                for idx, item in enumerate(lines):
+                    item_dict = dict(item)
+                    po_line = None
+                    po_line_id = item_dict.get("po_line_id") or item_dict.get("po_line")
+                    if po_line_id:
+                        po_line = po.lines.filter(id=po_line_id).first()
+                    elif idx < len(po_lines):
+                        po_line = po_lines[idx]
+                    elif po_lines:
+                        po_line = po_lines[0]
+
+                    if po_line:
+                        try:
+                            qty_recv = Decimal(str(item_dict.get("quantity_received", po_line.quantity)))
+                        except Exception:
+                            raise serializers.ValidationError({"lines": ["Invalid quantity received."]})
+                        current_received = po_line.quantity_received or Decimal("0.00")
+                        remaining_qty = max(Decimal("0.00"), po_line.quantity - current_received)
+                        if qty_recv > remaining_qty:
+                            raise serializers.ValidationError(
+                                {"lines": [f"Quantity received ({qty_recv}) cannot exceed remaining ordered quantity ({remaining_qty}) for '{po_line.item_description}'."]}
+                            )
 
         return attrs
 
@@ -143,9 +167,6 @@ class GoodsReceiptPermission(IsAuthenticated):
             request.user.role.code if hasattr(request.user, "role") and request.user.role else None
         )
 
-        if role_code == Role.VENDOR_USER:
-            return False
-
         if request.method in SAFE_METHODS:
             return role_code in [
                 Role.STORES_RECEIVER,
@@ -154,7 +175,11 @@ class GoodsReceiptPermission(IsAuthenticated):
                 Role.PROC_EXEC,
                 Role.PROC_MGR,
                 Role.FINANCE_AP,
+                Role.VENDOR_USER,
             ]
+
+        if role_code == Role.VENDOR_USER:
+            return False
 
         return role_code in [Role.STORES_RECEIVER, Role.SUPER_ADMIN]
 

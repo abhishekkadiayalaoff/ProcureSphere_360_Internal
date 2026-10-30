@@ -295,6 +295,19 @@ class PurchaseRequisitionViewSet(viewsets.ModelViewSet):
             # Requesters are strictly scoped to their own requisitions (prevents IDOR)
             qs = self.queryset.filter(requester=user)
 
+        # Filter by search
+        search_param = (
+            self.request.query_params.get("search", "").strip()
+            or self.request.query_params.get("q", "").strip()
+        )
+        if search_param:
+            from django.db.models import Q
+            qs = qs.filter(
+                Q(pr_number__icontains=search_param)
+                | Q(title__icontains=search_param)
+                | Q(justification__icontains=search_param)
+            )
+
         # Filter by status
         status_param = self.request.query_params.get("status", "").strip().upper()
         if status_param:

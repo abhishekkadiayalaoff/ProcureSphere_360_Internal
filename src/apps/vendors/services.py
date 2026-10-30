@@ -348,8 +348,8 @@ def _lock_reviewable_document(document: VendorDocument, reviewer: User) -> Vendo
 
     if not can_review_kyc(reviewer):
         raise PermissionDenied("Your role is not authorised to review KYC documents.")
-    document = VendorDocument.objects.select_for_update().select_related("vendor").get(
-        pk=document.pk
+    document = (
+        VendorDocument.objects.select_for_update().select_related("vendor").get(pk=document.pk)
     )
     if document.vendor.status not in KYC_DOC_REVIEWABLE_STATUSES:
         raise ValidationError(
@@ -484,14 +484,21 @@ def verify_vendor_document_decision_service(
             action=AuditLog.ACTION_UPDATE,
             target_model="Vendor",
             target_object_id=str(vendor.id),
-            previous_state={"is_event_eligible": True, "event_eligibility_status": previous_eligibility},
+            previous_state={
+                "is_event_eligible": True,
+                "event_eligibility_status": previous_eligibility,
+            },
             new_state={
                 "is_event_eligible": False,
                 "event_eligibility_status": Vendor.ELIGIBILITY_INELIGIBLE,
                 "reason": f"Document compliance failure ({document.title} marked {new_status})",
             },
         )
-    elif eval_result["is_compliant"] and not vendor.is_event_eligible and vendor.status == Vendor.STATUS_ACTIVE:
+    elif (
+        eval_result["is_compliant"]
+        and not vendor.is_event_eligible
+        and vendor.status == Vendor.STATUS_ACTIVE
+    ):
         previous_eligibility = vendor.event_eligibility_status
         vendor.is_event_eligible = True
         vendor.event_eligibility_status = Vendor.ELIGIBILITY_ELIGIBLE
@@ -501,7 +508,10 @@ def verify_vendor_document_decision_service(
             action=AuditLog.ACTION_UPDATE,
             target_model="Vendor",
             target_object_id=str(vendor.id),
-            previous_state={"is_event_eligible": False, "event_eligibility_status": previous_eligibility},
+            previous_state={
+                "is_event_eligible": False,
+                "event_eligibility_status": previous_eligibility,
+            },
             new_state={
                 "is_event_eligible": True,
                 "event_eligibility_status": Vendor.ELIGIBILITY_ELIGIBLE,
@@ -634,16 +644,26 @@ def approve_vendor_service(*, vendor: Vendor, manager: User, notes: str = "") ->
 
 # (from_status, to_status) -> capability required. Anything not listed is an invalid transition.
 VENDOR_GOVERNANCE_TRANSITIONS = {
+    # Active & On Hold
     (Vendor.STATUS_ACTIVE, Vendor.STATUS_ON_HOLD): "operate",
     (Vendor.STATUS_ON_HOLD, Vendor.STATUS_ACTIVE): "operate",
     (Vendor.STATUS_ACTIVE, Vendor.STATUS_SUSPENDED): "suspend",
     (Vendor.STATUS_ON_HOLD, Vendor.STATUS_SUSPENDED): "suspend",
+    # Suspended Transitions
     (Vendor.STATUS_SUSPENDED, Vendor.STATUS_ACTIVE): "suspend",
+    (Vendor.STATUS_SUSPENDED, Vendor.STATUS_ON_HOLD): "suspend",
+    # KYC Review & Changes Required
     (Vendor.STATUS_SUBMITTED, Vendor.STATUS_REJECTED): "operate",
     (Vendor.STATUS_KYC_REVIEW, Vendor.STATUS_REJECTED): "operate",
     (Vendor.STATUS_SUBMITTED, Vendor.STATUS_CHANGES_REQUIRED): "operate",
     (Vendor.STATUS_KYC_REVIEW, Vendor.STATUS_CHANGES_REQUIRED): "operate",
     (Vendor.STATUS_CHANGES_REQUIRED, Vendor.STATUS_REJECTED): "operate",
+    # Manager Direct Suspension / Blacklist from any status
+    (Vendor.STATUS_DRAFT, Vendor.STATUS_SUSPENDED): "suspend",
+    (Vendor.STATUS_SUBMITTED, Vendor.STATUS_SUSPENDED): "suspend",
+    (Vendor.STATUS_KYC_REVIEW, Vendor.STATUS_SUSPENDED): "suspend",
+    (Vendor.STATUS_CHANGES_REQUIRED, Vendor.STATUS_SUSPENDED): "suspend",
+    (Vendor.STATUS_REJECTED, Vendor.STATUS_SUSPENDED): "suspend",
 }
 
 
@@ -916,9 +936,7 @@ def upload_vendor_document_service(
             "Please remove obsolete documents or contact procurement."
         )
 
-    current_storage = sum(
-        d.file.size for d in existing_docs if d.file and hasattr(d.file, "size")
-    )
+    current_storage = sum(d.file.size for d in existing_docs if d.file and hasattr(d.file, "size"))
     incoming_size = getattr(file, "size", 0) or 0
     if current_storage + incoming_size > MAX_VENDOR_STORAGE_BYTES:
         max_mb = MAX_VENDOR_STORAGE_BYTES // (1024 * 1024)
@@ -931,7 +949,9 @@ def upload_vendor_document_service(
         title = getattr(file, "name", "Vendor Document")
 
     if not replaces_document and replaces_document_id:
-        replaces_document = VendorDocument.objects.filter(pk=replaces_document_id, vendor=vendor).first()
+        replaces_document = VendorDocument.objects.filter(
+            pk=replaces_document_id, vendor=vendor
+        ).first()
 
     if not replaces_document:
         replaces_document = (
@@ -1031,7 +1051,7 @@ def issue_vendor_credentials_service(
             f"Credentials cannot be issued to a {vendor.get_status_display()} vendor."
         )
 
-    email = User.objects.normalize_email((vendor.email or '').strip())
+    email = User.objects.normalize_email((vendor.email or "").strip())
     if not email:
         raise ValidationError(
             f"Vendor {vendor.vendor_number} has no email address. Add one (Edit info) before issuing credentials."
@@ -1625,10 +1645,14 @@ def scan_vendor_document_expirations_service(now=None) -> dict:
                 )
                 reminders_sent += 1
 
-    total_suspended_vendors = Vendor.objects.filter(
-        event_eligibility_status__in=[Vendor.ELIGIBILITY_EXPIRED, Vendor.ELIGIBILITY_SUSPENDED],
-        documents__status=VendorDocument.STATUS_EXPIRED,
-    ).distinct().count()
+    total_suspended_vendors = (
+        Vendor.objects.filter(
+            event_eligibility_status__in=[Vendor.ELIGIBILITY_EXPIRED, Vendor.ELIGIBILITY_SUSPENDED],
+            documents__status=VendorDocument.STATUS_EXPIRED,
+        )
+        .distinct()
+        .count()
+    )
 
     return {
         "expired_documents": expired_count,

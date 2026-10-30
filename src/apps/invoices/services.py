@@ -43,9 +43,10 @@ def create_supplier_invoice_service(
             f"Purchase Order {po.po_number} does not belong to vendor '{vendor.legal_name}'."
         )
 
-    if SupplierInvoice.objects.filter(vendor=vendor, invoice_number=invoice_number).exists():
+    clean_inv_num = str(invoice_number).strip()
+    if SupplierInvoice.objects.filter(vendor=vendor, invoice_number__iexact=clean_inv_num).exists():
         raise ValidationError(
-            f"Duplicate invoice detected: Invoice '{invoice_number}' already exists for vendor '{vendor.legal_name}'."
+            f"Duplicate invoice detected: Invoice '{clean_inv_num}' already exists for vendor '{vendor.legal_name}'."
         )
 
     subtotal = Decimal("0.00")

@@ -8,6 +8,7 @@ from apps.accounts.models import Role
 from apps.accounts.permissions import IsNotVendorUser
 
 from .models import Budget, SpendLedger
+from .selectors import scope_budgets_queryset, scope_spend_ledger_queryset
 
 
 class CanManageBudget(BasePermission):
@@ -28,6 +29,12 @@ class CanManageBudget(BasePermission):
             getattr(request.user, "is_vendor", False)
             or getattr(request.user, "role_code", None) == Role.VENDOR_USER
         ):
+            return False
+
+        role_code = getattr(request.user, "role_code", None) or (
+            request.user.role.code if getattr(request.user, "role", None) else None
+        )
+        if not request.user.is_superuser and role_code in [Role.STORES_RECEIVER, Role.LEGAL_MGR]:
             return False
 
         if request.method in SAFE_METHODS:
@@ -70,11 +77,17 @@ class BudgetViewSet(viewsets.ModelViewSet):
     serializer_class = BudgetSerializer
     permission_classes = [IsAuthenticated, CanManageBudget]
 
+    def get_queryset(self):
+        return scope_budgets_queryset(self.queryset, self.request.user)
+
 
 class SpendLedgerViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = SpendLedger.objects.select_related("budget").order_by("-created_at")
     serializer_class = SpendLedgerSerializer
     permission_classes = [IsAuthenticated, IsNotVendorUser]
+
+    def get_queryset(self):
+        return scope_spend_ledger_queryset(self.queryset, self.request.user)
 
 
 router = DefaultRouter()
