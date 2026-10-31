@@ -52,7 +52,9 @@
                             <i class="fa-solid fa-square-check me-2"></i>
                             <span>Pending Approvals</span>
                         </span>
-                        {% if metrics.pending_count > 0 %}
+                        {% if pending_approvals_count and pending_approvals_count > 0 %}
+                        <span class="badge bg-warning text-dark rounded-pill fw-bold ms-auto" style="font-size: 0.68rem;">{{ pending_approvals_count }}</span>
+                        {% elif metrics and metrics.pending_count > 0 %}
                         <span class="badge bg-warning text-dark rounded-pill fw-bold ms-auto" style="font-size: 0.68rem;">{{ metrics.pending_count }}</span>
                         {% endif %}
                     </a>

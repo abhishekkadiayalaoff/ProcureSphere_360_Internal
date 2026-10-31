@@ -115,6 +115,42 @@ class Command(BaseCommand):
         admin_hpe.organization = org
         admin_hpe.save(update_fields=["organization"])
 
+        dept_it, _ = Department.objects.get_or_create(
+            organization=org, code="IT-OPS", defaults={"name": "IT Infrastructure Operations"}
+        )
+        dept_ops, _ = Department.objects.get_or_create(
+            organization=org, code="OPS", defaults={"name": "Global Operations"}
+        )
+        dept_eng, _ = Department.objects.get_or_create(
+            organization=org, code="ENG", defaults={"name": "Hardware Engineering & R&D"}
+
+
+        dept_it, _ = Department.objects.get_or_create(organization=org, code="IT-OPS", defaults={"name": "IT Infrastructure Operations"})
+        dept_ops, _ = Department.objects.get_or_create(organization=org, code="OPS", defaults={"name": "Global Operations"})
+        dept_eng, _ = Department.objects.get_or_create(organization=org, code="ENG", defaults={"name": "Hardware Engineering & R&D"})
+
+        approver.organization = org
+        approver.department = dept_it
+        approver.save(update_fields=["organization", "department"])
+        app_ps.organization = org
+        app_ps.department = dept_it
+        app_ps.save(update_fields=["organization", "department"])
+
+
+        for u in [approver, requester]:
+            if u.department != dept_it:
+                u.department = dept_it
+                u.save(update_fields=["department"])
+
+        cost_center, _ = CostCenter.objects.get_or_create(department=dept_it, code="CC-IT-101", defaults={"name": "Compute & Cloud Center", "manager": approver})
+        cost_center_ops, _ = CostCenter.objects.get_or_create(department=dept_ops, code="CC-OPS-201", defaults={"name": "Supply Chain & Facilities", "manager": approver})
+        cost_center_eng, _ = CostCenter.objects.get_or_create(department=dept_eng, code="CC-ENG-301", defaults={"name": "Hardware Systems R&D", "manager": approver})
+
+        fiscal_period, _ = FiscalPeriod.objects.get_or_create(
+            organization=org, year=2026, period_number=1,
+            defaults={"name": "FY2026-Q1", "start_date": today - timezone.timedelta(days=30), "end_date": today + timezone.timedelta(days=150)},
+
+
         dept_it, _ = Department.objects.get_or_create(organization=org, code="IT-OPS", defaults={"name": "IT Infrastructure Operations"})
         dept_ops, _ = Department.objects.get_or_create(organization=org, code="OPS", defaults={"name": "Global Operations"})
         dept_eng, _ = Department.objects.get_or_create(organization=org, code="ENG", defaults={"name": "Hardware Engineering & R&D"})

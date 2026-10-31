@@ -200,11 +200,20 @@ def submit_purchase_requisition_service(
     from apps.accounts.models import Role, User
     from apps.notifications.models import Notification
 
-    approvers = User.objects.filter(role__code=Role.DEPT_APPROVER)
+    approvers = User.objects.filter(role__code=Role.DEPT_APPROVER, is_active=True)
     if requisition.department:
         dept_approvers = approvers.filter(department=requisition.department)
         if dept_approvers.exists():
             approvers = dept_approvers
+        elif requisition.department.organization:
+            org_approvers = approvers.filter(organization=requisition.department.organization)
+            if org_approvers.exists():
+                approvers = org_approvers
+
+    approver_list = list(approvers)
+    if requisition.cost_center and requisition.cost_center.manager:
+        if requisition.cost_center.manager not in approver_list:
+            approver_list.append(requisition.cost_center.manager)
 
     if requisition.status == PurchaseRequisition.STATUS_BUDGET_REVIEW:
         finance_users = User.objects.filter(role__code=Role.FINANCE_AP)
@@ -216,7 +225,7 @@ def submit_purchase_requisition_service(
                 message=f"Requisition {requisition.pr_number} (${requisition.total_amount:,.2f}) exceeds available budget for Cost Center {requisition.cost_center.code} and requires budget exception approval.",
                 target_url=f"/requisitions/{requisition.id}/",
             )
-        for approver in approvers:
+        for approver in approver_list:
             Notification.objects.create(
                 recipient=approver,
                 notification_type=Notification.TYPE_APPROVAL_REQUIRED,
@@ -225,7 +234,7 @@ def submit_purchase_requisition_service(
                 target_url=f"/requisitions/{requisition.id}/",
             )
     else:
-        for approver in approvers:
+        for approver in approver_list:
             Notification.objects.create(
                 recipient=approver,
                 notification_type=Notification.TYPE_APPROVAL_REQUIRED,
@@ -304,7 +313,7 @@ def approve_purchase_requisition_service(
             approver_role_code = getattr(approver.role, "code", None)
             if (getattr(approver, "role_id", None) == required_role.id) or (approver_role_code == required_role.code):
                 if required_role.code == Role.DEPT_APPROVER and requisition.department and approver.department:
-                    if approver.department == requisition.department:
+                    if approver.department == requisition.department or (requisition.cost_center and approver == requisition.cost_center.manager):
                         is_authorized = True
                     else:
                         raise ValidationError("Department Approver can only approve requisitions for their own department.")
@@ -385,12 +394,16 @@ def approve_purchase_requisition_service(
                     dept_users = [u for u in target_users if u.department == requisition.department]
                     if dept_users:
                         target_users = dept_users
+                elif next_role.code == Role.PROC_MGR and requisition.department and getattr(requisition.department, "organization", None):
+                    org_mgrs = [u for u in target_users if u.organization == requisition.department.organization]
+                    if org_mgrs:
+                        target_users = org_mgrs
 
             for u in target_users:
                 Notification.objects.create(
                     recipient=u,
                     notification_type=Notification.TYPE_APPROVAL_REQUIRED,
-                    title=f"Approval Required: PR {requisition.pr_number} (Step {next_step['step_number']})",
+                    title=f"Approval Required: {requisition.pr_number} (Step {next_step['step_number']})",
                     message=f"Requisition {requisition.pr_number} requires your approval for Step {next_step['step_number']} ({next_role.name}).",
                     target_url=f"/requisitions/{requisition.id}/",
                 )

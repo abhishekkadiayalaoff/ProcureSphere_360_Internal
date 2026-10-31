@@ -46,12 +46,37 @@ def list_view(request):
         items = PurchaseRequisition.objects.filter(requester=user).order_by("-created_at")
     elif role_code == Role.DEPT_APPROVER:
         user_department = getattr(user, "department", None)
+        if not user_department:
+            managed_cc = (
+                CostCenter.objects.filter(manager=user)
+                .select_related("department")
+                .first()
+            )
+            if managed_cc and managed_cc.department:
+                user_department = managed_cc.department
+            elif getattr(user, "organization", None):
+                user_department = Department.objects.filter(
+                    organization=user.organization
+                ).first()
+
         if user_department:
-            items = PurchaseRequisition.objects.filter(department=user_department).order_by(
-                "-created_at"
+            items = (
+                PurchaseRequisition.objects.filter(
+                    Q(department=user_department) | Q(cost_center__manager=user)
+                )
+                .distinct()
+                .order_by("-created_at")
+            )
+        elif getattr(user, "organization", None):
+            items = (
+                PurchaseRequisition.objects.filter(
+                    Q(department__organization=user.organization) | Q(cost_center__manager=user)
+                )
+                .distinct()
+                .order_by("-created_at")
             )
         else:
-            items = PurchaseRequisition.objects.none()
+            items = PurchaseRequisition.objects.all().order_by("-created_at")
     else:
         items = PurchaseRequisition.objects.all().order_by("-created_at")
 
@@ -138,7 +163,7 @@ def create_view(request):
         cost_center_id = request.POST.get("cost_center")
         requested_delivery_date = request.POST.get("requested_delivery_date")
         attachments = request.FILES.getlist("attachments")
-        action_type = request.POST.get("action_type", "save_draft")
+        action_type = request.POST.get("action_type") or request.POST.get("submit_action", "save_draft")
 
         if not (
             title and justification and department_id and cost_center_id and requested_delivery_date
@@ -279,7 +304,7 @@ def create_view(request):
                 attachments=attachments,
             )
 
-            if action_type == "submit" or "submit" in request.POST:
+            if action_type in ["submit", "SUBMIT"] or "submit" in request.POST:
                 submit_purchase_requisition_service(requisition=pr, user=user)
                 if pr.status == PurchaseRequisition.STATUS_BUDGET_REVIEW:
                     messages.warning(
@@ -571,6 +596,55 @@ def detail_view(request, pk):
         )
     )
 
+    from apps.approvals.models import ApprovalPolicy
+    from apps.approvals.services import evaluate_approval_chain
+
+    chain = evaluate_approval_chain(
+        module=ApprovalPolicy.MODULE_PR,
+        amount=pr.total_amount,
+        department=pr.department,
+    )
+    existing_approvals = ApprovalAction.objects.filter(
+        target_object_id=str(pr.id),
+        target_model_name="PurchaseRequisition",
+        action=ApprovalAction.ACTION_APPROVE,
+    ).order_by("created_at")
+    current_step_index = existing_approvals.count()
+    user_has_approved = existing_approvals.filter(actor=user).exists()
+
+    can_approve = False
+    current_step_info = None
+
+    if pr.status in [
+        PurchaseRequisition.STATUS_SUBMITTED,
+        PurchaseRequisition.STATUS_MANAGER_REVIEW,
+    ]:
+        if user.is_superuser:
+            can_approve = True
+        elif chain and current_step_index < len(chain):
+            step_info = chain[current_step_index]
+            current_step_info = step_info
+            req_role = step_info["approver_role"]
+            specific_app = step_info["specific_approver"]
+            eff_app = step_info["effective_approver"]
+
+            if specific_app:
+                if user == eff_app or user == specific_app:
+                    can_approve = True
+            else:
+                approver_role_code = getattr(user.role, "code", None)
+                if (getattr(user, "role_id", None) == req_role.id) or (approver_role_code == req_role.code):
+                    if req_role.code == Role.DEPT_APPROVER and pr.department and user.department:
+                        if user.department == pr.department or (pr.cost_center and user == pr.cost_center.manager):
+                            can_approve = True
+                    else:
+                        can_approve = True
+        elif not chain and role_code in [Role.DEPT_APPROVER, Role.PROC_MGR, Role.SUPER_ADMIN]:
+            can_approve = not user_has_approved
+    elif pr.status == PurchaseRequisition.STATUS_BUDGET_REVIEW:
+        if role_code in [Role.FINANCE_AP, Role.SUPER_ADMIN] or user.is_superuser:
+            can_approve = True
+
     base_layout = (
         "manager/base_manager.html"
         if role_code == Role.PROC_MGR
@@ -603,6 +677,9 @@ def detail_view(request, pk):
             "available_budget": available_budget,
             "is_budget_exceeded": is_budget_exceeded,
             "base_layout": base_layout,
+            "can_approve": can_approve,
+            "user_has_approved": user_has_approved,
+            "current_step_info": current_step_info,
         },
     )
 

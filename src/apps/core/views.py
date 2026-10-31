@@ -306,63 +306,81 @@ def home_view(request):  # noqa: C901
     # 9. DEPARTMENT APPROVER DASHBOARD
     elif role_code == Role.DEPT_APPROVER:
         user_department = getattr(user, "department", None)
-        if user_department:
-            dept_prs = PurchaseRequisition.objects.filter(department=user_department)
-            pending_prs_qs = (
-                dept_prs.filter(status__in=["SUBMITTED", "MANAGER_REVIEW", "BUDGET_REVIEW"])
-                .order_by("-updated_at")
-                .prefetch_related("attachments")
+        from apps.budgets.models import Budget
+        from apps.organization.models import CostCenter, Department, FiscalPeriod
+
+        if not user_department:
+            managed_cc = (
+                CostCenter.objects.filter(manager=user)
+                .select_related("department")
+                .first()
             )
-            budget_overrun_qs = pending_prs_qs.filter(status=PurchaseRequisition.STATUS_BUDGET_REVIEW)
-            has_budget_overrun = budget_overrun_qs.exists()
-            budget_overrun_count = budget_overrun_qs.count()
+            if managed_cc and managed_cc.department:
+                user_department = managed_cc.department
+            elif getattr(user, "organization", None):
+                user_department = Department.objects.filter(
+                    organization=user.organization
+                ).first()
 
-            from apps.budgets.models import Budget
-            from apps.organization.models import CostCenter, FiscalPeriod
-
-            # Basic available budget calculation for dashboard
-            now = timezone.now()
-            # Find current fiscal period
-            current_period = FiscalPeriod.objects.filter(
-                start_date__lte=now, end_date__gte=now, is_closed=False
-            ).first()
-
-            available_budget = 0
-            if current_period:
-                # Aggregate available budget across all cost centers in this department
-                dept_ccs = CostCenter.objects.filter(department=user_department)
-                budgets = Budget.objects.filter(
-                    cost_center__in=dept_ccs, fiscal_period=current_period
-                )
-                available_budget = sum([b.available_amount for b in budgets])
-
-            context = {
-                "user_department": user_department,
-                "has_budget_overrun": has_budget_overrun,
-                "budget_overrun_count": budget_overrun_count,
-                "metrics": {
-                    "total_prs_count": dept_prs.count(),
-                    "pending_count": pending_prs_qs.count(),
-                    "approved_count": dept_prs.filter(status="APPROVED").count(),
-                    "available_budget": float(available_budget),
-                    "budget_overrun_count": budget_overrun_count,
-                },
-                "pending_prs": pending_prs_qs[:10],
-            }
+        if user_department:
+            dept_prs = PurchaseRequisition.objects.filter(
+                Q(department=user_department) | Q(cost_center__manager=user)
+            ).distinct()
+        elif getattr(user, "organization", None):
+            dept_prs = PurchaseRequisition.objects.filter(
+                Q(department__organization=user.organization) | Q(cost_center__manager=user)
+            ).distinct()
         else:
-            context = {
-                "user_department": None,
-                "has_budget_overrun": False,
-                "budget_overrun_count": 0,
-                "metrics": {
-                    "total_prs_count": 0,
-                    "pending_count": 0,
-                    "approved_count": 0,
-                    "available_budget": 0.0,
-                    "budget_overrun_count": 0,
-                },
-                "pending_prs": [],
-            }
+            dept_prs = PurchaseRequisition.objects.all()
+
+        from apps.approvals.models import ApprovalAction
+        user_approved_pr_ids = ApprovalAction.objects.filter(
+            actor=user,
+            target_model_name="PurchaseRequisition",
+            action=ApprovalAction.ACTION_APPROVE,
+        ).values_list("target_object_id", flat=True)
+
+        pending_prs_qs = (
+            dept_prs.filter(status__in=["SUBMITTED", "MANAGER_REVIEW", "BUDGET_REVIEW"])
+            .exclude(id__in=user_approved_pr_ids)
+            .order_by("-updated_at")
+            .prefetch_related("attachments")
+        )
+        budget_overrun_qs = pending_prs_qs.filter(status=PurchaseRequisition.STATUS_BUDGET_REVIEW)
+        has_budget_overrun = budget_overrun_qs.exists()
+        budget_overrun_count = budget_overrun_qs.count()
+
+        now = timezone.now()
+        current_period = FiscalPeriod.objects.filter(
+            start_date__lte=now, end_date__gte=now, is_closed=False
+        ).first()
+
+        available_budget = 0
+        if current_period:
+            if user_department:
+                dept_ccs = CostCenter.objects.filter(department=user_department)
+            elif getattr(user, "organization", None):
+                dept_ccs = CostCenter.objects.filter(department__organization=user.organization)
+            else:
+                dept_ccs = CostCenter.objects.filter(manager=user)
+            budgets = Budget.objects.filter(
+                cost_center__in=dept_ccs, fiscal_period=current_period
+            )
+            available_budget = sum([b.available_amount for b in budgets])
+
+        context = {
+            "user_department": user_department,
+            "has_budget_overrun": has_budget_overrun,
+            "budget_overrun_count": budget_overrun_count,
+            "metrics": {
+                "total_prs_count": dept_prs.count(),
+                "pending_count": pending_prs_qs.count(),
+                "approved_count": dept_prs.filter(status="APPROVED").count(),
+                "available_budget": float(available_budget),
+                "budget_overrun_count": budget_overrun_count,
+            },
+            "pending_prs": pending_prs_qs[:10],
+        }
         return render(request, "pages/dashboards/approver_dashboard.html", context)
 
     # 10. SUPER ADMIN DASHBOARD
