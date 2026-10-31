@@ -19,12 +19,13 @@ from apps.core.superadmin_forms import (
     BudgetAdminForm,
     CostCenterAdminForm,
     DepartmentAdminForm,
+    FiscalPeriodAdminForm,
     OrganizationAdminForm,
     PolicyAdminForm,
     UserAdminForm,
 )
 from apps.notifications.email_service import send_user_welcome_email
-from apps.organization.models import CostCenter, Department, Organization
+from apps.organization.models import CostCenter, Department, FiscalPeriod, Organization
 
 
 @login_required
@@ -979,10 +980,133 @@ def budget_list_view(request):
             status=403,
         )
     budgets = Budget.objects.select_related("cost_center", "fiscal_period").all()
+    fiscal_periods = FiscalPeriod.objects.select_related("organization").order_by(
+        "-year", "-period_number"
+    )
     scoped_org = get_user_scoped_org(request.user)
     if scoped_org:
         budgets = budgets.filter(cost_center__department__organization=scoped_org)
-    return render(request, "pages/dashboards/superadmin/budgets.html", {"budgets": budgets})
+        fiscal_periods = fiscal_periods.filter(organization=scoped_org)
+    return render(
+        request,
+        "pages/dashboards/superadmin/budgets.html",
+        {"budgets": budgets, "fiscal_periods": fiscal_periods},
+    )
+
+
+@login_required
+@super_admin_required
+def fiscal_period_create_view(request):
+    if not _is_super_admin(request.user):
+        return HttpResponse(
+            "<div class='alert alert-danger m-3'>Permission Denied: Super Admin access required.</div>",
+            status=403,
+        )
+
+    if request.method == "POST":
+        form = FiscalPeriodAdminForm(request.POST, request=request)
+        if form.is_valid():
+            cleaned = form.cleaned_data
+            from apps.organization.services import create_fiscal_period_service
+
+            period = create_fiscal_period_service(
+                organization=cleaned["organization"],
+                year=cleaned["year"],
+                period_number=cleaned["period_number"],
+                name=cleaned["name"].strip(),
+                start_date=cleaned["start_date"],
+                end_date=cleaned["end_date"],
+            )
+            if cleaned.get("is_closed"):
+                period.is_closed = True
+                period.save(update_fields=["is_closed", "updated_at"])
+
+            from apps.audit.services import create_audit_log_service
+
+            create_audit_log_service(
+                actor=request.user,
+                action=AuditLog.ACTION_CREATE,
+                target_model="FiscalPeriod",
+                target_object_id=str(period.id),
+                previous_state=None,
+                new_state={
+                    "name": period.name,
+                    "organization": period.organization.code,
+                    "year": period.year,
+                    "period_number": period.period_number,
+                    "start_date": str(period.start_date),
+                    "end_date": str(period.end_date),
+                    "is_closed": period.is_closed,
+                },
+                ip_address=request.META.get("REMOTE_ADDR"),
+                user_agent=request.META.get("HTTP_USER_AGENT", ""),
+            )
+            return HttpResponse("<script>window.location.reload();</script>")
+    else:
+        form = FiscalPeriodAdminForm(request=request)
+    return render(
+        request,
+        "pages/dashboards/superadmin/fiscal_period_form.html",
+        {"form": form, "is_edit": False},
+    )
+
+
+@login_required
+@super_admin_required
+def fiscal_period_edit_view(request, period_id):
+    if not _is_super_admin(request.user):
+        return HttpResponse(
+            "<div class='alert alert-danger m-3'>Permission Denied: Super Admin access required.</div>",
+            status=403,
+        )
+
+    period = get_object_or_404(FiscalPeriod, pk=period_id)
+    scoped_org = get_user_scoped_org(request.user)
+    if scoped_org and period.organization_id != scoped_org.id:
+        return HttpResponse(
+            "<div class='alert alert-danger m-3'>Permission Denied: You cannot modify fiscal periods of other organizations.</div>",
+            status=403,
+        )
+
+    if request.method == "POST":
+        old_state = {
+            "name": period.name,
+            "year": period.year,
+            "period_number": period.period_number,
+            "start_date": str(period.start_date),
+            "end_date": str(period.end_date),
+            "is_closed": period.is_closed,
+        }
+        form = FiscalPeriodAdminForm(request.POST, instance=period, request=request)
+        if form.is_valid():
+            period = form.save()
+            from apps.audit.services import create_audit_log_service
+
+            create_audit_log_service(
+                actor=request.user,
+                action=AuditLog.ACTION_UPDATE,
+                target_model="FiscalPeriod",
+                target_object_id=str(period.id),
+                previous_state=old_state,
+                new_state={
+                    "name": period.name,
+                    "year": period.year,
+                    "period_number": period.period_number,
+                    "start_date": str(period.start_date),
+                    "end_date": str(period.end_date),
+                    "is_closed": period.is_closed,
+                },
+                ip_address=request.META.get("REMOTE_ADDR"),
+                user_agent=request.META.get("HTTP_USER_AGENT", ""),
+            )
+            return HttpResponse("<script>window.location.reload();</script>")
+    else:
+        form = FiscalPeriodAdminForm(instance=period, request=request)
+    return render(
+        request,
+        "pages/dashboards/superadmin/fiscal_period_form.html",
+        {"form": form, "is_edit": True, "period": period},
+    )
 
 
 @login_required
