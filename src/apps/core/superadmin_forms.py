@@ -1,5 +1,6 @@
 from django import forms
 from django.contrib.auth import password_validation
+from django.utils import timezone
 
 from apps.accounts.models import Role, User
 from apps.accounts.password_utils import generate_secure_password
@@ -433,6 +434,92 @@ class BudgetAdminForm(forms.ModelForm):
             fp_qs = fp_qs.filter(organization=scoped_org)
         self.fields["cost_center"].queryset = cc_qs
         self.fields["fiscal_period"].queryset = fp_qs
+        self.fields["fiscal_period"].label_from_instance = (
+            lambda period: f"{period.name} ({period.start_date} to {period.end_date})"
+        )
+        if fp_qs.exists():
+            # Drop the blank "---------" option so the period name and dates are visible.
+            self.fields["fiscal_period"].empty_label = None
+            if not getattr(self.instance, "pk", None) and not self.is_bound:
+                today = timezone.localdate()
+                active = fp_qs.filter(
+                    is_closed=False, start_date__lte=today, end_date__gte=today
+                ).first()
+                self.initial["fiscal_period"] = (active or fp_qs.first()).pk
+        else:
+            self.fields["fiscal_period"].empty_label = "No fiscal period yet — add one first"
+
+
+class FiscalPeriodAdminForm(forms.ModelForm):
+    class Meta:
+        model = FiscalPeriod
+        fields = [
+            "organization",
+            "name",
+            "year",
+            "period_number",
+            "start_date",
+            "end_date",
+            "is_closed",
+        ]
+        widgets = {
+            "organization": forms.Select(attrs={"class": "form-select"}),
+            "name": forms.TextInput(
+                attrs={"class": "form-control", "placeholder": "e.g. FY2026-Q1"}
+            ),
+            "year": forms.NumberInput(attrs={"class": "form-control", "placeholder": "2026"}),
+            "period_number": forms.NumberInput(attrs={"class": "form-control", "min": "1"}),
+            "start_date": forms.DateInput(
+                attrs={"class": "form-control", "type": "date"}, format="%Y-%m-%d"
+            ),
+            "end_date": forms.DateInput(
+                attrs={"class": "form-control", "type": "date"}, format="%Y-%m-%d"
+            ),
+            "is_closed": forms.CheckboxInput(attrs={"class": "form-check-input"}),
+        }
+
+    def __init__(self, *args, request=None, **kwargs):
+        self.request = request
+        super().__init__(*args, **kwargs)
+        self.fields["start_date"].input_formats = ["%Y-%m-%d"]
+        self.fields["end_date"].input_formats = ["%Y-%m-%d"]
+        scoped_org = _get_form_scoped_org(request)
+        if scoped_org:
+            self.fields["organization"].queryset = Organization.objects.filter(id=scoped_org.id)
+            self.fields["organization"].initial = scoped_org
+            self.fields["organization"].empty_label = None
+        else:
+            self.fields["organization"].queryset = Organization.objects.filter(is_active=True).order_by("name")
+            self.fields["organization"].empty_label = "-- Select Organization --"
+
+    def clean(self):
+        cleaned = super().clean()
+        start = cleaned.get("start_date")
+        end = cleaned.get("end_date")
+        if start and end and end < start:
+            self.add_error("end_date", "End date must be on or after the start date.")
+        org = cleaned.get("organization")
+        year = cleaned.get("year")
+        period_number = cleaned.get("period_number")
+        if org and year and period_number:
+            qs = FiscalPeriod.objects.filter(
+                organization=org, year=year, period_number=period_number
+            )
+            if self.instance and self.instance.pk:
+                qs = qs.exclude(pk=self.instance.pk)
+            if qs.exists():
+                self.add_error(
+                    "period_number",
+                    "This organization already has a fiscal period with that year and period number.",
+                )
+        return cleaned
+
+    def clean_organization(self):
+        org = self.cleaned_data.get("organization")
+        scoped_org = _get_form_scoped_org(self.request)
+        if scoped_org and org and org.id != scoped_org.id:
+            raise forms.ValidationError("You cannot add a fiscal period for another organization.")
+        return org
 
 
 class PolicyAdminForm(forms.ModelForm):
