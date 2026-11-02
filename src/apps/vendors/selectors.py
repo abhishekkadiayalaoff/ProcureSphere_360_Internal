@@ -39,6 +39,7 @@ def scope_vendors_queryset(qs, user=None):
         Role.AUDITOR,
         Role.SUPER_ADMIN,
         Role.FINANCE_AP,
+        Role.LEGAL_MGR,
     ]:
         return qs
     return qs.none()

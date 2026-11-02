@@ -50,7 +50,9 @@ def list_view(request):
         "is_stores_receiver": role_code == Role.STORES_RECEIVER,
         "receivable_statuses": RECEIVABLE_PO_STATUSES,
     }
-    if role_code == Role.SUPER_ADMIN or getattr(user, "is_superuser", False):
+    if role_code in [Role.PROC_MGR, "PROC_MGR"]:
+        context["base_layout"] = "manager/base_manager.html"
+    elif role_code == Role.SUPER_ADMIN or getattr(user, "is_superuser", False):
         context["base_layout"] = "base.html"
 
     return render(
@@ -118,6 +120,7 @@ def detail_view(request, pk):
             "is_stores_receiver": role_code in (Role.STORES_RECEIVER, Role.SUPER_ADMIN)
             or user.is_superuser,
             "is_receivable": po.status in RECEIVABLE_PO_STATUSES,
+            "base_layout": "manager/base_manager.html" if role_code in [Role.PROC_MGR, "PROC_MGR"] else "base.html",
         },
     )
 

@@ -92,7 +92,7 @@ class Command(BaseCommand):
         requester = self.get_or_create_user("requester@hpe.com", roles[Role.REQUESTER])
         self.get_or_create_user("requester01@procuresphere.com", roles[Role.REQUESTER], password="Requester@360!")
         approver = self.get_or_create_user("approver@hpe.com", roles[Role.DEPT_APPROVER])
-        app_ps = self.get_or_create_user("dept.approver01@procuresphere.com", roles[Role.DEPT_APPROVER], password="DeptApprover@360!")
+        self.get_or_create_user("dept.approver01@procuresphere.com", roles[Role.DEPT_APPROVER], password="DeptApprover@360!")
         proc_exec = self.get_or_create_user("procexec@hpe.com", roles[Role.PROC_EXEC])
         self.get_or_create_user("proc.executive01@procuresphere.com", roles[Role.PROC_EXEC], password="ProcExec@360!")
         proc_mgr = self.get_or_create_user("procmgr@hpe.com", roles[Role.PROC_MGR])
@@ -128,9 +128,6 @@ class Command(BaseCommand):
         approver.organization = org
         approver.department = dept_it
         approver.save(update_fields=["organization", "department"])
-        app_ps.organization = org
-        app_ps.department = dept_it
-        app_ps.save(update_fields=["organization", "department"])
 
         for u in [approver, requester]:
             if u.department != dept_it:
@@ -227,6 +224,7 @@ class Command(BaseCommand):
         for v in [vendor1, vendor2, vendor3]:
             doc = _ensure_kyc_doc(v)
             self._activate_vendor(v, doc, proc_exec, legal_user, proc_mgr)
+            v.refresh_from_db()
 
         vendor_user.vendor = vendor1
         vendor_user.save(update_fields=["vendor"])

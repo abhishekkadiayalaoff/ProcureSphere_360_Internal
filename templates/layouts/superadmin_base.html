@@ -7,7 +7,7 @@
 <div class="sa-app d-flex min-vh-100 bg-light">
     <aside id="saSidebar" class="sa-sidebar bg-dark text-white d-flex flex-column flex-shrink-0">
         <div
-            class="px-3 py-3 border-bottom border-secondary border-opacity-25 d-flex align-items-center justify-content-between">
+            class="px-3 py-3 border-bottom border-secondary border-opacity-25 d-flex align-items-center justify-content-between flex-shrink-0">
             <a href="/superadmin/" class="d-flex align-items-center text-white text-decoration-none min-width-0">
                 <i class="fa-solid fa-shield-halved text-warning fa-lg me-2"></i>
                 <div class="min-width-0">
@@ -107,7 +107,7 @@
                 {% endif %}
             </ul>
         </div>
-        <div class="border-top border-secondary border-opacity-25 px-3 py-3 mt-auto">
+        <div class="border-top border-secondary border-opacity-25 px-3 py-3 mt-auto flex-shrink-0">
             <div class="d-flex align-items-center justify-content-between gap-2 w-100">
                 <div class="d-flex align-items-center overflow-hidden me-2" style="min-width: 0; flex: 1 1 auto;">
                     <span class="sa-avatar bg-primary text-white me-2 shadow-sm flex-shrink-0"><i
@@ -247,6 +247,18 @@
     .sa-nav-link {
         font-size: 0.875rem;
         color: rgba(255, 255, 255, 0.78) !important;
+        display: flex;
+        align-items: center;
+    }
+
+    .sa-nav-link i {
+        width: 20px;
+        text-align: center;
+        flex-shrink: 0;
+    }
+
+    .sa-nav-link span {
+        min-width: 0;
     }
 
     .sa-nav-link:hover {
@@ -331,12 +343,25 @@
         #saSidebar,
         .sa-sidebar,
         aside#saSidebar.bg-dark {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            bottom: 0 !important;
             width: 268px !important;
             min-width: 268px !important;
             height: 100vh !important;
-            position: sticky !important;
-            top: 0 !important;
-            align-self: flex-start !important;
+            max-height: 100vh !important;
+            z-index: 1020 !important;
+            overflow-y: hidden !important;
+            display: flex !important;
+            flex-direction: column !important;
+        }
+
+        .sa-main {
+            margin-left: 268px !important;
+            width: calc(100% - 268px) !important;
+            min-width: 0 !important;
+            flex: 1 1 auto !important;
         }
 
         .sa-backdrop {
@@ -362,6 +387,11 @@
         .sa-sidebar.show {
             transform: translateX(0);
             box-shadow: 0 0 30px rgba(0, 0, 0, 0.45);
+        }
+
+        .sa-main {
+            margin-left: 0 !important;
+            width: 100% !important;
         }
 
         .sa-backdrop {
@@ -399,25 +429,23 @@
         border-radius: 4px;
     }
 
-    /* Horizontal scrollable tabs on mobile */
+    /* Neat horizontal scrollable tabs across all screens */
     .sa-tabs-scroll {
         display: flex !important;
         flex-wrap: nowrap !important;
         overflow-x: auto !important;
         -webkit-overflow-scrolling: touch;
-        scrollbar-width: thin;
-        gap: 0.25rem;
-        padding-bottom: 2px;
-        border-bottom: 1px solid #dee2e6;
+        scrollbar-width: none !important; /* Firefox */
+        -ms-overflow-style: none !important; /* IE 10+ */
+        gap: 0.35rem !important;
+        padding: 0.25rem 0.25rem 0 0.25rem !important;
+        border-bottom: 2px solid #e2e8f0 !important;
     }
 
     .sa-tabs-scroll::-webkit-scrollbar {
-        height: 3px;
-    }
-
-    .sa-tabs-scroll::-webkit-scrollbar-thumb {
-        background: #cbd5e1;
-        border-radius: 3px;
+        display: none !important;
+        width: 0 !important;
+        height: 0 !important;
     }
 
     .sa-tabs-scroll .nav-item {
@@ -427,6 +455,44 @@
     .sa-tabs-scroll .nav-link {
         white-space: nowrap !important;
         flex-shrink: 0 !important;
+        border: none !important;
+        border-bottom: 2px solid transparent !important;
+        border-radius: 0 !important;
+        padding: 0.65rem 0.95rem !important;
+        font-size: 0.88rem !important;
+        font-weight: 500 !important;
+        color: #64748b !important;
+        background: transparent !important;
+        transition: all 0.2s ease-in-out !important;
+        margin-bottom: -2px !important;
+    }
+
+    .sa-tabs-scroll .nav-link:hover {
+        color: #0f172a !important;
+        border-bottom-color: #cbd5e1 !important;
+        background: rgba(241, 245, 249, 0.6) !important;
+        border-top-left-radius: 6px !important;
+        border-top-right-radius: 6px !important;
+    }
+
+    .sa-tabs-scroll .nav-link.active {
+        color: #2563eb !important;
+        font-weight: 700 !important;
+        border-bottom: 2px solid #2563eb !important;
+        background: transparent !important;
+    }
+
+    .sa-tabs-scroll .nav-link .badge {
+        font-size: 0.72rem !important;
+        padding: 0.25em 0.55em !important;
+        border-radius: 999px !important;
+        vertical-align: middle;
+        transition: all 0.2s ease;
+    }
+
+    .sa-tabs-scroll .nav-link.active .badge {
+        background-color: rgba(37, 99, 235, 0.12) !important;
+        color: #2563eb !important;
     }
 
     @media (max-width: 767.98px) {
@@ -500,9 +566,40 @@
         }
     }
 
+    html, body {
+        max-width: 100%;
+        overflow-x: clip;
+    }
+
+    .sa-app {
+        max-width: 100%;
+    }
+
     @media (max-width: 575.98px) {
         .modal-dialog {
-            margin: 0.5rem;
+            margin: 0.5rem auto;
+            max-width: calc(100vw - 1rem);
+        }
+        .modal-content {
+            border-radius: 1rem !important;
+            border: none !important;
+            overflow: hidden;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+        }
+        .modal-body {
+            max-height: calc(85vh - 120px);
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            padding: 1rem !important;
+        }
+        .modal-header {
+            padding: 1rem !important;
+        }
+        .modal-footer {
+            padding: 0.75rem 1rem !important;
+        }
+        .modal-footer .btn {
+            min-height: 40px;
         }
     }
 
@@ -548,6 +645,16 @@
         if (e.key === "Escape" && document.getElementById("saSidebar") && document.getElementById("saSidebar").classList.contains("show")) {
             toggleSaSidebar();
         }
+    });
+
+    // Smooth mouse-wheel horizontal scrolling on scrollable tab bars
+    document.querySelectorAll('.sa-tabs-scroll').forEach(function (el) {
+        el.addEventListener('wheel', function (e) {
+            if (e.deltaY !== 0) {
+                e.preventDefault();
+                el.scrollLeft += e.deltaY;
+            }
+        }, { passive: false });
     });
 </script>
 {% endblock %}
