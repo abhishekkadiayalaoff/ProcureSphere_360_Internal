@@ -49,11 +49,12 @@ class UserAdminForm(forms.ModelForm):
 
     class Meta:
         model = User
-        fields = ["email", "phone_number", "role", "department", "cost_center", "is_active"]
+        fields = ["email", "phone_number", "role", "organization", "department", "cost_center", "is_active"]
         widgets = {
             "email": forms.EmailInput(attrs={"class": "form-control", "placeholder": "user@example.com"}),
             "phone_number": forms.TextInput(attrs={"class": "form-control", "placeholder": "Phone number"}),
             "role": forms.Select(attrs={"class": "form-select", "id": "id_role"}),
+            "organization": forms.Select(attrs={"class": "form-select", "id": "id_organization"}),
             "department": forms.Select(attrs={"class": "form-select", "id": "id_department"}),
             "cost_center": forms.Select(attrs={"class": "form-select", "id": "id_cost_center"}),
             "is_active": forms.CheckboxInput(attrs={"class": "form-check-input"}),
@@ -67,6 +68,17 @@ class UserAdminForm(forms.ModelForm):
         self.fields["email"].required = True
         self.fields["role"].queryset = Role.objects.all().order_by("name")
         self.fields["role"].empty_label = "-- Select Role --"
+
+        from apps.organization.models import Organization
+        if scoped_org:
+            self.fields["organization"].queryset = Organization.objects.filter(id=scoped_org.id)
+            self.fields["organization"].initial = scoped_org
+            self.fields["organization"].widget = forms.HiddenInput()
+            self.fields["organization"].required = False
+        else:
+            self.fields["organization"].queryset = Organization.objects.filter(is_active=True).order_by("name")
+            self.fields["organization"].empty_label = "-- Select Organization --"
+            self.fields["organization"].required = False
 
         dept_qs = Department.objects.select_related("organization").all().order_by("name")
         cc_qs = CostCenter.objects.select_related("department").all().order_by("name")
@@ -192,6 +204,10 @@ class UserAdminForm(forms.ModelForm):
         scoped_org = _get_form_scoped_org(self.request)
         if scoped_org:
             user.organization = scoped_org
+        elif user.department and not user.organization_id:
+            user.organization = user.department.organization
+        elif user.cost_center and user.cost_center.department and not user.organization_id:
+            user.organization = user.cost_center.department.organization
         if commit:
             user.save()
         return user

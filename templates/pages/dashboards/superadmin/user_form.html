@@ -19,6 +19,15 @@
                 {{ form.phone_number }}
                 {% if form.phone_number.errors %}<div class="text-danger small mt-1">{{ form.phone_number.errors }}</div>{% endif %}
             </div>
+            {% if form.organization.is_hidden %}
+                {{ form.organization }}
+            {% else %}
+            <div class="col-md-6">
+                <label class="form-label fw-semibold text-secondary small">Organization</label>
+                {{ form.organization }}
+                {% if form.organization.errors %}<div class="text-danger small mt-1">{{ form.organization.errors }}</div>{% endif %}
+            </div>
+            {% endif %}
             <div class="col-md-6">
                 <label class="form-label fw-semibold text-secondary small">Role</label>
                 {{ form.role }}
