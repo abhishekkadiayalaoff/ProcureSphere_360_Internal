@@ -9,8 +9,8 @@ def update_pr_step2_to_finance(apps, schema_editor):
     if not finance_role:
         return
 
-    # Update Global PR approval policy step 2
-    pr_policies = ApprovalPolicy.objects.filter(module="PR", department__isnull=True)
+    # Update PR approval policies step 2 to Finance
+    pr_policies = ApprovalPolicy.objects.filter(module="PR")
     for policy in pr_policies:
         step2 = policy.steps.filter(step_number=2).first()
         if step2:
