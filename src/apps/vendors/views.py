@@ -94,7 +94,7 @@ def _get_scoped_vendor_or_404(request, vendor_id, select_category=False):
         if not (
             request.user.is_superuser
             or getattr(request.user, "is_staff", False)
-            or role_code in [Role.PROC_MGR, Role.PROC_EXEC, Role.AUDITOR, Role.SUPER_ADMIN, Role.FINANCE_AP]
+            or role_code in [Role.PROC_MGR, Role.PROC_EXEC, Role.AUDITOR, Role.SUPER_ADMIN, Role.FINANCE_AP, Role.LEGAL_MGR]
         ):
             raise Http404("Vendor not found.")
     return get_object_or_404(qs, pk=vendor_id)
@@ -339,6 +339,12 @@ def vendor_risk_assess_view(request, vendor_id):
 @require_POST
 def vendor_kyc_action_view(request, vendor_id, kyc_action):
     """KYC review actions: start review, verify/reject document, request changes, activate."""
+    if kyc_action in ("start-review", "approve"):
+        _require_governance_operate(request.user)
+    elif kyc_action in ("verify-document", "reject-document", "request-changes"):
+        _require_kyc_review(request.user)
+    else:
+        _require_governance_view(request.user)
     vendor = _get_scoped_vendor_or_404(request, vendor_id)
     try:
         messages.success(request, _run_kyc_action(request, vendor, kyc_action))
@@ -498,6 +504,12 @@ def vendor_risk_modal_view(request, vendor_id):
 @require_POST
 def vendor_kyc_htmx_view(request, vendor_id, kyc_action):
     """HTMX KYC transitions; same shared handler and RBAC as vendor_kyc_action_view."""
+    if kyc_action in ("start-review", "approve"):
+        _require_governance_operate(request.user)
+    elif kyc_action in ("verify-document", "reject-document", "request-changes"):
+        _require_kyc_review(request.user)
+    else:
+        _require_governance_view(request.user)
     vendor = _get_scoped_vendor_or_404(request, vendor_id)
     try:
         detail = _run_kyc_action(request, vendor, kyc_action)
