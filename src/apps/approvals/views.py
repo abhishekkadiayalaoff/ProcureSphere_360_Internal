@@ -8,21 +8,8 @@ from django.utils import timezone
 from apps.accounts.models import Role, User
 from apps.requisitions.models import PurchaseRequisition
 
-
-
-from .services import process_approval_action_service
-
-
-from .models import ApprovalDelegate
+from .models import ApprovalAction, ApprovalDelegate
 from .services import process_approval_action_service, set_approval_delegate_service
-
-from .models import ApprovalAction
-from .services import process_approval_action_service
-
-
-from .models import ApprovalDelegate
-from .services import process_approval_action_service, set_approval_delegate_service
-
 
 
 def _get_approval_querysets(user, role_code):

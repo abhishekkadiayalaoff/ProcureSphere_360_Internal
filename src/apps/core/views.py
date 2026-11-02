@@ -125,14 +125,10 @@ def home_view(request):  # noqa: C901
         selected_dept_id = request.GET.get("dept") or ""
         selected_cc_id = request.GET.get("cost_center") or ""
 
+        scoped_org = getattr(request.user, "effective_organization", None) if not (request.user.is_superuser and not request.user.organization_id) else None
+
         departments = Department.objects.all().order_by("name")
         cost_centers = CostCenter.objects.select_related("department").all().order_by("code")
-
-        all_cost_centers = list(cost_centers)
-        if selected_dept_id:
-            filtered_cost_centers = [cc for cc in all_cost_centers if str(cc.department_id) == str(selected_dept_id)]
-        else:
-            filtered_cost_centers = all_cost_centers
 
         open_match_exceptions = (
             MatchException.objects.filter(status=MatchException.STATUS_OPEN)
@@ -153,6 +149,36 @@ def home_view(request):  # noqa: C901
         )
         committed_spend_qs = SpendLedger.objects.filter(entry_type=SpendLedger.ENTRY_COMMITMENT)
         actual_spend_qs = SpendLedger.objects.filter(entry_type=SpendLedger.ENTRY_ACTUAL)
+
+        if scoped_org:
+            departments = departments.filter(organization=scoped_org)
+            cost_centers = cost_centers.filter(department__organization=scoped_org)
+            open_match_exceptions = open_match_exceptions.filter(
+                Q(invoice__po__cost_center__department__organization=scoped_org)
+                | Q(invoice__po__requisition__department__organization=scoped_org)
+                | Q(invoice__vendor__organization=scoped_org)
+            ).distinct()
+            open_budget_exceptions = open_budget_exceptions.filter(
+                Q(department__organization=scoped_org)
+                | Q(cost_center__department__organization=scoped_org)
+            ).distinct()
+            ready_for_payment_qs = ready_for_payment_qs.filter(
+                Q(po__cost_center__department__organization=scoped_org)
+                | Q(po__requisition__department__organization=scoped_org)
+                | Q(vendor__organization=scoped_org)
+            ).distinct()
+            committed_spend_qs = committed_spend_qs.filter(
+                budget__cost_center__department__organization=scoped_org
+            )
+            actual_spend_qs = actual_spend_qs.filter(
+                budget__cost_center__department__organization=scoped_org
+            )
+
+        all_cost_centers = list(cost_centers)
+        if selected_dept_id:
+            filtered_cost_centers = [cc for cc in all_cost_centers if str(cc.department_id) == str(selected_dept_id)]
+        else:
+            filtered_cost_centers = all_cost_centers
 
         if selected_dept_id:
             open_budget_exceptions = open_budget_exceptions.filter(department_id=selected_dept_id)
@@ -199,6 +225,8 @@ def home_view(request):  # noqa: C901
         if selected_cc_id:
             selected_cc_obj = next((c for c in all_cost_centers if str(c.id) == str(selected_cc_id)), None)
 
+        user_org_name = scoped_org.name if scoped_org else ("Global Enterprise" if request.user.is_superuser else "")
+
         context = {
             "metrics": {
                 "pending_match_exceptions": open_match_exceptions.count(),
@@ -216,6 +244,7 @@ def home_view(request):  # noqa: C901
             "selected_cc_id": selected_cc_id,
             "selected_dept_obj": selected_dept_obj,
             "selected_cc_obj": selected_cc_obj,
+            "user_org_name": user_org_name,
         }
         return render(request, "pages/dashboards/finance_dashboard.html", context)
 

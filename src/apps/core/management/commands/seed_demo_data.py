@@ -250,7 +250,7 @@ class Command(BaseCommand):
                 department=None,
             )
             add_approval_step_service(policy=policy, step_number=1, approver_role=roles[Role.DEPT_APPROVER], description="Department Manager Approval")
-            add_approval_step_service(policy=policy, step_number=2, approver_role=roles[Role.PROC_MGR], description="Procurement Manager Approval")
+            add_approval_step_service(policy=policy, step_number=2, approver_role=roles[Role.FINANCE_AP], description="Finance / AP Approval")
 
         if not ApprovalPolicy.objects.filter(module=ApprovalPolicy.MODULE_PO_AMENDMENT, is_active=True).exists():
             po_amend_policy = create_approval_policy_service(

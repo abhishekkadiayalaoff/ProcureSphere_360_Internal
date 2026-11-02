@@ -117,6 +117,7 @@ def evaluate_approval_chain(
         from apps.approvals.models import ApprovalStep
 
         dept_role = Role.objects.filter(code=Role.DEPT_APPROVER).first()
+        finance_role = Role.objects.filter(code=Role.FINANCE_AP).first()
         proc_role = Role.objects.filter(code=Role.PROC_MGR).first()
 
         if selected_policy.module == ApprovalPolicy.MODULE_PR:
@@ -126,16 +127,16 @@ def evaluate_approval_chain(
                     step_number=1,
                     defaults={
                         "approver_role": dept_role,
-                        "description": "Department Manager Approval",
+                        "description": "Department Approver Review",
                     },
                 )
-            if proc_role:
+            if finance_role:
                 ApprovalStep.objects.get_or_create(
                     policy=selected_policy,
                     step_number=2,
                     defaults={
-                        "approver_role": proc_role,
-                        "description": "Procurement Manager Approval",
+                        "approver_role": finance_role,
+                        "description": "Finance / AP Approval",
                     },
                 )
         elif selected_policy.module == ApprovalPolicy.MODULE_PO_AMENDMENT and proc_role:

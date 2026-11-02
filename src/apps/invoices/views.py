@@ -232,8 +232,9 @@ def resolve_exception_view(request, exception_id):
 @login_required(login_url="/login/")
 def ready_for_payment_view(request):
     _enforce_internal_invoice_access(request)
-    invoices = SupplierInvoice.objects.filter(
-        status=SupplierInvoice.STATUS_READY_FOR_PAYMENT
+    invoices = scope_invoices_queryset(
+        SupplierInvoice.objects.filter(status=SupplierInvoice.STATUS_READY_FOR_PAYMENT),
+        request.user,
     ).order_by("-created_at")
     return render(request, "pages/invoices/ready_list.html", {"invoices": invoices})
 
