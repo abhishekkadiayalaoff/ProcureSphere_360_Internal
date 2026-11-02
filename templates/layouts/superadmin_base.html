@@ -399,25 +399,23 @@
         border-radius: 4px;
     }
 
-    /* Horizontal scrollable tabs on mobile */
+    /* Neat horizontal scrollable tabs across all screens */
     .sa-tabs-scroll {
         display: flex !important;
         flex-wrap: nowrap !important;
         overflow-x: auto !important;
         -webkit-overflow-scrolling: touch;
-        scrollbar-width: thin;
-        gap: 0.25rem;
-        padding-bottom: 2px;
-        border-bottom: 1px solid #dee2e6;
+        scrollbar-width: none !important; /* Firefox */
+        -ms-overflow-style: none !important; /* IE 10+ */
+        gap: 0.35rem !important;
+        padding: 0.25rem 0.25rem 0 0.25rem !important;
+        border-bottom: 2px solid #e2e8f0 !important;
     }
 
     .sa-tabs-scroll::-webkit-scrollbar {
-        height: 3px;
-    }
-
-    .sa-tabs-scroll::-webkit-scrollbar-thumb {
-        background: #cbd5e1;
-        border-radius: 3px;
+        display: none !important;
+        width: 0 !important;
+        height: 0 !important;
     }
 
     .sa-tabs-scroll .nav-item {
@@ -427,6 +425,44 @@
     .sa-tabs-scroll .nav-link {
         white-space: nowrap !important;
         flex-shrink: 0 !important;
+        border: none !important;
+        border-bottom: 2px solid transparent !important;
+        border-radius: 0 !important;
+        padding: 0.65rem 0.95rem !important;
+        font-size: 0.88rem !important;
+        font-weight: 500 !important;
+        color: #64748b !important;
+        background: transparent !important;
+        transition: all 0.2s ease-in-out !important;
+        margin-bottom: -2px !important;
+    }
+
+    .sa-tabs-scroll .nav-link:hover {
+        color: #0f172a !important;
+        border-bottom-color: #cbd5e1 !important;
+        background: rgba(241, 245, 249, 0.6) !important;
+        border-top-left-radius: 6px !important;
+        border-top-right-radius: 6px !important;
+    }
+
+    .sa-tabs-scroll .nav-link.active {
+        color: #2563eb !important;
+        font-weight: 700 !important;
+        border-bottom: 2px solid #2563eb !important;
+        background: transparent !important;
+    }
+
+    .sa-tabs-scroll .nav-link .badge {
+        font-size: 0.72rem !important;
+        padding: 0.25em 0.55em !important;
+        border-radius: 999px !important;
+        vertical-align: middle;
+        transition: all 0.2s ease;
+    }
+
+    .sa-tabs-scroll .nav-link.active .badge {
+        background-color: rgba(37, 99, 235, 0.12) !important;
+        color: #2563eb !important;
     }
 
     @media (max-width: 767.98px) {
@@ -548,6 +584,16 @@
         if (e.key === "Escape" && document.getElementById("saSidebar") && document.getElementById("saSidebar").classList.contains("show")) {
             toggleSaSidebar();
         }
+    });
+
+    // Smooth mouse-wheel horizontal scrolling on scrollable tab bars
+    document.querySelectorAll('.sa-tabs-scroll').forEach(function (el) {
+        el.addEventListener('wheel', function (e) {
+            if (e.deltaY !== 0) {
+                e.preventDefault();
+                el.scrollLeft += e.deltaY;
+            }
+        }, { passive: false });
     });
 </script>
 {% endblock %}
