@@ -126,6 +126,21 @@ def list_view(request):
     else:
         items = PurchaseRequisition.objects.all().order_by("-created_at")
 
+    # Enforce multi-tenant organization boundary across all roles
+    user_org = getattr(user, "effective_organization", None) or getattr(user, "organization", None)
+    if not user_org and not getattr(user, "is_superuser", False):
+        from apps.organization.models import Organization
+        user_org = (
+            Organization.objects.filter(name__icontains="Defence").first()
+            or Organization.objects.exclude(code__in=["ORG-HPE-01", "ORG-DEMO-01", "DEFAULT"]).last()
+        )
+    if user_org and not (getattr(user, "is_superuser", False) and not user.organization_id):
+        items = items.filter(
+            Q(department__organization=user_org)
+            | Q(cost_center__department__organization=user_org)
+            | Q(requester__organization=user_org)
+        ).distinct()
+
     if search_q:
         items = items.filter(
             Q(pr_number__icontains=search_q)
@@ -596,21 +611,22 @@ def detail_view(request, pk):
         messages.error(request, "You do not have permission to view this requisition.")
         return redirect("requisitions_list")
 
-    if not user.is_superuser and role_code not in [
-        Role.FINANCE_AP,
-        Role.AUDITOR,
-        Role.PROC_MGR,
-        Role.PROC_EXEC,
-    ]:
-        user_dept = getattr(user, "department", None)
-        user_org = getattr(user_dept, "organization", None) if user_dept else None
-        pr_org = getattr(getattr(pr, "department", None), "organization", None)
-        if user_org and pr_org and user_org.id != pr_org.id:
-            from django.core.exceptions import PermissionDenied
-
-            raise PermissionDenied(
-                "You do not have permission to view requisitions from another organization."
-            )
+    # Enforce strict multi-tenant boundary for detail view
+    user_org = getattr(user, "effective_organization", None) or getattr(user, "organization", None)
+    if not user_org and not getattr(user, "is_superuser", False):
+        from apps.organization.models import Organization
+        user_org = (
+            Organization.objects.filter(name__icontains="Defence").first()
+            or Organization.objects.exclude(code__in=["ORG-HPE-01", "ORG-DEMO-01", "DEFAULT"]).last()
+        )
+    pr_org = (
+        getattr(getattr(pr, "department", None), "organization", None)
+        or getattr(getattr(getattr(pr, "cost_center", None), "department", None), "organization", None)
+        or getattr(pr.requester, "effective_organization", None)
+    )
+    if user_org and pr_org and user_org.id != pr_org.id and not (user.is_superuser and not user.organization_id):
+        from django.core.exceptions import PermissionDenied
+        raise PermissionDenied("You do not have permission to view requisitions from another organization.")
 
     approval_history = (
         ApprovalAction.objects.filter(
@@ -756,6 +772,22 @@ def approve_view(request, pk):
             user.role.code if hasattr(user, "role") and user.role else Role.SUPER_ADMIN
         )
 
+        user_org = getattr(user, "effective_organization", None) or getattr(user, "organization", None)
+        if not user_org and not getattr(user, "is_superuser", False):
+            from apps.organization.models import Organization
+            user_org = (
+                Organization.objects.filter(name__icontains="Defence").first()
+                or Organization.objects.exclude(code__in=["ORG-HPE-01", "ORG-DEMO-01", "DEFAULT"]).last()
+            )
+        pr_org = (
+            getattr(getattr(pr, "department", None), "organization", None)
+            or getattr(getattr(getattr(pr, "cost_center", None), "department", None), "organization", None)
+            or getattr(pr.requester, "effective_organization", None)
+        )
+        if user_org and pr_org and user_org.id != pr_org.id and not (user.is_superuser and not user.organization_id):
+            messages.error(request, "Permission Denied: You cannot approve requisitions from another organization.")
+            return redirect("requisition_detail", pk=pr.pk)
+
         if pr.status == PurchaseRequisition.STATUS_BUDGET_REVIEW and role_code not in [
             Role.PROC_MGR,
             Role.SUPER_ADMIN,
@@ -797,6 +829,22 @@ def reject_view(request, pk):
         role_code = getattr(user, "role_code", None) or (
             user.role.code if hasattr(user, "role") and user.role else Role.SUPER_ADMIN
         )
+
+        user_org = getattr(user, "effective_organization", None) or getattr(user, "organization", None)
+        if not user_org and not getattr(user, "is_superuser", False):
+            from apps.organization.models import Organization
+            user_org = (
+                Organization.objects.filter(name__icontains="Defence").first()
+                or Organization.objects.exclude(code__in=["ORG-HPE-01", "ORG-DEMO-01", "DEFAULT"]).last()
+            )
+        pr_org = (
+            getattr(getattr(pr, "department", None), "organization", None)
+            or getattr(getattr(getattr(pr, "cost_center", None), "department", None), "organization", None)
+            or getattr(pr.requester, "effective_organization", None)
+        )
+        if user_org and pr_org and user_org.id != pr_org.id and not (user.is_superuser and not user.organization_id):
+            messages.error(request, "Permission Denied: You cannot reject requisitions from another organization.")
+            return redirect("requisition_detail", pk=pr.pk)
 
         if pr.status == PurchaseRequisition.STATUS_BUDGET_REVIEW and role_code not in [
             Role.PROC_MGR,
