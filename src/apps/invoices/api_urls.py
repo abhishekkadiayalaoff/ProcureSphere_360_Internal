@@ -206,6 +206,21 @@ class SupplierInvoiceViewSet(viewsets.ModelViewSet):
 
         return qs
 
+    def perform_update(self, serializer):
+        instance = self.get_object()
+        if instance.status in [SupplierInvoice.STATUS_PAID, SupplierInvoice.STATUS_READY_FOR_PAYMENT, SupplierInvoice.STATUS_APPROVAL]:
+            raise serializers.ValidationError(
+                {"status": [f"Invoices in '{instance.status}' status cannot be edited."]}
+            )
+        serializer.save()
+
+    def perform_destroy(self, instance):
+        if instance.status in [SupplierInvoice.STATUS_PAID, SupplierInvoice.STATUS_READY_FOR_PAYMENT, SupplierInvoice.STATUS_APPROVAL]:
+            raise serializers.ValidationError(
+                {"status": [f"Invoices in '{instance.status}' status cannot be deleted."]}
+            )
+        instance.delete()
+
     @action(detail=False, methods=["post"], url_path="create-invoice")
     def create_invoice(self, request):
         vendor_id = request.data.get("vendor_id")
@@ -270,6 +285,16 @@ class SupplierInvoiceViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["post"], url_path="run-match")
     def run_match(self, request, pk=None):
         invoice = self.get_object()
+        if invoice.status in [SupplierInvoice.STATUS_PAID, SupplierInvoice.STATUS_READY_FOR_PAYMENT]:
+            return Response(
+                {
+                    "error": {
+                        "code": "VALIDATION_ERROR",
+                        "message": f"Cannot re-run 3-way matching on invoice in '{invoice.status}' status.",
+                    }
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         try:
             updated_invoice, exceptions = run_3_way_match_service(
                 invoice=invoice, user=request.user
@@ -325,6 +350,17 @@ class MatchExceptionViewSet(viewsets.ModelViewSet):
     queryset = MatchException.objects.select_related("invoice", "resolved_by").all()
     serializer_class = MatchExceptionSerializer
     permission_classes = [IsAuthenticated, CanManageSupplierInvoice]
+
+    def get_queryset(self):
+        user = self.request.user
+        qs = self.queryset
+        if not user or not user.is_authenticated:
+            return qs.none()
+        if getattr(user, "is_vendor", False) or getattr(user, "role_code", None) == Role.VENDOR_USER:
+            if getattr(user, "vendor_id", None):
+                return qs.filter(invoice__vendor_id=user.vendor_id)
+            return qs.none()
+        return qs
 
     @action(detail=True, methods=["post"], url_path="resolve")
     def resolve_exception(self, request, pk=None):

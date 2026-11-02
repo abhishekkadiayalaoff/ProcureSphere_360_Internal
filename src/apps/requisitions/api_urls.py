@@ -345,6 +345,21 @@ class PurchaseRequisitionViewSet(viewsets.ModelViewSet):
             )
         serializer.save(requester=user)
 
+    def perform_update(self, serializer):
+        instance = self.get_object()
+        if instance.status != PurchaseRequisition.STATUS_DRAFT:
+            raise serializers.ValidationError(
+                {"status": [f"Requisitions in '{instance.status}' status cannot be edited. Only DRAFT requisitions can be edited."]}
+            )
+        serializer.save()
+
+    def perform_destroy(self, instance):
+        if instance.status != PurchaseRequisition.STATUS_DRAFT:
+            raise serializers.ValidationError(
+                {"status": [f"Requisitions in '{instance.status}' status cannot be deleted."]}
+            )
+        instance.delete()
+
     @action(detail=True, methods=["post"], url_path="submit")
     def submit(self, request, pk=None):
         pr = self.get_object()

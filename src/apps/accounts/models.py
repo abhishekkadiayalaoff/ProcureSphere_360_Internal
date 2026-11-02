@@ -247,3 +247,11 @@ class User(AbstractUser):
             return self.department.organization
         return None
 
+    def save(self, *args, **kwargs):
+        # Enforce DEF-001: Only users with SUPER_ADMIN role can ever be superuser or staff
+        role_code = self.role_code
+        if role_code and role_code != Role.SUPER_ADMIN:
+            self.is_superuser = False
+            self.is_staff = False
+        super().save(*args, **kwargs)
+

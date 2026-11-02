@@ -115,4 +115,17 @@ def custom_exception_handler(exc, context):
         }
         return Response(custom_response_data, status=status_code)
 
-    return response
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.exception("Unhandled server error: %s", exc)
+
+    return Response(
+        {
+            "error": {
+                "code": "INTERNAL_SERVER_ERROR",
+                "message": "An unexpected internal server error occurred.",
+                "details": str(exc),
+            }
+        },
+        status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+    )

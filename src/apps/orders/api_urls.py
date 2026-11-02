@@ -636,9 +636,35 @@ class PurchaseOrderViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+    def perform_update(self, serializer):
+        instance = self.get_object()
+        if instance.status != PurchaseOrder.STATUS_DRAFT:
+            raise serializers.ValidationError(
+                {"status": [f"Purchase orders in '{instance.status}' status cannot be edited directly. Use /amend/ to propose changes."]}
+            )
+        serializer.save()
+
+    def perform_destroy(self, instance):
+        if instance.status != PurchaseOrder.STATUS_DRAFT:
+            raise serializers.ValidationError(
+                {"status": [f"Purchase orders in '{instance.status}' status cannot be deleted. Use /governance-cancel/ to cancel."]}
+            )
+        instance.delete()
+
     @action(detail=True, methods=["post"], url_path="acknowledge")
     def acknowledge(self, request, pk=None):
         po = self.get_object()
+        is_vendor = getattr(request.user, "is_vendor", False) or getattr(request.user, "role_code", None) == Role.VENDOR_USER
+        if not is_vendor and not request.user.is_superuser:
+            return Response(
+                {"error": {"code": "PERMISSION_DENIED", "message": "Only the assigned vendor user can acknowledge this purchase order."}},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        if is_vendor and getattr(request.user, "vendor_id", None) != po.vendor_id and not request.user.is_superuser:
+            return Response(
+                {"error": {"code": "PERMISSION_DENIED", "message": "You can only acknowledge purchase orders issued to your vendor."}},
+                status=status.HTTP_403_FORBIDDEN,
+            )
         notes = request.data.get("acknowledgement_notes", request.data.get("notes", ""))
         try:
             updated_po = acknowledge_purchase_order_service(

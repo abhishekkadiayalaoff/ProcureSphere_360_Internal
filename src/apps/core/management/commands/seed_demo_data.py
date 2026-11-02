@@ -92,7 +92,7 @@ class Command(BaseCommand):
         requester = self.get_or_create_user("requester@hpe.com", roles[Role.REQUESTER])
         self.get_or_create_user("requester01@procuresphere.com", roles[Role.REQUESTER], password="Requester@360!")
         approver = self.get_or_create_user("approver@hpe.com", roles[Role.DEPT_APPROVER])
-        self.get_or_create_user("dept.approver01@procuresphere.com", roles[Role.DEPT_APPROVER], password="DeptApprover@360!")
+        app_ps = self.get_or_create_user("dept.approver01@procuresphere.com", roles[Role.DEPT_APPROVER], password="DeptApprover@360!")
         proc_exec = self.get_or_create_user("procexec@hpe.com", roles[Role.PROC_EXEC])
         self.get_or_create_user("proc.executive01@procuresphere.com", roles[Role.PROC_EXEC], password="ProcExec@360!")
         proc_mgr = self.get_or_create_user("procmgr@hpe.com", roles[Role.PROC_MGR])
@@ -123,11 +123,7 @@ class Command(BaseCommand):
         )
         dept_eng, _ = Department.objects.get_or_create(
             organization=org, code="ENG", defaults={"name": "Hardware Engineering & R&D"}
-
-
-        dept_it, _ = Department.objects.get_or_create(organization=org, code="IT-OPS", defaults={"name": "IT Infrastructure Operations"})
-        dept_ops, _ = Department.objects.get_or_create(organization=org, code="OPS", defaults={"name": "Global Operations"})
-        dept_eng, _ = Department.objects.get_or_create(organization=org, code="ENG", defaults={"name": "Hardware Engineering & R&D"})
+        )
 
         approver.organization = org
         approver.department = dept_it
@@ -136,37 +132,53 @@ class Command(BaseCommand):
         app_ps.department = dept_it
         app_ps.save(update_fields=["organization", "department"])
 
-
         for u in [approver, requester]:
             if u.department != dept_it:
                 u.department = dept_it
                 u.save(update_fields=["department"])
 
-        cost_center, _ = CostCenter.objects.get_or_create(department=dept_it, code="CC-IT-101", defaults={"name": "Compute & Cloud Center", "manager": approver})
-        cost_center_ops, _ = CostCenter.objects.get_or_create(department=dept_ops, code="CC-OPS-201", defaults={"name": "Supply Chain & Facilities", "manager": approver})
-        cost_center_eng, _ = CostCenter.objects.get_or_create(department=dept_eng, code="CC-ENG-301", defaults={"name": "Hardware Systems R&D", "manager": approver})
+        cost_center, _ = CostCenter.objects.get_or_create(
+            department=dept_it, code="CC-IT-101", defaults={"name": "Compute & Cloud Center", "manager": approver}
+        )
+        cost_center_ops, _ = CostCenter.objects.get_or_create(
+            department=dept_ops, code="CC-OPS-201", defaults={"name": "Supply Chain & Facilities", "manager": approver}
+        )
+        cost_center_eng, _ = CostCenter.objects.get_or_create(
+            department=dept_eng, code="CC-ENG-301", defaults={"name": "Hardware Systems R&D", "manager": approver}
+        )
 
         fiscal_period, _ = FiscalPeriod.objects.get_or_create(
             organization=org, year=2026, period_number=1,
             defaults={"name": "FY2026-Q1", "start_date": today - timezone.timedelta(days=30), "end_date": today + timezone.timedelta(days=150)},
+        )
 
+        # ── 3b. Approval Policies & Steps (DEF-056) ────────────────────────────
+        from apps.approvals.models import ApprovalPolicy, ApprovalStep
+        pr_policy, _ = ApprovalPolicy.objects.get_or_create(
+            name="Standard PR Approval — Global",
+            module=ApprovalPolicy.MODULE_PR,
+            defaults={"min_amount": Decimal("0.00"), "is_active": True},
+        )
+        ApprovalStep.objects.get_or_create(
+            policy=pr_policy,
+            step_number=1,
+            defaults={"approver_role": roles[Role.DEPT_APPROVER], "description": "Department Approver Review"},
+        )
+        ApprovalStep.objects.get_or_create(
+            policy=pr_policy,
+            step_number=2,
+            defaults={"approver_role": roles[Role.FINANCE_AP], "description": "Finance / AP Budget Review"},
+        )
 
-        dept_it, _ = Department.objects.get_or_create(organization=org, code="IT-OPS", defaults={"name": "IT Infrastructure Operations"})
-        dept_ops, _ = Department.objects.get_or_create(organization=org, code="OPS", defaults={"name": "Global Operations"})
-        dept_eng, _ = Department.objects.get_or_create(organization=org, code="ENG", defaults={"name": "Hardware Engineering & R&D"})
-
-        for u in [approver, requester]:
-            if u.department != dept_it:
-                u.department = dept_it
-                u.save(update_fields=["department"])
-
-        cost_center, _ = CostCenter.objects.get_or_create(department=dept_it, code="CC-IT-101", defaults={"name": "Compute & Cloud Center", "manager": approver})
-        cost_center_ops, _ = CostCenter.objects.get_or_create(department=dept_ops, code="CC-OPS-201", defaults={"name": "Supply Chain & Facilities", "manager": approver})
-        cost_center_eng, _ = CostCenter.objects.get_or_create(department=dept_eng, code="CC-ENG-301", defaults={"name": "Hardware Systems R&D", "manager": approver})
-
-        fiscal_period, _ = FiscalPeriod.objects.get_or_create(
-            organization=org, year=2026, period_number=1,
-            defaults={"name": "FY2026-Q1", "start_date": today - timezone.timedelta(days=30), "end_date": today + timezone.timedelta(days=150)},
+        po_amend_policy, _ = ApprovalPolicy.objects.get_or_create(
+            name="PO Amendment Approval — Global",
+            module=ApprovalPolicy.MODULE_PO_AMENDMENT,
+            defaults={"min_amount": Decimal("0.00"), "is_active": True},
+        )
+        ApprovalStep.objects.get_or_create(
+            policy=po_amend_policy,
+            step_number=1,
+            defaults={"approver_role": roles[Role.PROC_MGR], "description": "Procurement Manager Approval"},
         )
 
         # ── 4. Budgets ────────────────────────────────────────────────────────
