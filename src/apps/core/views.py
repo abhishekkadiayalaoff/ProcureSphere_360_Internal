@@ -351,14 +351,23 @@ def home_view(request):  # noqa: C901
         budget_overrun_count = budget_overrun_qs.count()
 
         now = timezone.now()
-        current_period = FiscalPeriod.objects.filter(
-            start_date__lte=now, end_date__gte=now, is_closed=False
-        ).first()
+        user_org = getattr(user, "organization", None) or (
+            user_department.organization if user_department else None
+        )
+        period_filter = Q(start_date__lte=now, end_date__gte=now, is_closed=False)
+        if user_org:
+            current_period = FiscalPeriod.objects.filter(
+                period_filter, organization=user_org
+            ).first()
+        else:
+            current_period = FiscalPeriod.objects.filter(period_filter).first()
 
         available_budget = 0
         if current_period:
             if user_department:
-                dept_ccs = CostCenter.objects.filter(department=user_department)
+                dept_ccs = CostCenter.objects.filter(
+                    Q(department=user_department) | Q(manager=user)
+                ).distinct()
             elif getattr(user, "organization", None):
                 dept_ccs = CostCenter.objects.filter(department__organization=user.organization)
             else:

@@ -21,6 +21,18 @@
         <a href="/approvals/inbox/" class="text-decoration-none text-muted mb-2 d-inline-block">
             <i class="fa-solid fa-arrow-left me-1"></i> Back to Approvals Inbox
         </a>
+        {% elif role_code == 'SUPER_ADMIN' or role_code == 'ADMIN' or request.user.is_superuser %}
+        <div class="d-flex align-items-center gap-2 mb-2">
+            <a href="javascript:history.back()" class="btn btn-sm btn-outline-secondary rounded-pill px-3 py-1 text-decoration-none">
+                <i class="fa-solid fa-arrow-left me-1"></i> Back
+            </a>
+            {% if pr.department and pr.department.organization %}
+            <span class="text-muted">|</span>
+            <a href="{% url 'superadmin:org_dashboard' pr.department.organization.pk %}" class="text-decoration-none text-muted small fw-semibold">
+                <i class="fa-solid fa-building me-1"></i> {{ pr.department.organization.name }} Dashboard
+            </a>
+            {% endif %}
+        </div>
         {% else %}
         <a href="{% url 'requisitions_list' %}" class="text-decoration-none text-muted mb-2 d-inline-block">
             <i class="fa-solid fa-arrow-left me-1"></i> Back to Requisitions

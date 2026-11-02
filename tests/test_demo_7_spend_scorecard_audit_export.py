@@ -67,7 +67,7 @@ def test_demo_7_spend_scorecard_and_audited_report_export():
         address="300 Cloud Way",
     )
     vendor.status = Vendor.STATUS_ACTIVE
-    vendor.save()
+    vendor.save(update_fields=["status", "updated_at"])
 
     pr = create_purchase_requisition_service(
         title="High Performance Switches",

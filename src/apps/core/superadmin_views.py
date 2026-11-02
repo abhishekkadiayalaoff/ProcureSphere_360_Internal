@@ -661,6 +661,256 @@ def org_detail_view(request, org_id):
 
 @login_required
 @super_admin_required
+def org_dashboard_view(request, org_id):
+    """
+    Dedicated Organization Details Dashboard for Super Admin.
+    Provides complete, organization-scoped operational visibility into:
+    - Organization master data and assigned administrator
+    - Users, roles, and account status (with search, filter, pagination)
+    - Departments and cost centers hierarchy
+    - Purchase requisitions & approval workflow status
+    - Approval activity & decision monitoring
+    - Sourcing events & RFQs
+    - Vendors, KYC status, and invitations
+    - Purchase orders & goods receipts
+    - Budgets, spend ledgers, invoices & match exceptions
+    - Scoped immutable audit logs
+    """
+    scoped_org = get_user_scoped_org(request.user)
+    if scoped_org and scoped_org.id != org_id:
+        return HttpResponse(
+            "<div class='alert alert-danger m-3'>Permission Denied: You cannot view other organizations.</div>",
+            status=403,
+        )
+
+    org = get_object_or_404(
+        Organization.objects.select_related("admin_user"),
+        pk=org_id,
+    )
+
+    from decimal import Decimal
+
+    from django.db.models import Sum
+
+    from apps.approvals.models import ApprovalAction
+    from apps.budgets.models import Budget
+    from apps.contracts.models import Contract
+    from apps.invoices.models import MatchException, SupplierInvoice
+    from apps.orders.models import PurchaseOrder
+    from apps.receipts.models import GoodsReceipt
+    from apps.requisitions.models import PurchaseRequisition
+    from apps.sourcing.models import SourcingEvent
+    from apps.vendors.models import Vendor
+
+    # 1. SCOPED USERS & ROLES
+    all_org_users_qs = User.objects.filter(
+        Q(organization=org) | Q(department__organization=org)
+    ).select_related("role", "department", "cost_center").distinct().order_by("-date_joined")
+
+    total_users_count = all_org_users_qs.count()
+    active_users_count = all_org_users_qs.filter(is_active=True).count()
+    inactive_users_count = all_org_users_qs.filter(is_active=False).count()
+
+    # User Filters & Search
+    q_user = request.GET.get("q_user", "").strip()
+    role_filter = request.GET.get("role", "").strip()
+    dept_filter = request.GET.get("dept", "").strip()
+    status_filter = request.GET.get("status", "").strip()
+
+    filtered_users_qs = all_org_users_qs
+    if q_user:
+        filtered_users_qs = filtered_users_qs.filter(
+            Q(email__icontains=q_user)
+            | Q(first_name__icontains=q_user)
+            | Q(last_name__icontains=q_user)
+            | Q(department__name__icontains=q_user)
+            | Q(cost_center__code__icontains=q_user)
+            | Q(role__name__icontains=q_user)
+        )
+    if role_filter:
+        filtered_users_qs = filtered_users_qs.filter(role__code=role_filter)
+    if dept_filter:
+        filtered_users_qs = filtered_users_qs.filter(department_id=dept_filter)
+    if status_filter == "active":
+        filtered_users_qs = filtered_users_qs.filter(is_active=True)
+    elif status_filter == "inactive":
+        filtered_users_qs = filtered_users_qs.filter(is_active=False)
+
+    users_page_number = request.GET.get("users_page", 1)
+    users_paginator = Paginator(filtered_users_qs, 10)
+    users_page_obj = users_paginator.get_page(users_page_number)
+
+    # 2. SCOPED DEPARTMENTS & COST CENTERS
+    departments_qs = Department.objects.filter(organization=org).prefetch_related(
+        "cost_centers", "cost_centers__manager", "users"
+    ).order_by("code")
+    departments_count = departments_qs.count()
+
+    cost_centers_qs = CostCenter.objects.filter(department__organization=org).select_related(
+        "department", "manager"
+    ).order_by("code")
+    cost_centers_count = cost_centers_qs.count()
+
+    # 3. SCOPED PURCHASE REQUISITIONS
+    prs_qs = PurchaseRequisition.objects.filter(department__organization=org).select_related(
+        "requester", "department", "cost_center"
+    ).order_by("-created_at")
+    total_prs_count = prs_qs.count()
+    pending_prs_count = prs_qs.filter(
+        status__in=[
+            PurchaseRequisition.STATUS_SUBMITTED,
+            PurchaseRequisition.STATUS_MANAGER_REVIEW,
+            PurchaseRequisition.STATUS_BUDGET_REVIEW,
+        ]
+    ).count()
+    approved_prs_count = prs_qs.filter(status=PurchaseRequisition.STATUS_APPROVED).count()
+    rejected_prs_count = prs_qs.filter(status=PurchaseRequisition.STATUS_REJECTED).count()
+    draft_prs_count = prs_qs.filter(status=PurchaseRequisition.STATUS_DRAFT).count()
+
+    # 4. SCOPED APPROVAL ACTIONS
+    org_pr_ids = list(prs_qs.values_list("id", flat=True))
+    approval_actions_qs = ApprovalAction.objects.filter(
+        Q(target_object_id__in=org_pr_ids) | Q(actor__in=all_org_users_qs)
+    ).select_related("actor", "policy_step").order_by("-created_at")[:50]
+
+    # 5. SCOPED SOURCING EVENTS (RFQs)
+    sourcing_events_qs = SourcingEvent.objects.filter(
+        requisition__department__organization=org
+    ).select_related("requisition", "requisition__department").prefetch_related("invitations", "bids").order_by("-created_at")
+    total_rfqs_count = sourcing_events_qs.count()
+    active_rfqs_count = sourcing_events_qs.filter(
+        status__in=[SourcingEvent.STATUS_PUBLISHED, SourcingEvent.STATUS_BID_WINDOW]
+    ).count()
+    awarded_rfqs_count = sourcing_events_qs.filter(status=SourcingEvent.STATUS_AWARDED).count()
+
+    # 6. SCOPED VENDORS
+    vendors_qs = Vendor.objects.filter(organization=org).select_related("category").order_by("legal_name")
+    total_vendors_count = vendors_qs.count()
+    active_vendors_count = vendors_qs.filter(status=Vendor.STATUS_ACTIVE).count()
+    kyc_review_vendors_count = vendors_qs.filter(status__in=[Vendor.STATUS_SUBMITTED, Vendor.STATUS_KYC_REVIEW]).count()
+
+    # 7. SCOPED PURCHASE ORDERS & RECEIPTS
+    pos_qs = PurchaseOrder.objects.filter(cost_center__department__organization=org).select_related(
+        "vendor", "cost_center", "requisition"
+    ).order_by("-created_at")
+    total_pos_count = pos_qs.count()
+    open_pos_count = pos_qs.filter(
+        status__in=[PurchaseOrder.STATUS_ISSUED, PurchaseOrder.STATUS_ACKNOWLEDGED, PurchaseOrder.STATUS_PARTIAL_RECEIPT]
+    ).count()
+    completed_pos_count = pos_qs.filter(status=PurchaseOrder.STATUS_COMPLETED).count()
+
+    receipts_qs = GoodsReceipt.objects.filter(po__cost_center__department__organization=org).select_related(
+        "po", "received_by"
+    ).order_by("-received_date")
+    total_receipts_count = receipts_qs.count()
+
+    # 8. SCOPED BUDGETS & FINANCE
+    budgets_qs = Budget.objects.filter(cost_center__department__organization=org).select_related(
+        "cost_center", "fiscal_period"
+    ).order_by("cost_center__code")
+    budget_agg = budgets_qs.aggregate(
+        allocated=Sum("allocated_amount"),
+        reserved=Sum("reserved_amount"),
+        committed=Sum("committed_amount"),
+        actual=Sum("actual_amount"),
+    )
+    allocated_budget = budget_agg["allocated"] or Decimal("0.00")
+    reserved_budget = budget_agg["reserved"] or Decimal("0.00")
+    committed_budget = budget_agg["committed"] or Decimal("0.00")
+    actual_budget = budget_agg["actual"] or Decimal("0.00")
+    available_budget = allocated_budget - (reserved_budget + committed_budget + actual_budget)
+    if available_budget < Decimal("0.00"):
+        available_budget = Decimal("0.00")
+
+    invoices_qs = SupplierInvoice.objects.filter(po__cost_center__department__organization=org).select_related(
+        "vendor", "po"
+    ).order_by("-created_at")
+    total_invoices_count = invoices_qs.count()
+    total_invoiced_amount = invoices_qs.aggregate(total=Sum("total_amount"))["total"] or Decimal("0.00")
+
+    exceptions_qs = MatchException.objects.filter(
+        invoice__po__cost_center__department__organization=org
+    ).select_related("invoice", "invoice__vendor").order_by("-created_at")
+    pending_exceptions_count = exceptions_qs.filter(status=MatchException.STATUS_OPEN).count()
+
+    # 9. SCOPED AUDIT LOGS
+    audit_logs_qs = AuditLog.objects.filter(
+        Q(actor__in=all_org_users_qs) | Q(target_model="Organization", target_object_id=str(org.id))
+    ).select_related("actor").order_by("-timestamp")[:50]
+
+    # 10. SCOPED CONTRACTS
+    contracts_qs = Contract.objects.filter(
+        Q(vendor__organization=org) | Q(po__cost_center__department__organization=org)
+    ).select_related("vendor", "contract_owner").order_by("-created_at")
+    total_contracts_count = contracts_qs.count()
+
+    # Active tab handling
+    active_tab = request.GET.get("tab", "overview")
+
+    # Roles and depts for user filtering
+    roles = Role.objects.all().order_by("name")
+
+    context = {
+        "org": org,
+        "is_global_superadmin": bool(not scoped_org),
+        "scoped_org": scoped_org,
+        "active_tab": active_tab,
+        # Summary metrics
+        "total_users_count": total_users_count,
+        "active_users_count": active_users_count,
+        "inactive_users_count": inactive_users_count,
+        "departments_count": departments_count,
+        "cost_centers_count": cost_centers_count,
+        "total_prs_count": total_prs_count,
+        "pending_prs_count": pending_prs_count,
+        "approved_prs_count": approved_prs_count,
+        "rejected_prs_count": rejected_prs_count,
+        "draft_prs_count": draft_prs_count,
+        "total_rfqs_count": total_rfqs_count,
+        "active_rfqs_count": active_rfqs_count,
+        "awarded_rfqs_count": awarded_rfqs_count,
+        "total_vendors_count": total_vendors_count,
+        "active_vendors_count": active_vendors_count,
+        "kyc_review_vendors_count": kyc_review_vendors_count,
+        "total_pos_count": total_pos_count,
+        "open_pos_count": open_pos_count,
+        "completed_pos_count": completed_pos_count,
+        "total_receipts_count": total_receipts_count,
+        "total_invoices_count": total_invoices_count,
+        "total_invoiced_amount": total_invoiced_amount,
+        "pending_exceptions_count": pending_exceptions_count,
+        "allocated_budget": allocated_budget,
+        "reserved_budget": reserved_budget,
+        "committed_budget": committed_budget,
+        "actual_budget": actual_budget,
+        "available_budget": available_budget,
+        "total_contracts_count": total_contracts_count,
+        # Scoped data collections
+        "users_page_obj": users_page_obj,
+        "roles": roles,
+        "q_user": q_user,
+        "role_filter": role_filter,
+        "dept_filter": dept_filter,
+        "status_filter": status_filter,
+        "departments": departments_qs,
+        "cost_centers": cost_centers_qs,
+        "prs": prs_qs[:30],
+        "approval_actions": approval_actions_qs,
+        "sourcing_events": sourcing_events_qs[:30],
+        "vendors": vendors_qs[:30],
+        "purchase_orders": pos_qs[:30],
+        "receipts": receipts_qs[:30],
+        "budgets": budgets_qs,
+        "invoices": invoices_qs[:30],
+        "exceptions": exceptions_qs[:30],
+        "audit_logs": audit_logs_qs,
+        "contracts": contracts_qs[:30],
+    }
+    return render(request, "pages/dashboards/superadmin/org_dashboard.html", context)
+
+
+@login_required
+@super_admin_required
 def org_resend_credentials_view(request, org_id):
     scoped_org = get_user_scoped_org(request.user)
     if scoped_org and scoped_org.id != org_id:
@@ -766,12 +1016,6 @@ def org_delete_view(request, org_id):
             "users_count": users_count,
         },
     )
-
-
-
-
-
-
 
 @login_required
 def dept_create_view(request):
