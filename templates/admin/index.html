@@ -15,6 +15,12 @@
 <link href="/static/css/style.css?v=unified_v2" rel="stylesheet">
 
 <style>
+  :root {
+    --body-bg: #f8fafc !important;
+    --body-fg: #1e293b !important;
+    color-scheme: light !important;
+  }
+
   /* Reset default Django admin wrappers to allow full-bleed modern layout */
   html, body {
     margin: 0 !important;
@@ -23,6 +29,85 @@
     background-color: #f8fafc !important;
     color: #1e293b !important;
     overflow-x: hidden;
+  }
+
+  /* Force pristine white inputs in Admin & Modals regardless of dark mode */
+  input[type="text"],
+  input[type="password"],
+  input[type="email"],
+  input[type="url"],
+  input[type="number"],
+  input[type="tel"],
+  textarea,
+  select,
+  .form-control,
+  .form-select,
+  .modal input,
+  .modal textarea,
+  .modal select {
+    background-color: #ffffff !important;
+    background: #ffffff !important;
+    color: #1e293b !important;
+    -webkit-text-fill-color: #1e293b !important;
+    border: 1px solid #cbd5e1 !important;
+  }
+
+  input:focus,
+  textarea:focus,
+  select:focus,
+  .form-control:focus,
+  .form-select:focus {
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+    border-color: #3b82f6 !important;
+    box-shadow: 0 0 0 0.2rem rgba(59, 130, 246, 0.15) !important;
+  }
+
+  input::placeholder,
+  textarea::placeholder,
+  .form-control::placeholder {
+    color: #94a3b8 !important;
+    opacity: 1 !important;
+    -webkit-text-fill-color: #94a3b8 !important;
+  }
+
+  /* Seamless tabs scroll hiding */
+  .sa-tabs-scroll,
+  .nav-tabs-scroll,
+  ul[role="tablist"] {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+  }
+  .sa-tabs-scroll::-webkit-scrollbar,
+  .nav-tabs-scroll::-webkit-scrollbar,
+  ul[role="tablist"]::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+    background: transparent !important;
+  }
+  .sa-tabs-scroll::-webkit-scrollbar-thumb,
+  .nav-tabs-scroll::-webkit-scrollbar-thumb,
+  ul[role="tablist"]::-webkit-scrollbar-thumb {
+    display: none !important;
+    background: transparent !important;
+  }
+  .sa-tabs-scroll::-webkit-scrollbar-track,
+  .nav-tabs-scroll::-webkit-scrollbar-track,
+  ul[role="tablist"]::-webkit-scrollbar-track {
+    display: none !important;
+    background: transparent !important;
+  }
+  .sa-tabs-scroll::-webkit-scrollbar-button,
+  .nav-tabs-scroll::-webkit-scrollbar-button,
+  ul[role="tablist"]::-webkit-scrollbar-button {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
   }
 
   #container {

@@ -1191,3 +1191,104 @@ aside.bg-dark a i {
     }
 }
 
+
+
+/* ==========================================================================
+   GLOBAL FORM CONTROL & MODAL LIGHT THEME ENFORCEMENT
+   Prevents OS/browser dark mode from rendering black input boxes
+   ========================================================================== */
+:root {
+    --body-bg: #f8fafc;
+    --body-fg: #1e293b;
+    color-scheme: light !important;
+}
+
+input[type="text"],
+input[type="password"],
+input[type="email"],
+input[type="url"],
+input[type="number"],
+input[type="tel"],
+textarea,
+select,
+.form-control,
+.form-select,
+.modal input,
+.modal textarea,
+.modal select {
+    background-color: #ffffff !important;
+    background: #ffffff !important;
+    color: #1e293b !important;
+    -webkit-text-fill-color: #1e293b !important;
+    border: 1px solid #cbd5e1 !important;
+}
+
+input:focus,
+textarea:focus,
+select:focus,
+.form-control:focus,
+.form-select:focus,
+.modal input:focus,
+.modal textarea:focus,
+.modal select:focus {
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+    border-color: #3b82f6 !important;
+    box-shadow: 0 0 0 0.2rem rgba(59, 130, 246, 0.15) !important;
+}
+
+input::placeholder,
+textarea::placeholder,
+.form-control::placeholder,
+.modal input::placeholder,
+.modal textarea::placeholder {
+    color: #94a3b8 !important;
+    opacity: 1 !important;
+    -webkit-text-fill-color: #94a3b8 !important;
+}
+
+/* ==========================================================================
+   MODERN TABS HORIZONTAL SCROLLBAR HIDING
+   ========================================================================== */
+.sa-tabs-scroll,
+.nav-tabs-scroll,
+ul.nav-tabs,
+ul[role="tablist"] {
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+}
+
+.sa-tabs-scroll::-webkit-scrollbar,
+.nav-tabs-scroll::-webkit-scrollbar,
+ul.nav-tabs::-webkit-scrollbar,
+ul[role="tablist"]::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+    background: transparent !important;
+}
+
+.sa-tabs-scroll::-webkit-scrollbar-thumb,
+.nav-tabs-scroll::-webkit-scrollbar-thumb,
+ul.nav-tabs::-webkit-scrollbar-thumb,
+ul[role="tablist"]::-webkit-scrollbar-thumb {
+    display: none !important;
+    background: transparent !important;
+}
+
+.sa-tabs-scroll::-webkit-scrollbar-track,
+.nav-tabs-scroll::-webkit-scrollbar-track,
+ul.nav-tabs::-webkit-scrollbar-track,
+ul[role="tablist"]::-webkit-scrollbar-track {
+    display: none !important;
+    background: transparent !important;
+}
+
+.sa-tabs-scroll::-webkit-scrollbar-button,
+.nav-tabs-scroll::-webkit-scrollbar-button,
+ul.nav-tabs::-webkit-scrollbar-button,
+ul[role="tablist"]::-webkit-scrollbar-button {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+}
