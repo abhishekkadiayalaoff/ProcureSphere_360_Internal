@@ -1,8 +1,52 @@
+<style>
+    /* Force pristine light mode styling for modal form inputs regardless of OS/browser dark mode */
+    #modal-content-body,
+    #modal-content-body .modal-body,
+    #modal-content-body .modal-header,
+    #modal-content-body .modal-footer {
+        background-color: #ffffff !important;
+        color: #1e293b !important;
+    }
+    #modal-content-body .form-control,
+    #modal-content-body .form-select,
+    #modal-content-body input[type="text"],
+    #modal-content-body input[type="email"],
+    #modal-content-body input[type="password"],
+    #modal-content-body textarea,
+    #modal-content-body select {
+        background-color: #ffffff !important;
+        background: #ffffff !important;
+        color: #1e293b !important;
+        -webkit-text-fill-color: #1e293b !important;
+        border: 1px solid #cbd5e1 !important;
+    }
+    #modal-content-body .form-control:focus,
+    #modal-content-body input:focus,
+    #modal-content-body textarea:focus {
+        background-color: #ffffff !important;
+        color: #0f172a !important;
+        border-color: #3b82f6 !important;
+        box-shadow: 0 0 0 0.2rem rgba(59, 130, 246, 0.15) !important;
+    }
+    #modal-content-body .form-control::placeholder,
+    #modal-content-body input::placeholder,
+    #modal-content-body textarea::placeholder {
+        color: #94a3b8 !important;
+        -webkit-text-fill-color: #94a3b8 !important;
+        opacity: 1 !important;
+    }
+</style>
+
 <div class="modal-header bg-light border-bottom-0 pb-0">
     <h5 class="modal-title fw-bold text-dark"><i class="fa-solid fa-sitemap text-primary me-2"></i>{% if is_edit %}Edit Organization{% else %}Create Organization{% endif %}</h5>
     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
 </div>
-<form hx-post="{% if is_edit %}/superadmin/organizations/{{ form.instance.pk }}/edit/{% else %}/superadmin/organizations/create/{% endif %}" hx-target="#modal-content-body" hx-swap="outerHTML">
+<form hx-post="{% if is_edit %}/superadmin/organizations/{{ form.instance.pk }}/edit/{% else %}/superadmin/organizations/create/{% endif %}" hx-target="#modal-content-body" hx-swap="outerHTML" autocomplete="off">
+    <!-- Anti-autofill decoy inputs to capture browser password manager -->
+    <div style="position: absolute; left: -9999px; top: -9999px; opacity: 0; width: 0; height: 0; overflow: hidden;" aria-hidden="true">
+        <input type="text" name="fake_username_anti_autofill" tabindex="-1" autocomplete="username">
+        <input type="password" name="fake_password_anti_autofill" tabindex="-1" autocomplete="current-password">
+    </div>
     {% csrf_token %}
     <div class="modal-body pt-4">
         {% if form.non_field_errors %}
@@ -86,6 +130,19 @@
                             </div>
                             {% if form.send_welcome_email.errors %}<div class="text-danger small mt-1">{{ form.send_welcome_email.errors }}</div>{% endif %}
                         </div>
+                        {% if not is_edit %}
+                        <div class="col-12 mt-2">
+                            <div class="alert alert-success py-2 px-3 mb-0 rounded-3 border border-success border-opacity-25 bg-success bg-opacity-10 d-flex align-items-center">
+                                <div class="form-check form-switch m-0 d-flex align-items-center">
+                                    {{ form.import_standard_vendors }}
+                                    <label class="form-check-label fw-semibold text-dark small ms-2 mb-0" for="{{ form.import_standard_vendors.id_for_label }}">
+                                        <i class="fa-solid fa-truck-ramp-box text-success me-1"></i> Import Standard Approved Vendors into New Organization
+                                    </label>
+                                </div>
+                            </div>
+                            {% if form.import_standard_vendors.errors %}<div class="text-danger small mt-1">{{ form.import_standard_vendors.errors }}</div>{% endif %}
+                        </div>
+                        {% endif %}
                     </div>
                 </div>
             </div>
@@ -98,6 +155,47 @@
 </form>
 
 <script>
+{% if not is_edit %}
+(function() {
+    function clearAdminCredentialsAutofill() {
+        var emailInput = document.getElementById("id_admin_email");
+        var pwdInput = document.getElementById("id_admin_password");
+        if (emailInput && !emailInput.hasAttribute("data-user-typed")) {
+            if (emailInput.value === "superadmin@procuresphere.com" || !emailInput.value) {
+                emailInput.value = "";
+            }
+        }
+        if (pwdInput && !pwdInput.hasAttribute("data-user-typed")) {
+            pwdInput.value = "";
+        }
+    }
+    clearAdminCredentialsAutofill();
+    setTimeout(clearAdminCredentialsAutofill, 50);
+    setTimeout(clearAdminCredentialsAutofill, 150);
+    setTimeout(clearAdminCredentialsAutofill, 400);
+    setTimeout(clearAdminCredentialsAutofill, 800);
+
+    var emailEl = document.getElementById("id_admin_email");
+    var pwdEl = document.getElementById("id_admin_password");
+    if (emailEl) {
+        emailEl.addEventListener("focus", function() {
+            this.removeAttribute("readonly");
+        });
+        emailEl.addEventListener("input", function() {
+            this.setAttribute("data-user-typed", "true");
+        });
+    }
+    if (pwdEl) {
+        pwdEl.addEventListener("focus", function() {
+            this.removeAttribute("readonly");
+        });
+        pwdEl.addEventListener("input", function() {
+            this.setAttribute("data-user-typed", "true");
+        });
+    }
+})();
+{% endif %}
+
 function toggleOrgAdminPassword() {
     var pwdInput = document.getElementById("id_admin_password");
     var toggleIcon = document.getElementById("toggleAdminPasswordIcon");
