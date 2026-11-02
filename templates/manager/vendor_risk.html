@@ -713,11 +713,10 @@
 
             const lastAssessed = v.last_risk_assessment_date ? new Date(v.last_risk_assessment_date).toLocaleDateString() : 'Initial';
 
-            const isHighRisk = (v.current_risk_level === 'HIGH' || v.status === 'SUSPENDED');
-            const rowBorderClass = isHighRisk ? 'border-start border-4 border-danger bg-danger-subtle bg-opacity-10' : '';
+
 
             return `
-                <tr class="${rowBorderClass} align-middle">
+                <tr class="align-middle">
                     <td class="ps-4">
                         <a href="/vendors/${v.id}/" class="fw-bold text-dark text-decoration-none hover-primary">${v.legal_name}</a>
                         <div class="d-flex align-items-center gap-2 mt-1">

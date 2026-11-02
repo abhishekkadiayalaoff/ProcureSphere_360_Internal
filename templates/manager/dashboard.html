@@ -11,20 +11,25 @@
 {% block manager_content %}
 <div class="container-fluid px-0">
 
-    <!-- Welcome Header & Quick Actions (Matching Vendor Portal UI style) -->
-    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
-        <div>
-            <h3 class="fw-bold text-dark mb-1">
-                Procurement Manager Executive Desk
-            </h3>
-            <p class="text-muted mb-0 small">
-                Welcome, <strong>{{ user.email }}</strong> &bull; High-value approvals, RFQ/RFP award decisions, and supplier risk governance.
-            </p>
-        </div>
-        <div class="d-flex gap-2">
-            <button onclick="loadDashboardMetrics()" class="btn btn-primary btn-sm rounded-pill px-3 shadow-sm" id="refreshBtn">
-                <i class="fa-solid fa-arrows-rotate me-1" id="refreshIcon"></i> Refresh Data
-            </button>
+    <!-- Page Header Area (Dark Charcoal matching Vendor Dashboard) -->
+    <div class="card border-0 shadow-sm rounded-4 p-4 mb-4 text-white" style="background-color: #212529 !important;">
+        <div class="row align-items-center g-3">
+            <div class="col-lg-8">
+                <span class="badge bg-secondary bg-opacity-50 text-light rounded-pill fw-bold px-3 py-1 mb-2" style="font-size: 0.68rem; letter-spacing: 0.05em;">
+                    <i class="fa-solid fa-shield-halved text-cyan me-1"></i> GOVERNANCE HUB &bull; PROCUREMENT MANAGER
+                </span>
+                <h1 class="fw-bold text-white mb-1 h3">Procurement Manager Executive Desk</h1>
+                <p class="text-white-50 mb-0 small">{{ user.email }} &bull; High-value approvals, RFQ/RFP award decisions, PR bottlenecks, and supplier risk governance.</p>
+            </div>
+            <div class="col-lg-4 text-lg-end d-flex flex-wrap gap-2 justify-content-lg-end">
+                <button type="button" onclick="openDashboardGovModal()" class="btn btn-outline-light btn-sm rounded-pill px-3 fw-semibold" title="Execute Vendor Suspension or Reinstatement">
+                    <i class="fa-solid fa-scale-balanced me-1"></i> Governance Action
+                </button>
+                <button onclick="loadDashboardMetrics()" class="btn btn-primary btn-sm rounded-pill fw-bold px-4 shadow-sm" id="refreshBtn">
+                    <i class="fa-solid fa-arrows-rotate me-1" id="refreshIcon"></i> Refresh Data
+                </button>
+                <a href="/manager/awards/" class="btn btn-outline-light btn-sm rounded-pill px-4 fw-semibold">Pending Awards</a>
+            </div>
         </div>
     </div>
 
@@ -53,37 +58,34 @@
     <!-- Core Governance KPI Cards (Matching Vendor User Dashboard: rounded-4, border-2, fs-3) -->
     <div id="kpiCardsContainer" class="row g-3 mb-4 d-none">
         
-        <!-- 1. Pending Award Approvals -->
+        <!-- 1. Pending Award Approvals (Yellow Border) -->
         <div class="col-sm-6 col-xl-3">
             <a href="/manager/awards/" class="text-decoration-none">
-                <div class="stat-card bg-white rounded-4 p-3 border border-2 border-warning shadow-xs h-100 hover-elevate transition-all">
+                <div class="card h-100 shadow-sm rounded-4 p-3 hover-elevate transition-all" style="background-color: #FFFFFF; border: 2px solid #FFC107 !important; border-radius: 14px;">
                     <div class="d-flex align-items-center justify-content-between mb-2">
-                        <span class="text-muted small fw-semibold text-uppercase" style="font-size: 0.72rem;">Pending Awards</span>
-                        <div style="width: 32px; height: 32px; background: rgba(255, 193, 7, 0.1); border-radius: 8px; display: flex; align-items: center; justify-content: center;">
-                            <i class="fa-solid fa-award text-warning"></i>
-                        </div>
+                        <span class="text-muted small fw-semibold text-uppercase">Pending Awards</span>
+                        <span class="badge bg-warning bg-opacity-25 text-dark rounded-pill small fw-bold">Action Required</span>
                     </div>
-                    <div class="fs-3 fw-bold text-dark metric-value" id="kpiPendingAwards">0</div>
-                    <div class="text-muted small mt-1">
-                        <span class="text-warning fw-semibold">Review Awards &rarr;</span>
+                    <div class="d-flex align-items-baseline gap-2">
+                        <div class="metric-value fs-3 fw-bold text-dark" id="kpiPendingAwards">0</div>
+                    </div>
+                    <div class="mt-2 pt-2 border-top d-flex justify-content-between align-items-center small">
+                        <span class="text-warning fw-semibold">Review Awards <i class="fa-solid fa-arrow-right ms-1"></i></span>
                     </div>
                 </div>
             </a>
         </div>
 
-        <!-- 2. PR Bottlenecks & Aging -->
+        <!-- 2. PR Bottlenecks & Aging (Red Border) -->
         <div class="col-sm-6 col-xl-3">
             <a href="/manager/pr-aging/" class="text-decoration-none">
-                <div class="stat-card bg-white rounded-4 p-3 border border-2 border-danger shadow-xs h-100 hover-elevate transition-all">
+                <div class="card h-100 shadow-sm rounded-4 p-3 hover-elevate transition-all" style="background-color: #FFFFFF; border: 2px solid #DC3545 !important; border-radius: 14px;">
                     <div class="d-flex align-items-center justify-content-between mb-2">
-                        <span class="text-muted small fw-semibold text-uppercase" style="font-size: 0.72rem;">PR Bottlenecks</span>
-                        <div style="width: 32px; height: 32px; background: rgba(220, 53, 69, 0.1); border-radius: 8px; display: flex; align-items: center; justify-content: center;">
-                            <i class="fa-solid fa-clock-rotate-left text-danger"></i>
-                        </div>
+                        <span class="text-muted small fw-semibold text-uppercase">PR Bottlenecks</span>
+                        <span class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 rounded-pill small fw-bold" id="kpiPRBottleneckValue">$0.00</span>
                     </div>
                     <div class="d-flex align-items-baseline gap-2">
-                        <div class="fs-3 fw-bold text-danger metric-value" id="kpiPRBottlenecks">0</div>
-                        <span class="badge bg-danger-subtle text-danger rounded-pill small" id="kpiPRBottleneckValue">$0.00</span>
+                        <div class="metric-value fs-3 fw-bold text-danger" id="kpiPRBottlenecks">0</div>
                     </div>
                     <div class="text-muted small mt-1">
                         <span class="text-danger fw-semibold">Inspect Aging &rarr;</span>
@@ -92,19 +94,16 @@
             </a>
         </div>
 
-        <!-- 3. Active Purchase Orders -->
+        <!-- 3. Active Purchase Orders (Blue Border) -->
         <div class="col-sm-6 col-xl-3">
             <a href="/manager/purchase-orders/" class="text-decoration-none">
-                <div class="stat-card bg-white rounded-4 p-3 border border-2 border-primary shadow-xs h-100 hover-elevate transition-all">
+                <div class="card h-100 shadow-sm rounded-4 p-3 hover-elevate transition-all" style="background-color: #FFFFFF; border: 2px solid #0D6EFD !important; border-radius: 14px;">
                     <div class="d-flex align-items-center justify-content-between mb-2">
-                        <span class="text-muted small fw-semibold text-uppercase" style="font-size: 0.72rem;">Active Orders (PO)</span>
-                        <div style="width: 32px; height: 32px; background: rgba(13, 110, 253, 0.1); border-radius: 8px; display: flex; align-items: center; justify-content: center;">
-                            <i class="fa-solid fa-cart-shopping text-primary"></i>
-                        </div>
+                        <span class="text-muted small fw-semibold text-uppercase">Active Orders (PO)</span>
+                        <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 rounded-pill small fw-bold" id="kpiActivePOValue">$0.00</span>
                     </div>
                     <div class="d-flex align-items-baseline gap-2">
-                        <div class="fs-3 fw-bold text-primary metric-value" id="kpiActivePOs">0</div>
-                        <span class="badge bg-primary-subtle text-primary rounded-pill small" id="kpiActivePOValue">$0.00</span>
+                        <div class="metric-value fs-3 fw-bold text-primary" id="kpiActivePOs">0</div>
                     </div>
                     <div class="text-muted small mt-1">
                         <span class="text-primary fw-semibold">View Active POs &rarr;</span>
@@ -113,22 +112,19 @@
             </a>
         </div>
 
-        <!-- 4. High-Risk & Suspended Vendors -->
+        <!-- 4. High-Risk & Suspended Vendors (Red Border) -->
         <div class="col-sm-6 col-xl-3">
             <a href="/manager/vendor-risk/" class="text-decoration-none">
-                <div class="stat-card bg-white rounded-4 p-3 border border-2 border-danger shadow-xs h-100 hover-elevate transition-all" style="border-color: #ef4444 !important;">
+                <div class="card h-100 shadow-sm rounded-4 p-3 hover-elevate transition-all" style="background-color: #FFFFFF; border: 2px solid #DC3545 !important; border-radius: 14px;">
                     <div class="d-flex align-items-center justify-content-between mb-2">
-                        <span class="text-muted small fw-semibold text-uppercase text-danger" style="font-size: 0.72rem;">High-Risk Vendors</span>
-                        <div style="width: 32px; height: 32px; background: rgba(239, 68, 68, 0.1); border-radius: 8px; display: flex; align-items: center; justify-content: center;">
-                            <i class="fa-solid fa-triangle-exclamation text-danger"></i>
-                        </div>
+                        <span class="text-muted small fw-semibold text-uppercase">High-Risk Vendors</span>
+                        <span class="badge bg-secondary bg-opacity-25 text-secondary border border-secondary border-opacity-25 rounded-pill small fw-bold" id="kpiKYCReviews">0 in KYC</span>
                     </div>
                     <div class="d-flex align-items-baseline gap-2">
-                        <div class="fs-3 fw-bold text-danger metric-value" id="kpiHighRiskVendors">0</div>
-                        <span class="badge bg-secondary rounded-pill small" id="kpiKYCReviews">0 in KYC</span>
+                        <div class="metric-value fs-3 fw-bold text-danger" id="kpiHighRiskVendors">0</div>
                     </div>
-                    <div class="text-muted small mt-1">
-                        <span class="text-danger fw-semibold">Risk &amp; Governance Desk &rarr;</span>
+                    <div class="mt-2 pt-2 border-top d-flex justify-content-between align-items-center small">
+                        <span class="text-danger fw-semibold">Governance Desk <i class="fa-solid fa-arrow-right ms-1"></i></span>
                     </div>
                 </div>
             </a>
@@ -140,7 +136,7 @@
         
         <!-- Budget & Spend Allocation Progress -->
         <div class="col-lg-6">
-            <div class="card bg-white rounded-4 border shadow-xs p-4 h-100">
+            <div class="card border-0 shadow-sm rounded-4 p-4 h-100" style="background-color: #FFFFFF; border: 1px solid #DEE2E6 !important;">
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <h5 class="fw-bold text-dark mb-0 font-heading">
                         <i class="fa-solid fa-wallet text-primary me-2"></i> Budget &amp; Commitment Overview
@@ -185,7 +181,7 @@
 
         <!-- Procurement Health & Quality Indicators -->
         <div class="col-lg-6">
-            <div class="card bg-white rounded-4 border shadow-xs p-4 h-100">
+            <div class="card border-0 shadow-sm rounded-4 p-4 h-100" style="background-color: #FFFFFF; border: 1px solid #DEE2E6 !important;">
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <h5 class="fw-bold text-dark mb-0 font-heading">
                         <i class="fa-solid fa-chart-line text-success me-2"></i> Quality &amp; Pipeline Health
@@ -244,7 +240,7 @@
     </div>
 
     <!-- Supplier Governance & Sanctions Watchlist (Manager RBAC) -->
-    <div class="card bg-white rounded-4 border shadow-xs p-4 mb-4">
+    <div class="card border-0 shadow-sm rounded-4 p-4 mb-4" style="background-color: #FFFFFF; border: 1px solid #DEE2E6 !important;">
         <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3 gap-2">
             <div>
                 <div class="d-flex align-items-center gap-2 mb-1">
@@ -290,8 +286,8 @@
     </div>
 
     <!-- Quick Navigation Hub to Dedicated Manager Modules -->
-    <div class="card bg-white rounded-4 border shadow-xs p-4 mb-4">
-        <h5 class="fw-bold text-dark mb-3 font-heading">
+    <div class="card border-0 shadow-sm rounded-4 p-4 mb-4" style="background-color: #FFFFFF; border: 1px solid #DEE2E6 !important;">
+        <h3 class="h6 fw-bold text-dark mb-3 font-heading">
             <i class="fa-solid fa-compass text-primary me-2"></i> Manager Governance Modules
         </h5>
         <div class="row g-3">
@@ -462,9 +458,7 @@
                 if (v.current_risk_level === 'HIGH') riskBadge = 'bg-danger text-white border border-danger-subtle fw-bold';
                 else if (v.current_risk_level === 'MEDIUM') riskBadge = 'bg-warning text-dark';
 
-                // High-risk and suspended vendor prominent border styling
-                const isHighRisk = (v.current_risk_level === 'HIGH' || v.status === 'SUSPENDED');
-                const rowBorderClass = isHighRisk ? 'border-start border-4 border-danger bg-danger-subtle bg-opacity-10' : '';
+
 
                 const exp = v.exposure || {};
                 const totalActiveExp = (exp.open_invitations || 0) + (exp.open_bids || 0) + (exp.pending_awards || 0) + (exp.open_pos || 0);
@@ -485,7 +479,7 @@
                 }
 
                 return `
-                    <tr class="${rowBorderClass} align-middle">
+                    <tr class="align-middle">
                         <td class="ps-3">
                             <a href="/vendors/${v.id}/" class="fw-bold text-dark text-decoration-none hover-primary">${v.legal_name}</a>
                             <div class="d-flex align-items-center gap-2 mt-1">
