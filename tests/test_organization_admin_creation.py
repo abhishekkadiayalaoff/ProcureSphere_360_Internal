@@ -262,10 +262,8 @@ def test_create_organization_assigning_existing_admin_user(client, super_admin_u
 @pytest.mark.django_db
 def test_superadmin_dashboard_shows_admin_user_column_and_edit_action(client, super_admin_user, db_roles):
     """
-    Verifies that the Super Admin Dashboard (/) renders:
-    1. The 'ADMIN USER' column header.
-    2. The email of the assigned Organization Administrator.
-    3. The 'Edit' button linking to the modal.
+    Organization administrators and Edit stay on the organizations page.
+    The home dashboard does not list every organization.
     """
     org1 = Organization.objects.create(name="Hewlett Packard Enterprise", code="HPE-MAIN", is_active=True)
     admin1 = User.objects.create_user(
@@ -290,18 +288,21 @@ def test_superadmin_dashboard_shows_admin_user_column_and_edit_action(client, su
     org2.save(update_fields=["admin_user"])
 
     client.force_login(super_admin_user)
-    res = client.get("/")
+    res = client.get(reverse("superadmin:organizations"))
     assert res.status_code == 200
     html = res.content.decode()
 
-    # Column header
-    assert "ADMIN USER" in html
-    # Both admin user emails displayed
+    assert "Administrator" in html
     assert "admin@hpe.com" in html
     assert "kadiyalaabhishek33@gmail.com" in html
-    # Edit buttons present for both
     assert f"/superadmin/organizations/{org1.pk}/edit/" in html
     assert f"/superadmin/organizations/{org2.pk}/edit/" in html
+
+    home = client.get("/")
+    assert home.status_code == 200
+    home_html = home.content.decode()
+    assert "Tenant Organizations" not in home_html
+    assert "HPE-MAIN" not in home_html
 
 
 @pytest.mark.django_db
@@ -654,11 +655,11 @@ def test_scoped_tenant_admin_ui_and_permissions(client, db_roles):
     assert f"/superadmin/organizations/{tenant_org.pk}/view/" in content
     assert f"/superadmin/organizations/{tenant_org.pk}/edit/" not in content
 
-    # 2. Test dashboard page
+    # 2. Home dashboard does not list every organization
     res_dash = client.get(reverse("superadmin:home"))
     assert res_dash.status_code == 200
     dash_content = res_dash.content.decode()
-    assert f"/superadmin/organizations/{tenant_org.pk}/view/" in dash_content
+    assert "Tenant Organizations" not in dash_content
     assert f"/superadmin/organizations/{tenant_org.pk}/edit/" not in dash_content
 
     # 3. Direct GET to org_edit is forbidden

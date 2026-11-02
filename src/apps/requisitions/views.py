@@ -25,6 +25,32 @@ from apps.requisitions.services import (
 )
 
 
+def _resolve_requisition_layout(user, role_code):
+    """
+    Resolve base layout template for requisition views based on the authenticated user and role.
+    Super Admin and Admins render in layouts/superadmin_base.html so they remain inside the Admin workspace.
+    """
+    if getattr(user, "is_superuser", False) or role_code in [
+        Role.SUPER_ADMIN,
+        "SUPER_ADMIN",
+        "ADMIN",
+    ]:
+        return "layouts/superadmin_base.html"
+    if role_code in [Role.PROC_MGR, "PROC_MGR"]:
+        return "manager/base_manager.html"
+    if role_code in [Role.AUDITOR, "AUDITOR"]:
+        return "audit/base_auditor.html"
+    if role_code in [Role.LEGAL_MGR, "LEGAL_MGR"]:
+        return "layouts/legal_base.html"
+    if role_code in [Role.DEPT_APPROVER, Role.PROC_EXEC, "DEPT_APPROVER", "PROC_EXEC"]:
+        return "layouts/approver_base.html"
+    if role_code in [Role.FINANCE_AP, "FINANCE_AP"]:
+        return "layouts/finance_base.html"
+    if role_code in [Role.STORES_RECEIVER, "STORES_RECEIVER"]:
+        return "layouts/stores_base.html"
+    return "layouts/requester_base.html"
+
+
 @login_required(login_url="/login/")
 def list_view(request):
     user = request.user
@@ -117,12 +143,7 @@ def list_view(request):
         query_params.pop("page")
     querystring = query_params.urlencode()
 
-    if role_code == Role.LEGAL_MGR or role_code == "LEGAL_MGR":
-        base_layout = "layouts/legal_base.html"
-    elif role_code in [Role.DEPT_APPROVER, Role.PROC_MGR]:
-        base_layout = "layouts/approver_base.html"
-    else:
-        base_layout = "layouts/requester_base.html"
+    base_layout = _resolve_requisition_layout(user, role_code)
 
     return render(
         request,
@@ -347,6 +368,8 @@ def create_view(request):
             "cost_centers": cost_centers,
             "user_assigned_cost_center": getattr(user, "cost_center", None),
             "today": timezone.now().date().isoformat(),
+            "role_code": role_code,
+            "base_layout": _resolve_requisition_layout(user, role_code),
         },
     )
 
@@ -512,6 +535,10 @@ def edit_view(request, pk):
         cost_centers = CostCenter.objects.all()
 
     cost_centers = _attach_available_budgets(cost_centers)
+    user = request.user
+    role_code = getattr(user, "role_code", None) or (
+        user.role.code if hasattr(user, "role") and user.role else Role.SUPER_ADMIN
+    )
 
     return render(
         request,
@@ -521,6 +548,8 @@ def edit_view(request, pk):
             "departments": departments,
             "cost_centers": cost_centers,
             "today": timezone.now().date().isoformat(),
+            "role_code": role_code,
+            "base_layout": _resolve_requisition_layout(user, role_code),
         },
     )
 
@@ -645,27 +674,7 @@ def detail_view(request, pk):
         if role_code in [Role.FINANCE_AP, Role.SUPER_ADMIN] or user.is_superuser:
             can_approve = True
 
-    base_layout = (
-        "manager/base_manager.html"
-        if role_code == Role.PROC_MGR
-        else (
-            "audit/base_auditor.html"
-            if role_code == Role.AUDITOR
-            else (
-                "layouts/legal_base.html"
-                if role_code == Role.LEGAL_MGR
-                else (
-                    "layouts/approver_base.html"
-                    if role_code in [Role.DEPT_APPROVER, Role.PROC_EXEC]
-                    else (
-                        "layouts/finance_base.html"
-                        if role_code == Role.FINANCE_AP
-                        else "layouts/requester_base.html"
-                    )
-                )
-            )
-        )
-    )
+    base_layout = _resolve_requisition_layout(user, role_code)
 
     return render(
         request,

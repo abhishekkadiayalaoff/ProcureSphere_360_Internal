@@ -231,13 +231,7 @@ def test_organization_name_and_view_button_navigation(client, multi_org_test_dat
     data = multi_org_test_data
     client.force_login(data["global_superadmin"])
 
-    # Check /superadmin/ dashboard contains links to dedicated dashboard
-    res_dash = client.get(reverse("superadmin:home"))
-    assert res_dash.status_code == 200
-    content_dash = res_dash.content.decode()
-
     hpe_dash_url = reverse("superadmin:org_dashboard", args=[data["org_hpe"].id])
-    assert f'href="{hpe_dash_url}"' in content_dash
 
     # Check /superadmin/organizations/ contains links to dedicated dashboard
     res_list = client.get(reverse("superadmin:organizations"))

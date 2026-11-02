@@ -12,6 +12,7 @@ urlpatterns = [
     path("users/<uuid:user_id>/resend-welcome/", superadmin_views.user_resend_welcome_email_view, name="user_resend_welcome"),
     path("organizations/", superadmin_views.org_list_view, name="organizations"),
     path("organizations/create/", superadmin_views.org_create_view, name="org_create"),
+    path("organizations/<uuid:org_id>/", superadmin_views.org_dashboard_view, name="org_dashboard"),
     path("organizations/<uuid:org_id>/view/", superadmin_views.org_detail_view, name="org_detail"),
     path("organizations/<uuid:org_id>/edit/", superadmin_views.org_edit_view, name="org_edit"),
     path("organizations/<uuid:org_id>/delete/", superadmin_views.org_delete_view, name="org_delete"),
