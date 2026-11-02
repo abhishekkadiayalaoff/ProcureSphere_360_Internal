@@ -1,0 +1,360 @@
+new_base_manager_content = """{% extends 'base.html' %}
+
+{% block title %}{% block manager_title %}Procurement Manager Workspace{% endblock %} — ProcureSphere 360{% endblock %}
+
+{% block navbar %}
+<!-- Top Navigation Bar for Procurement Manager (Matching Vendor Dashboard Design System) -->
+<nav class="navbar navbar-dark bg-dark shadow-sm py-2 border-bottom border-secondary border-opacity-25 sticky-top proc-mgr-topbar" style="background-color: #212529 !important;">
+    <div class="container-fluid px-2 px-sm-3 px-lg-4 d-flex align-items-center justify-content-between flex-nowrap">
+        <!-- Brand & Mobile Drawer Toggle -->
+        <div class="d-flex align-items-center overflow-hidden me-2">
+            <button class="navbar-toggler border-0 me-2 d-lg-none p-1" type="button" data-bs-toggle="offcanvas" data-bs-target="#managerSidebar" aria-controls="managerSidebar" aria-label="Toggle navigation">
+                <i class="fa-solid fa-bars text-white fs-4"></i>
+            </button>
+            <a href="/manager/" class="navbar-brand d-flex align-items-center text-white me-0 me-lg-4 text-truncate">
+                <div class="brand-icon-box me-2 flex-shrink-0" style="width: 32px; height: 32px; background: rgba(0, 184, 217, 0.2); border-radius: 6px; display: flex; align-items: center; justify-content: center;">
+                    <i class="fa-solid fa-layer-group text-cyan"></i>
+                </div>
+                <span class="fs-6 fs-sm-5 fw-bold tracking-tight text-truncate">ProcureSphere <span class="text-cyan">360</span></span>
+                <span class="badge bg-secondary bg-opacity-50 text-light ms-2 px-2.5 py-1 small rounded-pill d-none d-sm-inline-block" style="font-size: 0.65rem; letter-spacing: 0.04em;">Procurement Manager</span>
+            </a>
+        </div>
+
+        <!-- Middle: Global Scope Pill & Right Profile Actions -->
+        <div class="d-flex align-items-center gap-2 gap-sm-3 flex-shrink-0">
+            <!-- Organization / Scope Badge (Tenant Context) -->
+            <div class="d-none d-md-flex align-items-center bg-dark bg-opacity-75 border border-secondary border-opacity-50 rounded-pill px-3 py-1 text-white">
+                <i class="fa-solid fa-building-circle-check text-cyan me-2 fs-5"></i>
+                <div class="text-start lh-sm">
+                    <span class="fw-semibold small d-block mb-1">{{ user_org_name|default:'Global Enterprise' }}</span>
+                    <span class="text-white-50 d-block" style="font-size: 0.7rem; line-height: 1;">Executive Governance Desk</span>
+                </div>
+                <span class="badge ms-2 rounded-pill bg-success" style="font-size: 0.65rem;">Active</span>
+            </div>
+
+            <!-- Notifications Quick Indicator -->
+            <a href="/manager/notifications/" class="btn btn-outline-secondary btn-sm position-relative text-white border-0 d-flex align-items-center justify-content-center p-0" style="width: 36px; height: 36px;" title="Notifications & Escalations">
+                <i class="fa-solid fa-bell fs-5"></i>
+                {% if unread_notifications_count and unread_notifications_count > 0 %}
+                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size: 0.65rem;">
+                    {{ unread_notifications_count }}
+                    <span class="visually-hidden">unread notifications</span>
+                </span>
+                {% endif %}
+            </a>
+
+            <!-- User Profile & Dropdown (ONLY ONE Sign Out on entire dashboard) -->
+            {% if user.is_authenticated %}
+            <div class="d-flex align-items-center gap-2">
+                <div class="d-none d-lg-block text-end lh-sm me-1">
+                    <div class="fw-semibold text-white small mb-1">{{ user.email }}</div>
+                    <div class="text-white-50 d-block" style="font-size: 0.7rem; line-height: 1;">Procurement Manager</div>
+                </div>
+                <div class="dropdown">
+                    <button class="btn btn-dark border border-secondary border-opacity-50 rounded-circle text-white d-flex align-items-center justify-content-center p-0" style="width: 36px; height: 36px;" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="User Profile Menu">
+                        <i class="fa-solid fa-user-tie text-cyan"></i>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end shadow-lg border border-secondary border-opacity-25 bg-dark text-white py-1">
+                        <li><a class="dropdown-item text-danger py-2 d-flex align-items-center" href="/logout/"><i class="fa-solid fa-arrow-right-from-bracket me-2"></i> Sign Out</a></li>
+                    </ul>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</nav>
+{% endblock navbar %}
+
+{% block layout %}
+<style>
+    /* Desktop Sidebar (>= 992px) */
+    @media (min-width: 992px) {
+        aside.manager-sidebar-desktop,
+        .manager-sidebar-desktop,
+        aside#managerSidebar {
+            width: 260px !important;
+            min-width: 260px !important;
+            flex-shrink: 0 !important;
+            position: sticky !important;
+            top: 58px !important;
+            height: calc(100vh - 58px) !important;
+            max-height: calc(100vh - 58px) !important;
+            overflow: hidden !important;
+            overflow-y: hidden !important;
+            display: flex !important;
+            flex-direction: column !important;
+            z-index: 1000;
+            align-self: flex-start;
+            background-color: #212529 !important;
+        }
+        .manager-sidebar-desktop .sidebar-nav-container,
+        .manager-sidebar-desktop nav {
+            overflow-y: auto !important;
+            flex: 1 1 auto !important;
+            min-height: 0 !important;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255,255,255,0.15) transparent;
+        }
+        .manager-sidebar-desktop .sidebar-nav-container::-webkit-scrollbar {
+            width: 4px;
+        }
+        .manager-sidebar-desktop .sidebar-nav-container::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.15);
+            border-radius: 4px;
+        }
+    }
+
+    /* Section label style */
+    .nav-section-label {
+        font-size: 0.63rem;
+        letter-spacing: 0.08em;
+        font-weight: 700;
+        text-transform: uppercase;
+        color: rgba(255,255,255,0.4);
+        padding: 0.6rem 0.75rem 0.2rem;
+        margin-top: 0.25rem;
+    }
+
+    /* Top-level nav link matching Vendor Dashboard standard */
+    .manager-nav-link {
+        display: flex;
+        align-items: center;
+        padding: 0.45rem 0.75rem;
+        border-radius: 8px;
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: rgba(255,255,255,0.75) !important;
+        text-decoration: none;
+        transition: background 0.15s, color 0.15s;
+    }
+    .manager-nav-link:hover,
+    .manager-nav-link:focus {
+        background: rgba(255,255,255,0.08) !important;
+        color: #fff !important;
+    }
+    .manager-nav-link.active {
+        background: #0d6efd !important;
+        color: #fff !important;
+        font-weight: 700 !important;
+        box-shadow: 0 2px 8px rgba(13,110,253,0.35);
+    }
+    .manager-nav-link.active i {
+        color: #fff !important;
+    }
+    .manager-nav-link .nav-icon,
+    .manager-nav-link > i:first-child,
+    .manager-nav-link span > i:first-child {
+        width: 20px;
+        text-align: center;
+        margin-right: 0.65rem;
+        flex-shrink: 0;
+    }
+
+    /* Status and Design Tokens */
+    .text-cyan { color: #00B8D9 !important; }
+    .bg-cyan { background-color: #00B8D9 !important; }
+</style>
+
+<div class="d-flex align-items-start w-100" style="min-height: calc(100vh - 58px); max-width: 100vw; background-color: #F5F7FA;">
+    <!-- ========================================================================= -->
+    <!-- 1. STICKY DARK SIDEBAR (ProcureSphere 360 Theme: #212529)                 -->
+    <!-- ========================================================================= -->
+    <aside class="offcanvas-lg offcanvas-start bg-dark text-white border-end border-secondary border-opacity-25 shadow-sm manager-sidebar-desktop" tabindex="-1" id="managerSidebar" aria-labelledby="managerSidebarLabel" style="width: 260px; min-width: 260px; background-color: #212529 !important;">
+        <!-- Mobile Drawer Header (Hidden on Desktop) -->
+        <div class="sidebar-brand-box px-3 py-3 border-bottom border-secondary border-opacity-25 flex-shrink-0 d-flex d-lg-none align-items-center justify-content-between">
+            <a href="/manager/" class="d-flex align-items-center text-white text-decoration-none" id="managerSidebarLabel">
+                <div class="brand-icon-box me-2 flex-shrink-0" style="width: 32px; height: 32px; background: rgba(0, 184, 217, 0.2); border-radius: 6px; display: flex; align-items: center; justify-content: center;">
+                    <i class="fa-solid fa-layer-group text-cyan"></i>
+                </div>
+                <div class="overflow-hidden">
+                    <div class="fs-6 fw-bold tracking-tight text-white d-block text-truncate">ProcureSphere <span class="text-cyan">360</span></div>
+                    <span class="badge bg-secondary bg-opacity-50 text-light px-2 py-0.5 rounded-pill" style="font-size: 0.62rem; letter-spacing: 0.04em;">PROCUREMENT MANAGER</span>
+                </div>
+            </a>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" data-bs-target="#managerSidebar" aria-label="Close menu"></button>
+        </div>
+
+        <!-- Scrollable Navigation (flex: 1, min-height: 0, overflow-y: auto) -->
+        <nav class="sidebar-nav-container flex-grow-1 overflow-y-auto px-2 py-3 d-flex flex-column gap-1" id="managerNav" style="flex: 1 1 0%; min-height: 0;" aria-label="Procurement Manager Navigation">
+            <div class="d-flex align-items-center justify-content-between px-2 mb-2 text-secondary text-uppercase fw-bold" style="font-size: 0.68rem; letter-spacing: 0.06em;">
+                <span>Manager Desk</span>
+                <i class="fa-solid fa-shield-halved text-cyan" style="font-size:0.75rem;"></i>
+            </div>
+
+            <!-- DASHBOARD SECTION -->
+            <div class="nav-section-label">Dashboard</div>
+            <a href="/manager/" class="manager-nav-link {% if request.path == '/manager/' %}active{% endif %}">
+                <i class="fa-solid fa-gauge-high nav-icon text-cyan"></i>
+                <span>Executive Dashboard</span>
+            </a>
+
+            <!-- PROCUREMENT SECTION -->
+            <div class="nav-section-label">Procurement</div>
+            <a href="/approvals/inbox/" class="manager-nav-link d-flex align-items-center justify-content-between {% if '/approvals/' in request.path %}active{% endif %}">
+                <div class="d-flex align-items-center min-width-0">
+                    <i class="fa-solid fa-square-check nav-icon text-cyan"></i>
+                    <span class="text-truncate">Pending Approvals</span>
+                </div>
+                {% if pending_approvals_count and pending_approvals_count > 0 %}
+                <span class="badge bg-warning text-dark rounded-pill fw-bold ms-auto flex-shrink-0" style="font-size: 0.68rem;">{{ pending_approvals_count }}</span>
+                {% endif %}
+            </a>
+            <a href="/manager/pipeline/" class="manager-nav-link {% if '/manager/pipeline/' in request.path %}active{% endif %}">
+                <i class="fa-solid fa-filter-circle-dollar nav-icon text-cyan"></i>
+                <span>Procurement Pipeline</span>
+            </a>
+            <a href="/manager/pr-aging/" class="manager-nav-link {% if '/manager/pr-aging/' in request.path %}active{% endif %}">
+                <i class="fa-solid fa-clock-rotate-left nav-icon text-cyan"></i>
+                <span>PR Aging &amp; Bottlenecks</span>
+            </a>
+            <a href="/manager/sourcing/" class="manager-nav-link {% if '/manager/sourcing/' in request.path or '/sourcing-events/' in request.path or '/sourcing/bid-portal/' in request.path or request.path == '/sourcing/' %}active{% endif %}">
+                <i class="fa-solid fa-gavel nav-icon text-cyan"></i>
+                <span>Sourcing Events</span>
+            </a>
+            <a href="/manager/awards/" class="manager-nav-link {% if '/manager/awards/' in request.path or '/sourcing/evaluation' in request.path %}active{% endif %}">
+                <i class="fa-solid fa-award nav-icon text-cyan"></i>
+                <span>Award Approvals</span>
+            </a>
+
+            <!-- ORDERS SECTION -->
+            <div class="nav-section-label">Orders</div>
+            <a href="/manager/purchase-orders/" class="manager-nav-link {% if '/manager/purchase-orders/' in request.path %}active{% endif %}">
+                <i class="fa-solid fa-cart-shopping nav-icon text-cyan"></i>
+                <span>Purchase Orders</span>
+            </a>
+
+            <!-- SUPPLIERS SECTION -->
+            <div class="nav-section-label">Suppliers</div>
+            <a href="/manager/vendor-risk/" class="manager-nav-link {% if '/manager/vendor-risk/' in request.path %}active{% endif %}">
+                <i class="fa-solid fa-shield-halved nav-icon text-cyan"></i>
+                <span>Vendor Risk</span>
+            </a>
+            <a href="/manager/performance/" class="manager-nav-link {% if '/manager/performance/' in request.path %}active{% endif %}">
+                <i class="fa-solid fa-star-half-stroke nav-icon text-cyan"></i>
+                <span>Supplier Performance</span>
+            </a>
+
+            <!-- ANALYTICS SECTION -->
+            <div class="nav-section-label">Analytics</div>
+            <a href="/manager/spend/" class="manager-nav-link {% if '/manager/spend/' in request.path %}active{% endif %}">
+                <i class="fa-solid fa-chart-line nav-icon text-cyan"></i>
+                <span>Spend Analysis</span>
+            </a>
+
+            <!-- WORKFLOW SECTION -->
+            <div class="nav-section-label">Workflow</div>
+            <a href="/manager/notifications/" class="manager-nav-link {% if '/manager/notifications/' in request.path %}active{% endif %}">
+                <i class="fa-solid fa-bell nav-icon text-cyan"></i>
+                <span>Notifications &amp; Alerts</span>
+            </a>
+
+            <!-- Security Footnote (NO DUPLICATE LOGOUT, NO DUPLICATE FOOTER) -->
+            <div class="mt-4 pt-3 border-top border-secondary border-opacity-25 px-2 mb-2">
+                <div class="d-flex align-items-center text-white-50 small" style="font-size: 0.68rem;">
+                    <i class="fa-solid fa-lock text-success me-2"></i>
+                    <span>RBAC Backend Enforced &bull; Manager Governance</span>
+                </div>
+            </div>
+        </nav>
+    </aside>
+
+    <!-- ========================================================================= -->
+    <!-- 2. MAIN CONTENT AREA                                                      -->
+    <!-- ========================================================================= -->
+    <main class="flex-grow-1 p-2 p-sm-3 p-md-4 w-100" style="min-width: 0; max-width: 100vw; overflow-x: hidden; background-color: #F5F7FA;">
+        <!-- Toast / Alert Region for Async Feedback -->
+        <div id="managerToastContainer" class="toast-container position-fixed top-0 end-0 p-3 z-3" style="margin-top: 55px;"></div>
+
+        {% block manager_content %}
+            {% block content %}{% endblock content %}
+        {% endblock manager_content %}
+    </main>
+</div>
+
+<script>
+    // Handle offcanvas link clicks on mobile (<992px)
+    document.querySelectorAll('#managerSidebar a.manager-nav-link').forEach(function(link) {
+        link.addEventListener('click', function() {
+            var sidebarEl = document.getElementById('managerSidebar');
+            if (window.innerWidth < 992 && sidebarEl && typeof bootstrap !== 'undefined') {
+                var offcanvasInstance = bootstrap.Offcanvas.getInstance(sidebarEl);
+                if (offcanvasInstance) {
+                    offcanvasInstance.hide();
+                }
+            }
+        });
+    });
+
+    // Standardized Manager Toast Notification Helper
+    function showManagerToast(message, type = 'info') {
+        const container = document.getElementById('managerToastContainer');
+        if (!container) return;
+
+        const bgClass = type === 'success' ? 'bg-success text-white' :
+                        type === 'error' ? 'bg-danger text-white' :
+                        type === 'warning' ? 'bg-warning text-dark' : 'bg-primary text-white';
+        
+        const iconClass = type === 'success' ? 'fa-circle-check' :
+                          type === 'error' ? 'fa-circle-exclamation' :
+                          type === 'warning' ? 'fa-triangle-exclamation' : 'fa-circle-info';
+
+        const toastId = 'toast_' + Date.now();
+        const toastHtml = `
+            <div id="${toastId}" class="toast align-items-center ${bgClass} border-0 shadow-lg mb-2" role="alert" aria-live="assertive" aria-atomic="true">
+                <div class="d-flex">
+                    <div class="toast-body d-flex align-items-center gap-2">
+                        <i class="fa-solid ${iconClass}"></i>
+                        <span>${message}</span>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+            </div>
+        `;
+        container.insertAdjacentHTML('beforeend', toastHtml);
+        const toastElement = document.getElementById(toastId);
+        if (toastElement && window.bootstrap) {
+            const bsToast = new bootstrap.Toast(toastElement, { delay: 4500 });
+            bsToast.show();
+        }
+    }
+
+    // Standardized API Fetch with CSRF and Error Handling
+    async function fetchManagerAPI(url, options = {}) {
+        const defaultHeaders = {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+        };
+        
+        const csrfCookie = document.cookie.split('; ').find(row => row.startsWith('csrftoken='));
+        if (csrfCookie) {
+            defaultHeaders['X-CSRFToken'] = csrfCookie.split('=')[1];
+        }
+
+        options.headers = { ...defaultHeaders, ...(options.headers || {}) };
+
+        try {
+            const response = await fetch(url, options);
+            if (response.status === 401) {
+                window.location.href = '/login/?next=' + encodeURIComponent(window.location.pathname);
+                return null;
+            }
+            if (!response.ok) {
+                const errData = await response.json().catch(() => ({}));
+                const errMsg = errData.detail || errData.error || `HTTP ${response.status}: Request failed`;
+                throw new Error(errMsg);
+            }
+            return await response.json();
+        } catch (err) {
+            console.error('[Manager API Error]:', err);
+            throw err;
+        }
+    }
+</script>
+{% endblock layout %}
+"""
+
+file_path = r"c:\Users\windows10\Desktop\PRO 360\ProcureSphere_360_Internal\templates\manager\base_manager.html"
+with open(file_path, "w", encoding="utf-8") as f:
+    f.write(new_base_manager_content)
+print("Updated base_manager.html successfully!")
+
