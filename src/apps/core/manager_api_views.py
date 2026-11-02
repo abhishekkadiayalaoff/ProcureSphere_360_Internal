@@ -12,7 +12,7 @@ from apps.accounts.permissions import IsProcurementManager
 from apps.budgets.models import Budget, SpendLedger
 from apps.invoices.models import MatchException, SupplierInvoice
 from apps.notifications.models import Notification
-from apps.orders.models import PurchaseOrder
+from apps.orders.models import POAmendment, PurchaseOrder
 from apps.organization.models import Department, FiscalPeriod
 from apps.receipts.models import GoodsReceipt, InspectionRecord, RejectionRecord
 from apps.requisitions.models import PurchaseRequisition
@@ -1829,3 +1829,285 @@ class ManagerVendorWatchlistAPIView(APIView):
             )
 
         return Response({"results": results, "count": len(results)}, status=status.HTTP_200_OK)
+
+
+class ManagerApprovalsAPIView(APIView):
+    """
+    Returns real database-backed pending and evaluated approval records
+    for the Procurement Manager governance desk.
+    Supports tab ('pending', 'history'), type ('all', 'pr', 'po_amendment'),
+    search filtering, and pagination.
+    """
+    permission_classes = [IsAuthenticated, IsProcurementManager]
+
+    def get(self, request):
+        org = get_user_org(request.user)
+        tab = request.GET.get('tab', 'pending').strip().lower()
+        type_filter = request.GET.get('type', 'all').strip().lower()
+        search_query = request.GET.get('search', '').strip()
+
+        # 1. Base Querysets
+        pr_pending_statuses = [
+            PurchaseRequisition.STATUS_SUBMITTED,
+            PurchaseRequisition.STATUS_MANAGER_REVIEW,
+            PurchaseRequisition.STATUS_BUDGET_REVIEW,
+        ]
+        pr_history_statuses = [
+            PurchaseRequisition.STATUS_APPROVED,
+            PurchaseRequisition.STATUS_REJECTED,
+            PurchaseRequisition.STATUS_SOURCING,
+            PurchaseRequisition.STATUS_PO_ISSUED,
+        ]
+
+        prs_qs = PurchaseRequisition.objects.select_related('department', 'requester').prefetch_related('lines')
+        if org:
+            prs_qs = prs_qs.filter(department__organization=org)
+
+        if tab == 'history':
+            prs_filtered = prs_qs.filter(status__in=pr_history_statuses)
+        else:
+            prs_filtered = prs_qs.filter(status__in=pr_pending_statuses)
+
+        # PO Amendments
+        amendments_qs = POAmendment.objects.select_related(
+            'po', 'po__vendor', 'po__cost_center__department', 'requested_by', 'approved_by'
+        )
+        if org:
+            amendments_qs = amendments_qs.filter(po__cost_center__department__organization=org)
+
+        if tab == 'history':
+            amendments_filtered = amendments_qs.filter(status__in=[POAmendment.STATUS_APPROVED, POAmendment.STATUS_REJECTED])
+        else:
+            amendments_filtered = amendments_qs.filter(status=POAmendment.STATUS_PENDING)
+
+        # 2. Summary KPIs (Database-backed)
+        total_pending_prs = prs_qs.filter(status__in=pr_pending_statuses).count()
+        total_pending_amendments = amendments_qs.filter(status=POAmendment.STATUS_PENDING).count()
+        total_pending_count = total_pending_prs + total_pending_amendments
+
+        pr_pending_val = prs_qs.filter(status__in=pr_pending_statuses).aggregate(tot=Sum('total_amount'))['tot'] or Decimal('0.00')
+        amend_pending_val = amendments_qs.filter(status=POAmendment.STATUS_PENDING).aggregate(tot=Sum('delta_amount'))['tot'] or Decimal('0.00')
+        total_pending_value = float(pr_pending_val + amend_pending_val)
+
+        total_history_count = (
+            prs_qs.filter(status__in=pr_history_statuses).count()
+            + amendments_qs.filter(status__in=[POAmendment.STATUS_APPROVED, POAmendment.STATUS_REJECTED]).count()
+        )
+
+        items = []
+
+        # Process PRs
+        if type_filter in ['all', 'pr', 'requisition']:
+            for pr in prs_filtered.order_by('-updated_at')[:100]:
+                urgency = 'HIGH' if pr.status == PurchaseRequisition.STATUS_BUDGET_REVIEW or pr.total_amount > Decimal('50000.00') else 'NORMAL'
+                req_name = f"{pr.requester.first_name} {pr.requester.last_name}".strip() if pr.requester else "Unknown"
+                if not req_name and pr.requester:
+                    req_name = pr.requester.email
+                items.append({
+                    'id': str(pr.id),
+                    'type': 'PR',
+                    'type_display': 'Purchase Requisition',
+                    'reference_number': pr.pr_number,
+                    'title': pr.title,
+                    'department': pr.department.name if pr.department else 'General',
+                    'requester_name': req_name,
+                    'requester_email': pr.requester.email if pr.requester else '',
+                    'vendor_name': '-',
+                    'amount': float(pr.total_amount),
+                    'previous_amount': None,
+                    'revised_amount': None,
+                    'delta_amount': None,
+                    'currency': 'USD',
+                    'status': pr.status,
+                    'status_display': pr.get_status_display(),
+                    'urgency': urgency,
+                    'justification': pr.justification or '',
+                    'lines_count': pr.lines.count(),
+                    'created_at': pr.created_at.isoformat(),
+                    'updated_at': pr.updated_at.isoformat(),
+                    'detail_url': f'/requisitions/{pr.id}/',
+                    'can_approve': pr.status in pr_pending_statuses,
+                })
+
+        # Process PO Amendments
+        if type_filter in ['all', 'po', 'po_amendment', 'amendment']:
+            for am in amendments_filtered.order_by('-updated_at')[:100]:
+                po = am.po
+                prev_amt = am.previous_version_snapshot.get('total_amount') if am.previous_version_snapshot else (po.total_amount - am.delta_amount)
+                rev_amt = float(prev_amt) + float(am.delta_amount) if prev_amt is not None else float(po.total_amount)
+                req_name = f"{am.requested_by.first_name} {am.requested_by.last_name}".strip() if am.requested_by else "Manager"
+                if not req_name and am.requested_by:
+                    req_name = am.requested_by.email
+                items.append({
+                    'id': str(am.id),
+                    'type': 'PO_AMENDMENT',
+                    'type_display': 'PO Amendment',
+                    'reference_number': f"{po.po_number} (Amd #{am.amendment_number})",
+                    'po_id': str(po.id),
+                    'po_number': po.po_number,
+                    'amendment_number': am.amendment_number,
+                    'title': f"Amendment #{am.amendment_number} for PO {po.po_number}",
+                    'department': po.cost_center.department.name if po.cost_center and po.cost_center.department else 'Procurement',
+                    'requester_name': req_name,
+                    'requester_email': am.requested_by.email if am.requested_by else '',
+                    'vendor_name': po.vendor.legal_name if po.vendor else 'Unknown Vendor',
+                    'amount': float(am.delta_amount),
+                    'previous_amount': float(prev_amt) if prev_amt is not None else float(po.total_amount),
+                    'revised_amount': rev_amt,
+                    'delta_amount': float(am.delta_amount),
+                    'currency': 'USD',
+                    'status': am.status,
+                    'status_display': am.get_status_display(),
+                    'urgency': 'HIGH' if am.delta_amount > Decimal('10000.00') else 'NORMAL',
+                    'justification': am.reason or '',
+                    'lines_count': len(am.pending_line_items or []),
+                    'created_at': am.created_at.isoformat(),
+                    'updated_at': am.updated_at.isoformat(),
+                    'detail_url': '/manager/purchase-orders/',
+                    'can_approve': am.status == POAmendment.STATUS_PENDING,
+                })
+
+        # Apply search filter
+        if search_query:
+            sq = search_query.lower()
+            items = [
+                it for it in items
+                if sq in it['reference_number'].lower()
+                or sq in it['title'].lower()
+                or sq in it['department'].lower()
+                or sq in it['requester_name'].lower()
+                or sq in it['requester_email'].lower()
+                or sq in it['vendor_name'].lower()
+                or sq in it['justification'].lower()
+            ]
+
+        items.sort(key=lambda x: x['updated_at'], reverse=True)
+
+        try:
+            page = max(1, int(request.GET.get('page', 1)))
+        except (ValueError, TypeError):
+            page = 1
+        try:
+            page_size = max(1, min(100, int(request.GET.get('page_size', 10))))
+        except (ValueError, TypeError):
+            page_size = 10
+
+        paginator = Paginator(items, page_size)
+        page_obj = paginator.get_page(page)
+
+        return Response({
+            'summary': {
+                'total_pending_count': total_pending_count,
+                'pr_pending_count': total_pending_prs,
+                'po_amendment_pending_count': total_pending_amendments,
+                'total_pending_value': total_pending_value,
+                'history_count': total_history_count,
+            },
+            'results': list(page_obj.object_list),
+            'count': paginator.count,
+            'page': page,
+            'page_size': page_size,
+            'total_pages': paginator.num_pages,
+            'has_next': page_obj.has_next(),
+            'has_previous': page_obj.has_previous(),
+        }, status=status.HTTP_200_OK)
+
+
+class ManagerApprovalActionAPIView(APIView):
+    """
+    Executes approval or rejection governance action on PR or PO Amendment.
+    """
+    permission_classes = [IsAuthenticated, IsProcurementManager]
+
+    def post(self, request):
+        item_type = str(request.data.get('item_type', '')).strip().upper()
+        item_id = str(request.data.get('item_id', '')).strip()
+        action = str(request.data.get('action', '')).strip().upper()
+        comments = str(request.data.get('comments', '')).strip()
+
+        if action not in ['APPROVE', 'REJECT']:
+            return Response(
+                {'error': "Invalid action. Supported actions are 'APPROVE' or 'REJECT'."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if not item_id:
+            return Response(
+                {'error': 'Missing required item_id.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        from apps.orders.models import POAmendment
+        from apps.requisitions.models import PurchaseRequisition
+
+        try:
+            if item_type == 'PR':
+                from apps.approvals.services import process_approval_action_service
+                pr = PurchaseRequisition.objects.get(id=item_id)
+                action_rec = process_approval_action_service(
+                    target_object=pr,
+                    actor=request.user,
+                    action=action,
+                    comments=comments,
+                )
+                pr.refresh_from_db()
+                return Response({
+                    'success': True,
+                    'message': f"Requisition {pr.pr_number} has been {action.lower()}d successfully.",
+                    'item_id': str(pr.id),
+                    'new_status': pr.status,
+                    'action_id': str(action_rec.id) if action_rec else None,
+                }, status=status.HTTP_200_OK)
+
+            elif item_type in ['PO_AMENDMENT', 'PO']:
+                from apps.orders.services import (
+                    approve_po_amendment_service,
+                    reject_po_amendment_service,
+                )
+                amendment = POAmendment.objects.get(id=item_id)
+                if action == 'APPROVE':
+                    updated_po = approve_po_amendment_service(
+                        amendment=amendment,
+                        approver=request.user,
+                        comments=comments,
+                    )
+                    amendment.refresh_from_db()
+                    return Response({
+                        'success': True,
+                        'message': f"PO Amendment #{amendment.amendment_number} for PO {updated_po.po_number} approved successfully.",
+                        'item_id': str(amendment.id),
+                        'new_status': amendment.status,
+                        'po_status': updated_po.status,
+                    }, status=status.HTTP_200_OK)
+                else:
+                    if not comments:
+                        comments = 'Rejected by Procurement Manager.'
+                    updated_po = reject_po_amendment_service(
+                        amendment=amendment,
+                        rejector=request.user,
+                        reason=comments,
+                    )
+                    amendment.refresh_from_db()
+                    return Response({
+                        'success': True,
+                        'message': f"PO Amendment #{amendment.amendment_number} for PO {updated_po.po_number} rejected.",
+                        'item_id': str(amendment.id),
+                        'new_status': amendment.status,
+                        'po_status': updated_po.status,
+                    }, status=status.HTTP_200_OK)
+            else:
+                return Response(
+                    {'error': f"Unsupported item_type '{item_type}'. Supported: 'PR', 'PO_AMENDMENT'."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+        except (PurchaseRequisition.DoesNotExist, POAmendment.DoesNotExist):
+            return Response(
+                {'error': f"Target {item_type} record with ID {item_id} not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        except Exception as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )

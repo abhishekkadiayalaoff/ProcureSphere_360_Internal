@@ -45,7 +45,7 @@
                     PROCUREMENT
                 </li>
                 <li class="nav-item">
-                    <a href="/approvals/inbox/" class="nav-link manager-nav-link rounded-3 py-2 px-3 small d-flex align-items-center justify-content-between {% if '/approvals/' in request.path %}active bg-primary text-white fw-bold{% else %}text-light text-opacity-75{% endif %}">
+                    <a href="/manager/approvals/" class="nav-link manager-nav-link rounded-3 py-2 px-3 small d-flex align-items-center justify-content-between {% if '/manager/approvals/' in request.path %}active bg-primary text-white fw-bold{% else %}text-light text-opacity-75{% endif %}">
                         <span class="d-flex align-items-center">
                             <i class="fa-solid fa-square-check me-2"></i>
                             <span>Pending Approvals</span>
@@ -96,9 +96,15 @@
                     SUPPLIERS
                 </li>
                 <li class="nav-item">
-                    <a href="/manager/vendor-risk/" class="nav-link manager-nav-link rounded-3 py-2 px-3 small {% if '/manager/vendor-risk/' in request.path %}active bg-primary text-white fw-bold{% else %}text-light text-opacity-75{% endif %}">
+                    <a href="/manager/vendor-risk/" class="nav-link manager-nav-link rounded-3 py-2 px-3 small {% if request.path == '/manager/vendor-risk/' %}active bg-primary text-white fw-bold{% else %}text-light text-opacity-75{% endif %}">
                         <i class="fa-solid fa-shield-halved me-2"></i>
                         <span>Vendor Risk</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="/manager/vendor-risk/suspension/" class="nav-link manager-nav-link rounded-3 py-2 px-3 small {% if '/manager/vendor-risk/suspension/' in request.path %}active bg-primary text-white fw-bold{% else %}text-light text-opacity-75{% endif %}">
+                        <i class="fa-solid fa-scale-balanced me-2"></i>
+                        <span>Vendor Suspension</span>
                     </a>
                 </li>
 
