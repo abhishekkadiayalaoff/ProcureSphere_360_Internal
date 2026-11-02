@@ -227,6 +227,7 @@ class Command(BaseCommand):
         for v in [vendor1, vendor2, vendor3]:
             doc = _ensure_kyc_doc(v)
             self._activate_vendor(v, doc, proc_exec, legal_user, proc_mgr)
+            v.refresh_from_db()
 
         vendor_user.vendor = vendor1
         vendor_user.save(update_fields=["vendor"])
