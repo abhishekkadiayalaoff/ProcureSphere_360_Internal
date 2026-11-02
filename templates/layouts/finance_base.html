@@ -78,6 +78,11 @@
                     </a>
                 </li>
                 <li class="nav-item">
+                    <a href="/requisitions/" class="nav-link rounded sidebar-link {% if '/requisitions/' in request.path %}active bg-danger fw-bold text-white border-start border-3 border-light{% else %}text-light{% endif %}">
+                        <i class="fa-solid fa-file-signature me-2 {% if '/requisitions/' in request.path %}text-white{% else %}text-warning{% endif %} w-20px text-center"></i> PR Approvals
+                    </a>
+                </li>
+                <li class="nav-item">
                     <a href="/budgets/ledger/" class="nav-link rounded sidebar-link {% if request.path == '/budgets/ledger/' %}active bg-danger fw-bold text-white border-start border-3 border-light{% else %}text-light{% endif %}">
                         <i class="fa-solid fa-book-journal-whills me-2 {% if request.path == '/budgets/ledger/' %}text-white{% else %}text-secondary{% endif %} w-20px text-center"></i> Spend Ledger
                     </a>
@@ -144,6 +149,11 @@
                 <li class="nav-item">
                     <a href="/budgets/exceptions/" class="nav-link rounded sidebar-link {% if request.path == '/budgets/exceptions/' %}active bg-danger fw-bold text-white{% else %}text-light{% endif %}">
                         <i class="fa-solid fa-scale-unbalanced me-2 text-center" style="width: 20px;"></i> Budget Exceptions
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="/requisitions/" class="nav-link rounded sidebar-link {% if '/requisitions/' in request.path %}active bg-danger fw-bold text-white{% else %}text-light{% endif %}">
+                        <i class="fa-solid fa-file-signature me-2 text-center" style="width: 20px;"></i> PR Approvals
                     </a>
                 </li>
                 <li class="nav-item">

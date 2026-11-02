@@ -144,6 +144,25 @@ def home_view(request):  # noqa: C901
             .select_related("department", "cost_center", "requester")
             .order_by("-updated_at")
         )
+        from apps.approvals.models import ApprovalAction
+        user_approved_pr_ids = ApprovalAction.objects.filter(
+            actor=request.user,
+            target_model_name="PurchaseRequisition",
+            action=ApprovalAction.ACTION_APPROVE,
+        ).values_list("target_object_id", flat=True)
+
+        pending_finance_prs = (
+            PurchaseRequisition.objects.filter(
+                status__in=[
+                    PurchaseRequisition.STATUS_MANAGER_REVIEW,
+                    PurchaseRequisition.STATUS_SUBMITTED,
+                ]
+            )
+            .exclude(id__in=user_approved_pr_ids)
+            .select_related("department", "cost_center", "requester")
+            .order_by("-updated_at")
+        )
+
         ready_for_payment_qs = SupplierInvoice.objects.filter(
             status=SupplierInvoice.STATUS_READY_FOR_PAYMENT
         )
@@ -159,6 +178,10 @@ def home_view(request):  # noqa: C901
                 | Q(invoice__vendor__organization=scoped_org)
             ).distinct()
             open_budget_exceptions = open_budget_exceptions.filter(
+                Q(department__organization=scoped_org)
+                | Q(cost_center__department__organization=scoped_org)
+            ).distinct()
+            pending_finance_prs = pending_finance_prs.filter(
                 Q(department__organization=scoped_org)
                 | Q(cost_center__department__organization=scoped_org)
             ).distinct()
@@ -182,6 +205,7 @@ def home_view(request):  # noqa: C901
 
         if selected_dept_id:
             open_budget_exceptions = open_budget_exceptions.filter(department_id=selected_dept_id)
+            pending_finance_prs = pending_finance_prs.filter(department_id=selected_dept_id)
             open_match_exceptions = open_match_exceptions.filter(
                 invoice__po__requisition__department_id=selected_dept_id
             )
@@ -197,6 +221,7 @@ def home_view(request):  # noqa: C901
 
         if selected_cc_id:
             open_budget_exceptions = open_budget_exceptions.filter(cost_center_id=selected_cc_id)
+            pending_finance_prs = pending_finance_prs.filter(cost_center_id=selected_cc_id)
             open_match_exceptions = open_match_exceptions.filter(
                 invoice__po__requisition__cost_center_id=selected_cc_id
             )
@@ -231,12 +256,14 @@ def home_view(request):  # noqa: C901
             "metrics": {
                 "pending_match_exceptions": open_match_exceptions.count(),
                 "pending_budget_exceptions": open_budget_exceptions.count(),
+                "pending_pr_approvals": pending_finance_prs.count(),
                 "ready_for_payment": ready_for_payment_qs.count(),
                 "committed_spend": float(committed_spend),
                 "actual_spend": float(actual_spend),
             },
             "open_match_exceptions": open_match_exceptions[:10],
             "open_budget_exceptions": open_budget_exceptions[:10],
+            "pending_finance_prs": pending_finance_prs[:10],
             "departments": departments,
             "cost_centers": filtered_cost_centers,
             "all_cost_centers": all_cost_centers,
