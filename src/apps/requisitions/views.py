@@ -103,6 +103,19 @@ def list_view(request):
             )
         else:
             items = PurchaseRequisition.objects.all().order_by("-created_at")
+    elif role_code == Role.FINANCE_AP:
+        user_org = getattr(user, "effective_organization", None) or getattr(user, "organization", None)
+        if user_org and not (getattr(user, "is_superuser", False) and not user.organization_id):
+            items = (
+                PurchaseRequisition.objects.filter(
+                    Q(department__organization=user_org)
+                    | Q(cost_center__department__organization=user_org)
+                )
+                .distinct()
+                .order_by("-created_at")
+            )
+        else:
+            items = PurchaseRequisition.objects.all().order_by("-created_at")
     else:
         items = PurchaseRequisition.objects.all().order_by("-created_at")
 
