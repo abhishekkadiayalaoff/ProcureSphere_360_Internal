@@ -14,8 +14,31 @@
   <meta property="og:description" content="{{ page_description|default:'Connect requests, approvals, suppliers, sourcing, purchase orders, invoices, contracts and financial control in one intelligent procurement platform.' }}" />
   <meta property="og:type" content="website" />
 
-  <!-- Favicon -->
-  <link rel="icon" type="image/png" href="{% static 'landing/images/procuresphere_360_emblem.png' %}" />
+    <!-- Production WebP Favicon Suite -->
+    <link rel="icon" type="image/webp" sizes="32x32" href="{% static 'icons/favicon-32x32.webp' %}">
+    <link rel="icon" type="image/webp" sizes="16x16" href="{% static 'icons/favicon-16x16.webp' %}">
+    <link rel="icon" type="image/webp" href="{% static 'icons/favicon.webp' %}">
+    <link rel="apple-touch-icon" href="{% static 'icons/apple-touch-icon.webp' %}">
+    <link rel="manifest" href="{% static 'icons/site.webmanifest' %}">
+        <meta name="theme-color" content="#ffffff">
+    <style>
+      html, body {
+        background-color: #f6f8fb;
+      }
+
+      /* Prevent mobile overlay menu from ever flashing on desktop or when closed */
+      .overlay-menu-container:not(.is-open) {
+        display: none !important;
+        visibility: hidden !important;
+        opacity: 0 !important;
+        pointer-events: none !important;
+      }
+      @media (min-width: 1025px) {
+        .overlay-menu-container {
+          display: none !important;
+        }
+      }
+    </style>
 
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />

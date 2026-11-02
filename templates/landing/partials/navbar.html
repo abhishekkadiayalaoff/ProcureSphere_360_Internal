@@ -1,4 +1,15 @@
 {% load static %}
+<style id="nav-mobile-critical">
+  @media (max-width: 1024px) {
+    .navarino-links-desktop { display: none !important; }
+    .navarino-blue-btn { display: none !important; }
+    .navarino-mobile-toggle { display: inline-flex !important; }
+    .nav-inner { justify-content: space-between !important; min-height: 64px !important; }
+  }
+  @media (max-width: 540px) {
+    .nav-login-btn { display: none !important; }
+  }
+</style>
 <header class="site-nav navarino-nav {% if scrolled %}is-scrolled{% endif %}" id="site-navbar" style="z-index:1000;">
   <div class="nav-inner navarino-inner">
 
@@ -109,7 +120,7 @@
 
     <!-- Right: Login + CTA + Mobile Toggle -->
     <div class="nav-right-group">
-      <button type="button" id="login-btn" class="nav-login-btn" aria-label="Login to Portal">Login</button>
+      <a href="/login/" id="login-btn" class="nav-login-btn" aria-label="Login to Portal" style="text-decoration:none;">Login</a>
       <a href="/#contact" class="navarino-blue-btn" id="nav-demo-btn">Request a Demo</a>
       <button type="button" id="mobile-menu-toggle" class="navarino-mobile-toggle" aria-label="Open Navigation" aria-expanded="false">
         <svg id="hamburger-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">

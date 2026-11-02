@@ -196,7 +196,7 @@
     if (overlayLoginBtn) {
       overlayLoginBtn.addEventListener('click', () => {
         closeMenu();
-        openLoginModal();
+        window.location.href = '/login/';
       });
     }
   })();
@@ -225,21 +225,18 @@
   }
 
   function setLoginCharState(state) {
+    // Keep character strictly in idle stage at all times as requested
     const img = document.getElementById('login-char-img');
-    if (!img) return;
-    const states = {
-      normal: '/static/landing/login-states/normal.webp',
-      typing: '/static/landing/login-states/password-typing.webp',
-      failed: '/static/landing/login-states/login-failed.webp',
-      success: '/static/landing/login-states/login-success.webp',
-    };
-    if (states[state]) img.src = states[state];
+    if (img) img.src = '/static/landing/login-states/normal.webp';
   }
 
   (function loginModal() {
-    // Trigger buttons
+    // Direct navigation to dedicated /login/ page
     document.querySelectorAll('#login-btn, #overlay-login-btn').forEach(btn => {
-      btn.addEventListener('click', openLoginModal);
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        window.location.href = '/login/';
+      });
     });
 
     // Close button
@@ -262,15 +259,8 @@
       }
     });
 
-    // Password field interaction → character state
+    // Password field interaction
     const pwInput = document.getElementById('login-password');
-    if (pwInput) {
-      pwInput.addEventListener('focus', () => setLoginCharState('typing'));
-      pwInput.addEventListener('blur', () => {
-        const form = document.getElementById('login-form');
-        if (form && !form.dataset.loginState) setLoginCharState('normal');
-      });
-    }
 
     // Toggle password visibility
     const togglePw = document.getElementById('toggle-password');
@@ -296,7 +286,7 @@
 
         // Client-side empty check
         if (!emailVal || !pwVal) {
-          setLoginCharState('failed');
+          // setLoginCharState('failed');
           if (errorEl) {
             errorEl.textContent = 'Please enter both email and password.';
             errorEl.style.display = 'flex';
@@ -332,7 +322,7 @@
           data = await resp.json();
         } catch (_) {
           // Network / parse failure — restore button, show generic error
-          setLoginCharState('failed');
+          // setLoginCharState('failed');
           if (errorEl) {
             errorEl.textContent = 'A network error occurred. Please try again.';
             errorEl.style.display = 'flex';
@@ -344,12 +334,12 @@
         }
 
         if (data && data.ok) {
-          setLoginCharState('success');
+          // setLoginCharState('success');
           // Navigate to role-based dashboard returned by ERP backend
           window.location.href = data.redirect || '/';
         } else {
           // Invalid credentials — stay in modal, show error
-          setLoginCharState('failed');
+          // setLoginCharState('failed');
           if (errorEl) {
             errorEl.textContent = data?.error || 'Invalid email or password. Please try again.';
             errorEl.style.display = 'flex';
@@ -521,6 +511,8 @@
       // Update card states
       document.querySelectorAll('[data-module]').forEach(card => {
         const isActive = parseInt(card.dataset.module, 10) === moduleId;
+        card.classList.toggle('is-active', isActive);
+        card.classList.toggle('is-inspecting', isActive);
         card.style.outline = isActive ? '3.5px solid ' + (card.dataset.accent || '#00d2ff') : '1.5px solid rgba(15,27,45,0.12)';
         card.style.outlineOffset = '2px';
         card.style.transform = isActive ? 'scale(1.025)' : '';

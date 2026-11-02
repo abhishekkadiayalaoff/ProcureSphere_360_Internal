@@ -576,33 +576,6 @@ def process(request):
 
 
 # ---------------------------------------------------------------------------
-# Roles
-# ---------------------------------------------------------------------------
-
-def roles(request):
-    """Roles page."""
-    roles_list = [
-        {'key': 'REQUESTER', 'label': 'Requester', 'desc': 'Submit requests, track status, and stay within policy — all in one place.', 'items': ['My Requests', 'Policy guidance', 'Budget visibility'], 'color': '#2456D6'},
-        {'key': 'PROCUREMENT', 'label': 'Procurement', 'desc': 'Manage sourcing events, suppliers, and purchase orders from a single workspace.', 'items': ['Sourcing', 'Suppliers', 'Purchase Orders'], 'color': '#6554c0'},
-        {'key': 'FINANCE', 'label': 'Finance', 'desc': 'Control invoices, budgets, and payment schedules with full financial visibility.', 'items': ['Invoices', 'Budget', 'Payments'], 'color': '#10b981'},
-        {'key': 'LEGAL', 'label': 'Legal', 'desc': 'Track contracts, renewals, and compliance obligations with structured oversight.', 'items': ['Contracts', 'Renewals', 'Obligations'], 'color': '#f59e0b'},
-        {'key': 'STORES', 'label': 'Stores', 'desc': 'Manage warehouse receipts, quality inspection, and inventory context efficiently.', 'items': ['Receipts', 'Inspection', 'Inventory context'], 'color': '#ec4899'},
-        {'key': 'COMPLIANCE', 'label': 'Compliance', 'desc': 'Monitor audit trails, risk indicators, and internal control compliance.', 'items': ['Audit', 'Risk', 'Controls'], 'color': '#ef4444'},
-        {'key': 'VENDOR', 'label': 'Vendor', 'desc': 'Onboard, bid on sourcing events, and acknowledge purchase orders — all online.', 'items': ['Onboarding', 'Bids', 'PO acknowledgement'], 'color': '#06b6d4'},
-    ]
-    context = {
-        'page_title': 'Roles — ProcureSphere 360 Team Workspaces',
-        'page_description': 'One platform with role-specific workspaces for every team in the procurement cycle.',
-        'active_nav': 'roles',
-        'badge': 'WHO IS IT FOR',
-        'title': 'One platform. Every team.',
-        'subtitle': 'One connected system adapts to the decisions each team owns.',
-        'roles': roles_list,
-    }
-    return render(request, 'landing/roles.html', context)
-
-
-# ---------------------------------------------------------------------------
 # FAQ
 # ---------------------------------------------------------------------------
 

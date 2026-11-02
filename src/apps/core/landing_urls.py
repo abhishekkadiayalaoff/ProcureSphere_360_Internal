@@ -20,7 +20,6 @@ from apps.core.landing_views import (
     faq,
     landing_home,
     process,
-    roles,
     solutions,
 )
 
@@ -31,7 +30,6 @@ urlpatterns = [
     path("solutions/", solutions, name="landing_solutions"),
     path("benefits/", benefits, name="landing_benefits"),
     path("process/", process, name="landing_process"),
-    path("roles/", roles, name="landing_roles"),
     path("faq/", faq, name="landing_faq"),
     # HTMX partial endpoint for the contact / demo-request form
     path("htmx/contact/", contact_submit, name="contact_submit"),

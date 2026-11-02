@@ -54,14 +54,18 @@ class Command(BaseCommand):
 
     def _activate_vendor(self, vendor, kyc_doc, proc_exec, legal_user, proc_mgr):
         """Submit KYC, verify doc, and approve vendor if not already active."""
+        vendor.refresh_from_db()
         if vendor.status == Vendor.STATUS_ACTIVE:
             return
         if vendor.status in (Vendor.STATUS_DRAFT, Vendor.STATUS_CHANGES_REQUIRED):
             submit_vendor_kyc_service(vendor=vendor, user=proc_exec)
+            vendor.refresh_from_db()
         if not kyc_doc.is_verified:
             verify_vendor_document_service(document=kyc_doc, verifier=legal_user)
+        vendor.refresh_from_db()
         if vendor.status not in (Vendor.STATUS_ACTIVE,):
             approve_vendor_service(vendor=vendor, manager=proc_mgr, notes="Verified & Approved")
+            vendor.refresh_from_db()
 
     def handle(self, *args, **options):
         self.stdout.write(self.style.SUCCESS("Starting ProcureSphere 360 idempotent seed..."))
@@ -115,42 +119,6 @@ class Command(BaseCommand):
         admin_hpe.organization = org
         admin_hpe.save(update_fields=["organization"])
 
-        dept_it, _ = Department.objects.get_or_create(
-            organization=org, code="IT-OPS", defaults={"name": "IT Infrastructure Operations"}
-        )
-        dept_ops, _ = Department.objects.get_or_create(
-            organization=org, code="OPS", defaults={"name": "Global Operations"}
-        )
-        dept_eng, _ = Department.objects.get_or_create(
-            organization=org, code="ENG", defaults={"name": "Hardware Engineering & R&D"}
-
-
-        dept_it, _ = Department.objects.get_or_create(organization=org, code="IT-OPS", defaults={"name": "IT Infrastructure Operations"})
-        dept_ops, _ = Department.objects.get_or_create(organization=org, code="OPS", defaults={"name": "Global Operations"})
-        dept_eng, _ = Department.objects.get_or_create(organization=org, code="ENG", defaults={"name": "Hardware Engineering & R&D"})
-
-        approver.organization = org
-        approver.department = dept_it
-        approver.save(update_fields=["organization", "department"])
-        app_ps.organization = org
-        app_ps.department = dept_it
-        app_ps.save(update_fields=["organization", "department"])
-
-
-        for u in [approver, requester]:
-            if u.department != dept_it:
-                u.department = dept_it
-                u.save(update_fields=["department"])
-
-        cost_center, _ = CostCenter.objects.get_or_create(department=dept_it, code="CC-IT-101", defaults={"name": "Compute & Cloud Center", "manager": approver})
-        cost_center_ops, _ = CostCenter.objects.get_or_create(department=dept_ops, code="CC-OPS-201", defaults={"name": "Supply Chain & Facilities", "manager": approver})
-        cost_center_eng, _ = CostCenter.objects.get_or_create(department=dept_eng, code="CC-ENG-301", defaults={"name": "Hardware Systems R&D", "manager": approver})
-
-        fiscal_period, _ = FiscalPeriod.objects.get_or_create(
-            organization=org, year=2026, period_number=1,
-            defaults={"name": "FY2026-Q1", "start_date": today - timezone.timedelta(days=30), "end_date": today + timezone.timedelta(days=150)},
-
-
         dept_it, _ = Department.objects.get_or_create(organization=org, code="IT-OPS", defaults={"name": "IT Infrastructure Operations"})
         dept_ops, _ = Department.objects.get_or_create(organization=org, code="OPS", defaults={"name": "Global Operations"})
         dept_eng, _ = Department.objects.get_or_create(organization=org, code="ENG", defaults={"name": "Hardware Engineering & R&D"})
@@ -168,7 +136,6 @@ class Command(BaseCommand):
             organization=org, year=2026, period_number=1,
             defaults={"name": "FY2026-Q1", "start_date": today - timezone.timedelta(days=30), "end_date": today + timezone.timedelta(days=150)},
         )
-
         # ── 4. Budgets ────────────────────────────────────────────────────────
         from apps.budgets.models import Budget
         if not Budget.objects.filter(cost_center=cost_center, fiscal_period=fiscal_period).exists():
@@ -215,6 +182,9 @@ class Command(BaseCommand):
         for v in [vendor1, vendor2, vendor3]:
             doc = _ensure_kyc_doc(v)
             self._activate_vendor(v, doc, proc_exec, legal_user, proc_mgr)
+        vendor1.refresh_from_db()
+        vendor2.refresh_from_db()
+        vendor3.refresh_from_db()
 
         vendor_user.vendor = vendor1
         vendor_user.save(update_fields=["vendor"])

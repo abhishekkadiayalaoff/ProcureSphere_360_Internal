@@ -242,6 +242,145 @@ if ('scrollRestoration' in history) {
   }
 }
 
+/* Responsive About Platform Section for Mobile */
+.about-platform-section,
+.solution-slide {
+  scroll-margin-top: 90px;
+}
+
+@media (max-width: 900px) {
+  #about-platform-grid {
+    grid-template-columns: 1fr !important;
+    padding: 0 16px !important;
+    gap: 20px !important;
+  }
+  #module-detail-panel {
+    min-height: auto !important;
+    width: 100% !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .cinematic-cards-grid {
+    gap: 12px !important;
+  }
+  .module-detail-head-row {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 8px !important;
+  }
+  .module-detail-title-group {
+    width: 100% !important;
+  }
+  .module-detail-title-group h3 {
+    font-size: 21px !important;
+    line-height: 1.25 !important;
+  }
+  .module-detail-badge {
+    align-self: flex-start !important;
+  }
+}
+
+/* Module Action Hint (Desktop vs Mobile) */
+.desktop-module-hint {
+  display: inline;
+}
+.mobile-module-hint {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  .desktop-module-hint {
+    display: none !important;
+  }
+  .mobile-module-hint {
+    display: inline !important;
+  }
+
+  /* Perfectly Center Title on all cards in mobile view (never cut off or shifted right) */
+  .uiverse-card .title,
+  .uiverse-card.is-active .title,
+  .uiverse-card:hover .title {
+    position: absolute !important;
+    left: 50% !important;
+    top: 56% !important;
+    transform: translate(-50%, -50%) !important;
+    width: 90% !important;
+    text-align: center !important;
+    color: #ffffff !important;
+    font-size: clamp(14px, 3.8vw, 17px) !important;
+    line-height: 1.22 !important;
+    font-weight: 750 !important;
+    margin: 0 !important;
+    display: block !important;
+    opacity: 1 !important;
+    pointer-events: none !important;
+  }
+
+  /* Keep Logo in top-left on all cards */
+  .uiverse-card .logo,
+  .uiverse-card.is-active .logo,
+  .uiverse-card:hover .logo {
+    position: absolute !important;
+    top: 14px !important;
+    left: 16px !important;
+    width: 28px !important;
+    height: 28px !important;
+    opacity: 1 !important;
+    transform: none !important;
+    pointer-events: none !important;
+    display: flex !important;
+  }
+
+  /* Keep decorative swooshes (box2 & box3) identical on ALL cards (including active) */
+  .uiverse-card .box2,
+  .uiverse-card.is-active .box2,
+  .uiverse-card:hover .box2 {
+    top: -70% !important;
+    right: -45% !important;
+    border-radius: 200px !important;
+    background: rgb(255, 174, 0) !important;
+    display: block !important;
+    opacity: 1 !important;
+  }
+
+  .uiverse-card .box3,
+  .uiverse-card.is-active .box3,
+  .uiverse-card:hover .box3 {
+    top: -62% !important;
+    right: -30% !important;
+    border-radius: 200px !important;
+    background: rgb(255, 194, 52) !important;
+    display: block !important;
+    opacity: 1 !important;
+  }
+
+  /* Completely remove the orange hover overlay (box1) on mobile so cards stay clean */
+  .uiverse-card .box1,
+  .uiverse-card.is-active .box1,
+  .uiverse-card:hover .box1 {
+    display: none !important;
+  }
+
+  .uiverse-card .box .content {
+    display: none !important;
+  }
+}
+
+.contact-image-wrap {
+  margin: 20px auto 0 !important;
+  max-width: 270px !important;
+  display: flex !important;
+  justify-content: center !important;
+}
+
+@media (max-width: 768px) {
+  .contact-image-wrap {
+    margin: 26px auto 0 !important;
+    max-width: 220px !important;
+  }
+}
+
 /* Hide card-tap-cue on cards as requested */
 .card-tap-cue,
 .uiverse-card .card-tap-cue,
@@ -348,8 +487,11 @@ if ('scrollRestoration' in history) {
         <!-- Interactive Module Cards -->
         <div id="about-platform-grid" style="display:grid;grid-template-columns:minmax(0,1.15fr) minmax(380px,0.95fr);gap:clamp(24px,3vw,40px);align-items:stretch;padding:0 clamp(24px,4vw,56px);">
           <div style="display:flex;flex-direction:column;">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;font-size:13px;color:#475569;font-weight:650;">
-              <span>Select or hover on any module below:</span>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;font-size:13px;color:#475569;font-weight:650;flex-wrap:wrap;gap:8px;">
+              <span class="module-action-hint">
+                <span class="desktop-module-hint">Hover on any module:</span>
+                <span class="mobile-module-hint">Select any module below:</span>
+              </span>
               <span id="active-module-label" style="color:#0052cc;font-weight:750;">Purchase and Approvals selected →</span>
             </div>
             <div class="cinematic-cards-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
@@ -393,14 +535,14 @@ if ('scrollRestoration' in history) {
               {% for mod in platform_modules %}
               <div class="module-detail-content {% if forloop.first %}is-active{% endif %}" id="module-detail-{{ mod.id }}">
                 <div style="width:100%;">
-                  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-                    <div style="display:flex;align-items:center;gap:12px;">
+                  <div class="module-detail-head-row" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
+                    <div class="module-detail-title-group" style="display:flex;align-items:center;gap:12px;">
                       <div style="width:42px;height:42px;border-radius:11px;background:{{ mod.theme_color }}18;color:{{ mod.theme_color }};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                         {% include 'landing/partials/icon.html' with name=mod.icon size=24 %}
                       </div>
-                      <h3 style="margin:0;font-size:25px;font-weight:800;font-family:'Playfair Display','Georgia',serif;color:#0F1B2D;line-height:1.2;">{{ mod.name_html|default:mod.name|safe }}</h3>
+                      <h3 style="margin:0;font-size:clamp(20px, 4vw, 25px);font-weight:800;font-family:'Playfair Display','Georgia',serif;color:#0F1B2D;line-height:1.22;">{{ mod.name_html|default:mod.name|safe }}</h3>
                     </div>
-                    <span style="font-size:11.5px;font-weight:750;color:{{ mod.theme_color }};background:{{ mod.theme_color }}14;padding:5px 11px;border-radius:6px;font-family:'DM Mono',monospace;letter-spacing:0.04em;">ENTERPRISE CAPABILITY</span>
+                    <span class="module-detail-badge" style="font-size:11.5px;font-weight:750;color:{{ mod.theme_color }};background:{{ mod.theme_color }}14;padding:5px 11px;border-radius:6px;font-family:'DM Mono',monospace;letter-spacing:0.04em;white-space:nowrap;">ENTERPRISE CAPABILITY</span>
                   </div>
                   <p style="margin:0 0 16px 0;font-size:16px;color:#0F1B2D;line-height:1.55;font-weight:600;">{{ mod.summary }}</p>
                   <div style="display:flex;flex-direction:column;gap:11px;">
@@ -445,8 +587,8 @@ if ('scrollRestoration' in history) {
             Delivering frictionless sourcing, automated billing, and seamless procurement for over 500+ global enterprises.
           </p>
         </div>
-        <div class="trust-animation-container" style="max-width: 410px;">
-          <img src="{% static 'landing/images/enterprise_collaboration.png' %}?v=2" alt="Enterprise Procurement Collaboration" />
+        <div class="trust-animation-container" style="max-width: 460px;">
+          <img src="{% static 'landing/images/enterprise_collaboration.webp' %}?v=3" alt="Enterprise Procurement Collaboration" loading="lazy" />
         </div>
       </div>
 
@@ -725,7 +867,7 @@ if ('scrollRestoration' in history) {
         Bring us the workflow you want to connect.
       </h2>
     </div>
-    <div style="margin-top:-40px;max-width:300px;display:flex;justify-content:center;">
+    <div class="contact-image-wrap" style="margin:22px auto 0;max-width:270px;display:flex;justify-content:center;">
       <img
         id="contact-vendor-img"
         src="{% static 'landing/roles/vendor/idle.webp' %}"

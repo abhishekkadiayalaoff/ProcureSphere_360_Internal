@@ -1,6 +1,7 @@
 from django.contrib import admin
 from django.http import JsonResponse
 from django.urls import include, path, re_path
+from django.views.generic.base import RedirectView
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
 from apps.accounts.api_views import SessionLoginView, SessionLogoutView
@@ -19,12 +20,15 @@ from apps.core.views import (
 from .healthchecks import health, readyz
 
 urlpatterns = [
+    path("favicon.ico", RedirectView.as_view(url="/static/icons/favicon.ico", permanent=False), name="favicon"),
     path("health", health, name="health"),
     path("readyz", readyz, name="readyz"),
     re_path(r"^.*prompts\.json$", lambda request: JsonResponse({})),
     path("admin/logout/", portal_logout_view, name="admin_logout_override"),
     path("admin/", admin.site.urls),
     path("login/", portal_login_view, name="login"),
+    path("login", portal_login_view),
+    path("logout", portal_logout_view),
     path("logout/", portal_logout_view, name="logout"),
     path("password-change/", password_change_view, name="password_change"),
     path("accounts/change-password/", change_password_view, name="change_password"),
