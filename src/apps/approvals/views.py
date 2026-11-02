@@ -94,12 +94,24 @@ def _get_approval_querysets(user, role_code):
     )
 
 
-def _get_base_layout(role_code):
+def _get_base_layout(user, role_code):
     """Determine layout template based on user role."""
+    if (user and getattr(user, "is_superuser", False)) or role_code in [
+        Role.SUPER_ADMIN,
+        "SUPER_ADMIN",
+        "ADMIN",
+    ]:
+        return "layouts/superadmin_base.html"
     if role_code in [Role.LEGAL_MGR, "LEGAL_MGR"]:
         return "layouts/legal_base.html"
-    if role_code in [Role.DEPT_APPROVER, Role.PROC_MGR]:
+    if role_code in [Role.DEPT_APPROVER, Role.PROC_MGR, "DEPT_APPROVER", "PROC_MGR"]:
         return "layouts/approver_base.html"
+    if role_code in [Role.FINANCE_AP, "FINANCE_AP"]:
+        return "layouts/finance_base.html"
+    if role_code in [Role.AUDITOR, "AUDITOR"]:
+        return "audit/base_auditor.html"
+    if role_code in [Role.STORES_RECEIVER, "STORES_RECEIVER"]:
+        return "layouts/stores_base.html"
     return "layouts/requester_base.html"
 
 
@@ -208,7 +220,7 @@ def approvals_inbox_view(request):
         pending_display = page_obj
         history_display = history_prs
 
-    base_layout = _get_base_layout(role_code)
+    base_layout = _get_base_layout(request.user, role_code)
 
     context = {
         "pending_prs": pending_display,
