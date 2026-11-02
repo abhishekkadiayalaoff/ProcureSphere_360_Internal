@@ -374,6 +374,9 @@ def approve_purchase_requisition_service(
                         raise ValidationError("Department Approver can only approve requisitions for their own department.")
                 else:
                     is_authorized = True
+            elif approver_role_code in [Role.PROC_MGR, Role.SUPER_ADMIN]:
+                # Procurement Manager executive oversight on PR approval chain
+                is_authorized = True
 
         if not is_authorized:
             raise ValidationError(
