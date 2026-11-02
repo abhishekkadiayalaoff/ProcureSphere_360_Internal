@@ -1,3 +1,5 @@
+from decimal import Decimal, InvalidOperation
+
 from django import forms
 from django.contrib.auth import password_validation
 from django.utils import timezone
@@ -419,7 +421,15 @@ class BudgetAdminForm(forms.ModelForm):
         widgets = {
             "cost_center": forms.Select(attrs={"class": "form-select"}),
             "fiscal_period": forms.Select(attrs={"class": "form-select"}),
-            "allocated_amount": forms.NumberInput(attrs={"class": "form-control", "step": "0.01"}),
+            "allocated_amount": forms.NumberInput(
+                attrs={
+                    "class": "form-control w-100",
+                    "step": "0.01",
+                    "min": "0",
+                    "max": "999999999999.99",
+                    "inputmode": "decimal",
+                }
+            ),
             "allow_overspend": forms.CheckboxInput(attrs={"class": "form-check-input"}),
         }
 
@@ -448,6 +458,26 @@ class BudgetAdminForm(forms.ModelForm):
                 self.initial["fiscal_period"] = (active or fp_qs.first()).pk
         else:
             self.fields["fiscal_period"].empty_label = "No fiscal period yet — add one first"
+        self.fields["allocated_amount"].help_text = (
+            "Enter an amount with at most 12 digits before the decimal (max 999,999,999,999.99)."
+        )
+
+    def clean_allocated_amount(self):
+        amount = self.cleaned_data.get("allocated_amount")
+        if amount is None:
+            return amount
+        try:
+            amount = Decimal(amount)
+        except (InvalidOperation, TypeError, ValueError):
+            raise forms.ValidationError("Enter a valid budget amount.")
+        if amount < 0:
+            raise forms.ValidationError("Allocated amount cannot be negative.")
+        # DecimalField max_digits=14, decimal_places=2 → 12 integer digits.
+        if amount.quantize(Decimal("0.01")) >= Decimal("1000000000000"):
+            raise forms.ValidationError(
+                "Allocated amount is too large. Use at most 12 digits before the decimal."
+            )
+        return amount.quantize(Decimal("0.01"))
 
 
 class FiscalPeriodAdminForm(forms.ModelForm):
@@ -467,7 +497,9 @@ class FiscalPeriodAdminForm(forms.ModelForm):
             "name": forms.TextInput(
                 attrs={"class": "form-control", "placeholder": "e.g. FY2026-Q1"}
             ),
-            "year": forms.NumberInput(attrs={"class": "form-control", "placeholder": "2026"}),
+            "year": forms.NumberInput(
+                attrs={"class": "form-control", "placeholder": "2026", "min": "2000"}
+            ),
             "period_number": forms.NumberInput(attrs={"class": "form-control", "min": "1"}),
             "start_date": forms.DateInput(
                 attrs={"class": "form-control", "type": "date"}, format="%Y-%m-%d"
@@ -483,6 +515,8 @@ class FiscalPeriodAdminForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.fields["start_date"].input_formats = ["%Y-%m-%d"]
         self.fields["end_date"].input_formats = ["%Y-%m-%d"]
+        current_year = timezone.localdate().year
+        self.fields["year"].widget.attrs["min"] = str(current_year)
         scoped_org = _get_form_scoped_org(request)
         if scoped_org:
             self.fields["organization"].queryset = Organization.objects.filter(id=scoped_org.id)
@@ -498,6 +532,23 @@ class FiscalPeriodAdminForm(forms.ModelForm):
         end = cleaned.get("end_date")
         if start and end and end < start:
             self.add_error("end_date", "End date must be on or after the start date.")
+        current_year = timezone.localdate().year
+        year = cleaned.get("year")
+        if year is not None and year < current_year:
+            self.add_error(
+                "year",
+                f"Fiscal year cannot be earlier than the current year ({current_year}).",
+            )
+        if start and start.year < current_year:
+            self.add_error(
+                "start_date",
+                f"Start date cannot be in a year before {current_year}.",
+            )
+        if end and end.year < current_year:
+            self.add_error(
+                "end_date",
+                f"End date cannot be in a year before {current_year}.",
+            )
         org = cleaned.get("organization")
         year = cleaned.get("year")
         period_number = cleaned.get("period_number")
