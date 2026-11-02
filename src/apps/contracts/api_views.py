@@ -89,6 +89,21 @@ class ContractViewSet(viewsets.ModelViewSet):
         )
         serializer.instance = contract
 
+    def perform_update(self, serializer):
+        instance = self.get_object()
+        if instance.status != Contract.STATUS_DRAFT:
+            raise serializers.ValidationError(
+                {"status": [f"Contracts in '{instance.status}' status cannot be edited directly. Use contract amendment versioning."]}
+            )
+        serializer.save()
+
+    def perform_destroy(self, instance):
+        if instance.status != Contract.STATUS_DRAFT:
+            raise serializers.ValidationError(
+                {"status": [f"Contracts in '{instance.status}' status cannot be deleted. Terminate or archive the contract instead."]}
+            )
+        instance.delete()
+
     @action(detail=True, methods=["post"], url_path="submit-legal")
     def submit_legal(self, request, pk=None):
         contract = self.get_object()

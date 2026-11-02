@@ -429,6 +429,19 @@ def reject_purchase_requisition_service(
     if not comments or not comments.strip():
         raise ValidationError("Rejection justification comments are mandatory.")
 
+    from apps.accounts.models import Role
+    if requisition.requester_id == approver.id and not approver.is_superuser:
+        raise ValidationError("Self-rejection is prohibited: Requesters cannot reject their own Purchase Requisitions via approver workflow.")
+
+    role_code = getattr(approver, "role_code", None) or (
+        approver.role.code if getattr(approver, "role", None) else None
+    )
+    if not (
+        approver.is_superuser
+        or role_code in [Role.SUPER_ADMIN, Role.DEPT_APPROVER, Role.PROC_MGR, Role.FINANCE_AP]
+    ):
+        raise ValidationError(f"User '{approver.email}' is not authorized to reject purchase requisitions.")
+
     previous_status = requisition.status
     requisition.status = PurchaseRequisition.STATUS_REJECTED
     requisition.save(update_fields=["status", "updated_at"])
