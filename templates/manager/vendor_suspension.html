@@ -556,7 +556,7 @@
                 const dateStr = v.updated_at ? new Date(v.updated_at).toLocaleDateString() : 'Recent';
 
                 return `
-                    <tr class="${v.current_risk_level === 'HIGH' || v.status === 'SUSPENDED' ? 'border-start border-4 border-danger bg-danger-subtle bg-opacity-10' : ''}">
+                    <tr class="align-middle">
                         <td class="ps-3 py-2">
                             <a href="/vendors/${v.id}/" class="fw-bold text-dark text-decoration-none small hover-primary">${v.legal_name}</a>
                             <div class="text-muted" style="font-size: 0.65rem;">${v.vendor_number}</div>
