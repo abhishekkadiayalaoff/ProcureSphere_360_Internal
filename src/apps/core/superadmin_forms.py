@@ -258,10 +258,29 @@ class UserAdminForm(forms.ModelForm):
 
 
 
-        self.fields["role"].queryset = Role.objects.all().order_by("name")
+        scoped_org = _get_form_scoped_org(request)
+        if not scoped_org and self.instance and getattr(self.instance, "organization_id", None):
+            scoped_org = self.instance.organization
 
+        role_qs = Role.objects.all().order_by("name")
+        if scoped_org:
+            # Exclude roles already assigned in this organization, EXCEPT Role.REQUESTER which is unlimited
+            assigned_user_qs = User.objects.filter(
+                organization=scoped_org,
+                role__isnull=False,
+            )
+            if self.instance and self.instance.pk and not getattr(self.instance, "_state", None).adding:
+                assigned_user_qs = assigned_user_qs.exclude(pk=self.instance.pk)
 
+            assigned_role_ids = set(assigned_user_qs.values_list("role_id", flat=True))
+            requester_role = Role.objects.filter(code=Role.REQUESTER).first()
+            if requester_role and requester_role.id in assigned_role_ids:
+                assigned_role_ids.remove(requester_role.id)
 
+            if assigned_role_ids:
+                role_qs = role_qs.exclude(id__in=assigned_role_ids)
+
+        self.fields["role"].queryset = role_qs
         self.fields["role"].empty_label = "-- Select Role --"
 
         from apps.organization.models import Organization
@@ -559,9 +578,25 @@ class UserAdminForm(forms.ModelForm):
 
         cleaned_data = super().clean()
 
-
-
         role = cleaned_data.get("role")
+
+        # Enforce single user per role in organization, EXCEPT Role.REQUESTER which is unlimited
+        if role and role.code != Role.REQUESTER:
+            clean_scoped_org = _get_form_scoped_org(self.request) or (
+                self.instance.organization if (self.instance and getattr(self.instance, "organization_id", None)) else None
+            )
+            if clean_scoped_org:
+                existing_role_user = User.objects.filter(
+                    organization=clean_scoped_org,
+                    role=role,
+                )
+                if self.instance and self.instance.pk and not getattr(self.instance, "_state", None).adding:
+                    existing_role_user = existing_role_user.exclude(pk=self.instance.pk)
+                if existing_role_user.exists():
+                    self.add_error(
+                        "role",
+                        f"The role '{role.name}' is already assigned to {existing_role_user.first().email}. Each organization can have only one user per role (Requesters are unlimited).",
+                    )
 
 
 

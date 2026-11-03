@@ -481,79 +481,25 @@ def user_edit_view(request, user_id):
             send_email_flag = _should_send_welcome_email(request, default=True)
 
             new_password = form.cleaned_data.get("password")
-
             if new_password and new_password.strip():
-
                 raw_pwd = new_password.strip()
-
                 user.set_password(raw_pwd)
-
                 user.must_change_password = True
-
                 user.save()
-
+                send_email_flag = _should_send_welcome_email(request, default=True)
                 if send_email_flag:
-
                     email_status, email_error = send_user_welcome_email(
-
                         user=user,
-
                         temporary_password=raw_pwd,
-
                         request=request,
-
                     )
-
                     if email_status == "SENT":
-
                         messages.info(request, f"Updated credentials email successfully sent to {user.email}.")
-
                     elif email_status == "QUEUED":
-
                         messages.info(request, f"Updated credentials email queued for delivery to {user.email}.")
-
                     else:
-
                         messages.warning(request, f"Credentials updated, but email could not be delivered: {email_error}")
-
-            elif send_email_flag:
-
-                # If send_welcome_email is checked but password was left blank,
-
-                # generate a fresh temporary password so valid credentials can be emailed to the user
-
-                raw_pwd = generate_secure_password()
-
-                user.set_password(raw_pwd)
-
-                user.must_change_password = True
-
-                user.save()
-
-                email_status, email_error = send_user_welcome_email(
-
-                    user=user,
-
-                    temporary_password=raw_pwd,
-
-                    request=request,
-
-                )
-
-                if email_status == "SENT":
-
-                    messages.info(request, f"Login credentials email successfully sent to {user.email}.")
-
-                elif email_status == "QUEUED":
-
-                    messages.info(request, f"Login credentials email queued for delivery to {user.email}.")
-
-                else:
-
-                    messages.warning(request, f"User saved, but credentials email could not be delivered: {email_error}")
-
             else:
-
                 user.save()
 
 
@@ -598,7 +544,8 @@ def user_edit_view(request, user_id):
 
 
 
-            messages.success(request, f"User '{user.email}' updated successfully.")
+            status_str = "Active" if user.is_active else "Disabled"
+            messages.success(request, f"User '{user.email}' updated successfully ({status_str}).")
 
             response = HttpResponse("<script>window.location.reload();</script>")
             response["HX-Refresh"] = "true"

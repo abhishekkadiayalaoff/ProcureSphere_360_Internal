@@ -100,10 +100,22 @@
             <input type="hidden" name="send_welcome_email" value="on">
             <input type="hidden" name="send_welcome_email_present" value="1">
 
-            <!-- Active User Account Switch (Checked by default on create) -->
+            <!-- Active User Account Switch -->
             <div class="col-12">
                 <div class="form-check form-switch mt-2">
-                    <input type="checkbox" name="is_active" class="form-check-input" id="id_is_active" {% if is_edit %}{% if form.instance.is_active %}checked{% endif %}{% else %}checked{% endif %}>
+                    {% if is_edit %}
+                        {% if form.is_bound %}
+                            <input type="checkbox" name="is_active" class="form-check-input" id="id_is_active" {% if form.is_active.value %}checked{% endif %}>
+                        {% else %}
+                            <input type="checkbox" name="is_active" class="form-check-input" id="id_is_active" {% if user_obj.is_active or form.instance.is_active %}checked{% endif %}>
+                        {% endif %}
+                    {% else %}
+                        {% if form.is_bound %}
+                            <input type="checkbox" name="is_active" class="form-check-input" id="id_is_active" {% if form.is_active.value %}checked{% endif %}>
+                        {% else %}
+                            <input type="checkbox" name="is_active" class="form-check-input" id="id_is_active" checked>
+                        {% endif %}
+                    {% endif %}
                     <label class="form-check-label fw-semibold" for="id_is_active">Active User Account</label>
                 </div>
                 {% if form.is_active.errors %}<div class="text-danger small mt-1">{{ form.is_active.errors }}</div>{% endif %}
