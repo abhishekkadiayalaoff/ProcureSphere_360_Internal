@@ -81,12 +81,7 @@ def _get_scoped_vendor_or_404(request, vendor_id, select_category=False):
         qs = qs.select_related("category")
     scoped_org = getattr(request.user, "effective_organization", None)
     if scoped_org:
-        qs = qs.filter(
-            Q(organization=scoped_org)
-            | Q(organization__isnull=True)
-            | Q(created_by__organization=scoped_org)
-            | Q(created_by__department__organization=scoped_org)
-        )
+        qs = qs.filter(organization=scoped_org)
     else:
         role_code = getattr(request.user, "role_code", None) or (
             request.user.role.code if getattr(request.user, "role", None) else None

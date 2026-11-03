@@ -20,7 +20,7 @@ def test_all_role_dashboard_slug_urls_render_200(client):
         (Role.STORES_RECEIVER, "/stores/", "Stores"),
         (Role.LEGAL_MGR, "/legal/", "Legal"),
         (Role.AUDITOR, "/audit/dashboard/", "Auditor"),
-        (Role.SUPER_ADMIN, "/superadmin/", "Super Admin"),
+        (Role.SUPER_ADMIN, "/superadmin/", "Admin"),
         (Role.VENDOR_USER, "/vendor/", "Vendor"),
     ]
 
