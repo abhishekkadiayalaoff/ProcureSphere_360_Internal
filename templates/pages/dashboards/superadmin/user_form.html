@@ -100,23 +100,28 @@
             <input type="hidden" name="send_welcome_email" value="on">
             <input type="hidden" name="send_welcome_email_present" value="1">
 
-            <!-- Active User Account Switch -->
+            <!-- Active User Account Switch with Dynamic Status Indicator -->
             <div class="col-12">
-                <div class="form-check form-switch mt-2">
-                    {% if is_edit %}
-                        {% if form.is_bound %}
-                            <input type="checkbox" name="is_active" class="form-check-input" id="id_is_active" {% if form.is_active.value %}checked{% endif %}>
+                <label class="form-label fw-semibold text-secondary small">Account Status (Active / Disabled)</label>
+                <div class="d-flex align-items-center gap-2 mt-1">
+                    <div class="form-check form-switch m-0">
+                        {% if is_edit %}
+                            {% if form.is_bound %}
+                                <input type="checkbox" name="is_active" class="form-check-input" id="id_is_active" {% if form.is_active.value %}checked{% endif %}>
+                            {% else %}
+                                <input type="checkbox" name="is_active" class="form-check-input" id="id_is_active" {% if user_obj.is_active %}checked{% endif %}>
+                            {% endif %}
                         {% else %}
-                            <input type="checkbox" name="is_active" class="form-check-input" id="id_is_active" {% if user_obj.is_active or form.instance.is_active %}checked{% endif %}>
+                            {% if form.is_bound %}
+                                <input type="checkbox" name="is_active" class="form-check-input" id="id_is_active" {% if form.is_active.value %}checked{% endif %}>
+                            {% else %}
+                                <input type="checkbox" name="is_active" class="form-check-input" id="id_is_active" checked>
+                            {% endif %}
                         {% endif %}
-                    {% else %}
-                        {% if form.is_bound %}
-                            <input type="checkbox" name="is_active" class="form-check-input" id="id_is_active" {% if form.is_active.value %}checked{% endif %}>
-                        {% else %}
-                            <input type="checkbox" name="is_active" class="form-check-input" id="id_is_active" checked>
-                        {% endif %}
-                    {% endif %}
-                    <label class="form-check-label fw-semibold" for="id_is_active">Active User Account</label>
+                    </div>
+                    <span id="userStatusBadge" class="badge {% if is_edit and not user_obj.is_active %}bg-danger bg-opacity-10 text-danger border border-danger{% else %}bg-success bg-opacity-10 text-success border border-success{% endif %} fw-semibold">
+                        {% if is_edit and not user_obj.is_active %}Disabled / Inactive Account{% else %}Active User Account{% endif %}
+                    </span>
                 </div>
                 {% if form.is_active.errors %}<div class="text-danger small mt-1">{{ form.is_active.errors }}</div>{% endif %}
             </div>
@@ -131,7 +136,24 @@
 </form>
 
 <script>
+window.updateUserStatusLabel = function(el) {
+    var badge = document.getElementById("userStatusBadge");
+    if (!badge) return;
+    if (el.checked) {
+        badge.className = "badge bg-success bg-opacity-10 text-success border border-success fw-semibold";
+        badge.textContent = "Active User Account";
+    } else {
+        badge.className = "badge bg-danger bg-opacity-10 text-danger border border-danger fw-semibold";
+        badge.textContent = "Disabled / Inactive Account";
+    }
+};
 (function() {
+    var activeCheck = document.getElementById("id_is_active");
+    if (activeCheck) {
+        activeCheck.addEventListener("change", function() {
+            if (window.updateUserStatusLabel) window.updateUserStatusLabel(this);
+        });
+    }
     var roleSelect = document.getElementById("id_role");
     var deptSelect = document.getElementById("id_department");
     var reqWrapper = document.getElementById("requester-dept-cc-wrapper");

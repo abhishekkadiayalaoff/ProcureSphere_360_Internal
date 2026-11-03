@@ -499,6 +499,22 @@ def user_edit_view(request, user_id):
                         messages.info(request, f"Updated credentials email queued for delivery to {user.email}.")
                     else:
                         messages.warning(request, f"Credentials updated, but email could not be delivered: {email_error}")
+            elif request.POST.get("send_welcome_email") in ["on", "true", "1"] and not request.POST.get("send_welcome_email_present"):
+                raw_pwd = generate_secure_password()
+                user.set_password(raw_pwd)
+                user.must_change_password = True
+                user.save()
+                email_status, email_error = send_user_welcome_email(
+                    user=user,
+                    temporary_password=raw_pwd,
+                    request=request,
+                )
+                if email_status == "SENT":
+                    messages.info(request, f"Updated credentials email successfully sent to {user.email}.")
+                elif email_status == "QUEUED":
+                    messages.info(request, f"Updated credentials email queued for delivery to {user.email}.")
+                else:
+                    messages.warning(request, f"Credentials updated, but email could not be delivered: {email_error}")
             else:
                 user.save()
 
@@ -887,7 +903,7 @@ def org_create_view(request):
 
             admin_password = form.cleaned_data.get("admin_password")
 
-            send_welcome_flag = form.cleaned_data.get("send_welcome_email", True)
+            send_welcome_flag = bool(form.cleaned_data.get("send_welcome_email", False))
 
             org, admin_user, raw_pwd = create_organization_with_admin_service(
 
@@ -3397,3 +3413,22 @@ def location_delete_view(request, location_id):
 
     return redirect(request.META.get("HTTP_REFERER", "/superadmin/locations/"))
 
+
+
+@login_required
+def user_toggle_status_view(request, user_id):
+    if not _is_super_admin(request.user):
+        return HttpResponse("<div class='alert alert-danger m-3'>Permission Denied.</div>", status=403)
+    user = get_object_or_404(User, pk=user_id)
+    scoped_org = get_user_scoped_org(request.user)
+    if scoped_org:
+        user_org_id = user.organization_id or (user.department.organization_id if user.department else None)
+        if user_org_id != scoped_org.id:
+            return HttpResponse("<div class='alert alert-danger m-3'>Permission Denied: User belongs to another organization.</div>", status=403)
+    user.is_active = not user.is_active
+    user.save(update_fields=["is_active"])
+    status_str = "Active" if user.is_active else "Disabled"
+    messages.success(request, f"User '{user.email}' is now {status_str}.")
+    response = HttpResponse("<script>window.location.reload();</script>")
+    response["HX-Refresh"] = "true"
+    return response
