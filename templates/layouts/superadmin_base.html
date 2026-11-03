@@ -23,7 +23,7 @@
         <div class="flex-grow-1 overflow-y-auto px-2 py-3">
             <ul class="nav nav-pills flex-column gap-1" id="menu">
                 <li class="nav-item">
-                    <a href="/superadmin/" class="nav-link sa-nav-link rounded-3 py-2 px-3 {% if request.path == '/superadmin/' or request.path == '/' %}active{% endif %}">
+                    <a href="/admin/dashboard/" class="nav-link sa-nav-link rounded-3 py-2 px-3 {% if request.path == '/admin/dashboard/' or request.path == '/superadmin/' or request.path == '/' %}active{% endif %}">
                         <i class="fa-solid fa-gauge-high me-2"></i><span>Dashboard</span>
                     </a>
                 </li>
@@ -36,11 +36,6 @@
                 <li class="nav-item">
                     <a href="/superadmin/organizations/" class="nav-link sa-nav-link rounded-3 py-2 px-3 {% if '/superadmin/organizations/' in request.path %}active{% endif %}">
                         <i class="fa-solid fa-sitemap me-2"></i><span>Organizations</span>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="/superadmin/locations/" class="nav-link sa-nav-link rounded-3 py-2 px-3 {% if '/superadmin/locations/' in request.path %}active{% endif %}">
-                        <i class="fa-solid fa-location-dot me-2"></i><span>Locations</span>
                     </a>
                 </li>
 

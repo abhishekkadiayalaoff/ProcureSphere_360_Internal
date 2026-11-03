@@ -137,6 +137,8 @@ def portal_login_view(request):
                 )
                 if role_code == "VENDOR_USER":
                     next_url = "/vendor/"
+                elif role_code == "SUPER_ADMIN" or getattr(user, "is_superuser", False):
+                    next_url = "/admin/dashboard/"
                 else:
                     next_url = "/"
 

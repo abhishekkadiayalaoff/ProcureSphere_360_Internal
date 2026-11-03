@@ -989,7 +989,7 @@ def org_create_view(request):
 
             )
 
-            if form.cleaned_data.get("import_standard_vendors", True):
+            if form.cleaned_data.get("import_standard_vendors", False):
                 from apps.vendors.services import import_standard_vendors_for_org_service
                 try:
                     count, msg = import_standard_vendors_for_org_service(org, actor=request.user)
