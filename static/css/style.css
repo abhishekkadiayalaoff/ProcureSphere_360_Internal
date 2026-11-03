@@ -1213,7 +1213,11 @@ textarea,
 select,
 .form-control,
 .form-select,
+<<<<<<< Updated upstream
 .modal input:not([type="checkbox"]):not([type="radio"]),
+=======
+.modal input,
+>>>>>>> Stashed changes
 .modal textarea,
 .modal select {
     background-color: #ffffff !important;
@@ -1228,7 +1232,11 @@ textarea:focus,
 select:focus,
 .form-control:focus,
 .form-select:focus,
+<<<<<<< Updated upstream
 .modal input:focus:not([type="checkbox"]):not([type="radio"]),
+=======
+.modal input:focus,
+>>>>>>> Stashed changes
 .modal textarea:focus,
 .modal select:focus {
     background-color: #ffffff !important;
@@ -1237,6 +1245,7 @@ select:focus,
     box-shadow: 0 0 0 0.2rem rgba(59, 130, 246, 0.15) !important;
 }
 
+<<<<<<< Updated upstream
 /* Proper toggle switch rendering across all modals and pages */
 .form-switch .form-check-input {
     width: 2.25em !important;
@@ -1261,6 +1270,8 @@ select:focus,
     background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='%23ffffff'/%3e%3c/svg%3e") !important;
 }
 
+=======
+>>>>>>> Stashed changes
 input::placeholder,
 textarea::placeholder,
 .form-control::placeholder,
