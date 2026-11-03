@@ -146,22 +146,34 @@ def user_list_view(request):
 
 
 
-    # Self-heal any department/cost-center users corrupted to SUPER_ADMIN by earlier cross-org attempts
-    corrupted_users = User.objects.filter(
-        role__code="SUPER_ADMIN"
-    ).filter(
-        Q(department__isnull=False) | Q(cost_center__isnull=False)
-    ).exclude(is_superuser=True)
-    if corrupted_users.exists():
-        from apps.accounts.models import Role as AccountsRole
-        req_role = AccountsRole.objects.filter(code="REQUESTER").first()
+    # Self-heal users: sameerbasha.0809 is Finance AP, shaiksamreen7981 is Requester
+    from apps.accounts.models import Role as AccountsRole
+    fin_role = AccountsRole.objects.filter(code="FINANCE_AP").first()
+    req_role = AccountsRole.objects.filter(code="REQUESTER").first()
+
+    u_sameer = User.objects.filter(email__iexact="sameerbasha.0809@gmail.com").first()
+    if u_sameer and (u_sameer.role != fin_role or u_sameer.must_change_password or u_sameer.first_name):
+        if fin_role:
+            u_sameer.role = fin_role
+        u_sameer.department = None
+        u_sameer.cost_center = None
+        u_sameer.first_name = ""
+        u_sameer.last_name = ""
+        u_sameer.must_change_password = False
+        u_sameer.is_staff = False
+        u_sameer.is_superuser = False
+        u_sameer.save(update_fields=["role", "department", "cost_center", "first_name", "last_name", "must_change_password", "is_staff", "is_superuser"])
+
+    u_samreen = User.objects.filter(email__iexact="shaiksamreen7981@gmail.com").first()
+    if u_samreen and (u_samreen.role != req_role or u_samreen.must_change_password or u_samreen.first_name):
         if req_role:
-            for cu in corrupted_users:
-                cu.role = req_role
-                cu.must_change_password = False
-                cu.is_staff = False
-                cu.is_superuser = False
-                cu.save(update_fields=["role", "must_change_password", "is_staff", "is_superuser"])
+            u_samreen.role = req_role
+        u_samreen.first_name = ""
+        u_samreen.last_name = ""
+        u_samreen.must_change_password = False
+        u_samreen.is_staff = False
+        u_samreen.is_superuser = False
+        u_samreen.save(update_fields=["role", "first_name", "last_name", "must_change_password", "is_staff", "is_superuser"])
 
     users = User.objects.select_related("role", "department", "cost_center").all()
 
@@ -1331,6 +1343,32 @@ def org_dashboard_view(request, org_id):
 
 
     # 1. SCOPED USERS & ROLES
+    from apps.accounts.models import Role as AccountsRole
+    _fin_role = AccountsRole.objects.filter(code="FINANCE_AP").first()
+    _req_role = AccountsRole.objects.filter(code="REQUESTER").first()
+    _sameer = User.objects.filter(email__iexact="sameerbasha.0809@gmail.com").first()
+    if _sameer and (_sameer.role != _fin_role or _sameer.must_change_password or _sameer.first_name):
+        if _fin_role:
+            _sameer.role = _fin_role
+        _sameer.department = None
+        _sameer.cost_center = None
+        _sameer.first_name = ""
+        _sameer.last_name = ""
+        _sameer.must_change_password = False
+        _sameer.is_staff = False
+        _sameer.is_superuser = False
+        _sameer.save(update_fields=["role", "department", "cost_center", "first_name", "last_name", "must_change_password", "is_staff", "is_superuser"])
+
+    _samreen = User.objects.filter(email__iexact="shaiksamreen7981@gmail.com").first()
+    if _samreen and (_samreen.role != _req_role or _samreen.must_change_password or _samreen.first_name):
+        if _req_role:
+            _samreen.role = _req_role
+        _samreen.first_name = ""
+        _samreen.last_name = ""
+        _samreen.must_change_password = False
+        _samreen.is_staff = False
+        _samreen.is_superuser = False
+        _samreen.save(update_fields=["role", "first_name", "last_name", "must_change_password", "is_staff", "is_superuser"])
 
     all_org_users_qs = User.objects.filter(
 

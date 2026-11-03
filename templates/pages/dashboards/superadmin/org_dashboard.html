@@ -884,13 +884,11 @@
 
                                     <td class="ps-3">
 
-                                        <div class="fw-bold text-dark">{{ u.get_full_name|default:u.username }}</div>
+                                        <div class="fw-bold text-dark">
 
-                                        <a href="mailto:{{ u.email }}" class="small text-muted text-decoration-none">
+                                            <i class="fa-solid fa-envelope text-muted me-1.5 small"></i>{{ u.email }}
 
-                                            <i class="fa-solid fa-envelope me-1"></i>{{ u.email }}
-
-                                        </a>
+                                        </div>
 
                                     </td>
 
