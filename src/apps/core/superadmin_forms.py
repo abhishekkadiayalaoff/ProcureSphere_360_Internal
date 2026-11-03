@@ -199,17 +199,7 @@ class UserAdminForm(forms.ModelForm):
 
 
         model = User
-<<<<<<< Updated upstream
         fields = ["email", "phone_number", "role", "organization", "department", "cost_center", "is_active"]
-=======
-
-
-
-        fields = ["email", "phone_number", "role", "department", "cost_center", "is_active"]
-
-
-
->>>>>>> Stashed changes
         widgets = {
 
 
@@ -223,13 +213,7 @@ class UserAdminForm(forms.ModelForm):
 
 
             "role": forms.Select(attrs={"class": "form-select", "id": "id_role"}),
-<<<<<<< Updated upstream
             "organization": forms.Select(attrs={"class": "form-select", "id": "id_organization"}),
-=======
-
-
-
->>>>>>> Stashed changes
             "department": forms.Select(attrs={"class": "form-select", "id": "id_department"}),
 
 
@@ -280,7 +264,6 @@ class UserAdminForm(forms.ModelForm):
 
         self.fields["role"].empty_label = "-- Select Role --"
 
-<<<<<<< Updated upstream
         from apps.organization.models import Organization
         if scoped_org:
             self.fields["organization"].queryset = Organization.objects.filter(id=scoped_org.id)
@@ -291,13 +274,6 @@ class UserAdminForm(forms.ModelForm):
             self.fields["organization"].queryset = Organization.objects.filter(is_active=True).order_by("name")
             self.fields["organization"].empty_label = "-- Select Organization --"
             self.fields["organization"].required = False
-=======
-
-
-
-
-
->>>>>>> Stashed changes
 
         dept_qs = Department.objects.select_related("organization").all().order_by("name")
 
@@ -792,16 +768,10 @@ class UserAdminForm(forms.ModelForm):
 
 
             user.organization = scoped_org
-<<<<<<< Updated upstream
         elif user.department and not user.organization_id:
             user.organization = user.department.organization
         elif user.cost_center and user.cost_center.department and not user.organization_id:
             user.organization = user.cost_center.department.organization
-=======
-
-
-
->>>>>>> Stashed changes
         if commit:
 
 
