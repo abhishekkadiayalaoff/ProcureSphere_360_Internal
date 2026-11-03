@@ -82,8 +82,20 @@
             <div class="col-md-6">
                 <label class="form-label fw-semibold text-secondary small">Status</label>
                 <div class="form-check form-switch mt-2">
-                    {{ form.is_active }}
-                    <label class="form-check-label fw-semibold" for="{{ form.is_active.id_for_label }}">Active Organization</label>
+                    {% if is_edit %}
+                        {% if form.is_bound %}
+                            <input type="checkbox" name="is_active" class="form-check-input" id="id_is_active" {% if form.is_active.value %}checked{% endif %}>
+                        {% else %}
+                            <input type="checkbox" name="is_active" class="form-check-input" id="id_is_active" {% if form.instance.is_active %}checked{% endif %}>
+                        {% endif %}
+                    {% else %}
+                        {% if form.is_bound %}
+                            <input type="checkbox" name="is_active" class="form-check-input" id="id_is_active" {% if form.is_active.value %}checked{% endif %}>
+                        {% else %}
+                            <input type="checkbox" name="is_active" class="form-check-input" id="id_is_active" checked>
+                        {% endif %}
+                    {% endif %}
+                    <label class="form-check-label fw-semibold" for="id_is_active">Active Organization</label>
                 </div>
             </div>
             <div class="col-12">
@@ -129,18 +141,9 @@
                             {{ form.admin_last_name }}
                             {% if form.admin_last_name.errors %}<div class="text-danger small">{{ form.admin_last_name.errors }}</div>{% endif %}
                         </div>
-                        <div class="col-12 mt-2">
-                            <div class="alert alert-info py-2 px-3 mb-0 rounded-3 border border-info border-opacity-25 bg-info bg-opacity-10 d-flex align-items-center">
-                                <div class="form-check form-switch m-0 d-flex align-items-center">
-                                    <input type="hidden" name="send_welcome_email_present" value="1">
-                                    {{ form.send_welcome_email }}
-                                    <label class="form-check-label fw-semibold text-dark small ms-2 mb-0" for="{{ form.send_welcome_email.id_for_label }}">
-                                        <i class="fa-solid fa-bell text-info me-1"></i> Send Welcome Email Notification Alert
-                                    </label>
-                                </div>
-                            </div>
-                            {% if form.send_welcome_email.errors %}<div class="text-danger small mt-1">{{ form.send_welcome_email.errors }}</div>{% endif %}
-                        </div>
+                        <!-- Automated Welcome Email (Hidden - Always sends credentials to admin email via Brevo) -->
+                        <input type="hidden" name="send_welcome_email" value="on">
+                        <input type="hidden" name="send_welcome_email_present" value="1">
                         </div>
                     </div>
                 </div>

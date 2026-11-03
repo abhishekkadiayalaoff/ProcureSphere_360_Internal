@@ -1218,9 +1218,8 @@ class OrganizationAdminForm(forms.ModelForm):
 
 
         if is_create:
-
-
-
+            self.fields["is_active"].initial = True
+            self.initial["is_active"] = True
             self.initial["admin_email"] = ""
 
 
