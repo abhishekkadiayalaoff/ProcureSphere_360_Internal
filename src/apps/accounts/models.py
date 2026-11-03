@@ -255,10 +255,17 @@ class User(AbstractUser):
         return None
 
     def save(self, *args, **kwargs):
-        # Enforce DEF-001: Only users with SUPER_ADMIN role can ever be superuser or staff
-        role_code = self.role_code
-        if role_code and role_code != Role.SUPER_ADMIN:
+        # Platform Admin (is_superuser=True with NO organization) is the only account allowed staff/superuser access.
+        # All organization-scoped users (including Organization Super Admins) must NEVER be staff or superuser.
+        if self.organization_id is not None or (self.role and self.role.code != Role.SUPER_ADMIN) or not self.is_superuser:
             self.is_superuser = False
             self.is_staff = False
+
+        # Only Requesters are tied to a Department and Cost Center.
+        # All other roles belong to the entire organization and have no department/cost center.
+        if self.role and self.role.code != Role.REQUESTER:
+            self.department = None
+            self.cost_center = None
+
         super().save(*args, **kwargs)
 

@@ -22,10 +22,7 @@ from .services import evaluate_and_award_sourcing_event_service
 
 def get_user_org(user):
     if user and user.is_authenticated and not user.is_superuser:
-        if getattr(user, "department_id", None) and getattr(
-            user.department, "organization_id", None
-        ):
-            return user.department.organization
+        return getattr(user, "effective_organization", None)
     return None
 
 

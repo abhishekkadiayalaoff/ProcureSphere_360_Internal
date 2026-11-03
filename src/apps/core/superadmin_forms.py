@@ -699,10 +699,10 @@ class UserAdminForm(forms.ModelForm):
 
 
         else:
-            # For non-requester roles, clear cost center to preserve existing role behavior
+            # All non-requester roles belong to the entire organization:
+            # strictly clear department and cost center!
+            cleaned_data["department"] = None
             cleaned_data["cost_center"] = None
-            if not self.data.get("department"):
-                cleaned_data["department"] = None
 
 
 

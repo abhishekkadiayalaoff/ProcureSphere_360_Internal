@@ -1043,7 +1043,7 @@ def org_edit_view(request, org_id):
 
                     )
 
-                    user.is_staff = True
+                    user.is_staff = False
 
                 else:
 
@@ -1051,7 +1051,7 @@ def org_edit_view(request, org_id):
 
                     user.role = role
 
-                    user.is_staff = True
+                    user.is_staff = False
 
                     if form.cleaned_data.get("admin_first_name"):
 
@@ -1089,7 +1089,7 @@ def org_edit_view(request, org_id):
 
                 org.admin_user.organization = org
 
-                org.admin_user.is_staff = True
+                org.admin_user.is_staff = False
 
                 org.admin_user.is_active = True
 
@@ -1775,7 +1775,7 @@ def org_resend_credentials_view(request, org_id):
 
     admin_user.organization = org
 
-    admin_user.is_staff = True
+    admin_user.is_staff = False
 
     admin_user.is_active = True
 
