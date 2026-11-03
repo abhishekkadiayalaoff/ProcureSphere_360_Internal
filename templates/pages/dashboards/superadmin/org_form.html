@@ -35,7 +35,6 @@
         -webkit-text-fill-color: #94a3b8 !important;
         opacity: 1 !important;
     }
-<<<<<<< Updated upstream
     #modal-content-body input:-webkit-autofill,
     #modal-content-body input:-webkit-autofill:hover, 
     #modal-content-body input:-webkit-autofill:focus,
@@ -47,8 +46,6 @@
         color: #1e293b !important;
         transition: background-color 5000s ease-in-out 0s !important;
     }
-=======
->>>>>>> Stashed changes
 </style>
 
 <div class="modal-header bg-light border-bottom-0 pb-0">
@@ -148,19 +145,6 @@
                         <input type="hidden" name="send_welcome_email" value="on">
                         <input type="hidden" name="send_welcome_email_present" value="1">
                         </div>
-                        {% if not is_edit %}
-                        <div class="col-12 mt-2">
-                            <div class="alert alert-success py-2 px-3 mb-0 rounded-3 border border-success border-opacity-25 bg-success bg-opacity-10 d-flex align-items-center">
-                                <div class="form-check form-switch m-0 d-flex align-items-center">
-                                    {{ form.import_standard_vendors }}
-                                    <label class="form-check-label fw-semibold text-dark small ms-2 mb-0" for="{{ form.import_standard_vendors.id_for_label }}">
-                                        <i class="fa-solid fa-truck-ramp-box text-success me-1"></i> Import Standard Approved Vendors into New Organization
-                                    </label>
-                                </div>
-                            </div>
-                            {% if form.import_standard_vendors.errors %}<div class="text-danger small mt-1">{{ form.import_standard_vendors.errors }}</div>{% endif %}
-                        </div>
-                        {% endif %}
                     </div>
                 </div>
             </div>
@@ -175,43 +159,24 @@
 <script>
 {% if not is_edit %}
 (function() {
-<<<<<<< Updated upstream
     function purgeAutofill() {
         var emailInput = document.getElementById("id_admin_email");
         var pwdInput = document.getElementById("id_admin_password");
         if (emailInput && !emailInput.hasAttribute("data-user-typed")) {
             emailInput.value = "";
-=======
-    function clearAdminCredentialsAutofill() {
-        var emailInput = document.getElementById("id_admin_email");
-        var pwdInput = document.getElementById("id_admin_password");
-        if (emailInput && !emailInput.hasAttribute("data-user-typed")) {
-            if (emailInput.value === "superadmin@procuresphere.com" || !emailInput.value) {
-                emailInput.value = "";
-            }
->>>>>>> Stashed changes
         }
         if (pwdInput && !pwdInput.hasAttribute("data-user-typed")) {
             pwdInput.value = "";
         }
     }
-<<<<<<< Updated upstream
 
     purgeAutofill();
     var purgeInterval = setInterval(purgeAutofill, 50);
     setTimeout(function() { clearInterval(purgeInterval); }, 2500);
-=======
-    clearAdminCredentialsAutofill();
-    setTimeout(clearAdminCredentialsAutofill, 50);
-    setTimeout(clearAdminCredentialsAutofill, 150);
-    setTimeout(clearAdminCredentialsAutofill, 400);
-    setTimeout(clearAdminCredentialsAutofill, 800);
->>>>>>> Stashed changes
 
     var emailEl = document.getElementById("id_admin_email");
     var pwdEl = document.getElementById("id_admin_password");
     if (emailEl) {
-<<<<<<< Updated upstream
         emailEl.addEventListener("input", function() {
             this.setAttribute("data-user-typed", "true");
             clearInterval(purgeInterval);
@@ -228,22 +193,6 @@
         pwdEl.addEventListener("focus", function() {
             this.removeAttribute("readonly");
         });
-=======
-        emailEl.addEventListener("focus", function() {
-            this.removeAttribute("readonly");
-        });
-        emailEl.addEventListener("input", function() {
-            this.setAttribute("data-user-typed", "true");
-        });
-    }
-    if (pwdEl) {
-        pwdEl.addEventListener("focus", function() {
-            this.removeAttribute("readonly");
-        });
-        pwdEl.addEventListener("input", function() {
-            this.setAttribute("data-user-typed", "true");
-        });
->>>>>>> Stashed changes
     }
 })();
 {% endif %}

@@ -199,17 +199,7 @@ class UserAdminForm(forms.ModelForm):
 
 
         model = User
-<<<<<<< Updated upstream
         fields = ["email", "phone_number", "role", "organization", "department", "cost_center", "is_active"]
-=======
-
-
-
-        fields = ["email", "phone_number", "role", "department", "cost_center", "is_active"]
-
-
-
->>>>>>> Stashed changes
         widgets = {
 
 
@@ -223,13 +213,7 @@ class UserAdminForm(forms.ModelForm):
 
 
             "role": forms.Select(attrs={"class": "form-select", "id": "id_role"}),
-<<<<<<< Updated upstream
             "organization": forms.Select(attrs={"class": "form-select", "id": "id_organization"}),
-=======
-
-
-
->>>>>>> Stashed changes
             "department": forms.Select(attrs={"class": "form-select", "id": "id_department"}),
 
 
@@ -274,7 +258,6 @@ class UserAdminForm(forms.ModelForm):
 
 
 
-<<<<<<< Updated upstream
         scoped_org = _get_form_scoped_org(request)
         if not scoped_org and self.instance and getattr(self.instance, "organization_id", None):
             scoped_org = self.instance.organization
@@ -320,29 +303,6 @@ class UserAdminForm(forms.ModelForm):
 
 
         if scoped_org:
-=======
-        self.fields["role"].queryset = Role.objects.all().order_by("name")
-
-
-
-        self.fields["role"].empty_label = "-- Select Role --"
-
-
-
-
-
-
-
-        dept_qs = Department.objects.select_related("organization").all().order_by("name")
-
-
-
-        cc_qs = CostCenter.objects.select_related("department").all().order_by("name")
-
-
-
-        if scoped_org:
->>>>>>> Stashed changes
 
 
 
@@ -359,12 +319,9 @@ class UserAdminForm(forms.ModelForm):
 
 
         self.fields["department"].queryset = dept_qs
-<<<<<<< Updated upstream
         if not self.instance.pk or getattr(self.instance, "_state", None) and self.instance._state.adding:
             self.fields["is_active"].initial = True
             self.initial["is_active"] = True
-=======
->>>>>>> Stashed changes
 
 
 
@@ -436,7 +393,6 @@ class UserAdminForm(forms.ModelForm):
 
 
 
-<<<<<<< Updated upstream
             self.fields["is_active"].initial = True
             self.initial["is_active"] = True
 
@@ -444,13 +400,6 @@ class UserAdminForm(forms.ModelForm):
 
             self.fields["send_welcome_email"].initial = True
             self.initial["send_welcome_email"] = True
-=======
-            self.initial.setdefault("is_active", True)
-
-
-
-            self.initial.setdefault("send_welcome_email", True)
->>>>>>> Stashed changes
 
 
 
@@ -470,12 +419,8 @@ class UserAdminForm(forms.ModelForm):
 
 
 
-<<<<<<< Updated upstream
             self.fields["send_welcome_email"].initial = True
             self.initial["send_welcome_email"] = True
-=======
-            self.initial.setdefault("send_welcome_email", True)
->>>>>>> Stashed changes
 
 
 
@@ -633,7 +578,6 @@ class UserAdminForm(forms.ModelForm):
 
         cleaned_data = super().clean()
 
-<<<<<<< Updated upstream
         role = cleaned_data.get("role")
 
         # Enforce single user per role in organization, EXCEPT Role.REQUESTER which is unlimited
@@ -654,12 +598,6 @@ class UserAdminForm(forms.ModelForm):
                         f"The role '{role.name}' is already assigned to {existing_role_user.first().email}. Each organization can have only one user per role (Requesters are unlimited).",
                     )
 
-=======
-
-
-        role = cleaned_data.get("role")
-
->>>>>>> Stashed changes
 
 
         department = cleaned_data.get("department")
@@ -799,22 +737,10 @@ class UserAdminForm(forms.ModelForm):
 
 
         else:
-
-
-
             # For non-requester roles, clear cost center to preserve existing role behavior
-
-
-
             cleaned_data["cost_center"] = None
             if not self.data.get("department"):
                 cleaned_data["department"] = None
-
-
-
-
-
-
 
 
 
@@ -879,16 +805,10 @@ class UserAdminForm(forms.ModelForm):
 
 
             user.organization = scoped_org
-<<<<<<< Updated upstream
         elif user.department and not user.organization_id:
             user.organization = user.department.organization
         elif user.cost_center and user.cost_center.department and not user.organization_id:
             user.organization = user.cost_center.department.organization
-=======
-
-
-
->>>>>>> Stashed changes
         if commit:
 
 
@@ -1298,14 +1218,8 @@ class OrganizationAdminForm(forms.ModelForm):
 
 
         if is_create:
-<<<<<<< Updated upstream
             self.fields["is_active"].initial = True
             self.initial["is_active"] = True
-=======
-
-
-
->>>>>>> Stashed changes
             self.initial["admin_email"] = ""
 
 
@@ -2704,12 +2618,6 @@ class PolicyAdminForm(forms.ModelForm):
         if not self.instance.pk or getattr(self.instance, "_state", None) and self.instance._state.adding:
             self.fields["is_active"].initial = True
             self.initial["is_active"] = True
-
-
-
-
-
-
 
 
 
