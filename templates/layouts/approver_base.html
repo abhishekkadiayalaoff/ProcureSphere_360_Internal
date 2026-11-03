@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load static %}
 
 {% block title %}Department Approver Portal — ProcureSphere 360{% endblock %}
 
@@ -18,20 +19,17 @@
     <aside id="approverSidebar" class="approver-sidebar bg-dark text-white border-end border-secondary border-opacity-25 d-flex flex-column flex-shrink-0 shadow-sm" style="width: 268px;">
         
         <!-- Sidebar Brand Header -->
-        <div class="sidebar-brand-box px-3 py-3 border-bottom border-secondary border-opacity-25 d-flex align-items-center justify-content-between">
-            <a href="/" class="d-flex align-items-center text-white text-decoration-none">
-                <i class="fa-solid fa-layer-group text-primary fa-xl me-2"></i>
-                <div>
-                    <div class="brand-title fw-bold font-heading lh-1 text-white fs-6">ProcureSphere <span class="text-primary fw-light">360</span></div>
-                    <span class="badge bg-info text-dark rounded-pill fw-bold mt-1" style="font-size: 0.62rem; letter-spacing: 0.04em;">
-                        DEPARTMENT APPROVER
-                    </span>
-                </div>
-            </a>
-            <!-- Mobile/Tablet Close Button -->
-            <button class="btn btn-link text-white-50 p-1 d-lg-none" type="button" aria-label="Close Navigation" onclick="toggleApproverSidebar()">
-                <i class="fa-solid fa-xmark fs-5"></i>
-            </button>
+        <div class="sidebar-brand-box px-3 py-3 border-bottom border-secondary border-opacity-25 d-flex flex-column align-items-start gap-2">
+            <div class="d-flex align-items-center justify-content-between w-100">
+                <a href="/" class="dashboard-brand-badge" aria-label="ProcureSphere 360 Home">
+                    <img src="{% static 'landing/images/procuresphere_360_nav_brand.png' %}" alt="ProcureSphere 360" class="dashboard-brand-logo">
+                </a>
+                <!-- Mobile/Tablet Close Button -->
+                <button class="btn btn-link text-white-50 p-1 d-lg-none ms-1" type="button" aria-label="Close Navigation" onclick="toggleApproverSidebar()">
+                    <i class="fa-solid fa-xmark fs-5"></i>
+                </button>
+            </div>
+            <span class="badge bg-info text-dark rounded-pill fw-bold px-2 py-0.5" style="font-size: 0.65rem; letter-spacing: 0.04em;">DEPARTMENT APPROVER</span>
         </div>
 
         <!-- Sidebar Navigation Items (Dedicated Routes) -->
@@ -100,12 +98,15 @@
     <div class="approver-main-content flex-grow-1 d-flex flex-column min-vh-100">
         
         <!-- Top Sticky Header Bar (Sticky on Desktop, Tablet, and Mobile - Matching Picture 2) -->
-        <header class="approver-topbar sticky-top bg-white border-bottom px-3 px-md-4 py-2 d-flex align-items-center justify-content-between shadow-xs z-3">
+        <header class="approver-topbar sticky-top bg-white border-bottom px-3 px-md-4 py-2 d-flex align-items-center justify-content-between shadow-xs z-3" style="min-height: 84px;">
             <div class="d-flex align-items-center gap-2 gap-md-3">
                 <!-- Hamburger Button for Mobile & Tablet -->
                 <button class="btn btn-outline-secondary btn-sm rounded-3 d-lg-none d-flex align-items-center justify-content-center" type="button" aria-label="Toggle Navigation" onclick="toggleApproverSidebar()" style="width: 36px; height: 36px;">
                     <i class="fa-solid fa-bars fs-6"></i>
                 </button>
+                <a href="/" class="dashboard-brand-badge me-2" aria-label="ProcureSphere 360 Home">
+                    <img src="{% static 'landing/images/procuresphere_360_nav_brand.png' %}" alt="ProcureSphere 360" class="dashboard-brand-logo">
+                </a>
                 
                 <!-- Scope Switcher Dropdown (Matching Picture 2) -->
                 <div class="dropdown">

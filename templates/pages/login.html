@@ -5,6 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sign In — ProcureSphere 360 ERP</title>
+    <meta name="robots" content="noindex, nofollow" />
+    <meta name="description" content="Sign in to ProcureSphere 360 Enterprise Procurement Platform." />
 
     <!-- Production WebP Favicon Suite -->
     <link rel="icon" type="image/webp" sizes="32x32" href="{% static 'icons/favicon-32x32.webp' %}">
@@ -503,7 +505,7 @@
 <body>
 
     <!-- Exit pill — top-right of viewport -->
-    <a href="/?from_login=1" id="login-exit-btn" class="lm-exit-pill" aria-label="Exit to Home">
+    <a href="/" id="login-exit-btn" class="lm-exit-pill" aria-label="Exit to Home">
         Exit
         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
             <line x1="18" y1="6" x2="6" y2="18"></line>
@@ -581,9 +583,9 @@
                 <form id="loginForm" class="lm-form" method="POST" action="/login/{% if request.GET.next %}?next={{ request.GET.next }}{% endif %}">
                     {% csrf_token %}
 
-                    <!-- User ID (email) -->
+                    <!-- Email -->
                     <div class="lm-field">
-                        <label for="email" class="lm-label">User ID</label>
+                        <label for="email" class="lm-label">Email</label>
                         <div class="lm-input-wrap">
                             <span class="lm-icon">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -630,15 +632,6 @@
                                 </svg>
                             </button>
                         </div>
-                    </div>
-
-                    <!-- Remember + Forgot -->
-                    <div class="lm-row">
-                        <label class="lm-remember">
-                            <input type="checkbox" id="login-remember" name="rememberMe" />
-                            <span>Remember me</span>
-                        </label>
-                        <a href="#" class="lm-forgot">Forgot Password?</a>
                     </div>
 
                     <!-- Sign In button -->

@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load static %}
 
 {% block navbar %}{% endblock %}
 
@@ -7,20 +8,17 @@
 <div class="sa-app d-flex min-vh-100 bg-light">
     <aside id="saSidebar" class="sa-sidebar bg-dark text-white d-flex flex-column flex-shrink-0">
         <div
-            class="px-3 py-3 border-bottom border-secondary border-opacity-25 d-flex align-items-center justify-content-between">
-            <a href="/superadmin/" class="d-flex align-items-center text-white text-decoration-none min-width-0">
-                <i class="fa-solid fa-shield-halved text-warning fa-lg me-2"></i>
-                <div class="min-width-0">
-                    <div class="fw-bold lh-1 text-white" style="font-size: 0.95rem;">ProcureSphere <span
-                            class="fw-light">360</span></div>
-                    <span class="badge bg-danger rounded-pill fw-bold mt-1"
-                        style="font-size: 0.62rem; letter-spacing: 0.04em;">SUPER ADMIN</span>
-                </div>
-            </a>
-            <button class="btn btn-link text-white-50 p-1 d-lg-none" type="button" aria-label="Close navigation"
-                onclick="toggleSaSidebar()">
-                <i class="fa-solid fa-xmark fs-5"></i>
-            </button>
+            class="px-3 py-3 border-bottom border-secondary border-opacity-25 d-flex flex-column align-items-start gap-2">
+            <div class="d-flex align-items-center justify-content-between w-100">
+                <a href="/superadmin/" class="dashboard-brand-badge flex-shrink-0" aria-label="ProcureSphere 360 Home">
+                    <img src="{% static 'landing/images/procuresphere_360_nav_brand.png' %}" alt="ProcureSphere 360" class="dashboard-brand-logo">
+                </a>
+                <button class="btn btn-link text-white-50 p-1 d-lg-none ms-1" type="button" aria-label="Close navigation"
+                    onclick="toggleSaSidebar()">
+                    <i class="fa-solid fa-xmark fs-5"></i>
+                </button>
+            </div>
+            <span class="badge bg-danger rounded-pill fw-bold text-truncate px-2 py-0.5" style="font-size: 0.65rem; letter-spacing: 0.04em;">SUPER ADMIN</span>
         </div>
         <div class="flex-grow-1 overflow-y-auto px-2 py-3">
             <ul class="nav nav-pills flex-column gap-1" id="menu">
@@ -128,7 +126,7 @@
     </aside>
     <div class="sa-main flex-grow-1 d-flex flex-column min-vh-100">
         <header
-            class="sa-topbar sticky-top bg-white border-bottom px-2 px-sm-3 px-md-4 py-2 d-flex align-items-center justify-content-between gap-2">
+            class="sa-topbar sticky-top bg-white border-bottom px-2 px-sm-3 px-md-4 py-2 d-flex align-items-center justify-content-between gap-2" style="min-height: 84px;">
             <div class="d-flex align-items-center gap-2 min-width-0">
                 <button
                     class="btn btn-outline-secondary btn-sm rounded-3 d-lg-none d-flex align-items-center justify-content-center flex-shrink-0"
@@ -136,9 +134,8 @@
                     style="width: 36px; height: 36px;">
                     <i class="fa-solid fa-bars"></i>
                 </button>
-                <a href="/superadmin/" class="d-lg-none d-flex align-items-center text-dark text-decoration-none min-width-0 ms-1">
-                    <i class="fa-solid fa-shield-halved text-warning me-1.5 fs-6 flex-shrink-0"></i>
-                    <span class="fw-bold text-dark text-truncate" style="font-size: 0.9rem;">ProcureSphere <span class="fw-light">360</span></span>
+                <a href="/superadmin/" class="dashboard-brand-badge me-2" aria-label="ProcureSphere 360 Home">
+                    <img src="{% static 'landing/images/procuresphere_360_nav_brand.png' %}" alt="ProcureSphere 360" class="dashboard-brand-logo">
                 </a>
             </div>
             <div class="d-flex align-items-center gap-2 flex-shrink-0 ms-auto">

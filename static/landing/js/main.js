@@ -11,6 +11,30 @@
      Tracks clicks on "Home" so navigation to "/" skips the intro,
      while page refresh (F5 / Ctrl+R) always plays the intro.
   ──────────────────────────────────────────────*/
+  // Global Contact Navigation Helper (bypasses intro video, scrolls to form, keeps clean URL)
+  window.goToContact = function (e) {
+    if (e && e.preventDefault) e.preventDefault();
+    sessionStorage.setItem('ps360_skip_intro', 'true');
+    sessionStorage.setItem('ps360_scroll_to_contact', 'true');
+
+    var contactEl = document.getElementById('contact');
+    if (contactEl && (window.location.pathname === '/' || window.location.pathname === '')) {
+      // Already on home page - absolutely zero URL disturbance
+      var introScreen = document.getElementById('intro-screen');
+      if (introScreen) {
+        introScreen.style.display = 'none';
+        introScreen.classList.add('slide-up');
+      }
+      var siteShell = document.querySelector('.site-shell');
+      if (siteShell) siteShell.classList.add('intro-finished');
+      contactEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else {
+      // Navigate to clean home URL '/' while sessionStorage flags tell home page to scroll directly to contact
+      window.location.href = '/';
+    }
+    return false;
+  };
+
   (function introNavTracker() {
     document.addEventListener('click', function (e) {
       const link = e.target.closest('a, button');
@@ -18,6 +42,9 @@
       const href = link.getAttribute('href') || '';
       if (href === '/' || href === window.location.origin + '/' || href === window.location.origin) {
         sessionStorage.setItem('ps360_clicked_home', 'true');
+      }
+      if (href.includes('contact') || href.includes('#contact')) {
+        sessionStorage.setItem('ps360_skip_intro', 'true');
       }
       if (href.includes('/logout') || href.includes('/admin/logout')) {
         sessionStorage.setItem('ps360_logged_out', 'true');

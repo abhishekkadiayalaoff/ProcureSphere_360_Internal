@@ -38,6 +38,9 @@ SECRET_KEY = env("DJANGO_SECRET_KEY")
 DEBUG = env("DJANGO_DEBUG")
 ALLOWED_HOSTS = env("ALLOWED_HOSTS")
 
+# SEO Configuration
+SITE_URL = env("SITE_URL", default="https://procuresphere.com")
+
 # Custom User Model
 AUTH_USER_MODEL = "accounts.User"
 
@@ -119,6 +122,7 @@ TEMPLATES = [
                 "django.contrib.messages.context_processors.messages",
                 "apps.notifications.context_processors.notifications_processor",
                 "apps.core.context_processors.layout_context",
+                "apps.core.context_processors.seo_context",
             ],
         },
     },

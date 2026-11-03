@@ -17,9 +17,15 @@ Integration notes
 * contact_submit uses Django's standard CSRF protection (no csrf_exempt).
 """
 
+import re
 from django.conf import settings
 from django.shortcuts import render
 from django.views.decorators.http import require_POST
+
+
+def _site_url():
+    """Return the configured SITE_URL without trailing slash."""
+    return getattr(settings, "SITE_URL", "https://procuresphere.com").rstrip("/")
 
 # ---------------------------------------------------------------------------
 # Home / landing page
@@ -44,6 +50,7 @@ def landing_home(request):
             'Connect requests, approvals, suppliers, sourcing, purchase orders, '
             'invoices, contracts and financial control in one intelligent procurement platform.'
         ),
+        'canonical_url': f'{_site_url()}/',
         'active_nav': 'home',
         'modules': [
             {'name': 'Vendor Onboarding & KYC', 'detail': 'Turn supplier intake into a clear, reviewable path.', 'state': 'KYC REVIEW', 'icon': 'users', 'category': 'SOURCING'},
@@ -183,11 +190,40 @@ def landing_home(request):
 # About
 # ---------------------------------------------------------------------------
 
-def about(request):
+STAGE_SLUG_MAP = {
+    'vendor-management': 'vendors',
+    'purchase-requisition': 'pr',
+    'strategic-sourcing': 'sourcing',
+    'purchase-orders': 'po',
+    'goods-receipt': 'grn',
+    'invoice-matching': 'match',
+    'contract-lifecycle': 'clm',
+    'vendors': 'vendors',
+    'pr': 'pr',
+    'sourcing': 'sourcing',
+    'po': 'po',
+    'grn': 'grn',
+    'match': 'match',
+    'clm': 'clm',
+}
+
+ABOUT_SECTION_MAP = {
+    'platform-introduction': 'about-overview',
+    'mission-purpose': 'mission-purpose',
+    'financial-control': 'financial-control',
+    'connected-pillars': 'connected-pillars',
+    'enterprise-capabilities': 'enterprise-capabilities',
+    'platform-architecture': 'platform-architecture',
+}
+
+
+def about(request, section_slug=None):
     """About page."""
     context = {
         'page_title': 'About ProcureSphere 360 — Enterprise Procurement Platform',
         'page_description': "Learn about ProcureSphere 360's mission to transform enterprise procurement from a tactical back-office headache to a strategic, transparent advantage.",
+        'canonical_url': f'{_site_url()}/about/' if not section_slug else f'{_site_url()}/about/{section_slug}/',
+        'active_section': ABOUT_SECTION_MAP.get(section_slug, section_slug or ''),
         'active_nav': 'about',
         'badge': 'ABOUT PLATFORM',
         'overview_title': 'Platform Introduction',
@@ -317,7 +353,7 @@ def about(request):
 # Solutions
 # ---------------------------------------------------------------------------
 
-def solutions(request):
+def solutions(request, stage_slug=None):
     """Solutions page."""
     s2p_steps = [
         {
@@ -408,6 +444,8 @@ def solutions(request):
     context = {
         'page_title': 'Solutions — ProcureSphere 360 Enterprise Solutions Suite',
         'page_description': 'Explore the seven modular capabilities of ProcureSphere 360, from supplier governance to automated 3-way invoice matching.',
+        'canonical_url': f'{_site_url()}/solutions/' if not stage_slug else f'{_site_url()}/solutions/{stage_slug}/',
+        'active_stage_id': STAGE_SLUG_MAP.get(stage_slug, '') if stage_slug else '',
         'active_nav': 'solutions',
         'badge': 'ENTERPRISE SOLUTIONS',
         'overview_title': 'Solutions Portfolio',
@@ -443,6 +481,7 @@ def benefits(request):
     context = {
         'page_title': 'Benefits — ProcureSphere 360 Enterprise Value',
         'page_description': 'Discover the enterprise benefits of ProcureSphere 360 — from traceable workflows to zero silent overspend.',
+        'canonical_url': f'{_site_url()}/benefits/',
         'active_nav': 'benefits',
         'benefits': benefits_list,
         'comparison_rows': comparison_rows,
@@ -565,6 +604,7 @@ def process(request):
     context = {
         'page_title': 'Process — ProcureSphere 360 Procurement Operating Workflow',
         'page_description': 'A clear, structured walkthrough of how purchasing requests move step-by-step from initial department requisition to final delivery, invoice reconciliation, and settlement.',
+        'canonical_url': f'{_site_url()}/process/',
         'active_nav': 'process',
         'badge': 'OPERATING WORKFLOW',
         'title': 'Procurement Operating Workflow',
@@ -622,6 +662,7 @@ def faq(request):
     context = {
         'page_title': 'FAQ — ProcureSphere 360 Common Questions',
         'page_description': 'Answers to common questions about ProcureSphere 360 enterprise procurement platform.',
+        'canonical_url': f'{_site_url()}/faq/',
         'active_nav': 'faq',
         'faqs': faqs,
         'extra_faqs': extra_faqs,
@@ -633,32 +674,86 @@ def faq(request):
 # Contact (HTMX partial)
 # ---------------------------------------------------------------------------
 
+COUNTRY_PHONE_SPECS = {
+    '+91': {'digits': 10, 'country': 'India', 'pattern': r'^[6-9]\d{9}$'},
+    '+1': {'digits': 10, 'country': 'USA/Canada', 'pattern': r'^[2-9]\d{9}$'},
+    '+44': {'digits': 10, 'country': 'UK', 'pattern': r'^[1-9]\d{9}$'},
+    '+971': {'digits': 9, 'country': 'UAE', 'pattern': r'^[5]\d{8}$'},
+    '+65': {'digits': 8, 'country': 'Singapore', 'pattern': r'^[89]\d{7}$'},
+    '+61': {'digits': 9, 'country': 'Australia', 'pattern': r'^[4]\d{8}$'},
+    '+49': {'digits': 10, 'country': 'Germany', 'pattern': r'^[1]\d{9,10}$'},
+    '+966': {'digits': 9, 'country': 'Saudi Arabia', 'pattern': r'^[5]\d{8}$'},
+}
+
+
 @require_POST
 def contact_submit(request):
     """
-    Handles the public contact / demo-request form via HTMX POST.
+    Handles the public contact / demo-request form via HTMX POST with strict validation.
 
-    CSRF protection is enforced by Django's standard CsrfViewMiddleware.
-    The form template must include {% csrf_token %}.
-
-    BACKEND NOTE: This view validates fields and returns the success partial.
-    CRM / email delivery can be added here when the backend contract is defined.
+    Rules enforced:
+    - Name: letters and spaces only, min 2 chars, no numbers, no special symbols.
+    - Email: valid email with '@' and domain (e.g. gmail.com or custom company domain).
+    - Country Code & Mobile Number: matched against country digits specification.
+    - Message: min 10 characters.
     """
     name = request.POST.get('name', '').strip()
     email = request.POST.get('email', '').strip()
-    company = request.POST.get('company', '').strip()
-    scope = request.POST.get('scope', '').strip()
+    country_code = request.POST.get('country_code', '+91').strip()
+    phone = request.POST.get('phone', '').strip()
     message = request.POST.get('message', '').strip()
 
-    if not all([name, email, company, scope, message]):
-        return render(request, 'landing/partials/contact_error.html', {
-            'error': 'Please fill in all required fields.',
-        })
+    ctx = {
+        'name': name,
+        'email': email,
+        'country_code': country_code,
+        'phone': phone,
+        'message': message,
+    }
 
-    # Placeholder for CRM / email integration.
-    # e.g. send_demo_request_email(name, email, company, scope, message)
+    # 1. Check required fields
+    if not name or not email or not phone or not message:
+        ctx['error'] = 'Please fill in all required fields (Name, Email, Mobile Number, Message).'
+        return render(request, 'landing/partials/contact_error.html', ctx)
 
+    # 2. Validate Name: check for numbers or special characters on submit
+    if re.search(r'[^A-Za-z\s]', name):
+        ctx['error'] = "Numbers and special characters are not allowed in Name. Please use letters only."
+        return render(request, 'landing/partials/contact_error.html', ctx)
+    if len(name) < 2 or len(name) > 60:
+        ctx['error'] = 'Name must be between 2 and 60 characters.'
+        return render(request, 'landing/partials/contact_error.html', ctx)
+
+    # 3. Validate Email: must contain @, valid domain, production-ready regex
+    email_regex = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    if not re.match(email_regex, email):
+        ctx['error'] = 'Please enter a valid email address with @ (e.g., yourname@gmail.com or name@company.com).'
+        return render(request, 'landing/partials/contact_error.html', ctx)
+
+    # 4. Validate Country Code and Mobile Number
+    phone_clean = re.sub(r'\D', '', phone)
+    spec = COUNTRY_PHONE_SPECS.get(country_code)
+    if not spec:
+        ctx['error'] = 'Please select a valid country code from the dropdown.'
+        return render(request, 'landing/partials/contact_error.html', ctx)
+
+    expected_digits = spec['digits']
+    if len(phone_clean) != expected_digits:
+        ctx['error'] = f"Mobile number for {spec['country']} ({country_code}) must be exactly {expected_digits} digits."
+        return render(request, 'landing/partials/contact_error.html', ctx)
+
+    if not re.match(spec['pattern'], phone_clean):
+        ctx['error'] = f"Please enter a valid {expected_digits}-digit mobile number for {spec['country']} ({country_code})."
+        return render(request, 'landing/partials/contact_error.html', ctx)
+
+    # 5. Validate Message
+    if len(message) < 10:
+        ctx['error'] = 'Message must be at least 10 characters long.'
+        return render(request, 'landing/partials/contact_error.html', ctx)
+
+    # Success: Render formatted response
     return render(request, 'landing/partials/contact_success.html', {
         'name': name,
         'email': email,
+        'phone': f"{country_code} {phone_clean}",
     })
