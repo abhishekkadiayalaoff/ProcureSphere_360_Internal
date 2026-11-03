@@ -1,154 +1,438 @@
 {% extends 'base.html' %}
 
+<<<<<<< Updated upstream
 {% block title %}{% block sa_title %}Admin Control Center{% endblock %} — ProcureSphere 360{% endblock %}
+=======
+
+>>>>>>> Stashed changes
 
 {% block navbar %}{% endblock %}
 
+
+
 {% block layout %}
+
 <div id="saSidebarBackdrop" class="sa-backdrop d-lg-none" onclick="toggleSaSidebar()"></div>
+
 <div class="sa-app d-flex min-vh-100 bg-light">
+
     <aside id="saSidebar" class="sa-sidebar bg-dark text-white d-flex flex-column flex-shrink-0">
+<<<<<<< Updated upstream
         <div class="px-3 py-3 border-bottom border-secondary border-opacity-25 d-flex align-items-center justify-content-between flex-shrink-0">
+=======
+
+        <div
+
+            class="px-3 py-3 border-bottom border-secondary border-opacity-25 d-flex align-items-center justify-content-between flex-shrink-0">
+
+>>>>>>> Stashed changes
             <a href="/superadmin/" class="d-flex align-items-center text-white text-decoration-none min-width-0">
+
                 <i class="fa-solid fa-shield-halved text-warning fa-lg me-2"></i>
+
                 <div class="min-width-0">
+<<<<<<< Updated upstream
                     <div class="fw-bold lh-1 text-white" style="font-size: 0.95rem;">ProcureSphere <span class="fw-light">360</span></div>
                     <span class="badge bg-danger rounded-pill fw-bold mt-1" style="font-size: 0.62rem; letter-spacing: 0.04em;">SUPER ADMIN</span>
+=======
+
+                    <div class="fw-bold lh-1 text-white" style="font-size: 0.95rem;">ProcureSphere <span
+
+                            class="fw-light">360</span></div>
+
+                    <span class="badge bg-danger rounded-pill fw-bold mt-1"
+
+                        style="font-size: 0.62rem; letter-spacing: 0.04em;">SUPER ADMIN</span>
+
+>>>>>>> Stashed changes
                 </div>
+
             </a>
+<<<<<<< Updated upstream
             <button class="btn btn-link text-white-50 p-1 d-lg-none" type="button" aria-label="Close navigation" onclick="toggleSaSidebar()">
+=======
+
+            <button class="btn btn-link text-white-50 p-1 d-lg-none" type="button" aria-label="Close navigation"
+
+                onclick="toggleSaSidebar()">
+
+>>>>>>> Stashed changes
                 <i class="fa-solid fa-xmark fs-5"></i>
+
             </button>
+
         </div>
+
         <div class="flex-grow-1 overflow-y-auto px-2 py-3">
+
             <ul class="nav nav-pills flex-column gap-1" id="menu">
+
                 <li class="nav-item">
+<<<<<<< Updated upstream
                     <a href="/admin/dashboard/" class="nav-link sa-nav-link rounded-3 py-2 px-3 {% if request.path == '/admin/dashboard/' or request.path == '/superadmin/' or request.path == '/' %}active{% endif %}">
+=======
+
+                    <a href="/superadmin/"
+
+                        class="nav-link sa-nav-link rounded-3 py-2 px-3 {% if request.path == '/superadmin/' or request.path == '/' %}active{% endif %}">
+
+>>>>>>> Stashed changes
                         <i class="fa-solid fa-gauge-high me-2"></i><span>Dashboard</span>
+
                     </a>
+
                 </li>
+
+
 
                 {% if request.user.is_superuser and not request.user.effective_organization %}
+
                 {# ========================================================================= #}
+
                 {# GLOBAL SUPER ADMIN: DEDICATED SOLELY TO TENANT ORGANIZATION MANAGEMENT   #}
+
                 {# ========================================================================= #}
+
                 <li class="sa-nav-label">Organization Management</li>
+
                 <li class="nav-item">
+<<<<<<< Updated upstream
                     <a href="/superadmin/organizations/" class="nav-link sa-nav-link rounded-3 py-2 px-3 {% if '/superadmin/organizations/' in request.path %}active{% endif %}">
+=======
+
+                    <a href="/superadmin/organizations/"
+
+                        class="nav-link sa-nav-link rounded-3 py-2 px-3 {% if '/superadmin/organizations/' in request.path %}active{% endif %}">
+
+>>>>>>> Stashed changes
                         <i class="fa-solid fa-sitemap me-2"></i><span>Organizations</span>
+
                     </a>
+
                 </li>
 
-                {% else %}
-                {# ========================================================================= #}
-                {# ORGANIZATION ADMIN: Masters, Users, Policies, Rules, Audits             #}
-                {# ========================================================================= #}
-                <li class="sa-nav-label">Organization &amp; Masters</li>
                 <li class="nav-item">
-                    <a href="/superadmin/organizations/" class="nav-link sa-nav-link rounded-3 py-2 px-3 {% if '/superadmin/organizations/' in request.path or '/superadmin/departments/' in request.path or '/superadmin/cost-centers/' in request.path %}active{% endif %}">
-                        <i class="fa-solid fa-sitemap me-2"></i><span>Departments &amp; Cost Centers</span>
+
+                    <a href="/superadmin/locations/"
+
+                        class="nav-link sa-nav-link rounded-3 py-2 px-3 {% if '/superadmin/locations/' in request.path %}active{% endif %}">
+
+                        <i class="fa-solid fa-location-dot me-2"></i><span>Locations</span>
+
                     </a>
+
                 </li>
+
+
+
+                {% else %}
+
+                {# ========================================================================= #}
+<<<<<<< Updated upstream
+                {# ORGANIZATION ADMIN: Masters, Users, Policies, Rules, Audits             #}
+=======
+
+                {# ORGANIZATION ADMIN: EXISTING DESIGN (Depts, Cost Centers, Users, Rules)   #}
+
+>>>>>>> Stashed changes
+                {# ========================================================================= #}
+
+                <li class="sa-nav-label">Organization &amp; Masters</li>
+
                 <li class="nav-item">
+<<<<<<< Updated upstream
+                    <a href="/superadmin/organizations/" class="nav-link sa-nav-link rounded-3 py-2 px-3 {% if '/superadmin/organizations/' in request.path or '/superadmin/departments/' in request.path or '/superadmin/cost-centers/' in request.path %}active{% endif %}">
+=======
+
+                    <a href="/superadmin/organizations/"
+
+                        class="nav-link sa-nav-link rounded-3 py-2 px-3 {% if '/superadmin/organizations/' in request.path or '/superadmin/departments/' in request.path or '/superadmin/cost-centers/' in request.path %}active{% endif %}">
+
+>>>>>>> Stashed changes
+                        <i class="fa-solid fa-sitemap me-2"></i><span>Departments &amp; Cost Centers</span>
+
+                    </a>
+
+                </li>
+
+                <li class="nav-item">
+<<<<<<< Updated upstream
                     <a href="/superadmin/locations/" class="nav-link sa-nav-link rounded-3 py-2 px-3 {% if '/superadmin/locations/' in request.path %}active{% endif %}">
                         <i class="fa-solid fa-location-dot me-2"></i><span>Locations</span>
                     </a>
                 </li>
                 <li class="nav-item">
                     <a href="/superadmin/users/" class="nav-link sa-nav-link rounded-3 py-2 px-3 {% if '/superadmin/users/' in request.path %}active{% endif %}">
+=======
+
+                    <a href="/superadmin/locations/"
+
+                        class="nav-link sa-nav-link rounded-3 py-2 px-3 {% if '/superadmin/locations/' in request.path %}active{% endif %}">
+
+                        <i class="fa-solid fa-location-dot me-2"></i><span>Locations</span>
+
+                    </a>
+
+                </li>
+
+                <li class="nav-item">
+
+                    <a href="/superadmin/users/"
+
+                        class="nav-link sa-nav-link rounded-3 py-2 px-3 {% if '/superadmin/users/' in request.path %}active{% endif %}">
+
+>>>>>>> Stashed changes
                         <i class="fa-solid fa-users-gear me-2"></i><span>Manage Users &amp; Roles</span>
+
                     </a>
+
                 </li>
+
                 <li class="nav-item">
+<<<<<<< Updated upstream
                     <a href="/vendors/" class="nav-link sa-nav-link rounded-3 py-2 px-3 {% if '/vendors/' in request.path %}active{% endif %}">
+=======
+
+                    <a href="/vendors/"
+
+                        class="nav-link sa-nav-link rounded-3 py-2 px-3 {% if '/vendors/' in request.path %}active{% endif %}">
+
+>>>>>>> Stashed changes
                         <i class="fa-solid fa-building-user me-2"></i><span>Vendor Management</span>
+
                     </a>
+
                 </li>
+
                 <li class="sa-nav-label">Policies &amp; Rules</li>
+
                 <li class="nav-item">
+<<<<<<< Updated upstream
                     <a href="/superadmin/policies/" class="nav-link sa-nav-link rounded-3 py-2 px-3 {% if '/superadmin/policies/' in request.path %}active{% endif %}">
+=======
+
+                    <a href="/superadmin/policies/"
+
+                        class="nav-link sa-nav-link rounded-3 py-2 px-3 {% if '/superadmin/policies/' in request.path %}active{% endif %}">
+
+>>>>>>> Stashed changes
                         <i class="fa-solid fa-code-branch me-2"></i><span>Approval Policies</span>
+
                     </a>
+
                 </li>
+
                 <li class="nav-item">
+<<<<<<< Updated upstream
                     <a href="/superadmin/budgets/" class="nav-link sa-nav-link rounded-3 py-2 px-3 {% if '/superadmin/budgets/' in request.path or '/budgets/' in request.path %}active{% endif %}">
+=======
+
+                    <a href="/superadmin/budgets/"
+
+                        class="nav-link sa-nav-link rounded-3 py-2 px-3 {% if '/superadmin/budgets/' in request.path or '/budgets/' in request.path %}active{% endif %}">
+
+>>>>>>> Stashed changes
                         <i class="fa-solid fa-sack-dollar me-2"></i><span>Budget Configuration</span>
+
                     </a>
+
                 </li>
+
                 <li class="nav-item">
+<<<<<<< Updated upstream
                     <a href="/invoices/settings/tolerances/" class="nav-link sa-nav-link rounded-3 py-2 px-3 {% if '/invoices/settings/' in request.path %}active{% endif %}">
+=======
+
+                    <a href="/invoices/settings/tolerances/"
+
+                        class="nav-link sa-nav-link rounded-3 py-2 px-3 {% if '/invoices/settings/' in request.path %}active{% endif %}">
+
+>>>>>>> Stashed changes
                         <i class="fa-solid fa-sliders me-2"></i><span>Business Rules</span>
+
                     </a>
+
                 </li>
+
                 <li class="sa-nav-label">Oversight &amp; Audit</li>
+
                 <li class="nav-item">
+<<<<<<< Updated upstream
                     <a href="/notifications/" class="nav-link sa-nav-link rounded-3 py-2 px-3 {% if '/notifications/' in request.path %}active{% endif %}">
+=======
+
+                    <a href="/notifications/"
+
+                        class="nav-link sa-nav-link rounded-3 py-2 px-3 {% if '/notifications/' in request.path %}active{% endif %}">
+
+>>>>>>> Stashed changes
                         <i class="fa-solid fa-bell me-2"></i><span>Notifications &amp; Alerts</span>
+
                     </a>
+
                 </li>
+
                 <li class="nav-item">
+<<<<<<< Updated upstream
                     <a href="/reports/hub/" class="nav-link sa-nav-link rounded-3 py-2 px-3 {% if '/reports/' in request.path %}active{% endif %}">
+=======
+
+                    <a href="/reports/hub/"
+
+                        class="nav-link sa-nav-link rounded-3 py-2 px-3 {% if '/reports/' in request.path %}active{% endif %}">
+
+>>>>>>> Stashed changes
                         <i class="fa-solid fa-chart-line me-2"></i><span>Reports &amp; Analytics</span>
+
                     </a>
+
                 </li>
+
                 <li class="nav-item">
+<<<<<<< Updated upstream
                     <a href="/superadmin/audit/" class="nav-link sa-nav-link rounded-3 py-2 px-3 {% if '/superadmin/audit/' in request.path or '/audit/' in request.path %}active{% endif %}">
+=======
+
+                    <a href="/superadmin/audit/"
+
+                        class="nav-link sa-nav-link rounded-3 py-2 px-3 {% if '/superadmin/audit/' in request.path or '/audit/' in request.path %}active{% endif %}">
+
+>>>>>>> Stashed changes
                         <i class="fa-solid fa-clock-rotate-left me-2"></i><span>Audit Logs</span>
+
                     </a>
+
                 </li>
+
                 {% endif %}
+
             </ul>
+
         </div>
+
         <div class="border-top border-secondary border-opacity-25 px-3 py-3 mt-auto flex-shrink-0">
+
             <div class="d-flex align-items-center justify-content-between gap-2 w-100">
+
                 <div class="d-flex align-items-center overflow-hidden me-2" style="min-width: 0; flex: 1 1 auto;">
+<<<<<<< Updated upstream
                     <span class="sa-avatar bg-primary text-white me-2 shadow-sm flex-shrink-0"><i class="fa-solid fa-user-shield"></i></span>
+=======
+
+                    <span class="sa-avatar bg-primary text-white me-2 shadow-sm flex-shrink-0"><i
+
+                            class="fa-solid fa-user-shield"></i></span>
+
+>>>>>>> Stashed changes
                     <div class="overflow-hidden" style="min-width: 0; flex: 1 1 auto;">
+
                         <div class="small fw-semibold text-white text-truncate" title="{{ request.user.email|default:'Admin' }}">
+
                             {{ request.user.email|default:"Admin" }}
+
                         </div>
+
                         <div class="badge bg-info text-dark rounded-pill" style="font-size: 0.65rem;">Admin</div>
+
                     </div>
+
                 </div>
+
                 <a href="/logout/" class="btn btn-outline-light btn-sm rounded-circle flex-shrink-0 d-inline-flex align-items-center justify-content-center" style="width: 32px; height: 32px; padding: 0;" title="Sign out">
+
                     <i class="fa-solid fa-arrow-right-from-bracket"></i>
+
                     <span class="visually-hidden">Sign out</span>
+
                 </a>
+
             </div>
+
         </div>
+
     </aside>
 
     <div class="sa-main flex-grow-1 d-flex flex-column min-vh-100">
+<<<<<<< Updated upstream
         <header class="sa-topbar sticky-top bg-white border-bottom px-2 px-sm-3 px-md-4 py-2 d-flex align-items-center justify-content-between gap-2">
             <div class="d-flex align-items-center gap-2 min-width-0">
                 <button class="btn btn-outline-secondary btn-sm rounded-3 d-lg-none d-flex align-items-center justify-content-center flex-shrink-0" type="button" aria-label="Open navigation" onclick="toggleSaSidebar()" style="width: 36px; height: 36px;">
+=======
+
+        <header
+
+            class="sa-topbar sticky-top bg-white border-bottom px-2 px-sm-3 px-md-4 py-2 d-flex align-items-center justify-content-between gap-2">
+
+            <div class="d-flex align-items-center gap-2 min-width-0">
+
+                <button
+
+                    class="btn btn-outline-secondary btn-sm rounded-3 d-lg-none d-flex align-items-center justify-content-center flex-shrink-0"
+
+                    type="button" aria-label="Open navigation" onclick="toggleSaSidebar()"
+
+                    style="width: 36px; height: 36px;">
+
+>>>>>>> Stashed changes
                     <i class="fa-solid fa-bars"></i>
+
                 </button>
+
                 <a href="/superadmin/" class="d-lg-none d-flex align-items-center text-dark text-decoration-none min-width-0 ms-1">
+
                     <i class="fa-solid fa-shield-halved text-warning me-1.5 fs-6 flex-shrink-0"></i>
+
                     <span class="fw-bold text-dark text-truncate" style="font-size: 0.9rem;">ProcureSphere <span class="fw-light">360</span></span>
+
                 </a>
+
             </div>
+
             <div class="d-flex align-items-center gap-2 flex-shrink-0 ms-auto">
+
                 <span class="sa-avatar bg-primary text-white shadow-sm"><i class="fa-solid fa-user-shield"></i></span>
+
                 <div class="d-none d-md-block text-start" style="max-width: 220px;">
+
                     <div class="fw-bold text-dark small text-truncate">
+
                         {{ request.user.email|default:"Admin" }}
+
                     </div>
+
                     <div class="badge bg-info text-dark rounded-pill" style="font-size: 0.65rem;">Admin</div>
+
                 </div>
+<<<<<<< Updated upstream
                 <a href="/logout/" class="btn btn-outline-secondary btn-sm rounded-pill px-2 px-md-3 fw-semibold d-flex align-items-center gap-1">
+=======
+
+                <a href="/logout/"
+
+                    class="btn btn-outline-secondary btn-sm rounded-pill px-2 px-md-3 fw-semibold d-flex align-items-center gap-1">
+
+>>>>>>> Stashed changes
                     <i class="fa-solid fa-arrow-right-from-bracket"></i>
+
                     <span class="d-none d-sm-inline">Sign out</span>
+
                 </a>
+
             </div>
+
         </header>
+
         <main class="sa-page flex-grow-1 p-3 p-md-4">
+
             {% block content %}{% endblock %}
+
         </main>
+
     </div>
+
 </div>
 
+<<<<<<< Updated upstream
 <!-- Modal Container for HTMX popups -->
 <div class="modal fade" id="modal-container" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
@@ -159,10 +443,17 @@
 </div>
 
 <style>
+=======
+
+
+<style>
+
+>>>>>>> Stashed changes
     :root {
         --body-bg: #f8fafc !important;
         --body-fg: #1e293b !important;
         color-scheme: light !important;
+<<<<<<< Updated upstream
     }
 
     /* Force pristine white inputs in Admin & Modals regardless of dark mode */
@@ -189,277 +480,603 @@
 
     .min-width-0 {
         min-width: 0 !important;
+=======
+>>>>>>> Stashed changes
     }
+
+    /* Force pristine white inputs in Admin & Modals regardless of dark mode */
+    input[type="text"], input[type="password"], input[type="email"], input[type="url"], input[type="number"], input[type="tel"], textarea, select, .form-control, .form-select, .modal input, .modal textarea, .modal select {
+        background-color: #ffffff !important;
+        background: #ffffff !important;
+        color: #1e293b !important;
+        -webkit-text-fill-color: #1e293b !important;
+        border: 1px solid #cbd5e1 !important;
+    }
+
+    input:focus, textarea:focus, select:focus, .form-control:focus, .form-select:focus {
+        background-color: #ffffff !important;
+        color: #0f172a !important;
+        border-color: #3b82f6 !important;
+        box-shadow: 0 0 0 0.2rem rgba(59, 130, 246, 0.15) !important;
+    }
+
+    input::placeholder, textarea::placeholder, .form-control::placeholder {
+        color: #94a3b8 !important;
+        opacity: 1 !important;
+        -webkit-text-fill-color: #94a3b8 !important;
+    }
+
+    .min-width-0 {
+
+        min-width: 0 !important;
+
+    }
+
+
 
     .sa-main {
+
         min-width: 0;
+
         overflow-x: clip;
+
     }
+
+
 
     .sa-topbar {
+
         z-index: 1030;
+
         background: rgba(255, 255, 255, 0.98);
+
     }
+
+
 
     .sa-avatar {
+
         width: 32px;
+
         height: 32px;
+
         border-radius: 50%;
+
         display: inline-flex;
+
         align-items: center;
+
         justify-content: center;
+
         font-size: 0.85rem;
+
         font-weight: 700;
+
         flex-shrink: 0;
+
     }
+
+
 
     .sa-kpi {
+
         border-width: 2px !important;
+
         border-style: solid !important;
+
     }
+
+
 
     .sa-kpi-sky {
+
         border-color: #00B0B9 !important;
+
     }
+
+
 
     .sa-kpi-green {
+
         border-color: #10B981 !important;
+
     }
+
+
 
     .sa-kpi-red {
+
         border-color: #F43F5E !important;
+
     }
+
+
 
     .sa-kpi-royal {
+
         border-color: #2563EB !important;
+
     }
+
+
 
     .sa-sidebar .overflow-y-auto {
+
         scrollbar-width: thin;
+
         scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+
     }
+
+
 
     .sa-sidebar .overflow-y-auto::-webkit-scrollbar {
+
         width: 4px;
+
     }
+
+
 
     .sa-sidebar .overflow-y-auto::-webkit-scrollbar-track {
+
         background: transparent;
+
     }
+
+
 
     .sa-sidebar .overflow-y-auto::-webkit-scrollbar-thumb {
+
         background: rgba(255, 255, 255, 0.2);
+
         border-radius: 4px;
+
     }
+
+
 
     .sa-sidebar .overflow-y-auto::-webkit-scrollbar-button,
+
     #saSidebar .overflow-y-auto::-webkit-scrollbar-button {
+
         display: none !important;
+
         width: 0 !important;
+
         height: 0 !important;
+
     }
+
+
 
     .sa-nav-label {
+
         font-size: 0.68rem;
+
         letter-spacing: 0.08em;
+
         text-transform: uppercase;
+
         color: rgba(255, 255, 255, 0.45);
+
         font-weight: 700;
+
         padding: 0.85rem 0.75rem 0.25rem;
+
     }
+
+
 
     .sa-nav-link {
+
         font-size: 0.875rem;
+
         color: rgba(255, 255, 255, 0.78) !important;
+
         display: flex;
+
         align-items: center;
+
     }
+
+
 
     .sa-nav-link i {
+
         width: 20px;
+
         text-align: center;
+
         flex-shrink: 0;
+
     }
+
+
 
     .sa-nav-link span {
+
         min-width: 0;
+
     }
+
+
 
     .sa-nav-link:hover {
+
         background: rgba(255, 255, 255, 0.08);
+
         color: #fff !important;
+
     }
+
+
 
     .sa-nav-link.active,
+
     #saSidebar .sa-nav-link.active,
+
     #saSidebar a.nav-link.active,
+
     #saSidebar a.active,
+
     aside#saSidebar.bg-dark a.nav-link.active,
+
     aside#saSidebar.bg-dark a.nav-link.active-nav-item,
+
     aside.bg-dark #menu a.nav-link.active,
+
     .sa-sidebar .sa-nav-link.active,
+
     .sa-sidebar a.nav-link.active {
+
         background: #ffc107 !important;
+
         color: #1a1a1a !important;
+
         font-weight: 700 !important;
+
         box-shadow: none !important;
+
         text-decoration: none !important;
+
     }
+
+
 
     .sa-nav-link.active i,
+
     .sa-nav-link.active span,
+
     #saSidebar .sa-nav-link.active i,
+
     #saSidebar a.nav-link.active i,
+
     #saSidebar .sa-nav-link.active span,
+
     #saSidebar a.nav-link.active span,
+
     aside#saSidebar.bg-dark a.nav-link.active i,
+
     aside#saSidebar.bg-dark a.nav-link.active span,
+
     aside.bg-dark #menu a.nav-link.active i,
+
     aside.bg-dark #menu a.nav-link.active span,
+
     .sa-sidebar .sa-nav-link.active i,
+
     .sa-sidebar a.nav-link.active i,
+
     .sa-sidebar .sa-nav-link.active span,
+
     .sa-sidebar a.nav-link.active span {
+
         color: #1a1a1a !important;
+
     }
+
+
 
     .sa-status-dot {
+
         width: 8px;
+
         height: 8px;
+
         border-radius: 50%;
+
         background: #10B981;
+
         display: inline-block;
+
     }
+
+
 
     .sa-page .metric-value {
+
         font-size: clamp(1.15rem, 1.7vw, 1.75rem);
+
         overflow-wrap: anywhere;
+
         line-height: 1.15;
+
     }
+
+
 
     .sa-page h2 {
+
         font-size: clamp(1.35rem, 2vw, 1.75rem);
+
     }
+
+
 
     .sa-page h3 {
+
         font-size: clamp(1.15rem, 1.6vw, 1.45rem);
+
     }
+
+
 
     .sa-page .table {
+
         font-size: 0.9rem;
+
     }
+
+
 
     .sa-page .table th {
+
         font-size: 0.75rem;
+
         letter-spacing: 0.03em;
+
         text-transform: uppercase;
+
         white-space: nowrap;
+
         color: #64748b;
+
     }
+
+
 
     .sa-page .row.mb-4>.col-12.d-flex,
+
     .sa-page .card-header.d-flex {
+
         flex-wrap: wrap;
+
         gap: 0.75rem;
+
     }
+
+
 
     @media (min-width: 992px) {
+
         #saSidebar,
+
         .sa-sidebar,
+
         aside#saSidebar.bg-dark {
+
             position: fixed !important;
+
             top: 0 !important;
+
             left: 0 !important;
+
             bottom: 0 !important;
+
             width: 268px !important;
+
             min-width: 268px !important;
+
             height: 100vh !important;
+
             max-height: 100vh !important;
+
             z-index: 1020 !important;
+
             overflow-y: hidden !important;
+
             display: flex !important;
+
             flex-direction: column !important;
+
         }
+
+
 
         .sa-main {
+
             margin-left: 268px !important;
+
             width: calc(100% - 268px) !important;
+
             min-width: 0 !important;
+
             flex: 1 1 auto !important;
+
         }
 
+
+
         .sa-backdrop {
+
             display: none !important;
+
         }
+
     }
+
+
 
     @media (max-width: 991.98px) {
+
         .sa-sidebar {
+
             position: fixed;
+
             top: 0;
+
             left: 0;
+
             bottom: 0;
+
             width: 280px;
+
             max-width: 85vw;
+
             height: 100vh;
+
             z-index: 1050;
+
             transform: translateX(-105%);
+
             transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+
             -webkit-overflow-scrolling: touch;
+
         }
+
+
 
         .sa-sidebar.show {
+
             transform: translateX(0);
+
             box-shadow: 0 0 30px rgba(0, 0, 0, 0.45);
+
         }
+
+
 
         .sa-main {
+
             margin-left: 0 !important;
+
             width: 100% !important;
+
         }
+
+
 
         .sa-backdrop {
+
             position: fixed;
+
             inset: 0;
+
             background: rgba(15, 23, 42, 0.55);
+
             z-index: 1040;
+
             opacity: 0;
+
             visibility: hidden;
+
             transition: opacity 0.25s ease, visibility 0.25s ease;
+
         }
+
+
 
         .sa-backdrop.show {
+
             opacity: 1;
+
             visibility: visible;
+
         }
+
     }
 
-    .table-responsive {
-        -webkit-overflow-scrolling: touch;
+<<<<<<< Updated upstream
+=======
+
+
+    /* Mobile-friendly table defaults */
+
+    .table-responsive > .table:not(.sa-meta-table) {
+
+        min-width: 640px;
+
     }
+
+
+
+>>>>>>> Stashed changes
+    .table-responsive {
+
+        -webkit-overflow-scrolling: touch;
+<<<<<<< Updated upstream
+=======
+
+        scrollbar-width: thin;
+
+>>>>>>> Stashed changes
+    }
+
+
 
     .table-responsive::-webkit-scrollbar {
+<<<<<<< Updated upstream
         height: 6px;
+=======
+
+        height: 4px;
+
+>>>>>>> Stashed changes
     }
+
+
 
     .table-responsive::-webkit-scrollbar-thumb {
+
         background: #cbd5e1;
+
         border-radius: 4px;
+
     }
+
+
 
     /* Neat horizontal scrollable tabs across all screens */
+
     .sa-tabs-scroll {
+
         display: flex !important;
+
         flex-wrap: nowrap !important;
+
         overflow-x: auto !important;
+
         -webkit-overflow-scrolling: touch;
+
         scrollbar-width: none !important; /* Firefox */
+
         -ms-overflow-style: none !important; /* IE 10+ */
+
         gap: 0.35rem !important;
+
         padding: 0.25rem 0.25rem 0 0.25rem !important;
+
         border-bottom: 2px solid #e2e8f0 !important;
+
     }
 
+<<<<<<< Updated upstream
+=======
+
+
+>>>>>>> Stashed changes
     .sa-tabs-scroll::-webkit-scrollbar,
     .nav-tabs-scroll::-webkit-scrollbar,
     ul[role="tablist"]::-webkit-scrollbar {
@@ -488,55 +1105,106 @@
         height: 0 !important;
     }
 
+
+
     .sa-tabs-scroll .nav-item {
+
         flex-shrink: 0 !important;
+
     }
+
+
 
     .sa-tabs-scroll .nav-link {
+
         white-space: nowrap !important;
+
         flex-shrink: 0 !important;
+
         border: none !important;
+
         border-bottom: 2px solid transparent !important;
+
         border-radius: 0 !important;
+
         padding: 0.65rem 0.95rem !important;
+
         font-size: 0.88rem !important;
+
         font-weight: 500 !important;
+
         color: #64748b !important;
+
         background: transparent !important;
+
         transition: all 0.2s ease-in-out !important;
+
         margin-bottom: -2px !important;
+
     }
+
+
 
     .sa-tabs-scroll .nav-link:hover {
+
         color: #0f172a !important;
+
         border-bottom-color: #cbd5e1 !important;
+
         background: rgba(241, 245, 249, 0.6) !important;
+
         border-top-left-radius: 6px !important;
+
         border-top-right-radius: 6px !important;
+
     }
+
+
 
     .sa-tabs-scroll .nav-link.active {
+
         color: #2563eb !important;
+
         font-weight: 700 !important;
+
         border-bottom: 2px solid #2563eb !important;
+
         background: transparent !important;
+
     }
+
+
 
     .sa-tabs-scroll .nav-link .badge {
+
         font-size: 0.72rem !important;
+
         padding: 0.25em 0.55em !important;
+
         border-radius: 999px !important;
+
         vertical-align: middle;
+
         transition: all 0.2s ease;
+
     }
+
+
 
     .sa-tabs-scroll .nav-link.active .badge {
+
         background-color: rgba(37, 99, 235, 0.12) !important;
+
         color: #2563eb !important;
+
     }
 
+
+
     @media (max-width: 767.98px) {
+
         .sa-page {
+<<<<<<< Updated upstream
             padding: 0.85rem !important;
         }
 
@@ -548,9 +1216,41 @@
         .sa-topbar h2,
         .sa-topbar h3 {
             font-size: 1.05rem !important;
+=======
+
+            padding: 0.75rem 0.85rem !important;
+
         }
 
+
+
+        .sa-page h2 {
+
+            font-size: 1.25rem;
+
+        }
+
+
+
+        .sa-page h3 {
+
+            font-size: 1.1rem;
+
+        }
+
+
+
+        .sa-page .table {
+
+            font-size: 0.8125rem;
+
+>>>>>>> Stashed changes
+        }
+
+
+
         .sa-page .metric-value {
+<<<<<<< Updated upstream
             font-size: 1.25rem !important;
         }
 
@@ -569,27 +1269,129 @@
         .sa-page .table td,
         .sa-page .table th {
             padding: 0.55rem 0.5rem !important;
+=======
+
+            font-size: clamp(1.35rem, 4.5vw, 1.75rem) !important;
+
         }
 
+
+
+        .sa-page .stat-card {
+
+            padding: 1rem !important;
+
+>>>>>>> Stashed changes
+        }
+
+
+
         .sa-page .breadcrumb {
+<<<<<<< Updated upstream
             font-size: 0.78rem;
             flex-wrap: nowrap;
             overflow-x: auto;
             white-space: nowrap;
             padding-bottom: 2px;
             scrollbar-width: none;
+=======
+
+            flex-wrap: nowrap !important;
+
+            overflow-x: auto !important;
+
+            -webkit-overflow-scrolling: touch;
+
+            white-space: nowrap !important;
+
+            scrollbar-width: none;
+
+            -ms-overflow-style: none;
+
+            padding-bottom: 2px;
+
+>>>>>>> Stashed changes
         }
+
+
 
         .sa-page .breadcrumb::-webkit-scrollbar {
+
             display: none;
+
         }
 
+<<<<<<< Updated upstream
         .sa-tabs-scroll .nav-link {
             padding: 0.55rem 0.7rem !important;
             font-size: 0.82rem !important;
+=======
+
+
+        .sa-page .breadcrumb-item {
+
+            flex-shrink: 0 !important;
+
+            display: inline-flex !important;
+
+            align-items: center;
+
         }
+
+
+
+        .sa-page .row.mb-4>.col-12.d-flex,
+
+        .sa-page .card-header.d-flex {
+
+            flex-direction: column;
+
+            align-items: stretch !important;
+
+        }
+
+
+
+        .sa-page .row.mb-4>.col-12.d-flex {
+
+            flex-direction: column;
+
+            align-items: stretch !important;
+
+        }
+
+
+
+        .sa-page .card-header .form-select {
+
+            min-width: 0 !important;
+
+            width: 100%;
+
+        }
+
+
+
+        .sa-page .btn {
+
+            min-height: 36px;
+
+        }
+
+
+
+        .sa-page .row.mb-4>.col-12.d-flex>.btn,
+
+        .sa-page .card-header > .btn {
+
+            width: 100%;
+
+>>>>>>> Stashed changes
+        }
+
     }
 
+<<<<<<< Updated upstream
     @media (max-width: 480px) {
         .sa-page {
             padding: 0.65rem !important;
@@ -601,14 +1403,134 @@
 
         .sa-page .badge {
             font-size: 0.7rem !important;
-        }
+=======
+
+
+    html, body {
+
+        max-width: 100%;
+
+        overflow-x: clip;
+
     }
+
+
+
+    .sa-app {
+
+        max-width: 100%;
+
+    }
+
+
+
+    @media (max-width: 575.98px) {
+
+        .modal-dialog {
+
+            margin: 0.5rem auto;
+
+            max-width: calc(100vw - 1rem);
+
+        }
+
+        .modal-content {
+
+            border-radius: 1rem !important;
+
+            border: none !important;
+
+            overflow: hidden;
+
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+
+        }
+
+        .modal-body {
+
+            max-height: calc(85vh - 120px);
+
+            overflow-y: auto;
+
+            -webkit-overflow-scrolling: touch;
+
+            padding: 1rem !important;
+
+        }
+
+        .modal-header {
+
+            padding: 1rem !important;
+
+        }
+
+        .modal-footer {
+
+            padding: 0.75rem 1rem !important;
+
+        }
+
+        .modal-footer .btn {
+
+            min-height: 40px;
+
+        }
+
+    }
+
+
+
+    /* Key-value meta tables on mobile */
+
+    @media (max-width: 576px) {
+
+        .sa-meta-table td {
+
+            display: block;
+
+            width: 100% !important;
+
+            padding: 0.2rem 0 !important;
+
+        }
+
+        .sa-meta-table tr {
+
+            display: block;
+
+            margin-bottom: 0.55rem;
+
+            border-bottom: 1px dashed rgba(0, 0, 0, 0.08);
+
+            padding-bottom: 0.35rem;
+
+        }
+
+        .sa-meta-table tr:last-child {
+
+            border-bottom: none;
+
+            margin-bottom: 0;
+
+            padding-bottom: 0;
+
+>>>>>>> Stashed changes
+        }
+
+    }
+
 </style>
 
+
+
 <script>
+
     function toggleSaSidebar() {
+
         var sidebar = document.getElementById("saSidebar");
+
         var backdrop = document.getElementById("saSidebarBackdrop");
+<<<<<<< Updated upstream
         if (!sidebar) return;
         var isOpen = sidebar.classList.contains("show");
         if (isOpen) {
@@ -619,9 +1541,22 @@
             sidebar.classList.add("show");
             if (backdrop) backdrop.classList.add("show");
             document.body.style.overflow = "hidden";
+=======
+
+        if (sidebar && backdrop) {
+
+            sidebar.classList.toggle("show");
+
+            backdrop.classList.toggle("show");
+
+            document.body.style.overflow = sidebar.classList.contains("show") ? "hidden" : "";
+
+>>>>>>> Stashed changes
         }
+
     }
 
+<<<<<<< Updated upstream
     document.addEventListener("DOMContentLoaded", function () {
         var sidebar = document.getElementById("saSidebar");
         if (!sidebar) return;
@@ -636,9 +1571,20 @@
 
         document.addEventListener("keydown", function (e) {
             if (e.key === "Escape" && sidebar && sidebar.classList.contains("show")) {
+=======
+    document.querySelectorAll("#saSidebar a.nav-link").forEach(function (link) {
+
+        link.addEventListener("click", function () {
+
+            if (window.innerWidth < 992 && document.getElementById("saSidebar") && document.getElementById("saSidebar").classList.contains("show")) {
+
+>>>>>>> Stashed changes
                 toggleSaSidebar();
+
             }
+
         });
+<<<<<<< Updated upstream
 
         document.querySelectorAll('.sa-tabs-scroll').forEach(function (el) {
             el.addEventListener('wheel', function (e) {
@@ -648,6 +1594,45 @@
                 }
             }, { passive: false });
         });
+=======
+
     });
+
+    document.addEventListener("keydown", function (e) {
+
+        if (e.key === "Escape" && document.getElementById("saSidebar") && document.getElementById("saSidebar").classList.contains("show")) {
+
+            toggleSaSidebar();
+
+        }
+
+>>>>>>> Stashed changes
+    });
+
+
+
+    // Smooth mouse-wheel horizontal scrolling on scrollable tab bars
+
+    document.querySelectorAll('.sa-tabs-scroll').forEach(function (el) {
+
+        el.addEventListener('wheel', function (e) {
+
+            if (e.deltaY !== 0) {
+
+                e.preventDefault();
+
+                el.scrollLeft += e.deltaY;
+
+            }
+
+        }, { passive: false });
+
+    });
+
 </script>
+<<<<<<< Updated upstream
 {% endblock layout %}
+=======
+
+{% endblock %}
+>>>>>>> Stashed changes
