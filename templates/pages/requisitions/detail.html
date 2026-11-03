@@ -564,6 +564,46 @@
             </div>
         </div>
 
+        <!-- Downstream Execution Card (Linked PO / Sourcing) -->
+        {% if latest_po or latest_sourcing %}
+        <div class="card border-0 shadow-sm rounded-4 mb-4">
+            <div class="card-body p-4">
+                <h6 class="fw-bold text-dark mb-3">
+                    <i class="fa-solid fa-link text-primary me-2"></i>Procurement Execution
+                </h6>
+                {% if latest_po %}
+                <div class="p-3 rounded-3 bg-light border mb-2">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2.5 py-1 small fw-semibold">
+                            <i class="fa-solid fa-file-invoice-dollar me-1"></i> Purchase Order
+                        </span>
+                        <span class="badge bg-secondary rounded-pill">{{ latest_po.get_status_display }}</span>
+                    </div>
+                    <div class="fw-bold font-monospace fs-6 mb-1">{{ latest_po.po_number }}</div>
+                    <div class="small text-muted mb-1">Vendor: <span class="fw-semibold text-dark">{{ latest_po.vendor.legal_name }}</span></div>
+                    <div class="small text-muted mb-3">Amount: <span class="fw-bold text-dark">${{ latest_po.total_amount|floatformat:2 }}</span></div>
+                    <a href="{% url 'order_detail' latest_po.id %}" class="btn btn-sm btn-outline-primary rounded-pill px-3 w-100 fw-semibold">
+                        <i class="fa-solid fa-arrow-up-right-from-square me-1"></i> View Purchase Order
+                    </a>
+                </div>
+                {% endif %}
+                {% if latest_sourcing and not latest_po %}
+                <div class="p-3 rounded-3 bg-light border">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="badge bg-info-subtle text-info border border-info-subtle rounded-pill px-2.5 py-1 small fw-semibold">
+                            <i class="fa-solid fa-gavel me-1"></i> Sourcing Event
+                        </span>
+                        <span class="badge bg-secondary rounded-pill">{{ latest_sourcing.get_status_display }}</span>
+                    </div>
+                    <div class="fw-bold font-monospace fs-6 mb-1">{{ latest_sourcing.event_number }}</div>
+                    <div class="small text-muted mb-2">{{ latest_sourcing.title|truncatechars:40 }}</div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+
         <!-- Approval Action Decision Card -->
         {% if can_approve %}
             {% if pr.status == 'SUBMITTED' or pr.status == 'MANAGER_REVIEW' %}
