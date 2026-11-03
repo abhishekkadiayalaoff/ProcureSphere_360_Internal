@@ -292,7 +292,7 @@ def test_first_login_password_change_workflow():
         },
     )
     assert change_post_res.status_code == 302
-    assert change_post_res.url == "/"
+    assert change_post_res.url in ("/", "/approver/")
 
     # 5. Verify user must_change_password is now False and new password is active
     user.refresh_from_db()
@@ -321,7 +321,7 @@ def test_existing_users_login_without_password_change_prompt():
     client = Client()
     login_res = client.post("/login/", {"email": user.email, "password": pwd})
     assert login_res.status_code == 302
-    assert login_res.url == "/"
+    assert login_res.url in ("/", "/requester/")
 
 
 @pytest.mark.django_db

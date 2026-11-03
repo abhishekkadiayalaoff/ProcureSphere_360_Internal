@@ -11,7 +11,7 @@
             <button class="navbar-toggler border-0 me-2 d-lg-none p-1" type="button" data-bs-toggle="offcanvas" data-bs-target="#legalSidebar" aria-controls="legalSidebar" aria-label="Toggle navigation">
                 <i class="fa-solid fa-bars text-white fs-4"></i>
             </button>
-            <a href="/" class="navbar-brand d-flex align-items-center text-white me-0 me-lg-4 text-truncate">
+            <a href="/legal/" class="navbar-brand d-flex align-items-center text-white me-0 me-lg-4 text-truncate">
                 <div class="brand-icon-box me-2 flex-shrink-0" style="width: 32px; height: 32px; background: rgba(0, 176, 185, 0.2); border-radius: 6px; display: flex; align-items: center; justify-content: center;">
                     <i class="fa-solid fa-scale-balanced text-cyan"></i>
                 </div>
@@ -92,7 +92,7 @@
                 </div>
 
                 <nav class="d-flex flex-column gap-1">
-                    <a href="/contracts/dashboard/" class="unified-navlink {% if request.path == '/contracts/dashboard/' or request.path == '/' %}active-nav-item{% endif %}">
+                    <a href="/legal/" class="unified-navlink {% if request.path == '/legal/' or request.path == '/legal/dashboard/' or request.path == '/contracts/dashboard/' or request.path == '/' %}active-nav-item{% endif %}">
                         <i class="fa-solid fa-gauge-high nav-icon text-cyan"></i>Dashboard
                     </a>
 
