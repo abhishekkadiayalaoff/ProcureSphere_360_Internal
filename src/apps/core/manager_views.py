@@ -27,10 +27,11 @@ def _get_manager_context(request):
     """
     user = request.user
     user_org_name = None
-    if getattr(user, "department_id", None) and getattr(user.department, "organization_id", None):
-        user_org_name = user.department.organization.name
+    effective_org = getattr(user, "effective_organization", None)
+    if effective_org:
+        user_org_name = effective_org.name
     return {
-        "user_org_name": user_org_name or "Global Enterprise",
+        "user_org_name": user_org_name or ("Global Enterprise" if user.is_superuser else ""),
     }
 
 

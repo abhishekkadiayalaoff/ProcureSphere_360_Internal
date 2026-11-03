@@ -26,7 +26,11 @@ def portal_login_view(request):
         from apps.core.views import get_dashboard_url_for_user
 
         if getattr(request.user, "must_change_password", False):
-            return redirect(reverse("accounts:change_password"))
+            try:
+                change_url = reverse("accounts:change_password")
+            except Exception:
+                change_url = reverse("change_password")
+            return redirect(change_url)
 
         return redirect(get_dashboard_url_for_user(request.user))
 
@@ -116,7 +120,10 @@ def portal_login_view(request):
 
 
             if getattr(user, "must_change_password", False):
-                change_url = reverse("accounts:change_password")
+                try:
+                    change_url = reverse("accounts:change_password")
+                except Exception:
+                    change_url = reverse("change_password")
                 if is_ajax:
                     return JsonResponse({"ok": True, "redirect": change_url})
                 return redirect(change_url)

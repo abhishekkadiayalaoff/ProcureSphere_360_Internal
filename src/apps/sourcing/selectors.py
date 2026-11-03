@@ -44,12 +44,11 @@ def get_sourcing_events_for_user(user):
         )
     if can_view_events(user):
         if not user.is_superuser:
-            user_dept = getattr(user, "department", None)
-            user_org = getattr(user_dept, "organization", None) if user_dept else None
+            user_org = getattr(user, "effective_organization", None)
             if user_org:
                 qs = qs.filter(
                     Q(requisition__department__organization=user_org)
-                    | Q(requisition__isnull=True, created_by__department__organization=user_org)
+                    | Q(requisition__isnull=True, created_by__organization=user_org)
                 )
         return qs
     return qs.none()
@@ -101,10 +100,19 @@ def search_sourcing_events(queryset, params):
     return queryset
 
 
-def get_sourcing_dashboard_metrics() -> dict:
+def get_sourcing_dashboard_metrics(user=None) -> dict:
     """RFQ/RFP KPIs for the Procurement Executive dashboard (one aggregate query)."""
     now = timezone.now()
-    return SourcingEvent.objects.aggregate(
+    _qs = SourcingEvent.objects
+    if user and not getattr(user, "is_superuser", False):
+        _org = getattr(user, "effective_organization", None)
+        if _org:
+            from django.db.models import Q as _Q
+            _qs = SourcingEvent.objects.filter(
+                _Q(requisition__department__organization=_org)
+                | _Q(requisition__isnull=True, created_by__organization=_org)
+            )
+    return _qs.aggregate(
         total=Count("id"),
         draft=Count("id", filter=Q(status=SourcingEvent.STATUS_DRAFT)),
         published=Count("id", filter=Q(status=SourcingEvent.STATUS_PUBLISHED)),

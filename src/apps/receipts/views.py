@@ -107,11 +107,19 @@ def receipts_list_view(request):
     date_from_str = request.GET.get("date_from", "").strip()
     date_to_str = request.GET.get("date_to", "").strip()
 
+    stores_org = getattr(request.user, "effective_organization", None) if not getattr(request.user, "is_superuser", False) else None
     base_qs = (
         GoodsReceipt.objects.select_related("po__vendor", "received_by")
         .prefetch_related("lines__po_line", "lines__inspection", "lines__rejections")
-        .order_by("-received_date")
     )
+    if stores_org:
+        base_qs = base_qs.filter(
+            Q(po__cost_center__department__organization=stores_org)
+            | Q(po__requisition__department__organization=stores_org)
+        )
+    elif not getattr(request.user, "is_superuser", False):
+        base_qs = base_qs.none()
+    base_qs = base_qs.order_by("-received_date")
 
     receipts_qs = _filter_receipts_queryset(
         base_qs,
@@ -138,13 +146,20 @@ def receipts_list_view(request):
             PurchaseOrder.STATUS_PARTIAL_RECEIPT,
         ]
     ).select_related("vendor")
-
-    po_list = (
-        PurchaseOrder.objects.filter(receipts__isnull=False)
-        .distinct()
-        .order_by("po_number")
-        .values("id", "po_number")
-    )
+    po_list = PurchaseOrder.objects.filter(receipts__isnull=False)
+    if stores_org:
+        open_pos = open_pos.filter(
+            Q(cost_center__department__organization=stores_org)
+            | Q(requisition__department__organization=stores_org)
+        )
+        po_list = po_list.filter(
+            Q(cost_center__department__organization=stores_org)
+            | Q(requisition__department__organization=stores_org)
+        )
+    elif not getattr(request.user, "is_superuser", False):
+        open_pos = open_pos.none()
+        po_list = po_list.none()
+    po_list = po_list.distinct().order_by("po_number").values("id", "po_number")
 
     query_params = request.GET.copy()
     if "page" in query_params:
@@ -999,16 +1014,19 @@ def get_stores_dashboard_data(user=None):
         StockHandoffRecord,
     )
 
-    all_grns = list(
-        GoodsReceipt.objects.select_related("po__vendor", "received_by")
-        .prefetch_related(
-            "lines__po_line",
-            "lines__inspection",
-            "lines__rejections",
-            "lines__stock_handoff",
-        )
-        .order_by("-received_date")
+    _stores_org = getattr(user, "effective_organization", None) if not getattr(user, "is_superuser", False) else None
+    _grn_qs = GoodsReceipt.objects.select_related("po__vendor", "received_by").prefetch_related(
+        "lines__po_line",
+        "lines__inspection",
+        "lines__rejections",
+        "lines__stock_handoff",
     )
+    if _stores_org:
+        _grn_qs = _grn_qs.filter(
+            Q(po__cost_center__department__organization=_stores_org)
+            | Q(po__requisition__department__organization=_stores_org)
+        ).distinct()
+    all_grns = list(_grn_qs.order_by("-received_date"))
     total_grns = len(all_grns)
 
     pending_inspections = sum(1 for g in all_grns if g.overall_inspection_status == "PENDING")
@@ -1020,7 +1038,9 @@ def get_stores_dashboard_data(user=None):
         1 for g in all_grns if g.overall_inspection_status == "PARTIALLY_INSPECTED"
     )
 
+    _po_org_filter = {"cost_center__department__organization": _stores_org} if _stores_org else {}
     pending_deliveries = PurchaseOrder.objects.filter(
+        **_po_org_filter,
         status__in=[
             PurchaseOrder.STATUS_ISSUED,
             PurchaseOrder.STATUS_ACKNOWLEDGED,
@@ -1028,6 +1048,7 @@ def get_stores_dashboard_data(user=None):
         ]
     ).count()
     partially_received_pos = PurchaseOrder.objects.filter(
+        **_po_org_filter,
         status=PurchaseOrder.STATUS_PARTIAL_RECEIPT
     ).count()
     completed_pos = PurchaseOrder.objects.filter(status=PurchaseOrder.STATUS_COMPLETED).count()

@@ -37,6 +37,7 @@ from .selectors import (
     get_invitation_rows,
     get_pending_onboarding_vendors,
     get_sourcing_dashboard_metrics,
+    get_sourcing_events_for_user,
     search_sourcing_events,
 )
 
@@ -69,10 +70,7 @@ STATUS_FILTERS = [
 
 def _get_user_org(user):
     if user and user.is_authenticated and not user.is_superuser:
-        if getattr(user, "department_id", None) and getattr(
-            user.department, "organization_id", None
-        ):
-            return user.department.organization
+        return getattr(user, "effective_organization", None)
     return None
 
 
@@ -93,8 +91,9 @@ def sourcing_list_view(request):
     services.sync_all_event_windows()
 
     params = request.GET.copy()
+    _base_events = get_sourcing_events_for_user(request.user)
     if params.get("status") == "EVALUATION":
-        events = get_all_sourcing_events().filter(
+        events = _base_events.filter(
             status__in=[
                 SourcingEvent.STATUS_TECHNICAL_REVIEW,
                 SourcingEvent.STATUS_COMMERCIAL_REVIEW,
@@ -103,7 +102,7 @@ def sourcing_list_view(request):
         params.pop("status")
         events = search_sourcing_events(events, params)
     else:
-        events = search_sourcing_events(get_all_sourcing_events(), params)
+        events = search_sourcing_events(_base_events, params)
 
     page = Paginator(events, PAGE_SIZE).get_page(request.GET.get("page"))
     qs = request.GET.copy()
@@ -114,7 +113,7 @@ def sourcing_list_view(request):
         {
             "page_obj": page,
             "events": page.object_list,
-            "metrics": get_sourcing_dashboard_metrics(),
+            "metrics": get_sourcing_dashboard_metrics(user=request.user),
             "status_filters": STATUS_FILTERS,
             "status_filter": request.GET.get("status", ""),
             "type_choices": SourcingEvent.EVENT_TYPE_CHOICES,
