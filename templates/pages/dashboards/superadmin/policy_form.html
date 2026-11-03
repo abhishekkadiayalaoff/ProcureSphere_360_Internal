@@ -37,7 +37,11 @@
             </div>
             <div class="col-12">
                 <div class="form-check form-switch mt-2">
+                    {% if not is_edit and not form.is_bound %}
+                    <input type="checkbox" name="is_active" class="form-check-input" id="id_is_active" checked>
+                    {% else %}
                     {{ form.is_active }}
+                    {% endif %}
                     <label class="form-check-label fw-semibold" for="{{ form.is_active.id_for_label }}">Active Policy</label>
                 </div>
             </div>

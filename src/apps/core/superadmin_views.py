@@ -429,7 +429,7 @@ def user_create_view(request):
 
     else:
 
-        form = UserAdminForm(request=request)
+        form = UserAdminForm(request=request, initial={"is_active": True, "send_welcome_email": True})
 
     return render(request, "pages/dashboards/superadmin/user_form.html", {"form": form, "is_edit": False})
 
@@ -2943,7 +2943,7 @@ def policy_create_view(request):
 
     else:
 
-        form = PolicyAdminForm(request=request)
+        form = PolicyAdminForm(request=request, initial={"is_active": True})
 
     return render(request, "pages/dashboards/superadmin/policy_form.html", {"form": form, "is_edit": False})
 

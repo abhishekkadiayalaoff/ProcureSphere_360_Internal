@@ -300,6 +300,9 @@ class UserAdminForm(forms.ModelForm):
 
 
         self.fields["department"].queryset = dept_qs
+        if not self.instance.pk or getattr(self.instance, "_state", None) and self.instance._state.adding:
+            self.fields["is_active"].initial = True
+            self.initial["is_active"] = True
 
 
 
@@ -371,11 +374,13 @@ class UserAdminForm(forms.ModelForm):
 
 
 
-            self.initial.setdefault("is_active", True)
+            self.fields["is_active"].initial = True
+            self.initial["is_active"] = True
 
 
 
-            self.initial.setdefault("send_welcome_email", True)
+            self.fields["send_welcome_email"].initial = True
+            self.initial["send_welcome_email"] = True
 
 
 
@@ -395,7 +400,8 @@ class UserAdminForm(forms.ModelForm):
 
 
 
-            self.initial.setdefault("send_welcome_email", True)
+            self.fields["send_welcome_email"].initial = True
+            self.initial["send_welcome_email"] = True
 
 
 
@@ -1607,6 +1613,9 @@ class CostCenterAdminForm(forms.ModelForm):
 
 
         self.fields["department"].queryset = dept_qs
+        if not self.instance.pk or getattr(self.instance, "_state", None) and self.instance._state.adding:
+            self.fields["is_active"].initial = True
+            self.initial["is_active"] = True
 
 
 
@@ -2579,6 +2588,9 @@ class PolicyAdminForm(forms.ModelForm):
 
 
         self.fields["department"].queryset = dept_qs
+        if not self.instance.pk or getattr(self.instance, "_state", None) and self.instance._state.adding:
+            self.fields["is_active"].initial = True
+            self.initial["is_active"] = True
 
 
 

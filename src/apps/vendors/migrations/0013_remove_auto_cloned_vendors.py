@@ -24,3 +24,4 @@ class Migration(migrations.Migration):
     operations = [
         migrations.RunPython(remove_auto_cloned_vendors, reverse_noop),
     ]
+

@@ -183,3 +183,49 @@ def test_non_superadmin_access_denied_for_users(requester_client):
     res_post = client.post(reverse("superadmin:user_create"), {"email": "hack@example.com"})
     assert res_post.status_code == 403
 
+
+
+@pytest.mark.django_db
+def test_user_create_modal_auto_credentials_email_and_active_switch(superadmin_client, sample_roles_and_departments):
+    client, admin_user = superadmin_client
+    role_req, _, dept_hr = sample_roles_and_departments
+
+    # 1. Verify GET modal attributes
+    res = client.get(reverse("superadmin:user_create"))
+    assert res.status_code == 200
+    content = res.content.decode("utf-8")
+    # Visible toggle button & alert text removed
+    assert "Send Login Credentials Email (via Brevo)" not in content
+    assert "When checked, sends login credentials and temporary password" not in content
+    # Hidden auto-dispatch inputs present
+    assert '<input type="hidden" name="send_welcome_email" value="on">' in content
+    assert '<input type="hidden" name="send_welcome_email_present" value="1">' in content
+    # Active User Account switch is checked by default
+    assert '<input type="checkbox" name="is_active" class="form-check-input" id="id_is_active" checked>' in content
+
+    # 2. Verify POST automatically sends email and creates active user
+    post_res = client.post(
+        reverse("superadmin:user_create"),
+        {
+            "email": "auto.dispatched@example.com",
+            "phone_number": "9123456789",
+            "role": str(role_req.pk),
+            "department": str(dept_hr.pk),
+            "send_welcome_email": "on",
+            "send_welcome_email_present": "1",
+            "is_active": "on",
+        },
+    )
+    assert post_res.status_code == 200
+    created = User.objects.get(email="auto.dispatched@example.com")
+    assert created.is_active is True
+
+
+@pytest.mark.django_db
+def test_policy_create_modal_active_policy_switch_checked_by_default(superadmin_client):
+    client, admin_user = superadmin_client
+    res = client.get("/superadmin/policies/create/")
+    assert res.status_code == 200
+    content = res.content.decode("utf-8")
+    assert "Active Policy" in content
+    assert '<input type="checkbox" name="is_active" class="form-check-input" id="id_is_active" checked>' in content
