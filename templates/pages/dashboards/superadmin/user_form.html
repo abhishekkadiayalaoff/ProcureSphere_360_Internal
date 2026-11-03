@@ -28,54 +28,42 @@
                 {% if form.organization.errors %}<div class="text-danger small mt-1">{{ form.organization.errors }}</div>{% endif %}
             </div>
             {% endif %}
-            <div class="col-md-6">
+            <div class="{% if form.organization.is_hidden %}col-12{% else %}col-md-6{% endif %}">
                 <label class="form-label fw-semibold text-secondary small">Role</label>
                 {{ form.role }}
                 {% if form.role.errors %}<div class="text-danger small mt-1">{{ form.role.errors }}</div>{% endif %}
             </div>
-            <div class="col-md-6">
-                <label class="form-label fw-semibold text-secondary small">Department</label>
-                <div id="department-select-container">
-                    {{ form.department }}
+
+            <!-- Organization-Wide Access Notice (displayed for all Non-Requester Roles) -->
+            <div class="col-12" id="org-wide-role-wrapper" style="display: none;">
+                <div class="alert alert-light border border-info border-opacity-25 bg-info bg-opacity-10 rounded-3 p-3 mb-0 d-flex align-items-center">
+                    <i class="fa-solid fa-building-circle-check fs-4 me-3 text-info flex-shrink-0"></i>
+                    <div>
+                        <div class="fw-bold text-dark small">Organization-Wide Role</div>
+                        <div class="text-secondary small">This role operates organization-wide across all departments. Department and cost center mapping is strictly reserved for Requester accounts.</div>
+                    </div>
                 </div>
-                {% if form.department.errors %}<div class="text-danger small mt-1">{{ form.department.errors }}</div>{% endif %}
-            </div>
-            <div class="col-12" id="cost-center-wrapper" style="display: none;">
-                <label class="form-label fw-semibold text-secondary small">Cost Center <span class="text-danger">*</span></label>
-                {{ form.cost_center }}
-                <div class="form-text small text-muted">Required for Requesters. Must belong to the selected Department.</div>
-                {% if form.cost_center.errors %}<div class="text-danger small mt-1">{{ form.cost_center.errors }}</div>{% endif %}
             </div>
 
-            <!-- Password Field with Show/Hide, Generate, and Copy Buttons -->
-            <div class="col-12">
-                <label class="form-label fw-semibold text-secondary small">
-                    {% if is_edit %}Reset Password (Optional){% else %}Password <span class="text-muted fw-normal">(Optional — auto-generated if blank)</span>{% endif %}
-                </label>
-                <div class="input-group">
-                    <input type="password" name="password" id="id_password" class="form-control {% if form.password.errors %}is-invalid{% endif %}" placeholder="{% if is_edit %}Leave blank to keep existing password{% else %}Enter password or leave blank to auto-generate{% endif %}" autocomplete="new-password">
-                    <button class="btn btn-outline-secondary" type="button" id="togglePasswordBtn" title="Show / Hide Password">
-                        <i class="fa-solid fa-eye" id="togglePasswordIcon"></i>
-                    </button>
-                    <button class="btn btn-outline-primary" type="button" id="generatePasswordBtn" title="Generate secure random password">
-                        <i class="fa-solid fa-wand-magic-sparkles me-1"></i> <span class="d-none d-sm-inline">Generate Password</span><span class="d-inline d-sm-none">Generate</span>
-                    </button>
-                    <button class="btn btn-outline-secondary" type="button" id="copyPasswordBtn" title="Copy password to clipboard">
-                        <i class="fa-solid fa-copy me-1"></i> <span class="d-none d-sm-inline">Copy</span>
-                    </button>
-                </div>
-                <div id="copyFeedback" class="small text-success mt-1 fw-semibold" style="display: none;">
-                    <i class="fa-solid fa-circle-check me-1"></i> Password copied to clipboard!
-                </div>
-                {% if form.password.errors %}
-                <div class="text-danger small mt-1">{{ form.password.errors }}</div>
-                {% endif %}
-                <div class="form-text small text-muted">
-                    {% if is_edit %}
-                    Leave blank to retain current password. If entered, must contain at least 12 characters (uppercase, lowercase, numbers & symbols).
-                    {% else %}
-                    Must contain at least 12 characters, including uppercase, lowercase, numbers, and special characters, or leave blank to auto-generate on save.
-                    {% endif %}
+            <!-- Requester Department & Cost Center Allocation (ONLY FOR REQUESTERS) -->
+            <div class="col-12" id="requester-dept-cc-wrapper" style="display: none;">
+                <div class="p-3 rounded-3 border bg-light">
+                    <div class="d-flex align-items-center mb-2 text-primary fw-semibold small">
+                        <i class="fa-solid fa-sitemap me-2"></i> Requester Allocation (Department &amp; Cost Center)
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-md-6" id="department-select-container">
+                            <label class="form-label fw-semibold text-secondary small">Department <span class="text-danger">*</span></label>
+                            {{ form.department }}
+                            {% if form.department.errors %}<div class="text-danger small mt-1">{{ form.department.errors }}</div>{% endif %}
+                        </div>
+                        <div class="col-md-6" id="cost-center-wrapper">
+                            <label class="form-label fw-semibold text-secondary small">Cost Center <span class="text-danger">*</span></label>
+                            {{ form.cost_center }}
+                            <div class="form-text small text-muted">Mandatory for Requesters. Must belong to Department.</div>
+                            {% if form.cost_center.errors %}<div class="text-danger small mt-1">{{ form.cost_center.errors }}</div>{% endif %}
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -126,12 +114,24 @@
         return selectedOpt.text.toUpperCase().indexOf("REQUESTER") !== -1;
     }
 
-    function updateCostCenterVisibility() {
-        if (!ccWrapper) return;
+    function updateRoleVisibility() {
+        var reqWrapper = document.getElementById("requester-dept-cc-wrapper");
+        var orgWrapper = document.getElementById("org-wide-role-wrapper");
+        if (!roleSelect) return;
+        var val = roleSelect.value;
+        if (!val) {
+            if (reqWrapper) reqWrapper.style.display = "none";
+            if (orgWrapper) orgWrapper.style.display = "none";
+            return;
+        }
         if (isRequesterSelected()) {
-            ccWrapper.style.display = "block";
+            if (reqWrapper) reqWrapper.style.display = "block";
+            if (orgWrapper) orgWrapper.style.display = "none";
+            refreshCostCenters();
         } else {
-            ccWrapper.style.display = "none";
+            if (reqWrapper) reqWrapper.style.display = "none";
+            if (orgWrapper) orgWrapper.style.display = "block";
+            if (deptSelect) deptSelect.value = "";
             if (ccSelect) ccSelect.value = "";
         }
     }
@@ -280,13 +280,13 @@
     }
 
     if (roleSelect) {
-        roleSelect.addEventListener("change", updateCostCenterVisibility);
+        roleSelect.addEventListener("change", updateRoleVisibility);
     }
     if (deptSelect) {
         deptSelect.addEventListener("change", refreshCostCenters);
     }
 
     // Initial check on load
-    updateCostCenterVisibility();
+    updateRoleVisibility();
 })();
 </script>

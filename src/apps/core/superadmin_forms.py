@@ -702,14 +702,10 @@ class UserAdminForm(forms.ModelForm):
 
 
         else:
-
-
-
             # For non-requester roles, clear cost center to preserve existing role behavior
-
-
-
             cleaned_data["cost_center"] = None
+            if not self.data.get("department"):
+                cleaned_data["department"] = None
 
 
 
@@ -1613,9 +1609,6 @@ class CostCenterAdminForm(forms.ModelForm):
 
 
         self.fields["department"].queryset = dept_qs
-        if not self.instance.pk or getattr(self.instance, "_state", None) and self.instance._state.adding:
-            self.fields["is_active"].initial = True
-            self.initial["is_active"] = True
 
 
 
