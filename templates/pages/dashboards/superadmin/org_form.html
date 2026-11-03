@@ -35,6 +35,17 @@
         -webkit-text-fill-color: #94a3b8 !important;
         opacity: 1 !important;
     }
+    #modal-content-body input:-webkit-autofill,
+    #modal-content-body input:-webkit-autofill:hover, 
+    #modal-content-body input:-webkit-autofill:focus,
+    #modal-content-body textarea:-webkit-autofill,
+    #modal-content-body select:-webkit-autofill {
+        -webkit-box-shadow: 0 0 0px 1000px #ffffff inset !important;
+        -webkit-text-fill-color: #1e293b !important;
+        background-color: #ffffff !important;
+        color: #1e293b !important;
+        transition: background-color 5000s ease-in-out 0s !important;
+    }
 </style>
 
 <div class="modal-header bg-light border-bottom-0 pb-0">
@@ -145,40 +156,39 @@
 <script>
 {% if not is_edit %}
 (function() {
-    function clearAdminCredentialsAutofill() {
+    function purgeAutofill() {
         var emailInput = document.getElementById("id_admin_email");
         var pwdInput = document.getElementById("id_admin_password");
         if (emailInput && !emailInput.hasAttribute("data-user-typed")) {
-            if (emailInput.value === "superadmin@procuresphere.com" || !emailInput.value) {
-                emailInput.value = "";
-            }
+            emailInput.value = "";
         }
         if (pwdInput && !pwdInput.hasAttribute("data-user-typed")) {
             pwdInput.value = "";
         }
     }
-    clearAdminCredentialsAutofill();
-    setTimeout(clearAdminCredentialsAutofill, 50);
-    setTimeout(clearAdminCredentialsAutofill, 150);
-    setTimeout(clearAdminCredentialsAutofill, 400);
-    setTimeout(clearAdminCredentialsAutofill, 800);
+
+    purgeAutofill();
+    var purgeInterval = setInterval(purgeAutofill, 50);
+    setTimeout(function() { clearInterval(purgeInterval); }, 2500);
 
     var emailEl = document.getElementById("id_admin_email");
     var pwdEl = document.getElementById("id_admin_password");
     if (emailEl) {
+        emailEl.addEventListener("input", function() {
+            this.setAttribute("data-user-typed", "true");
+            clearInterval(purgeInterval);
+        });
         emailEl.addEventListener("focus", function() {
             this.removeAttribute("readonly");
         });
-        emailEl.addEventListener("input", function() {
-            this.setAttribute("data-user-typed", "true");
-        });
     }
     if (pwdEl) {
-        pwdEl.addEventListener("focus", function() {
-            this.removeAttribute("readonly");
-        });
         pwdEl.addEventListener("input", function() {
             this.setAttribute("data-user-typed", "true");
+            clearInterval(purgeInterval);
+        });
+        pwdEl.addEventListener("focus", function() {
+            this.removeAttribute("readonly");
         });
     }
 })();

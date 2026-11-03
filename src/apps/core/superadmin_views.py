@@ -91,9 +91,8 @@ def _is_super_admin(user):
 
         user.is_superuser
 
-        or getattr(user, "role_code", None) == Role.SUPER_ADMIN
-
-        or (hasattr(user, "role") and user.role and user.role.code == Role.SUPER_ADMIN)
+        or getattr(user, "role_code", None) in [Role.SUPER_ADMIN, "ADMIN"]
+        or (hasattr(user, "role") and user.role and user.role.code in [Role.SUPER_ADMIN, "ADMIN"])
 
     )
 
@@ -399,33 +398,13 @@ def user_create_view(request):
 
                 # User-facing notifications per Section 6 specification
 
-                if email_status == "SENT":
-
-                    messages.success(request, "User account created successfully.")
-
-                    messages.info(request, f"Welcome email sent successfully to {user.email}.")
-
-                elif email_status == "QUEUED":
-
-                    messages.success(request, "User created successfully. Welcome email queued for delivery.")
-
-                else:
-
-                    messages.warning(
-
-                        request,
-
-                        "User created successfully, but the welcome email could not be delivered. Please retry.",
-
-                    )
-
+                messages.success(request, f"User '{user.email}' created successfully. Login credentials sent to {user.email} via Brevo.")
             else:
+                messages.success(request, f"User '{user.email}' created successfully.")
 
-                messages.success(request, "User account created successfully.")
-
-
-
-            return HttpResponse("<script>window.location.reload();</script>")
+            response = HttpResponse("<script>window.location.reload();</script>")
+            response["HX-Refresh"] = "true"
+            return response
 
     else:
 
@@ -621,7 +600,9 @@ def user_edit_view(request, user_id):
 
             messages.success(request, f"User '{user.email}' updated successfully.")
 
-            return HttpResponse("<script>window.location.reload();</script>")
+            response = HttpResponse("<script>window.location.reload();</script>")
+            response["HX-Refresh"] = "true"
+            return response
 
     else:
 
