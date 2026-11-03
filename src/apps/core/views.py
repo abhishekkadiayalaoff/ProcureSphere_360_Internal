@@ -461,7 +461,7 @@ def home_view(request):  # noqa: C901
         from apps.invoices.models import MatchException
         from apps.organization.models import Organization
 
-        scoped_org = getattr(user, "effective_organization", None) if not user.is_superuser else None
+        scoped_org = getattr(user, "effective_organization", None)
 
         today = timezone.now().date()
         users_qs = User.objects.all()

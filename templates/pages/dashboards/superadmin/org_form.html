@@ -35,6 +35,17 @@
         -webkit-text-fill-color: #94a3b8 !important;
         opacity: 1 !important;
     }
+    #modal-content-body input:-webkit-autofill,
+    #modal-content-body input:-webkit-autofill:hover, 
+    #modal-content-body input:-webkit-autofill:focus,
+    #modal-content-body textarea:-webkit-autofill,
+    #modal-content-body select:-webkit-autofill {
+        -webkit-box-shadow: 0 0 0px 1000px #ffffff inset !important;
+        -webkit-text-fill-color: #1e293b !important;
+        background-color: #ffffff !important;
+        color: #1e293b !important;
+        transition: background-color 5000s ease-in-out 0s !important;
+    }
 </style>
 
 <div class="modal-header bg-light border-bottom-0 pb-0">
@@ -71,8 +82,20 @@
             <div class="col-md-6">
                 <label class="form-label fw-semibold text-secondary small">Status</label>
                 <div class="form-check form-switch mt-2">
-                    {{ form.is_active }}
-                    <label class="form-check-label fw-semibold" for="{{ form.is_active.id_for_label }}">Active Organization</label>
+                    {% if is_edit %}
+                        {% if form.is_bound %}
+                            <input type="checkbox" name="is_active" class="form-check-input" id="id_is_active" {% if form.is_active.value %}checked{% endif %}>
+                        {% else %}
+                            <input type="checkbox" name="is_active" class="form-check-input" id="id_is_active" {% if form.instance.is_active %}checked{% endif %}>
+                        {% endif %}
+                    {% else %}
+                        {% if form.is_bound %}
+                            <input type="checkbox" name="is_active" class="form-check-input" id="id_is_active" {% if form.is_active.value %}checked{% endif %}>
+                        {% else %}
+                            <input type="checkbox" name="is_active" class="form-check-input" id="id_is_active" checked>
+                        {% endif %}
+                    {% endif %}
+                    <label class="form-check-label fw-semibold" for="id_is_active">Active Organization</label>
                 </div>
             </div>
             <div class="col-12">
@@ -118,31 +141,10 @@
                             {{ form.admin_last_name }}
                             {% if form.admin_last_name.errors %}<div class="text-danger small">{{ form.admin_last_name.errors }}</div>{% endif %}
                         </div>
-                        <div class="col-12 mt-2">
-                            <div class="alert alert-info py-2 px-3 mb-0 rounded-3 border border-info border-opacity-25 bg-info bg-opacity-10 d-flex align-items-center">
-                                <div class="form-check form-switch m-0 d-flex align-items-center">
-                                    <input type="hidden" name="send_welcome_email_present" value="1">
-                                    {{ form.send_welcome_email }}
-                                    <label class="form-check-label fw-semibold text-dark small ms-2 mb-0" for="{{ form.send_welcome_email.id_for_label }}">
-                                        <i class="fa-solid fa-bell text-info me-1"></i> Send Welcome Email Notification Alert
-                                    </label>
-                                </div>
-                            </div>
-                            {% if form.send_welcome_email.errors %}<div class="text-danger small mt-1">{{ form.send_welcome_email.errors }}</div>{% endif %}
+                        <!-- Automated Welcome Email (Hidden - Always sends credentials to admin email via Brevo) -->
+                        <input type="hidden" name="send_welcome_email" value="on">
+                        <input type="hidden" name="send_welcome_email_present" value="1">
                         </div>
-                        {% if not is_edit %}
-                        <div class="col-12 mt-2">
-                            <div class="alert alert-success py-2 px-3 mb-0 rounded-3 border border-success border-opacity-25 bg-success bg-opacity-10 d-flex align-items-center">
-                                <div class="form-check form-switch m-0 d-flex align-items-center">
-                                    {{ form.import_standard_vendors }}
-                                    <label class="form-check-label fw-semibold text-dark small ms-2 mb-0" for="{{ form.import_standard_vendors.id_for_label }}">
-                                        <i class="fa-solid fa-truck-ramp-box text-success me-1"></i> Import Standard Approved Vendors into New Organization
-                                    </label>
-                                </div>
-                            </div>
-                            {% if form.import_standard_vendors.errors %}<div class="text-danger small mt-1">{{ form.import_standard_vendors.errors }}</div>{% endif %}
-                        </div>
-                        {% endif %}
                     </div>
                 </div>
             </div>
@@ -157,40 +159,39 @@
 <script>
 {% if not is_edit %}
 (function() {
-    function clearAdminCredentialsAutofill() {
+    function purgeAutofill() {
         var emailInput = document.getElementById("id_admin_email");
         var pwdInput = document.getElementById("id_admin_password");
         if (emailInput && !emailInput.hasAttribute("data-user-typed")) {
-            if (emailInput.value === "superadmin@procuresphere.com" || !emailInput.value) {
-                emailInput.value = "";
-            }
+            emailInput.value = "";
         }
         if (pwdInput && !pwdInput.hasAttribute("data-user-typed")) {
             pwdInput.value = "";
         }
     }
-    clearAdminCredentialsAutofill();
-    setTimeout(clearAdminCredentialsAutofill, 50);
-    setTimeout(clearAdminCredentialsAutofill, 150);
-    setTimeout(clearAdminCredentialsAutofill, 400);
-    setTimeout(clearAdminCredentialsAutofill, 800);
+
+    purgeAutofill();
+    var purgeInterval = setInterval(purgeAutofill, 50);
+    setTimeout(function() { clearInterval(purgeInterval); }, 2500);
 
     var emailEl = document.getElementById("id_admin_email");
     var pwdEl = document.getElementById("id_admin_password");
     if (emailEl) {
+        emailEl.addEventListener("input", function() {
+            this.setAttribute("data-user-typed", "true");
+            clearInterval(purgeInterval);
+        });
         emailEl.addEventListener("focus", function() {
             this.removeAttribute("readonly");
         });
-        emailEl.addEventListener("input", function() {
-            this.setAttribute("data-user-typed", "true");
-        });
     }
     if (pwdEl) {
-        pwdEl.addEventListener("focus", function() {
-            this.removeAttribute("readonly");
-        });
         pwdEl.addEventListener("input", function() {
             this.setAttribute("data-user-typed", "true");
+            clearInterval(purgeInterval);
+        });
+        pwdEl.addEventListener("focus", function() {
+            this.removeAttribute("readonly");
         });
     }
 })();

@@ -91,9 +91,8 @@ def _is_super_admin(user):
 
         user.is_superuser
 
-        or getattr(user, "role_code", None) == Role.SUPER_ADMIN
-
-        or (hasattr(user, "role") and user.role and user.role.code == Role.SUPER_ADMIN)
+        or getattr(user, "role_code", None) in [Role.SUPER_ADMIN, "ADMIN"]
+        or (hasattr(user, "role") and user.role and user.role.code in [Role.SUPER_ADMIN, "ADMIN"])
 
     )
 
@@ -399,37 +398,17 @@ def user_create_view(request):
 
                 # User-facing notifications per Section 6 specification
 
-                if email_status == "SENT":
-
-                    messages.success(request, "User account created successfully.")
-
-                    messages.info(request, f"Welcome email sent successfully to {user.email}.")
-
-                elif email_status == "QUEUED":
-
-                    messages.success(request, "User created successfully. Welcome email queued for delivery.")
-
-                else:
-
-                    messages.warning(
-
-                        request,
-
-                        "User created successfully, but the welcome email could not be delivered. Please retry.",
-
-                    )
-
+                messages.success(request, f"User '{user.email}' created successfully. Login credentials sent to {user.email} via Brevo.")
             else:
+                messages.success(request, f"User '{user.email}' created successfully.")
 
-                messages.success(request, "User account created successfully.")
-
-
-
-            return HttpResponse("<script>window.location.reload();</script>")
+            response = HttpResponse("<script>window.location.reload();</script>")
+            response["HX-Refresh"] = "true"
+            return response
 
     else:
 
-        form = UserAdminForm(request=request)
+        form = UserAdminForm(request=request, initial={"is_active": True, "send_welcome_email": True})
 
     return render(request, "pages/dashboards/superadmin/user_form.html", {"form": form, "is_edit": False})
 
@@ -502,79 +481,25 @@ def user_edit_view(request, user_id):
             send_email_flag = _should_send_welcome_email(request, default=True)
 
             new_password = form.cleaned_data.get("password")
-
             if new_password and new_password.strip():
-
                 raw_pwd = new_password.strip()
-
                 user.set_password(raw_pwd)
-
                 user.must_change_password = True
-
                 user.save()
-
+                send_email_flag = _should_send_welcome_email(request, default=True)
                 if send_email_flag:
-
                     email_status, email_error = send_user_welcome_email(
-
                         user=user,
-
                         temporary_password=raw_pwd,
-
                         request=request,
-
                     )
-
                     if email_status == "SENT":
-
                         messages.info(request, f"Updated credentials email successfully sent to {user.email}.")
-
                     elif email_status == "QUEUED":
-
                         messages.info(request, f"Updated credentials email queued for delivery to {user.email}.")
-
                     else:
-
                         messages.warning(request, f"Credentials updated, but email could not be delivered: {email_error}")
-
-            elif send_email_flag:
-
-                # If send_welcome_email is checked but password was left blank,
-
-                # generate a fresh temporary password so valid credentials can be emailed to the user
-
-                raw_pwd = generate_secure_password()
-
-                user.set_password(raw_pwd)
-
-                user.must_change_password = True
-
-                user.save()
-
-                email_status, email_error = send_user_welcome_email(
-
-                    user=user,
-
-                    temporary_password=raw_pwd,
-
-                    request=request,
-
-                )
-
-                if email_status == "SENT":
-
-                    messages.info(request, f"Login credentials email successfully sent to {user.email}.")
-
-                elif email_status == "QUEUED":
-
-                    messages.info(request, f"Login credentials email queued for delivery to {user.email}.")
-
-                else:
-
-                    messages.warning(request, f"User saved, but credentials email could not be delivered: {email_error}")
-
             else:
-
                 user.save()
 
 
@@ -619,9 +544,12 @@ def user_edit_view(request, user_id):
 
 
 
-            messages.success(request, f"User '{user.email}' updated successfully.")
+            status_str = "Active" if user.is_active else "Disabled"
+            messages.success(request, f"User '{user.email}' updated successfully ({status_str}).")
 
-            return HttpResponse("<script>window.location.reload();</script>")
+            response = HttpResponse("<script>window.location.reload();</script>")
+            response["HX-Refresh"] = "true"
+            return response
 
     else:
 
@@ -989,7 +917,7 @@ def org_create_view(request):
 
             )
 
-            if form.cleaned_data.get("import_standard_vendors", True):
+            if form.cleaned_data.get("import_standard_vendors", False):
                 from apps.vendors.services import import_standard_vendors_for_org_service
                 try:
                     count, msg = import_standard_vendors_for_org_service(org, actor=request.user)
@@ -2943,7 +2871,7 @@ def policy_create_view(request):
 
     else:
 
-        form = PolicyAdminForm(request=request)
+        form = PolicyAdminForm(request=request, initial={"is_active": True})
 
     return render(request, "pages/dashboards/superadmin/policy_form.html", {"form": form, "is_edit": False})
 

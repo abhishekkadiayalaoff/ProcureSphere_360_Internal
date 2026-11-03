@@ -86,9 +86,11 @@
                     <span class="badge bg-secondary">{% if u.role.code == 'SUPER_ADMIN' %}Admin{% else %}{{ u.role.name|default:"No Role" }}{% endif %}</span>
                     {% if u.department %}
                     <span><i class="fa-solid fa-building me-1"></i>{{ u.department.name }}</span>
-                    {% endif %}
                     {% if u.cost_center %}
                     <span class="badge bg-light text-dark border">{{ u.cost_center.code }}</span>
+                    {% endif %}
+                    {% else %}
+                    <span class="badge bg-light text-primary border"><i class="fa-solid fa-building me-1"></i>Organization-Wide</span>
                     {% endif %}
                 </div>
                 <div class="d-flex justify-content-between align-items-center pt-2 border-top gap-2 flex-wrap">
@@ -138,9 +140,13 @@
                         </td>
                         <td><span class="badge bg-secondary">{% if u.role.code == 'SUPER_ADMIN' %}Admin{% else %}{{ u.role.name|default:"No Role" }}{% endif %}</span></td>
                         <td>
-                            {{ u.department.name|default:"-" }}
+                            {% if u.department %}
+                            {{ u.department.name }}
                             {% if u.cost_center %}
                             <span class="badge bg-light text-dark border ms-1">{{ u.cost_center.code }}</span>
+                            {% endif %}
+                            {% else %}
+                            <span class="badge bg-light text-primary border"><i class="fa-solid fa-building me-1"></i>Organization-Wide</span>
                             {% endif %}
                         </td>
                         <td class="text-center">
