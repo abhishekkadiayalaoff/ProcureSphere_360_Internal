@@ -106,15 +106,11 @@
 
     /* Status Dot */
     .sa-status-dot {
-
         width: 8px;
-
         height: 8px;
-
         border-radius: 50%;
         background: var(--sa-success);
         display: inline-block;
-
     }
 
     /* Table styling */
@@ -138,43 +134,27 @@
 
     }
     .table-responsive {
-
         -webkit-overflow-scrolling: touch;
-
-        scrollbar-width: thin;
-
     }
     .table-responsive::-webkit-scrollbar {
-
-        height: 4px;
-
+        height: 6px;
     }
     .table-responsive::-webkit-scrollbar-thumb {
-
         background: #cbd5e1;
-
         border-radius: 4px;
-
     }
 
     /* Neat horizontal scrollable tabs from upstream dev */
     .sa-tabs-scroll {
-
         display: flex !important;
-
         flex-wrap: nowrap !important;
-
         overflow-x: auto !important;
-
         -webkit-overflow-scrolling: touch;
         scrollbar-width: none !important;
         -ms-overflow-style: none !important;
         gap: 0.35rem !important;
-
         padding: 0.25rem 0.25rem 0 0.25rem !important;
-
         border-bottom: 2px solid #e2e8f0 !important;
-
     }
     .sa-tabs-scroll::-webkit-scrollbar {
         display: none !important;
@@ -182,344 +162,117 @@
         height: 0 !important;
     }
     .sa-tabs-scroll .nav-item {
-
         flex-shrink: 0 !important;
-
     }
     .sa-tabs-scroll .nav-link {
-
         white-space: nowrap !important;
-
         flex-shrink: 0 !important;
-
         border: none !important;
-
         border-bottom: 2px solid transparent !important;
-
         border-radius: 0 !important;
-
         padding: 0.65rem 0.95rem !important;
-
         font-size: 0.88rem !important;
-
         font-weight: 500 !important;
-
         color: #64748b !important;
-
         background: transparent !important;
-
         transition: all 0.2s ease-in-out !important;
-
         margin-bottom: -2px !important;
-
     }
     .sa-tabs-scroll .nav-link:hover {
-
         color: #0f172a !important;
-
         border-bottom-color: #cbd5e1 !important;
-
         background: rgba(241, 245, 249, 0.6) !important;
-
         border-top-left-radius: 6px !important;
-
         border-top-right-radius: 6px !important;
-
     }
     .sa-tabs-scroll .nav-link.active {
-
         color: #2563eb !important;
-
         font-weight: 700 !important;
-
         border-bottom: 2px solid #2563eb !important;
-
         background: transparent !important;
-
     }
-
-
 
     .sa-tabs-scroll .nav-link .badge {
-
         font-size: 0.72rem !important;
-
         padding: 0.25em 0.55em !important;
-
         border-radius: 999px !important;
-
         vertical-align: middle;
-
         transition: all 0.2s ease;
-
     }
-
-
 
     .sa-tabs-scroll .nav-link.active .badge {
-
         background-color: rgba(37, 99, 235, 0.12) !important;
-
         color: #2563eb !important;
-
     }
-
-
 
     @media (max-width: 767.98px) {
-
         .sa-page {
-
-            padding: 0.75rem 0.85rem !important;
-
+            padding: 0.85rem !important;
         }
 
-
-
-        .sa-page h2 {
-
-            font-size: 1.25rem;
-
+        .sa-topbar {
+            padding: 0.5rem 0.75rem !important;
         }
 
-
-
-        .sa-page h3 {
-
-            font-size: 1.1rem;
-
+        .sa-topbar h1,
+        .sa-topbar h2,
+        .sa-topbar h3 {
+            font-size: 1.05rem !important;
         }
-
-
-
-        .sa-page .table {
-
-            font-size: 0.8125rem;
-
-        }
-
-
 
         .sa-page .metric-value {
-
-            font-size: clamp(1.35rem, 4.5vw, 1.75rem) !important;
-
+            font-size: 1.25rem !important;
         }
 
-
-
-        .sa-page .stat-card {
-
-            padding: 1rem !important;
-
+        .sa-page .card {
+            border-radius: 12px !important;
         }
 
+        .sa-page .card-body {
+            padding: 0.85rem !important;
+        }
 
+        .sa-page .card-header {
+            padding: 0.75rem 0.85rem !important;
+        }
+
+        .sa-page .table td,
+        .sa-page .table th {
+            padding: 0.55rem 0.5rem !important;
+        }
 
         .sa-page .breadcrumb {
-
-            flex-wrap: nowrap !important;
-
-            overflow-x: auto !important;
-
-            -webkit-overflow-scrolling: touch;
-
-            white-space: nowrap !important;
-
-            scrollbar-width: none;
-
-            -ms-overflow-style: none;
-
+            font-size: 0.78rem;
+            flex-wrap: nowrap;
+            overflow-x: auto;
+            white-space: nowrap;
             padding-bottom: 2px;
-
+            scrollbar-width: none;
         }
-
-
 
         .sa-page .breadcrumb::-webkit-scrollbar {
-
             display: none;
-
         }
 
-
-
-        .sa-page .breadcrumb-item {
-
-            flex-shrink: 0 !important;
-
-            display: inline-flex !important;
-
-            align-items: center;
-
+        .sa-tabs-scroll .nav-link {
+            padding: 0.55rem 0.7rem !important;
+            font-size: 0.82rem !important;
         }
-
-
-
-        .sa-page .row.mb-4>.col-12.d-flex,
-
-        .sa-page .card-header.d-flex {
-
-            flex-direction: column;
-
-            align-items: stretch !important;
-
-        }
-
-
-
-        .sa-page .row.mb-4>.col-12.d-flex {
-
-            flex-direction: column;
-
-            align-items: stretch !important;
-
-        }
-
-
-
-        .sa-page .card-header .form-select {
-
-            min-width: 0 !important;
-
-            width: 100%;
-
-        }
-
-
-
-        .sa-page .btn {
-
-            min-height: 36px;
-
-        }
-
-
-
-        .sa-page .row.mb-4>.col-12.d-flex>.btn,
-
-        .sa-page .card-header > .btn {
-
-            width: 100%;
-
-        }
-
     }
 
+    @media (max-width: 480px) {
+        .sa-page {
+            padding: 0.65rem !important;
+        }
 
+        .sa-page .metric-value {
+            font-size: 1.15rem !important;
+        }
 
-    html, body {
-
-        max-width: 100%;
-
-        overflow-x: clip;
-
+        .sa-page .badge {
+            font-size: 0.7rem !important;
+        }
     }
-
-
-
-    .sa-app {
-
-        max-width: 100%;
-
-    }
-
-
-
-    @media (max-width: 575.98px) {
-
-        .modal-dialog {
-
-            margin: 0.5rem auto;
-
-            max-width: calc(100vw - 1rem);
-
-        }
-
-        .modal-content {
-
-            border-radius: 1rem !important;
-
-            border: none !important;
-
-            overflow: hidden;
-
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
-
-        }
-
-        .modal-body {
-
-            max-height: calc(85vh - 120px);
-
-            overflow-y: auto;
-
-            -webkit-overflow-scrolling: touch;
-
-            padding: 1rem !important;
-
-        }
-
-        .modal-header {
-
-            padding: 1rem !important;
-
-        }
-
-        .modal-footer {
-
-            padding: 0.75rem 1rem !important;
-
-        }
-
-        .modal-footer .btn {
-
-            min-height: 40px;
-
-        }
-
-    }
-
-
-
-    /* Key-value meta tables on mobile */
-
-    @media (max-width: 576px) {
-
-        .sa-meta-table td {
-
-            display: block;
-
-            width: 100% !important;
-
-            padding: 0.2rem 0 !important;
-
-        }
-
-        .sa-meta-table tr {
-
-            display: block;
-
-            margin-bottom: 0.55rem;
-
-            border-bottom: 1px dashed rgba(0, 0, 0, 0.08);
-
-            padding-bottom: 0.35rem;
-
-        }
-
-        .sa-meta-table tr:last-child {
-
-            border-bottom: none;
-
-            margin-bottom: 0;
-
-            padding-bottom: 0;
-
-        }
-
-    }
-
 </style>
 
 <div class="d-flex align-items-start w-100" style="min-height: calc(100vh - 58px); max-width: 100vw; background-color: var(--sa-main-bg);">
@@ -639,7 +392,6 @@
                     offcanvasInstance.hide();
                 }
             }
-
         });
     });
 
@@ -671,7 +423,14 @@
 
         }, { passive: false });
 
+        document.querySelectorAll('.sa-tabs-scroll').forEach(function (el) {
+            el.addEventListener('wheel', function (e) {
+                if (e.deltaY !== 0) {
+                    e.preventDefault();
+                    el.scrollLeft += e.deltaY;
+                }
+            }, { passive: false });
+        });
     });
-
 </script>
 {% endblock layout %}
