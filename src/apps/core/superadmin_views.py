@@ -892,7 +892,10 @@ def org_create_view(request):
                 )
             except ValidationError as val_err:
                 form.add_error("admin_email", str(val_err))
-                return render(request, "superadmin/org_form.html", {"form": form, "is_create": True})
+                err_msg = "This user does not belong to this organization."
+                form.add_error("admin_email", err_msg)
+                messages.error(request, err_msg)
+                return render(request, "pages/dashboards/superadmin/org_form.html", {"form": form, "is_edit": False})
 
             if form.cleaned_data.get("import_standard_vendors", False):
                 from apps.vendors.services import import_standard_vendors_for_org_service
@@ -1040,7 +1043,7 @@ def org_edit_view(request, org_id):
 
                     existing_org = getattr(user, "effective_organization", None) or user.organization
                     if existing_org and existing_org.id != org.id:
-                        messages.error(request, f"The email '{norm_email}' belongs to organization '{existing_org.name}' and cannot be reassigned.")
+                        messages.error(request, "This user does not belong to this organization.")
                         return redirect("superadmin:organizations")
                     if user.is_superuser and not user.organization_id:
                         messages.error(request, f"The email '{norm_email}' is reserved for the Platform Admin and cannot be used.")

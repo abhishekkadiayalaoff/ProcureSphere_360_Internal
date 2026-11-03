@@ -426,7 +426,7 @@ class UserAdminForm(forms.ModelForm):
 
 
 
-            raise forms.ValidationError(f"User with email '{email}' already exists.")
+            raise forms.ValidationError("This user does not belong to this organization.")
 
 
 
@@ -1249,29 +1249,16 @@ class OrganizationAdminForm(forms.ModelForm):
                 existing_org = getattr(existing_user, "effective_organization", None) or existing_user.organization
                 if existing_org:
                     if is_create or (self.instance and self.instance.pk and str(existing_org.id) != str(self.instance.pk)):
-                        role_name = existing_user.role.name if existing_user.role else "user"
-                        self.add_error(
-                            "admin_email",
-                            f"The email '{norm_email}' is already assigned to a {role_name} in organization '{existing_org.name}'. Each email can belong to only one organization.",
-                        )
+                        self.add_error("admin_email", "This user does not belong to this organization.")
                 elif existing_user.is_superuser and not existing_user.organization_id:
-                    self.add_error(
-                        "admin_email",
-                        f"The email '{norm_email}' is reserved for the Platform Admin and cannot be used as an organization administrator.",
-                    )
+                    self.add_error("admin_email", "This user does not belong to this organization.")
                 elif is_create:
-                    self.add_error(
-                        "admin_email",
-                        f"The email '{norm_email}' is already registered in the system. Each organization administrator must have a unique email.",
-                    )
+                    self.add_error("admin_email", "This user does not belong to this organization.")
 
         if admin_user:
             admin_org = getattr(admin_user, "effective_organization", None) or admin_user.organization
             if admin_org and (is_create or (self.instance and self.instance.pk and str(admin_org.id) != str(self.instance.pk))):
-                self.add_error(
-                    "admin_user",
-                    f"The selected user '{admin_user.email}' already belongs to organization '{admin_org.name}'.",
-                )
+                self.add_error("admin_user", "This user does not belong to this organization.")
 
         return cleaned_data
 

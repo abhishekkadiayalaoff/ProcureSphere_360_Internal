@@ -154,21 +154,13 @@ def create_organization_with_admin_service(
             existing_org = getattr(admin_user, "effective_organization", None) or admin_user.organization
             if existing_org and existing_org.id != org.id:
                 from django.core.exceptions import ValidationError
-                raise ValidationError(
-                    f"The email '{norm_email}' is already assigned to a user in organization '{existing_org.name}'. "
-                    f"Email addresses cannot be reused across different organizations."
-                )
+                raise ValidationError("This user does not belong to this organization.")
             if not admin_user.organization_id and (admin_user.is_superuser or admin_user.is_staff):
                 from django.core.exceptions import ValidationError
-                raise ValidationError(
-                    f"The email '{norm_email}' is reserved for the Platform Admin and cannot be used as an organization administrator."
-                )
+                raise ValidationError("This user does not belong to this organization.")
             if admin_user.pk and admin_user.organization_id != org.id:
                 from django.core.exceptions import ValidationError
-                raise ValidationError(
-                    f"The email '{norm_email}' is already registered to an existing user in the system. "
-                    f"Email addresses cannot be reused across different organizations."
-                )
+                raise ValidationError("This user does not belong to this organization.")
             if admin_first_name:
                 admin_user.first_name = admin_first_name.strip()
             if admin_last_name:

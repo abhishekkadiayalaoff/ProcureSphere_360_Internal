@@ -69,8 +69,9 @@ def get_dashboard_url_for_user(user):
         user.role.code if hasattr(user, "role") and user.role else None
     )
 
-    if user.is_superuser and not role_code:
-        return "/superadmin/"
+    # Platform Admin (Django Admin superuser with no organization) -> /admin/
+    if user.is_superuser and not getattr(user, "organization_id", None):
+        return "/admin/"
 
     role_url_map = {
         Role.SUPER_ADMIN: "/superadmin/",
@@ -593,6 +594,10 @@ def home_view(request):  # noqa: C901
     role_code = getattr(user, "role_code", None) or (
         user.role.code if hasattr(user, "role") and user.role else None
     )
+
+    # Platform Admin landing on home view redirects directly to Django Admin
+    if user.is_superuser and not getattr(user, "organization_id", None):
+        return redirect("/admin/")
 
     if role_code is None and not user.is_superuser:
         return render(request, "pages/dashboards/no_role.html", status=403)

@@ -60,6 +60,12 @@
     </div>
     {% csrf_token %}
     <div class="modal-body pt-4" style="max-height: calc(85vh - 120px); overflow-y: auto;">
+        {% if form.errors %}
+        <div class="alert alert-danger py-2 px-3 small rounded-3 mb-3 d-flex align-items-center gap-2 shadow-sm">
+            <i class="fa-solid fa-triangle-exclamation text-danger fs-6"></i>
+            <span class="fw-semibold">{% if form.admin_email.errors %}{{ form.admin_email.errors|striptags }}{% elif form.admin_user.errors %}{{ form.admin_user.errors|striptags }}{% else %}This user does not belong to this organization.{% endif %}</span>
+        </div>
+        {% endif %}
         {% if form.non_field_errors %}
         <div class="alert alert-danger">{{ form.non_field_errors }}</div>
         {% endif %}
