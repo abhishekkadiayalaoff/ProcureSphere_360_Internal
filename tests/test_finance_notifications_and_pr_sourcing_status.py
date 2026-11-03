@@ -296,3 +296,91 @@ def test_pr_status_backward_compatibility_with_existing_po(base_test_data):
 
     res = client.get("/requisitions/")
     assert "PO Issued" in res.content.decode("utf-8")
+
+
+@pytest.mark.django_db
+def test_requester_isolated_from_stores_on_receipt_and_orders(base_test_data):
+    """
+    Verify that when a Requester views a Goods Receipt or Purchase Order:
+    1. Base layout is Requester Desk (not Stores or Procurement shell).
+    2. Back buttons point to Requisition / Requester Desk (not Store lists).
+    3. Operational warehouse buttons (inspection, stock handoff, returns) are hidden.
+    4. Navigating to /receipts/ or /purchase-orders/ redirects back to /requisitions/.
+    5. Requisition detail displays the downstream linked PO card.
+    """
+    requester = base_test_data["requester"]
+    proc_exec = base_test_data["proc_exec"]
+    stores = base_test_data["stores"]
+    vendor = base_test_data["vendor"]
+    cc = base_test_data["cc"]
+    dept = base_test_data["dept"]
+    today = timezone.now()
+
+    pr = PurchaseRequisition.objects.create(
+        pr_number="PR-REQ-TEST-001",
+        title="Engineering Laptops",
+        justification="Hardware refresh",
+        requester=requester,
+        department=dept,
+        cost_center=cc,
+        status=PurchaseRequisition.STATUS_APPROVED,
+        total_amount=Decimal("2500.00"),
+        requested_delivery_date=today.date() + timedelta(days=14),
+    )
+    po = generate_purchase_order_service(
+        vendor=vendor,
+        cost_center=cc,
+        line_items=[{"item_description": "Laptop", "quantity": 2, "unit_price": 1250}],
+        created_by_user=proc_exec,
+        requisition=pr,
+    )
+    grn = GoodsReceipt.objects.create(
+        grn_number="GRN-REQ-TEST-001",
+        po=po,
+        received_by=stores,
+        received_date=today,
+    )
+
+    client = Client()
+    client.force_login(requester)
+
+    # 1. Requester viewing /receipts/{grn.id}/
+    res_grn = client.get(f"/receipts/{grn.id}/")
+    assert res_grn.status_code == 200
+    grn_html = res_grn.content.decode("utf-8")
+    assert "Requester Desk" in grn_html
+    assert f"Back to Requisition {pr.pr_number}" in grn_html
+    assert f"/requisitions/{pr.id}/" in grn_html
+    assert f"/receipts/{grn.id}/inspect/" not in grn_html
+    assert f"/receipts/{grn.id}/stock-handoff/" not in grn_html
+    assert "rejections_queue" not in grn_html
+    assert "Proceed to Stock Handoff" not in grn_html
+    assert "Correct Qty" not in grn_html
+    assert "Dispatch Return" not in grn_html
+
+    # 2. Requester viewing /orders/{po.id}/
+    res_po = client.get(f"/orders/{po.id}/")
+    assert res_po.status_code == 200
+    po_html = res_po.content.decode("utf-8")
+    assert "Requester Desk" in po_html
+    assert f"Back to Requisition {pr.pr_number}" in po_html
+    assert "Start Goods Receipt" not in po_html
+    assert "Amend PO" not in po_html
+
+    # 3. Requester visiting /receipts/ and /purchase-orders/
+    res_receipts_list = client.get("/receipts/")
+    assert res_receipts_list.status_code == 302
+    assert res_receipts_list.url == "/requisitions/"
+
+    res_orders_list = client.get("/purchase-orders/")
+    assert res_orders_list.status_code == 302
+    assert res_orders_list.url == "/requisitions/"
+
+    # 4. Requester viewing PR detail displays linked PO card
+    res_pr = client.get(f"/requisitions/{pr.id}/")
+    assert res_pr.status_code == 200
+    pr_html = res_pr.content.decode("utf-8")
+    assert "Procurement Execution" in pr_html
+    assert po.po_number in pr_html
+    assert f"/purchase-orders/{po.id}/" in pr_html
+

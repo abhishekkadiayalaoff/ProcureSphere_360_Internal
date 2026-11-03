@@ -94,6 +94,13 @@ def receipts_list_view(request):
         )
         return redirect("vendor_dashboard")
 
+    if role_code in (Role.REQUESTER, "REQUESTER"):
+        messages.info(
+            request,
+            "Goods receipt operations are managed by Stores. Requesters can track receipts from their requisitions.",
+        )
+        return redirect("requisitions_list")
+
     search_query = request.GET.get("q", "").strip()
     status_filter = request.GET.get("status", "").strip().upper()
     po_filter = request.GET.get("po", "").strip()

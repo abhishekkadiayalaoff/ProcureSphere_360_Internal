@@ -6,9 +6,23 @@
 {% block content %}
 <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
     <div>
-        {% if user.role_code == 'PROC_MGR' %}
+        {% if role_code == 'PROC_MGR' or user.role_code == 'PROC_MGR' %}
         <a href="/manager/purchase-orders/" class="text-decoration-none text-muted mb-2 d-inline-block">
             <i class="fa-solid fa-arrow-left me-1"></i> Back to Purchase Orders
+        </a>
+        {% elif role_code == 'REQUESTER' or user.role_code == 'REQUESTER' %}
+        {% if po.requisition %}
+        <a href="{% url 'requisition_detail' po.requisition.id %}" class="text-decoration-none text-muted mb-2 d-inline-block">
+            <i class="fa-solid fa-arrow-left me-1"></i> Back to Requisition {{ po.requisition.pr_number }}
+        </a>
+        {% else %}
+        <a href="/requester/" class="text-decoration-none text-muted mb-2 d-inline-block">
+            <i class="fa-solid fa-arrow-left me-1"></i> Back to Requester Dashboard
+        </a>
+        {% endif %}
+        {% elif role_code == 'FINANCE_AP' or user.role_code == 'FINANCE_AP' %}
+        <a href="/finance/" class="text-decoration-none text-muted mb-2 d-inline-block">
+            <i class="fa-solid fa-arrow-left me-1"></i> Back to Finance Dashboard
         </a>
         {% else %}
         <a href="{% url 'orders_list' %}" class="text-decoration-none text-muted mb-2 d-inline-block">
@@ -40,6 +54,13 @@
     </div>
 
     <div class="d-flex align-items-center gap-2">
+        {% if role_code == 'REQUESTER' or user.role_code == 'REQUESTER' %}
+            {% if po.requisition %}
+            <a href="{% url 'requisition_detail' po.requisition.id %}" class="btn btn-outline-primary rounded-pill px-3 fw-semibold">
+                <i class="fa-solid fa-file-lines me-1"></i> View Requisition
+            </a>
+            {% endif %}
+        {% endif %}
         {% if po.status == 'DRAFT' and can_amend %}
         <form method="POST" action="{% url 'order_submit_approval' po.id %}" class="d-inline">
             {% csrf_token %}
@@ -62,7 +83,7 @@
             <i class="fa-solid fa-pen-to-square me-2"></i>Amend PO (Change Order)
         </button>
         {% endif %}
-        {% if is_receivable and is_stores_receiver %}
+        {% if is_receivable and is_stores_receiver and role_code not in 'REQUESTER,FINANCE_AP' %}
         <a href="{% url 'receipt_create' po_id=po.id %}" class="btn btn-primary rounded-pill px-4 fw-semibold shadow-sm">
             <i class="fa-solid fa-box-open me-2"></i>Start Goods Receipt
         </a>

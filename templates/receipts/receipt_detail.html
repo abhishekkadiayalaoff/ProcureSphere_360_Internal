@@ -10,6 +10,16 @@
         <a href="/finance/" class="text-decoration-none text-muted mb-2 d-inline-block">
             <i class="fa-solid fa-arrow-left me-1"></i> Back to Finance Dashboard
         </a>
+        {% elif user_role == 'REQUESTER' %}
+        {% if po.requisition %}
+        <a href="{% url 'requisition_detail' po.requisition.id %}" class="text-decoration-none text-muted mb-2 d-inline-block">
+            <i class="fa-solid fa-arrow-left me-1"></i> Back to Requisition {{ po.requisition.pr_number }}
+        </a>
+        {% else %}
+        <a href="/requester/" class="text-decoration-none text-muted mb-2 d-inline-block">
+            <i class="fa-solid fa-arrow-left me-1"></i> Back to Requester Dashboard
+        </a>
+        {% endif %}
         {% elif user_role == 'PROC_EXEC' %}
         <a href="/purchase-orders/" class="text-decoration-none text-muted mb-2 d-inline-block">
             <i class="fa-solid fa-arrow-left me-1"></i> Back to Purchase Orders
@@ -75,7 +85,16 @@
 
     <!-- Status-Gated Header Actions -->
     <div class="d-flex align-items-center flex-wrap gap-2">
-        {% if user_role == 'FINANCE_AP' %}
+        {% if user_role == 'REQUESTER' %}
+            {% if po.requisition %}
+            <a href="{% url 'requisition_detail' po.requisition.id %}" class="btn btn-outline-primary rounded-pill px-3 fw-semibold">
+                <i class="fa-solid fa-file-lines me-1"></i> View Requisition
+            </a>
+            {% endif %}
+            <a href="{% url 'order_detail' po.id %}" class="btn btn-outline-secondary rounded-pill px-3 fw-semibold">
+                <i class="fa-solid fa-file-invoice me-1"></i> View PO
+            </a>
+        {% elif user_role == 'FINANCE_AP' %}
             <a href="{% url 'order_detail' po.id %}" class="btn btn-outline-secondary rounded-pill px-3 fw-semibold">
                 <i class="fa-solid fa-file-invoice me-1"></i> View PO
             </a>
@@ -132,7 +151,7 @@
         <button type="button" class="btn btn-outline-secondary rounded-pill px-3 fw-semibold shadow-sm" onclick="window.print()">
             <i class="fa-solid fa-print me-1"></i> Print / Save GRN
         </button>
-        {% if grn.overall_inspection_status != 'PENDING' %}
+        {% if grn.overall_inspection_status != 'PENDING' and user_role not in 'REQUESTER,FINANCE_AP' %}
         <form method="post" action="{% url 'receipt_send_notifications' grn_id=grn.id %}" class="d-inline">
             {% csrf_token %}
             <button type="submit" class="btn btn-primary rounded-pill px-3 fw-semibold shadow-sm">
@@ -302,7 +321,7 @@
                 <span class="badge bg-warning text-dark px-3 py-2 rounded-pill fw-semibold">
                     <i class="fa-solid fa-hourglass-half me-1"></i> Inspection Required
                 </span>
-            {% elif grn.can_hand_off_to_stock and grn.stock_handoff_status != 'HANDED_OFF' %}
+            {% elif grn.can_hand_off_to_stock and grn.stock_handoff_status != 'HANDED_OFF' and user_role not in 'REQUESTER,FINANCE_AP' %}
                 <a href="{% url 'receipt_stock_handoff' grn_id=grn.id %}" class="btn btn-sm btn-success rounded-pill px-3 fw-semibold text-white">
                     <i class="fa-solid fa-dolly me-1"></i> Proceed to Stock Handoff
                 </a>
@@ -401,7 +420,7 @@
                                         <span class="badge {% if rej.returned_to_vendor %}bg-warning text-dark{% else %}bg-secondary{% endif %}">
                                             Return to Vendor: {% if rej.returned_to_vendor %}Yes{% else %}Pending{% endif %}
                                         </span>
-                                        {% if not rej.returned_to_vendor %}
+                                        {% if not rej.returned_to_vendor and user_role not in 'REQUESTER,FINANCE_AP' %}
                                         <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-2 py-0 small" data-bs-toggle="modal" data-bs-target="#returnModalDetail{{ rej.id }}">
                                             <i class="fa-solid fa-truck-arrow-right me-1"></i> Dispatch Return
                                         </button>
@@ -462,12 +481,14 @@
                                 {% endfor %}
                             {% endif %}
 
+                            {% if user_role not in 'REQUESTER,FINANCE_AP' %}
                             <!-- Quantity Correction Action -->
                             <div class="mt-2 pt-2 border-top d-flex justify-content-end">
                                 <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-2 py-0 small" data-bs-toggle="modal" data-bs-target="#correctLineModal{{ line.id }}">
                                     <i class="fa-solid fa-pen-to-square me-1"></i> Correct Qty
                                 </button>
                             </div>
+                            {% endif %}
 
                             <!-- Quantity Correction Modal for line {{ line.id }} -->
                             <div class="modal fade" id="correctLineModal{{ line.id }}" tabindex="-1" aria-hidden="true">
