@@ -129,28 +129,22 @@ class OrganizationDjangoAdminForm(forms.ModelForm):
         if admin_email:
             existing_user = User.objects.filter(email__iexact=admin_email).first()
             if existing_user:
-                if existing_user.organization_id and (is_create or self.instance.pk != existing_user.organization_id):
-                    self.add_error(
-                        "admin_email",
-                        f"User with email '{admin_email}' already belongs to organization '{existing_user.organization.name}'. "
-                        f"Each organization user must have a unique email address across all organizations."
-                    )
-                elif not existing_user.organization_id and (existing_user.is_superuser or existing_user.is_staff):
-                    self.add_error(
-                        "admin_email",
-                        f"User with email '{admin_email}' is the Platform Admin and cannot be an organization administrator."
-                    )
+                existing_org = getattr(existing_user, "effective_organization", None) or existing_user.organization
+                if existing_org:
+                    if is_create or (self.instance and self.instance.pk and str(self.instance.pk) != str(existing_org.id)):
+                        self.add_error("admin_email", "This user does not belong to this organization.")
+                elif existing_user.is_superuser and not existing_user.organization_id:
+                    self.add_error("admin_email", "This user does not belong to this organization.")
+                elif is_create:
+                    self.add_error("admin_email", "This user does not belong to this organization.")
+
         if admin_user:
-            if admin_user.organization_id and (is_create or self.instance.pk != admin_user.organization_id):
-                self.add_error(
-                    "admin_user",
-                    f"Admin '{admin_user.email}' already belongs to organization '{admin_user.organization.name}'.",
-                )
-            elif not admin_user.organization_id and (admin_user.is_superuser or admin_user.is_staff):
-                self.add_error(
-                    "admin_user",
-                    f"User '{admin_user.email}' is the Platform Admin and cannot be an organization administrator.",
-                )
+            admin_org = getattr(admin_user, "effective_organization", None) or admin_user.organization
+            if admin_org and (is_create or (self.instance and self.instance.pk and str(self.instance.pk) != str(admin_org.id))):
+                self.add_error("admin_user", "This user does not belong to this organization.")
+            elif not getattr(admin_user, "organization_id", None) and (admin_user.is_superuser or admin_user.is_staff):
+                self.add_error("admin_user", "This user does not belong to this organization.")
+
         return cleaned_data
 
 
