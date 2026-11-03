@@ -32,6 +32,7 @@ from apps.vendors.permissions import (
 from apps.vendors.selectors import get_vendor_change_history
 from apps.vendors.services import (
     allowed_governance_transitions,
+    approve_vendor_service,
     record_vendor_risk_assessment_service,
     set_vendor_status_governance_service,
 )
@@ -742,19 +743,17 @@ class VendorAssessRiskAPIView(APIView):
                     Vendor.STATUS_DRAFT,
                     Vendor.STATUS_SUBMITTED,
                     Vendor.STATUS_KYC_REVIEW,
+                    Vendor.STATUS_CHANGES_REQUIRED,
                 ]:
-                    previous_status = vendor.status
-                    vendor.status = Vendor.STATUS_ACTIVE
-                    vendor.status_notes = assessment_notes
-                    vendor.save(update_fields=["status", "status_notes", "updated_at"])
-                    create_audit_log_service(
-                        actor=request.user,
-                        action=AuditLog.ACTION_APPROVE,
-                        target_model="Vendor",
-                        target_object_id=str(vendor.id),
-                        previous_state={"status": previous_status},
-                        new_state={"status": vendor.status, "notes": assessment_notes},
-                    )
+                    try:
+                        approve_vendor_service(vendor=vendor, manager=request.user, notes=assessment_notes)
+                        vendor.refresh_from_db()
+                    except (DjangoValidationError, Exception) as e:
+                        msg = getattr(e, "messages", None) or [str(e)]
+                        return Response(
+                            {"detail": f"KYC verification failed: {msg[0]}"},
+                            status=status.HTTP_400_BAD_REQUEST,
+                        )
                 elif gov_status_upper == Vendor.STATUS_REJECTED and vendor.status in [
                     Vendor.STATUS_DRAFT,
                     Vendor.STATUS_SUBMITTED,
@@ -817,19 +816,17 @@ class VendorGovernanceStatusAPIView(APIView):
                 Vendor.STATUS_DRAFT,
                 Vendor.STATUS_SUBMITTED,
                 Vendor.STATUS_KYC_REVIEW,
+                Vendor.STATUS_CHANGES_REQUIRED,
             ]:
-                previous_status = vendor.status
-                vendor.status = Vendor.STATUS_ACTIVE
-                vendor.status_notes = notes
-                vendor.save(update_fields=["status", "status_notes", "updated_at"])
-                create_audit_log_service(
-                    actor=request.user,
-                    action=AuditLog.ACTION_APPROVE,
-                    target_model="Vendor",
-                    target_object_id=str(vendor.id),
-                    previous_state={"status": previous_status},
-                    new_state={"status": vendor.status, "notes": notes},
-                )
+                try:
+                    approve_vendor_service(vendor=vendor, manager=request.user, notes=notes)
+                    vendor.refresh_from_db()
+                except (DjangoValidationError, Exception) as e:
+                    msg = getattr(e, "messages", None) or [str(e)]
+                    return Response(
+                        {"detail": f"KYC verification failed: {msg[0]}"},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
             elif new_status == Vendor.STATUS_REJECTED and vendor.status in [
                 Vendor.STATUS_DRAFT,
                 Vendor.STATUS_SUBMITTED,

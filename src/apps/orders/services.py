@@ -80,6 +80,18 @@ def generate_purchase_order_service(
     po.total_amount = total
     po.save(update_fields=["subtotal", "tax_amount", "total_amount", "updated_at"])
 
+    # Update linked requisition status to PO_ISSUED
+    target_requisition = requisition or (sourcing_event.requisition if sourcing_event else None)
+    if target_requisition:
+        from apps.requisitions.models import PurchaseRequisition
+
+        if target_requisition.status in (
+            PurchaseRequisition.STATUS_APPROVED,
+            PurchaseRequisition.STATUS_SOURCING,
+        ):
+            target_requisition.status = PurchaseRequisition.STATUS_PO_ISSUED
+            target_requisition.save(update_fields=["status", "updated_at"])
+
     # Move BudgetReservation to SpendLedger COMMITMENT only if PO is in ISSUED status
     if initial_status == PurchaseOrder.STATUS_ISSUED:
         budget = (
@@ -315,9 +327,27 @@ def request_po_amendment_service(
             if candidate:
                 matched_line = candidate
 
-        qty = Decimal(str(item["quantity"]))
-        unit_price = Decimal(str(item["unit_price"]))
-        desc = item.get("item_description", "").strip()
+        if "quantity" not in item or item.get("quantity") is None:
+            raise ValidationError(f"Line item {idx + 1} must include 'quantity'.")
+        if "unit_price" not in item or item.get("unit_price") is None:
+            raise ValidationError(f"Line item {idx + 1} must include 'unit_price'.")
+        try:
+            qty = Decimal(str(item["quantity"]))
+        except Exception:
+            raise ValidationError(f"Invalid quantity '{item.get('quantity')}' in amendment line {idx + 1}.")
+        try:
+            unit_price = Decimal(str(item["unit_price"]))
+        except Exception:
+            raise ValidationError(f"Invalid unit price '{item.get('unit_price')}' in amendment line {idx + 1}.")
+
+        if qty <= Decimal("0.00"):
+            raise ValidationError(f"Quantity must be greater than zero for line item {idx + 1}.")
+        if unit_price < Decimal("0.00"):
+            raise ValidationError(f"Unit price cannot be negative for line item {idx + 1}.")
+
+        desc = str(item.get("item_description", "")).strip()
+        if not matched_line and not desc:
+            raise ValidationError(f"Item description is required for new line item {idx + 1}.")
         uom = item.get("unit_of_measure", "EA")
 
         if matched_line:

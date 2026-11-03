@@ -5,17 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ProcureSphere 360 - {% block title %}ERP Dashboard{% endblock %}</title>
-    <!-- SEO: Prevent search engines from indexing authenticated dashboard pages -->
-    <meta name="robots" content="noindex, nofollow, noarchive" />
-    <meta name="description" content="ProcureSphere 360 — Enterprise Procurement Dashboard" />
-    
-    <!-- Production WebP Favicon Suite -->
-    <link rel="icon" type="image/webp" sizes="32x32" href="{% static 'icons/favicon-32x32.webp' %}">
-    <link rel="icon" type="image/webp" sizes="16x16" href="{% static 'icons/favicon-16x16.webp' %}">
-    <link rel="icon" type="image/webp" href="{% static 'icons/favicon.webp' %}">
-    <link rel="apple-touch-icon" href="{% static 'icons/apple-touch-icon.webp' %}">
-    <link rel="manifest" href="{% static 'icons/site.webmanifest' %}">
-    <meta name="theme-color" content="#2563eb">
+    <link rel="icon" href="data:,">
     <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Font Awesome -->
@@ -47,7 +37,7 @@
             .legal-sidebar-desktop,
             .manager-sidebar-desktop,
             .auditor-sidebar,
-            aside.bg-dark:not(.approver-sidebar):not(#saSidebar):not(.sa-sidebar) {
+            aside.bg-dark:not(.approver-sidebar) {
                 width: 260px !important;
                 min-width: 260px !important;
                 flex-shrink: 0 !important;
@@ -126,8 +116,8 @@
         aside.bg-dark nav a.active-nav-item,
         aside.bg-dark nav a.active,
         aside.bg-dark .sidebar-nav-container a.active,
-        aside.bg-dark:not(#saSidebar):not(.sa-sidebar) a.nav-link.active,
-        aside.bg-dark:not(#saSidebar):not(.sa-sidebar) a.nav-link.active-nav-item {
+        aside.bg-dark a.nav-link.active,
+        aside.bg-dark a.nav-link.active-nav-item {
             background: #0D6EFD !important;
             color: #FFFFFF !important;
             font-weight: 700 !important;
@@ -296,11 +286,11 @@
     <!-- Top Navigation Bar for Procurement Executive (Vendor Dashboard Standard) -->
     <nav class="navbar navbar-dark bg-dark shadow-sm py-2 border-bottom border-secondary border-opacity-25 sticky-top proc-exec-topbar">
         <div class="container-fluid px-2 px-sm-3 px-lg-4 d-flex align-items-center justify-content-between flex-nowrap">
-            <div class="d-flex align-items-center flex-nowrap me-2">
+            <div class="d-flex align-items-center overflow-hidden me-2">
                 <button class="navbar-toggler border-0 me-2 d-lg-none p-1" type="button" data-bs-toggle="offcanvas" data-bs-target="#procExecSidebar" aria-controls="procExecSidebar" aria-label="Toggle navigation">
                     <i class="fa-solid fa-bars text-white fs-4"></i>
                 </button>
-                <a href="/" class="dashboard-brand-badge me-2 me-lg-3" aria-label="ProcureSphere 360 Home">
+                <a href="/procurement/" class="dashboard-brand-badge me-2 me-lg-3" aria-label="ProcureSphere 360 Home">
                     <img src="{% static 'landing/images/procuresphere_360_nav_brand.png' %}" alt="ProcureSphere 360" class="dashboard-brand-logo">
                 </a>
                 <span class="badge bg-secondary bg-opacity-50 text-light px-2 py-1 small rounded-pill d-none d-sm-inline-block">Procurement Executive</span>
@@ -319,25 +309,26 @@
                 <!-- Notifications Icon -->
                 <a href="{% url 'notification_list' %}" class="btn btn-outline-secondary btn-sm position-relative text-white border-0 d-flex align-items-center justify-content-center p-0" style="width: 36px; height: 36px;" title="Notifications">
                     <i class="fa-solid fa-bell fs-5"></i>
+                    {% if unread_notifications_count and unread_notifications_count > 0 %}
+                    <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size: 0.65rem;">
+                        {{ unread_notifications_count }}
+                        <span class="visually-hidden">unread notifications</span>
+                    </span>
+                    {% endif %}
                 </a>
 
-                <!-- User Profile & Dropdown -->
+                <!-- User Profile & Sign Out -->
                 <div class="d-flex align-items-center gap-2">
-                    <div class="d-none d-lg-block text-end lh-sm me-1">
-                        <div class="fw-semibold text-white small mb-1">{{ user.email }}</div>
-                        <div class="text-muted d-block" style="font-size: 0.7rem; line-height: 1;">Procurement Executive</div>
+                    <div class="d-none d-md-flex align-items-center px-2 px-sm-3 py-1 bg-secondary bg-opacity-25 rounded-pill border border-secondary border-opacity-50 text-white">
+                        <i class="fa-solid fa-circle-user text-cyan me-1 me-sm-2 fs-5"></i>
+                        <div class="text-start leading-tight me-1">
+                            <div class="fw-semibold text-white small text-truncate" style="max-width: 140px;">{{ user.email }}</div>
+                            <div class="badge bg-secondary bg-opacity-75 text-cyan rounded-pill" style="font-size: 0.65rem;">Procurement Executive</div>
+                        </div>
                     </div>
-                    <div class="dropdown">
-                        <button class="btn btn-dark border border-secondary border-opacity-50 rounded-circle text-white d-flex align-items-center justify-content-center p-0" style="width: 36px; height: 36px;" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                            <i class="fa-solid fa-user-tie text-cyan"></i>
-                        </button>
-                        <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 bg-dark text-white">
-                            <li><a class="dropdown-item text-white py-2" href="{% url 'notification_list' %}"><i class="fa-solid fa-bell text-warning me-2"></i> Notifications</a></li>
-                            <li><a class="dropdown-item text-white py-2" href="{% url 'vendor_governance' %}"><i class="fa-solid fa-shield-halved text-cyan me-2"></i> Vendor Governance</a></li>
-                            <li><hr class="dropdown-divider border-secondary"></li>
-                            <li><a class="dropdown-item text-danger py-2" href="/logout/"><i class="fa-solid fa-arrow-right-from-bracket me-2"></i> Sign Out</a></li>
-                        </ul>
-                    </div>
+                    <a href="/logout/" class="btn btn-outline-light btn-sm rounded-pill px-2.5 px-sm-3 text-nowrap d-inline-flex align-items-center" title="Sign Out">
+                        <i class="fa-solid fa-arrow-right-from-bracket"></i> <span class="d-none d-sm-inline ms-1">Sign Out</span>
+                    </a>
                 </div>
             </div>
         </div>
@@ -358,7 +349,7 @@
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav me-auto ms-lg-2">
                     <li class="nav-item">
-                        <a class="nav-link px-3 active d-flex align-items-center" href="{% if user.role_code == 'PROC_MGR' %}/manager/{% elif user.role_code == 'AUDITOR' %}/audit/dashboard/{% else %}/{% endif %}">
+                        <a class="nav-link px-3 active d-flex align-items-center" href="{% if user.role_code == 'PROC_MGR' %}/manager/{% elif user.role_code == 'AUDITOR' %}/audit/dashboard/{% elif user.role_code == 'REQUESTER' %}/requester/{% elif user.role_code == 'DEPT_APPROVER' %}/approver/{% elif user.role_code == 'FINANCE_AP' %}/finance/{% elif user.role_code == 'STORES_RECEIVER' %}/stores/{% elif user.role_code == 'LEGAL_MGR' %}/legal/{% elif user.role_code == 'SUPER_ADMIN' %}/superadmin/{% elif user.role_code == 'VENDOR_USER' %}/vendor/{% else %}/procurement/{% endif %}">
                             <i class="fa-solid fa-chart-pie me-2"></i> Dashboard
                         </a>
                     </li>
@@ -447,7 +438,7 @@
         {% endif %}
 
         <!-- Main Page Content Area -->
-        <main class="{% if user.is_authenticated and user.role_code == 'PROC_EXEC' %}flex-grow-1 p-2 p-sm-3 p-md-4 bg-light w-100{% else %}container-fluid p-3 p-md-4 overflow-auto{% endif %}" style="min-width: 0; {% if user.is_authenticated and user.role_code == 'PROC_EXEC' %}max-width: 100vw; overflow-x: hidden;{% endif %}">
+        <main class="{% if user.is_authenticated and user.role_code == 'PROC_EXEC' %}flex-grow-1 p-2 p-sm-3 p-md-4 w-100{% else %}container-fluid p-3 p-md-4 overflow-auto{% endif %}" style="min-width: 0; background-color: #F5F7FA; {% if user.is_authenticated and user.role_code == 'PROC_EXEC' %}max-width: 100vw; overflow-x: hidden;{% endif %}">
             {% block content %}{% endblock %}
         </main>
     </div>

@@ -78,6 +78,10 @@ def create_supplier_invoice_service(
                     po_line = POLine.objects.filter(pk=po_line_raw, po=po).first()
                 except Exception:
                     po_line = None
+            if po_line_raw and not po_line:
+                raise ValidationError(
+                    f"PO line '{po_line_raw}' was not found on Purchase Order {po.po_number}."
+                )
 
         item_desc = item.get(
             "item_description", getattr(po_line, "item_description", "Line Item")

@@ -25,6 +25,32 @@ from apps.requisitions.services import (
 )
 
 
+def _resolve_requisition_layout(user, role_code):
+    """
+    Resolve base layout template for requisition views based on the authenticated user and role.
+    Super Admin and Admins render in layouts/superadmin_base.html so they remain inside the Admin workspace.
+    """
+    if getattr(user, "is_superuser", False) or role_code in [
+        Role.SUPER_ADMIN,
+        "SUPER_ADMIN",
+        "ADMIN",
+    ]:
+        return "layouts/superadmin_base.html"
+    if role_code in [Role.PROC_MGR, "PROC_MGR"]:
+        return "manager/base_manager.html"
+    if role_code in [Role.AUDITOR, "AUDITOR"]:
+        return "audit/base_auditor.html"
+    if role_code in [Role.LEGAL_MGR, "LEGAL_MGR"]:
+        return "layouts/legal_base.html"
+    if role_code in [Role.DEPT_APPROVER, Role.PROC_EXEC, "DEPT_APPROVER", "PROC_EXEC"]:
+        return "layouts/approver_base.html"
+    if role_code in [Role.FINANCE_AP, "FINANCE_AP"]:
+        return "layouts/finance_base.html"
+    if role_code in [Role.STORES_RECEIVER, "STORES_RECEIVER"]:
+        return "layouts/stores_base.html"
+    return "layouts/requester_base.html"
+
+
 @login_required(login_url="/login/")
 def list_view(request):
     user = request.user
@@ -77,8 +103,43 @@ def list_view(request):
             )
         else:
             items = PurchaseRequisition.objects.all().order_by("-created_at")
+    elif role_code == Role.FINANCE_AP:
+        user_org = getattr(user, "effective_organization", None) or getattr(user, "organization", None)
+        if not user_org and not getattr(user, "is_superuser", False):
+            from apps.organization.models import Organization
+            user_org = (
+                Organization.objects.filter(name__icontains="Defence").first()
+                or Organization.objects.exclude(code__in=["ORG-HPE-01", "ORG-DEMO-01", "DEFAULT"]).last()
+            )
+        if user_org:
+            items = (
+                PurchaseRequisition.objects.filter(
+                    Q(department__organization=user_org)
+                    | Q(cost_center__department__organization=user_org)
+                    | Q(requester__organization=user_org)
+                )
+                .distinct()
+                .order_by("-created_at")
+            )
+        else:
+            items = PurchaseRequisition.objects.all().order_by("-created_at")
     else:
         items = PurchaseRequisition.objects.all().order_by("-created_at")
+
+    # Enforce multi-tenant organization boundary across all roles
+    user_org = getattr(user, "effective_organization", None) or getattr(user, "organization", None)
+    if not user_org and not getattr(user, "is_superuser", False):
+        from apps.organization.models import Organization
+        user_org = (
+            Organization.objects.filter(name__icontains="Defence").first()
+            or Organization.objects.exclude(code__in=["ORG-HPE-01", "ORG-DEMO-01", "DEFAULT"]).last()
+        )
+    if user_org and not (getattr(user, "is_superuser", False) and not user.organization_id):
+        items = items.filter(
+            Q(department__organization=user_org)
+            | Q(cost_center__department__organization=user_org)
+            | Q(requester__organization=user_org)
+        ).distinct()
 
     if search_q:
         items = items.filter(
@@ -107,6 +168,8 @@ def list_view(request):
         else:
             items = items.filter(status=status_filter)
 
+    items = items.select_related("requester", "department").prefetch_related("purchase_orders", "sourcing_events")
+
     # Pagination (10 items per page)
     paginator = Paginator(items, 10)
     page_number = request.GET.get("page")
@@ -117,12 +180,7 @@ def list_view(request):
         query_params.pop("page")
     querystring = query_params.urlencode()
 
-    if role_code == Role.LEGAL_MGR or role_code == "LEGAL_MGR":
-        base_layout = "layouts/legal_base.html"
-    elif role_code in [Role.DEPT_APPROVER, Role.PROC_MGR]:
-        base_layout = "layouts/approver_base.html"
-    else:
-        base_layout = "layouts/requester_base.html"
+    base_layout = _resolve_requisition_layout(user, role_code)
 
     return render(
         request,
@@ -347,6 +405,8 @@ def create_view(request):
             "cost_centers": cost_centers,
             "user_assigned_cost_center": getattr(user, "cost_center", None),
             "today": timezone.now().date().isoformat(),
+            "role_code": role_code,
+            "base_layout": _resolve_requisition_layout(user, role_code),
         },
     )
 
@@ -512,6 +572,10 @@ def edit_view(request, pk):
         cost_centers = CostCenter.objects.all()
 
     cost_centers = _attach_available_budgets(cost_centers)
+    user = request.user
+    role_code = getattr(user, "role_code", None) or (
+        user.role.code if hasattr(user, "role") and user.role else Role.SUPER_ADMIN
+    )
 
     return render(
         request,
@@ -521,6 +585,8 @@ def edit_view(request, pk):
             "departments": departments,
             "cost_centers": cost_centers,
             "today": timezone.now().date().isoformat(),
+            "role_code": role_code,
+            "base_layout": _resolve_requisition_layout(user, role_code),
         },
     )
 
@@ -534,7 +600,7 @@ def detail_view(request, pk):
     pr = get_object_or_404(
         PurchaseRequisition.objects.select_related(
             "requester", "department", "cost_center"
-        ).prefetch_related("lines", "attachments", "purchase_orders"),
+        ).prefetch_related("lines", "attachments", "purchase_orders", "sourcing_events"),
         pk=pk,
     )
 
@@ -547,21 +613,22 @@ def detail_view(request, pk):
         messages.error(request, "You do not have permission to view this requisition.")
         return redirect("requisitions_list")
 
-    if not user.is_superuser and role_code not in [
-        Role.FINANCE_AP,
-        Role.AUDITOR,
-        Role.PROC_MGR,
-        Role.PROC_EXEC,
-    ]:
-        user_dept = getattr(user, "department", None)
-        user_org = getattr(user_dept, "organization", None) if user_dept else None
-        pr_org = getattr(getattr(pr, "department", None), "organization", None)
-        if user_org and pr_org and user_org.id != pr_org.id:
-            from django.core.exceptions import PermissionDenied
-
-            raise PermissionDenied(
-                "You do not have permission to view requisitions from another organization."
-            )
+    # Enforce strict multi-tenant boundary for detail view
+    user_org = getattr(user, "effective_organization", None) or getattr(user, "organization", None)
+    if not user_org and not getattr(user, "is_superuser", False):
+        from apps.organization.models import Organization
+        user_org = (
+            Organization.objects.filter(name__icontains="Defence").first()
+            or Organization.objects.exclude(code__in=["ORG-HPE-01", "ORG-DEMO-01", "DEFAULT"]).last()
+        )
+    pr_org = (
+        getattr(getattr(pr, "department", None), "organization", None)
+        or getattr(getattr(getattr(pr, "cost_center", None), "department", None), "organization", None)
+        or getattr(pr.requester, "effective_organization", None)
+    )
+    if user_org and pr_org and user_org.id != pr_org.id and not (user.is_superuser and not user.organization_id):
+        from django.core.exceptions import PermissionDenied
+        raise PermissionDenied("You do not have permission to view requisitions from another organization.")
 
     approval_history = (
         ApprovalAction.objects.filter(
@@ -642,30 +709,13 @@ def detail_view(request, pk):
         elif not chain and role_code in [Role.DEPT_APPROVER, Role.PROC_MGR, Role.SUPER_ADMIN]:
             can_approve = not user_has_approved
     elif pr.status == PurchaseRequisition.STATUS_BUDGET_REVIEW:
-        if role_code in [Role.FINANCE_AP, Role.SUPER_ADMIN] or user.is_superuser:
+        if role_code in [Role.PROC_MGR, Role.SUPER_ADMIN] or user.is_superuser:
             can_approve = True
 
-    base_layout = (
-        "manager/base_manager.html"
-        if role_code == Role.PROC_MGR
-        else (
-            "audit/base_auditor.html"
-            if role_code == Role.AUDITOR
-            else (
-                "layouts/legal_base.html"
-                if role_code == Role.LEGAL_MGR
-                else (
-                    "layouts/approver_base.html"
-                    if role_code in [Role.DEPT_APPROVER, Role.PROC_EXEC]
-                    else (
-                        "layouts/finance_base.html"
-                        if role_code == Role.FINANCE_AP
-                        else "layouts/requester_base.html"
-                    )
-                )
-            )
-        )
-    )
+    latest_po = pr.purchase_orders.order_by("-created_at").first()
+    latest_sourcing = pr.sourcing_events.order_by("-created_at").first()
+
+    base_layout = _resolve_requisition_layout(user, role_code)
 
     return render(
         request,
@@ -680,6 +730,8 @@ def detail_view(request, pk):
             "can_approve": can_approve,
             "user_has_approved": user_has_approved,
             "current_step_info": current_step_info,
+            "latest_po": latest_po,
+            "latest_sourcing": latest_sourcing,
         },
     )
 
@@ -727,19 +779,35 @@ def approve_view(request, pk):
             user.role.code if hasattr(user, "role") and user.role else Role.SUPER_ADMIN
         )
 
+        user_org = getattr(user, "effective_organization", None) or getattr(user, "organization", None)
+        if not user_org and not getattr(user, "is_superuser", False):
+            from apps.organization.models import Organization
+            user_org = (
+                Organization.objects.filter(name__icontains="Defence").first()
+                or Organization.objects.exclude(code__in=["ORG-HPE-01", "ORG-DEMO-01", "DEFAULT"]).last()
+            )
+        pr_org = (
+            getattr(getattr(pr, "department", None), "organization", None)
+            or getattr(getattr(getattr(pr, "cost_center", None), "department", None), "organization", None)
+            or getattr(pr.requester, "effective_organization", None)
+        )
+        if user_org and pr_org and user_org.id != pr_org.id and not (user.is_superuser and not user.organization_id):
+            messages.error(request, "Permission Denied: You cannot approve requisitions from another organization.")
+            return redirect("requisition_detail", pk=pr.pk)
+
         if pr.status == PurchaseRequisition.STATUS_BUDGET_REVIEW and role_code not in [
-            Role.FINANCE_AP,
+            Role.PROC_MGR,
             Role.SUPER_ADMIN,
         ]:
             messages.error(
                 request,
-                "Permission Denied: Only Finance/AP can approve a budget overrun exception.",
+                "Permission Denied: Only Procurement Manager can approve a budget overrun exception.",
             )
             return redirect("requisition_detail", pk=pr.pk)
         elif pr.status in [
             PurchaseRequisition.STATUS_MANAGER_REVIEW,
             PurchaseRequisition.STATUS_SUBMITTED,
-        ] and role_code not in [Role.DEPT_APPROVER, Role.PROC_MGR, Role.SUPER_ADMIN]:
+        ] and role_code not in [Role.DEPT_APPROVER, Role.FINANCE_AP, Role.PROC_MGR, Role.SUPER_ADMIN]:
             messages.error(
                 request,
                 "Permission Denied: You do not have permission to approve this requisition.",
@@ -769,18 +837,34 @@ def reject_view(request, pk):
             user.role.code if hasattr(user, "role") and user.role else Role.SUPER_ADMIN
         )
 
+        user_org = getattr(user, "effective_organization", None) or getattr(user, "organization", None)
+        if not user_org and not getattr(user, "is_superuser", False):
+            from apps.organization.models import Organization
+            user_org = (
+                Organization.objects.filter(name__icontains="Defence").first()
+                or Organization.objects.exclude(code__in=["ORG-HPE-01", "ORG-DEMO-01", "DEFAULT"]).last()
+            )
+        pr_org = (
+            getattr(getattr(pr, "department", None), "organization", None)
+            or getattr(getattr(getattr(pr, "cost_center", None), "department", None), "organization", None)
+            or getattr(pr.requester, "effective_organization", None)
+        )
+        if user_org and pr_org and user_org.id != pr_org.id and not (user.is_superuser and not user.organization_id):
+            messages.error(request, "Permission Denied: You cannot reject requisitions from another organization.")
+            return redirect("requisition_detail", pk=pr.pk)
+
         if pr.status == PurchaseRequisition.STATUS_BUDGET_REVIEW and role_code not in [
-            Role.FINANCE_AP,
+            Role.PROC_MGR,
             Role.SUPER_ADMIN,
         ]:
             messages.error(
-                request, "Permission Denied: Only Finance/AP can reject a budget overrun exception."
+                request, "Permission Denied: Only Procurement Manager can reject a budget overrun exception."
             )
             return redirect("requisition_detail", pk=pr.pk)
         elif pr.status in [
             PurchaseRequisition.STATUS_MANAGER_REVIEW,
             PurchaseRequisition.STATUS_SUBMITTED,
-        ] and role_code not in [Role.DEPT_APPROVER, Role.PROC_MGR, Role.SUPER_ADMIN]:
+        ] and role_code not in [Role.DEPT_APPROVER, Role.FINANCE_AP, Role.PROC_MGR, Role.SUPER_ADMIN]:
             messages.error(
                 request, "Permission Denied: You do not have permission to reject this requisition."
             )

@@ -12,6 +12,7 @@ from apps.accounts.views import (
     portal_logout_view,
 )
 from apps.core.views import (
+    home_view,
     custom_404_view,
     protected_media_view,
     protected_vendor_document_view,
@@ -27,6 +28,7 @@ urlpatterns = [
     path("health", health, name="health"),
     path("readyz", readyz, name="readyz"),
     re_path(r"^.*prompts\.json$", lambda request: JsonResponse({})),
+    path("admin/dashboard/", home_view, name="admin_dashboard"),
     path("admin/logout/", portal_logout_view, name="admin_logout_override"),
     path("admin/", admin.site.urls),
     path("login/", portal_login_view, name="login"),

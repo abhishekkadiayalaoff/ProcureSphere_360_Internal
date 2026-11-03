@@ -245,5 +245,20 @@ class User(AbstractUser):
             return self.organization
         if self.department_id and self.department:
             return self.department.organization
+        if self.cost_center_id and self.cost_center and self.cost_center.department:
+            return self.cost_center.department.organization
+        admin_org = getattr(self, "administered_organizations", None)
+        if admin_org:
+            first_org = admin_org.first()
+            if first_org:
+                return first_org
         return None
+
+    def save(self, *args, **kwargs):
+        # Enforce DEF-001: Only users with SUPER_ADMIN role can ever be superuser or staff
+        role_code = self.role_code
+        if role_code and role_code != Role.SUPER_ADMIN:
+            self.is_superuser = False
+            self.is_staff = False
+        super().save(*args, **kwargs)
 

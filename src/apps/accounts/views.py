@@ -5,7 +5,6 @@ from django.contrib.auth.forms import PasswordChangeForm, SetPasswordForm
 from django.http import JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
-from django.utils import timezone
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.cache import never_cache
 
@@ -24,16 +23,12 @@ def portal_login_view(request):
     """
 
     if request.user.is_authenticated:
-        role_code = getattr(request.user, "role_code", None) or (
-            request.user.role.code if hasattr(request.user, "role") and request.user.role else None
-        )
-        if role_code == "VENDOR_USER":
-            return redirect("/vendor/")
+        from apps.core.views import get_dashboard_url_for_user
 
         if getattr(request.user, "must_change_password", False):
             return redirect(reverse("accounts:change_password"))
 
-        return redirect("/")
+        return redirect(get_dashboard_url_for_user(request.user))
 
 
 
@@ -132,13 +127,9 @@ def portal_login_view(request):
             ):
                 next_url = None  # never redirect off-site (open-redirect protection)
             if not next_url:
-                role_code = getattr(user, "role_code", None) or (
-                    user.role.code if hasattr(user, "role") and user.role else None
-                )
-                if role_code == "VENDOR_USER":
-                    next_url = "/vendor/"
-                else:
-                    next_url = "/"
+                from apps.core.views import get_dashboard_url_for_user
+
+                next_url = get_dashboard_url_for_user(user)
 
             if is_ajax:
                 return JsonResponse({"ok": True, "redirect": next_url})
@@ -234,7 +225,8 @@ def change_password_view(request):
 
             )
 
-            return redirect("/")
+            from apps.core.views import get_dashboard_url_for_user
+            return redirect(get_dashboard_url_for_user(request.user))
 
         else:
 
@@ -369,7 +361,8 @@ def password_change_view(request):
 
             messages.success(request, "Password updated.")
 
-            return redirect("/")
+            from apps.core.views import get_dashboard_url_for_user
+            return redirect(get_dashboard_url_for_user(request.user))
 
     return render(request, "pages/password_change.html", {"form": form, "forced": forced})
 

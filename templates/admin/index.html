@@ -15,6 +15,12 @@
 <link href="/static/css/style.css?v=unified_v2" rel="stylesheet">
 
 <style>
+  :root {
+    --body-bg: #f8fafc !important;
+    --body-fg: #1e293b !important;
+    color-scheme: light !important;
+  }
+
   /* Reset default Django admin wrappers to allow full-bleed modern layout */
   html, body {
     margin: 0 !important;
@@ -23,6 +29,85 @@
     background-color: #f8fafc !important;
     color: #1e293b !important;
     overflow-x: hidden;
+  }
+
+  /* Force pristine white inputs in Admin & Modals regardless of dark mode */
+  input[type="text"],
+  input[type="password"],
+  input[type="email"],
+  input[type="url"],
+  input[type="number"],
+  input[type="tel"],
+  textarea,
+  select,
+  .form-control,
+  .form-select,
+  .modal input,
+  .modal textarea,
+  .modal select {
+    background-color: #ffffff !important;
+    background: #ffffff !important;
+    color: #1e293b !important;
+    -webkit-text-fill-color: #1e293b !important;
+    border: 1px solid #cbd5e1 !important;
+  }
+
+  input:focus,
+  textarea:focus,
+  select:focus,
+  .form-control:focus,
+  .form-select:focus {
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+    border-color: #3b82f6 !important;
+    box-shadow: 0 0 0 0.2rem rgba(59, 130, 246, 0.15) !important;
+  }
+
+  input::placeholder,
+  textarea::placeholder,
+  .form-control::placeholder {
+    color: #94a3b8 !important;
+    opacity: 1 !important;
+    -webkit-text-fill-color: #94a3b8 !important;
+  }
+
+  /* Seamless tabs scroll hiding */
+  .sa-tabs-scroll,
+  .nav-tabs-scroll,
+  ul[role="tablist"] {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+  }
+  .sa-tabs-scroll::-webkit-scrollbar,
+  .nav-tabs-scroll::-webkit-scrollbar,
+  ul[role="tablist"]::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+    background: transparent !important;
+  }
+  .sa-tabs-scroll::-webkit-scrollbar-thumb,
+  .nav-tabs-scroll::-webkit-scrollbar-thumb,
+  ul[role="tablist"]::-webkit-scrollbar-thumb {
+    display: none !important;
+    background: transparent !important;
+  }
+  .sa-tabs-scroll::-webkit-scrollbar-track,
+  .nav-tabs-scroll::-webkit-scrollbar-track,
+  ul[role="tablist"]::-webkit-scrollbar-track {
+    display: none !important;
+    background: transparent !important;
+  }
+  .sa-tabs-scroll::-webkit-scrollbar-button,
+  .nav-tabs-scroll::-webkit-scrollbar-button,
+  ul[role="tablist"]::-webkit-scrollbar-button {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
   }
 
   #container {
@@ -575,12 +660,20 @@
                             </thead>
                             <tbody>
                                 {% for org in dashboard_organizations %}
-                                <tr>
-                                    <td class="ps-4 fw-bold text-primary">{{ org.code }}</td>
-                                    <td class="fw-semibold">{{ org.name }}</td>
+                                <tr style="cursor: pointer;" onclick="if (!event.target.closest('a, button')) { window.location.href='/superadmin/organizations/{{ org.pk }}/'; }">
+                                    <td class="ps-4 fw-bold text-primary">
+                                        <a href="/superadmin/organizations/{{ org.pk }}/" class="text-decoration-none fw-bold text-primary" title="Open {{ org.code }} Dashboard">
+                                            {{ org.code }}
+                                        </a>
+                                    </td>
+                                    <td class="fw-semibold">
+                                        <a href="/superadmin/organizations/{{ org.pk }}/" class="text-decoration-none text-dark fw-semibold" title="Open {{ org.name }} Dashboard">
+                                            {{ org.name }}
+                                        </a>
+                                    </td>
                                     <td>
                                         {% if org.admin_user %}
-                                            <button type="button" hx-get="/superadmin/users/{{ org.admin_user.pk }}/edit/" hx-target="#modal-content-body" data-bs-toggle="modal" data-bs-target="#modal-container" class="btn btn-link p-0 text-decoration-none fw-semibold text-dark text-start">
+                                            <button type="button" hx-get="/superadmin/users/{{ org.admin_user.pk }}/edit/" hx-target="#modal-content-body" data-bs-toggle="modal" data-bs-target="#modal-container" class="btn btn-link p-0 text-decoration-none fw-semibold text-dark text-start" onclick="event.stopPropagation();">
                                                 <i class="fa-solid fa-user-check text-success me-1"></i> {{ org.admin_user.email }}
                                             </button>
                                         {% else %}
@@ -595,15 +688,17 @@
                                         {% endif %}
                                     </td>
                                     <td class="text-end pe-4">
-                                        <button type="button" hx-get="/superadmin/organizations/{{ org.pk }}/view/" hx-target="#modal-content-body" data-bs-toggle="modal" data-bs-target="#modal-container" class="btn btn-sm btn-outline-info rounded-pill px-2 py-1 me-1" title="View Organization Details">
-                                            <i class="fa-solid fa-eye me-1"></i> View
-                                        </button>
-                                        <button type="button" hx-get="/superadmin/organizations/{{ org.pk }}/edit/" hx-target="#modal-content-body" data-bs-toggle="modal" data-bs-target="#modal-container" class="btn btn-sm btn-outline-secondary rounded-pill px-2 py-1 me-1" title="Edit Organization">
-                                            <i class="fa-solid fa-pen me-1"></i> Edit
-                                        </button>
-                                        <button type="button" hx-get="/superadmin/organizations/{{ org.pk }}/delete/" hx-target="#modal-content-body" data-bs-toggle="modal" data-bs-target="#modal-container" class="btn btn-sm btn-outline-danger rounded-pill px-2 py-1" title="Delete Organization">
-                                            <i class="fa-solid fa-trash me-1"></i> Delete
-                                        </button>
+                                        <div class="d-inline-flex gap-1" onclick="event.stopPropagation();">
+                                            <a href="/superadmin/organizations/{{ org.pk }}/" class="btn btn-sm btn-outline-info rounded-pill px-2 py-1 me-1" title="Open Organization Operational Dashboard">
+                                                <i class="fa-solid fa-eye me-1"></i> View
+                                            </a>
+                                            <button type="button" hx-get="/superadmin/organizations/{{ org.pk }}/edit/" hx-target="#modal-content-body" data-bs-toggle="modal" data-bs-target="#modal-container" class="btn btn-sm btn-outline-secondary rounded-pill px-2 py-1 me-1" title="Edit Organization">
+                                                <i class="fa-solid fa-pen me-1"></i> Edit
+                                            </button>
+                                            <button type="button" hx-get="/superadmin/organizations/{{ org.pk }}/delete/" hx-target="#modal-content-body" data-bs-toggle="modal" data-bs-target="#modal-container" class="btn btn-sm btn-outline-danger rounded-pill px-2 py-1" title="Delete Organization">
+                                                <i class="fa-solid fa-trash me-1"></i> Delete
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                                 {% empty %}

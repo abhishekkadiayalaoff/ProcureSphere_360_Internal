@@ -45,18 +45,16 @@
             <!-- User Profile & Sign Out -->
             {% if user.is_authenticated %}
             <div class="d-flex align-items-center gap-2">
-                <div class="d-none d-lg-block text-end lh-sm me-1">
-                    <div class="fw-semibold text-white small mb-1">{{ user.email }}</div>
-                    <div class="text-white-50 d-block" style="font-size: 0.7rem; line-height: 1;">Authorized Representative</div>
+                <div class="d-none d-md-flex align-items-center px-2 px-sm-3 py-1 bg-secondary bg-opacity-25 rounded-pill border border-secondary border-opacity-50 text-white">
+                    <i class="fa-solid fa-circle-user text-cyan me-1 me-sm-2 fs-5"></i>
+                    <div class="text-start leading-tight me-1">
+                        <div class="fw-semibold text-white small text-truncate" style="max-width: 140px;">{{ user.email }}</div>
+                        <div class="badge bg-secondary bg-opacity-75 text-cyan rounded-pill" style="font-size: 0.65rem;">Authorized Representative</div>
+                    </div>
                 </div>
-                <div class="dropdown">
-                    <button class="btn btn-dark border border-secondary border-opacity-50 rounded-circle text-white d-flex align-items-center justify-content-center p-0" style="width: 36px; height: 36px;" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                        <i class="fa-solid fa-user-tie text-cyan"></i>
-                    </button>
-                    <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 bg-dark text-white py-1">
-                        <li><a class="dropdown-item text-danger py-2" href="/logout/"><i class="fa-solid fa-arrow-right-from-bracket me-2"></i> Sign Out</a></li>
-                    </ul>
-                </div>
+                <a href="/logout/" class="btn btn-outline-light btn-sm rounded-pill px-2.5 px-sm-3 text-nowrap d-inline-flex align-items-center" title="Sign Out">
+                    <i class="fa-solid fa-arrow-right-from-bracket"></i> <span class="d-none d-sm-inline ms-1">Sign Out</span>
+                </a>
             </div>
             {% endif %}
         </div>
@@ -66,6 +64,11 @@
 
 {% block layout %}
 <style>
+    /* Preserve sticky sidebar and navbar when Bootstrap modal opens */
+    body.modal-open {
+        overflow: visible !important;
+    }
+
     @media (min-width: 992px) {
         aside.vendor-sidebar-desktop,
         .vendor-sidebar-desktop,
@@ -278,13 +281,6 @@
                 <i class="fa-solid fa-shield-halved nav-icon text-cyan"></i>Account &amp; Security
             </a>
 
-            <!-- Security Footnote -->
-            <div class="mt-4 pt-3 border-top border-secondary border-opacity-25 px-2 mb-2">
-                <div class="d-flex align-items-center text-white-50 small" style="font-size: 0.68rem;">
-                    <i class="fa-solid fa-lock text-success me-2"></i>
-                    <span>RBAC Backend Enforced &bull; Sealed Bids</span>
-                </div>
-            </div>
         </nav>
     </aside>
 
