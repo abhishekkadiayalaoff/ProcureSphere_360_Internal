@@ -8,24 +8,24 @@ def repair_corrupted_admin_roles(apps, schema_editor):
     requester_role = Role.objects.filter(code="REQUESTER").first()
     finance_role = Role.objects.filter(code="FINANCE_AP").first()
 
-    # Repair sameerbasha.0809@gmail.com -> Finance dashboard mail (Finance / AP Specialist)
+    # sameerbasha.0809@gmail.com is the Finance / AP user for FCB org
+    # Keep their department/org linkage intact — only fix role and clear corruption artifacts
     sameer = User.objects.filter(email__iexact="sameerbasha.0809@gmail.com").first()
     if sameer:
         if finance_role:
             sameer.role = finance_role
-        sameer.department = None
-        sameer.cost_center = None
         sameer.first_name = ""
         sameer.last_name = ""
         sameer.must_change_password = False
         sameer.is_staff = False
         sameer.is_superuser = False
         sameer.save(update_fields=[
-            "role", "department", "cost_center", "first_name", "last_name",
+            "role", "first_name", "last_name",
             "must_change_password", "is_staff", "is_superuser"
         ])
 
-    # Repair shaiksamreen7981@gmail.com -> Requester
+    # shaiksamreen7981@gmail.com is a Requester in FCB org
+    # Keep their department/cost_center intact — only fix role and clear corruption artifacts
     samreen = User.objects.filter(email__iexact="shaiksamreen7981@gmail.com").first()
     if samreen:
         if requester_role:
@@ -40,7 +40,7 @@ def repair_corrupted_admin_roles(apps, schema_editor):
             "must_change_password", "is_staff", "is_superuser"
         ])
 
-    # General cleanup: Any non-requester role should not have department/cost-center, and clear test names
+    # General cleanup: any user with a department/cost-center wrongly given SUPER_ADMIN
     if requester_role:
         for user in User.objects.filter(role__code="SUPER_ADMIN").exclude(is_superuser=True):
             if user.department_id is not None or user.cost_center_id is not None:
@@ -50,7 +50,10 @@ def repair_corrupted_admin_roles(apps, schema_editor):
                 user.must_change_password = False
                 user.is_staff = False
                 user.is_superuser = False
-                user.save(update_fields=["role", "first_name", "last_name", "must_change_password", "is_staff", "is_superuser"])
+                user.save(update_fields=[
+                    "role", "first_name", "last_name",
+                    "must_change_password", "is_staff", "is_superuser"
+                ])
 
 
 def noop(apps, schema_editor):

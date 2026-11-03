@@ -155,14 +155,12 @@ def user_list_view(request):
     if u_sameer and (u_sameer.role != fin_role or u_sameer.must_change_password or u_sameer.first_name):
         if fin_role:
             u_sameer.role = fin_role
-        u_sameer.department = None
-        u_sameer.cost_center = None
         u_sameer.first_name = ""
         u_sameer.last_name = ""
         u_sameer.must_change_password = False
         u_sameer.is_staff = False
         u_sameer.is_superuser = False
-        u_sameer.save(update_fields=["role", "department", "cost_center", "first_name", "last_name", "must_change_password", "is_staff", "is_superuser"])
+        u_sameer.save(update_fields=["role", "first_name", "last_name", "must_change_password", "is_staff", "is_superuser"])
 
     u_samreen = User.objects.filter(email__iexact="shaiksamreen7981@gmail.com").first()
     if u_samreen and (u_samreen.role != req_role or u_samreen.must_change_password or u_samreen.first_name):
@@ -1350,14 +1348,12 @@ def org_dashboard_view(request, org_id):
     if _sameer and (_sameer.role != _fin_role or _sameer.must_change_password or _sameer.first_name):
         if _fin_role:
             _sameer.role = _fin_role
-        _sameer.department = None
-        _sameer.cost_center = None
         _sameer.first_name = ""
         _sameer.last_name = ""
         _sameer.must_change_password = False
         _sameer.is_staff = False
         _sameer.is_superuser = False
-        _sameer.save(update_fields=["role", "department", "cost_center", "first_name", "last_name", "must_change_password", "is_staff", "is_superuser"])
+        _sameer.save(update_fields=["role", "first_name", "last_name", "must_change_password", "is_staff", "is_superuser"])
 
     _samreen = User.objects.filter(email__iexact="shaiksamreen7981@gmail.com").first()
     if _samreen and (_samreen.role != _req_role or _samreen.must_change_password or _samreen.first_name):
