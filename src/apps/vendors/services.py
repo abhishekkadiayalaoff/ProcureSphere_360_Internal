@@ -1897,7 +1897,13 @@ def upload_vendor_document_service(
 
 
 
-    current_storage = sum(d.file.size for d in existing_docs if d.file and hasattr(d.file, "size"))
+    current_storage = 0
+    for d in existing_docs:
+        if d.file:
+            try:
+                current_storage += d.file.size
+            except (FileNotFoundError, OSError, ValueError):
+                pass
 
     incoming_size = getattr(file, "size", 0) or 0
 

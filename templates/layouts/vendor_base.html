@@ -66,6 +66,11 @@
 
 {% block layout %}
 <style>
+    /* Preserve sticky sidebar and navbar when Bootstrap modal opens */
+    body.modal-open {
+        overflow: visible !important;
+    }
+
     @media (min-width: 992px) {
         aside.vendor-sidebar-desktop,
         .vendor-sidebar-desktop,
