@@ -7,6 +7,7 @@ from decimal import Decimal, InvalidOperation
 
 
 from django import forms
+from django.db.models import Q
 
 
 
@@ -266,7 +267,7 @@ class UserAdminForm(forms.ModelForm):
         if scoped_org:
             # Exclude roles already assigned in this organization, EXCEPT Role.REQUESTER which is unlimited
             assigned_user_qs = User.objects.filter(
-                organization=scoped_org,
+                Q(organization=scoped_org) | Q(department__organization=scoped_org),
                 role__isnull=False,
             )
             if self.instance and self.instance.pk and not getattr(self.instance, "_state", None).adding:
@@ -587,7 +588,7 @@ class UserAdminForm(forms.ModelForm):
             )
             if clean_scoped_org:
                 existing_role_user = User.objects.filter(
-                    organization=clean_scoped_org,
+                    Q(organization=clean_scoped_org) | Q(department__organization=clean_scoped_org),
                     role=role,
                 )
                 if self.instance and self.instance.pk and not getattr(self.instance, "_state", None).adding:

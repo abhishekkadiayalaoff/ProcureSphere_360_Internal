@@ -13,7 +13,7 @@
                 <i class="fa-solid fa-shield-halved text-warning fa-lg me-2"></i>
                 <div class="min-width-0">
                     <div class="fw-bold lh-1 text-white" style="font-size: 0.95rem;">ProcureSphere <span class="fw-light">360</span></div>
-                    <span class="badge bg-danger rounded-pill fw-bold mt-1" style="font-size: 0.62rem; letter-spacing: 0.04em;">SUPER ADMIN</span>
+                    {% if request.user.is_superuser and not request.user.effective_organization %}<span class="badge bg-danger rounded-pill fw-bold mt-1" style="font-size: 0.62rem; letter-spacing: 0.04em;">SUPER ADMIN</span>{% else %}<span class="badge bg-info text-dark rounded-pill fw-bold mt-1" style="font-size: 0.62rem; letter-spacing: 0.04em;">ADMIN</span>{% endif %}
                 </div>
             </a>
             <button class="btn btn-link text-white-50 p-1 d-lg-none" type="button" aria-label="Close navigation" onclick="toggleSaSidebar()">
@@ -107,7 +107,7 @@
                         <div class="small fw-semibold text-white text-truncate" title="{{ request.user.email|default:'Admin' }}">
                             {{ request.user.email|default:"Admin" }}
                         </div>
-                        <div class="badge bg-info text-dark rounded-pill" style="font-size: 0.65rem;">Admin</div>
+                        <div class="badge {% if request.user.is_superuser and not request.user.effective_organization %}bg-danger{% else %}bg-info text-dark{% endif %} rounded-pill" style="font-size: 0.65rem;">{% if request.user.is_superuser and not request.user.effective_organization %}Super Admin{% else %}Admin{% if request.user.effective_organization %} — {{ request.user.effective_organization.code }}{% endif %}{% endif %}</div>
                     </div>
                 </div>
                 <a href="/logout/" class="btn btn-outline-light btn-sm rounded-circle flex-shrink-0 d-inline-flex align-items-center justify-content-center" style="width: 32px; height: 32px; padding: 0;" title="Sign out">
