@@ -11,7 +11,7 @@
             <button class="navbar-toggler border-0 me-2 d-lg-none p-1" type="button" data-bs-toggle="offcanvas" data-bs-target="#requesterSidebar" aria-controls="requesterSidebar" aria-label="Toggle navigation">
                 <i class="fa-solid fa-bars text-white fs-4"></i>
             </button>
-            <a href="/" class="navbar-brand d-flex align-items-center text-white me-0 me-lg-4 text-truncate">
+            <a href="/requester/" class="navbar-brand d-flex align-items-center text-white me-0 me-lg-4 text-truncate">
                 <div class="brand-icon-box me-2 flex-shrink-0" style="width: 32px; height: 32px; background: rgba(0, 184, 217, 0.2); border-radius: 6px; display: flex; align-items: center; justify-content: center;">
                     <i class="fa-solid fa-cart-shopping text-cyan"></i>
                 </div>
@@ -168,7 +168,7 @@
         
         <!-- Mobile Drawer Header (Hidden on Desktop) -->
         <div class="sidebar-brand-box px-3 py-3 border-bottom border-secondary border-opacity-25 flex-shrink-0 d-flex d-lg-none align-items-center justify-content-between">
-            <a href="/" class="d-flex align-items-center text-white text-decoration-none" id="requesterSidebarLabel">
+            <a href="/requester/" class="d-flex align-items-center text-white text-decoration-none" id="requesterSidebarLabel">
                 <div class="brand-icon-box me-2 flex-shrink-0" style="width: 32px; height: 32px; background: rgba(0, 184, 217, 0.2); border-radius: 6px; display: flex; align-items: center; justify-content: center;">
                     <i class="fa-solid fa-cart-shopping text-cyan"></i>
                 </div>
@@ -190,8 +190,8 @@
             <!-- Main -->
             <div class="nav-section-label">Main</div>
 
-            <a href="/"
-               class="vendor-navlink req-navlink {% if request.path == '/' or request.path == '/requester/' or request.path == '/requester/dashboard/' or active_nav == 'dashboard' %}active-nav-item{% endif %}">
+            <a href="/requester/"
+               class="vendor-navlink req-navlink {% if request.path == '/requester/' or request.path == '/requester/dashboard/' or request.path == '/' or active_nav == 'dashboard' %}active-nav-item{% endif %}">
                 <i class="fa-solid fa-gauge-high nav-icon text-cyan"></i><span>Dashboard</span>
             </a>
 

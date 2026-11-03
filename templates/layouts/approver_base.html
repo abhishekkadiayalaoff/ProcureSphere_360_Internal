@@ -11,7 +11,7 @@
             <button class="navbar-toggler border-0 me-2 d-lg-none p-1" type="button" data-bs-toggle="offcanvas" data-bs-target="#approverSidebar" aria-controls="approverSidebar" aria-label="Toggle navigation">
                 <i class="fa-solid fa-bars text-white fs-4"></i>
             </button>
-            <a href="/" class="navbar-brand d-flex align-items-center text-white me-0 me-lg-4 text-truncate">
+            <a href="/approver/" class="navbar-brand d-flex align-items-center text-white me-0 me-lg-4 text-truncate">
                 <div class="brand-icon-box me-2 flex-shrink-0" style="width: 32px; height: 32px; background: rgba(0, 184, 217, 0.2); border-radius: 6px; display: flex; align-items: center; justify-content: center;">
                     <i class="fa-solid fa-layer-group text-cyan"></i>
                 </div>
@@ -178,7 +178,7 @@
         
         <!-- Mobile Drawer Header (Hidden on Desktop) -->
         <div class="sidebar-brand-box px-3 py-3 border-bottom border-secondary border-opacity-25 flex-shrink-0 d-flex d-lg-none align-items-center justify-content-between">
-            <a href="/" class="d-flex align-items-center text-white text-decoration-none" id="approverSidebarLabel">
+            <a href="/approver/" class="d-flex align-items-center text-white text-decoration-none" id="approverSidebarLabel">
                 <div class="brand-icon-box me-2 flex-shrink-0" style="width: 32px; height: 32px; background: rgba(0, 184, 217, 0.2); border-radius: 6px; display: flex; align-items: center; justify-content: center;">
                     <i class="fa-solid fa-layer-group text-cyan"></i>
                 </div>
@@ -200,8 +200,8 @@
             <!-- Approver & Workflow Section -->
             <div class="nav-section-label">Approver &amp; Workflow</div>
 
-            <a href="/"
-               class="vendor-navlink approver-navlink {% if request.path == '/' or request.path == '/approver/dashboard/' or active_nav == 'dashboard' %}active-nav-item{% endif %}">
+            <a href="/approver/"
+               class="vendor-navlink approver-navlink {% if request.path == '/approver/' or request.path == '/approver/dashboard/' or request.path == '/' or active_nav == 'dashboard' %}active-nav-item{% endif %}">
                 <i class="fa-solid fa-gauge-high nav-icon text-cyan"></i><span>Department Dashboard</span>
             </a>
 

@@ -86,7 +86,7 @@
 <aside class="offcanvas-lg offcanvas-start bg-dark text-white border-end border-secondary border-opacity-25 shadow-sm proc-exec-sidebar-desktop" tabindex="-1" id="procExecSidebar" aria-labelledby="procExecSidebarLabel" style="width: 260px; min-width: 260px; background-color: #212529 !important;">
     <!-- Mobile Drawer Header (Hidden on Desktop) -->
     <div class="sidebar-brand-box px-3 py-3 border-bottom border-secondary border-opacity-25 flex-shrink-0 d-flex d-lg-none align-items-center justify-content-between">
-        <a href="/" class="d-flex align-items-center text-white text-decoration-none" id="procExecSidebarLabel">
+        <a href="/procurement/" class="d-flex align-items-center text-white text-decoration-none" id="procExecSidebarLabel">
             <div class="brand-icon-box me-2 flex-shrink-0" style="width: 32px; height: 32px; background: rgba(0, 184, 217, 0.2); border-radius: 6px; display: flex; align-items: center; justify-content: center;">
                 <i class="fa-solid fa-layer-group text-cyan"></i>
             </div>
@@ -107,7 +107,7 @@
 
         <!-- Main Section -->
         <div class="nav-section-label">Main</div>
-        <a href="/" class="vendor-navlink proc-navlink {% if p == '/' %}active-nav-item{% endif %}">
+        <a href="/procurement/" class="vendor-navlink proc-navlink {% if p == '/procurement/' or p == '/procurement/dashboard/' or p == '/' %}active-nav-item{% endif %}">
             <i class="fa-solid fa-gauge-high nav-icon text-cyan"></i><span>Dashboard</span>
         </a>
 

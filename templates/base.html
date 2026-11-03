@@ -233,7 +233,7 @@
                 <button class="navbar-toggler border-0 me-2 d-lg-none p-1" type="button" data-bs-toggle="offcanvas" data-bs-target="#procExecSidebar" aria-controls="procExecSidebar" aria-label="Toggle navigation">
                     <i class="fa-solid fa-bars text-white fs-4"></i>
                 </button>
-                <a href="/" class="navbar-brand d-flex align-items-center text-white me-0 me-lg-4 text-truncate">
+                <a href="/procurement/" class="navbar-brand d-flex align-items-center text-white me-0 me-lg-4 text-truncate">
                     <div class="brand-icon-box me-2 flex-shrink-0" style="width: 32px; height: 32px; background: rgba(0, 176, 185, 0.2); border-radius: 6px; display: flex; align-items: center; justify-content: center;">
                         <i class="fa-solid fa-layer-group text-cyan"></i>
                     </div>
@@ -295,7 +295,7 @@
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav me-auto ms-lg-2">
                     <li class="nav-item">
-                        <a class="nav-link px-3 active d-flex align-items-center" href="{% if user.role_code == 'PROC_MGR' %}/manager/{% elif user.role_code == 'AUDITOR' %}/audit/dashboard/{% else %}/{% endif %}">
+                        <a class="nav-link px-3 active d-flex align-items-center" href="{% if user.role_code == 'PROC_MGR' %}/manager/{% elif user.role_code == 'AUDITOR' %}/audit/dashboard/{% elif user.role_code == 'REQUESTER' %}/requester/{% elif user.role_code == 'DEPT_APPROVER' %}/approver/{% elif user.role_code == 'FINANCE_AP' %}/finance/{% elif user.role_code == 'STORES_RECEIVER' %}/stores/{% elif user.role_code == 'LEGAL_MGR' %}/legal/{% elif user.role_code == 'SUPER_ADMIN' %}/superadmin/{% elif user.role_code == 'VENDOR_USER' %}/vendor/{% else %}/procurement/{% endif %}">
                             <i class="fa-solid fa-chart-pie me-2"></i> Dashboard
                         </a>
                     </li>

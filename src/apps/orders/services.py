@@ -80,6 +80,18 @@ def generate_purchase_order_service(
     po.total_amount = total
     po.save(update_fields=["subtotal", "tax_amount", "total_amount", "updated_at"])
 
+    # Update linked requisition status to PO_ISSUED
+    target_requisition = requisition or (sourcing_event.requisition if sourcing_event else None)
+    if target_requisition:
+        from apps.requisitions.models import PurchaseRequisition
+
+        if target_requisition.status in (
+            PurchaseRequisition.STATUS_APPROVED,
+            PurchaseRequisition.STATUS_SOURCING,
+        ):
+            target_requisition.status = PurchaseRequisition.STATUS_PO_ISSUED
+            target_requisition.save(update_fields=["status", "updated_at"])
+
     # Move BudgetReservation to SpendLedger COMMITMENT only if PO is in ISSUED status
     if initial_status == PurchaseOrder.STATUS_ISSUED:
         budget = (

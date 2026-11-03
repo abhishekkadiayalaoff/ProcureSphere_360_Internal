@@ -1,8 +1,4 @@
-from django.urls import path
-
-from . import superadmin_views
-
-app_name = "superadmin"
+from django.urls import pathfrom . import superadmin_viewsapp_name = "superadmin"
 
 urlpatterns = [
     path("", superadmin_views.superadmin_home_view, name="home"),
