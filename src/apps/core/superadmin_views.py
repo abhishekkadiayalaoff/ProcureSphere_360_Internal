@@ -875,33 +875,24 @@ def org_create_view(request):
 
             send_welcome_flag = bool(form.cleaned_data.get("send_welcome_email", False))
 
-            org, admin_user, raw_pwd = create_organization_with_admin_service(
-
-                name=form.cleaned_data["name"],
-
-                code=form.cleaned_data["code"],
-
-                tax_identifier=form.cleaned_data.get("tax_identifier", ""),
-
-                address=form.cleaned_data.get("address", ""),
-
-                is_active=form.cleaned_data.get("is_active", True),
-
-                admin_email=admin_email,
-
-                admin_first_name=admin_first_name,
-
-                admin_last_name=admin_last_name,
-
-                admin_password=admin_password,
-
-                send_welcome_email_flag=send_welcome_flag,
-
-                request=request,
-
-                actor=request.user,
-
-            )
+            try:
+                org, admin_user, raw_pwd = create_organization_with_admin_service(
+                    name=form.cleaned_data["name"],
+                    code=form.cleaned_data["code"],
+                    tax_identifier=form.cleaned_data.get("tax_identifier", ""),
+                    address=form.cleaned_data.get("address", ""),
+                    is_active=form.cleaned_data.get("is_active", True),
+                    admin_email=admin_email,
+                    admin_first_name=admin_first_name,
+                    admin_last_name=admin_last_name,
+                    admin_password=admin_password,
+                    send_welcome_email_flag=send_welcome_flag,
+                    request=request,
+                    actor=request.user,
+                )
+            except ValidationError as val_err:
+                form.add_error("admin_email", str(val_err))
+                return render(request, "superadmin/org_form.html", {"form": form, "is_create": True})
 
             if form.cleaned_data.get("import_standard_vendors", False):
                 from apps.vendors.services import import_standard_vendors_for_org_service
@@ -1047,20 +1038,20 @@ def org_edit_view(request, org_id):
 
                 else:
 
+                    existing_org = getattr(user, "effective_organization", None) or user.organization
+                    if existing_org and existing_org.id != org.id:
+                        messages.error(request, f"The email '{norm_email}' belongs to organization '{existing_org.name}' and cannot be reassigned.")
+                        return redirect("superadmin:organizations")
+                    if user.is_superuser and not user.organization_id:
+                        messages.error(request, f"The email '{norm_email}' is reserved for the Platform Admin and cannot be used.")
+                        return redirect("superadmin:organizations")
                     user.organization = org
-
                     user.role = role
-
                     user.is_staff = False
-
                     if form.cleaned_data.get("admin_first_name"):
-
                         user.first_name = form.cleaned_data.get("admin_first_name")
-
                     if form.cleaned_data.get("admin_last_name"):
-
                         user.last_name = form.cleaned_data.get("admin_last_name")
-
                 if admin_password and admin_password.strip():
 
                     password_to_send = admin_password.strip()

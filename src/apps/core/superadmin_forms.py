@@ -1233,39 +1233,47 @@ class OrganizationAdminForm(forms.ModelForm):
 
 
     def clean(self):
-
-
-
         cleaned_data = super().clean()
-
-
-
         admin_user = cleaned_data.get("admin_user")
-
-
-
         admin_email = (cleaned_data.get("admin_email") or "").strip()
-
-
-
         is_create = not self.instance or not self.instance.pk
 
-
-
         if is_create and not admin_user and not admin_email:
-
-
-
             self.add_error("admin_email", "Please provide an Admin Email for the organization administrator.")
 
+        email_to_check = admin_email or (admin_user.email if admin_user else "")
+        if email_to_check:
+            norm_email = email_to_check.strip().lower()
+            existing_user = User.objects.filter(email__iexact=norm_email).first()
+            if existing_user:
+                existing_org = getattr(existing_user, "effective_organization", None) or existing_user.organization
+                if existing_org:
+                    if is_create or (self.instance and self.instance.pk and str(existing_org.id) != str(self.instance.pk)):
+                        role_name = existing_user.role.name if existing_user.role else "user"
+                        self.add_error(
+                            "admin_email",
+                            f"The email '{norm_email}' is already assigned to a {role_name} in organization '{existing_org.name}'. Each email can belong to only one organization.",
+                        )
+                elif existing_user.is_superuser and not existing_user.organization_id:
+                    self.add_error(
+                        "admin_email",
+                        f"The email '{norm_email}' is reserved for the Platform Admin and cannot be used as an organization administrator.",
+                    )
+                elif is_create:
+                    self.add_error(
+                        "admin_email",
+                        f"The email '{norm_email}' is already registered in the system. Each organization administrator must have a unique email.",
+                    )
 
+        if admin_user:
+            admin_org = getattr(admin_user, "effective_organization", None) or admin_user.organization
+            if admin_org and (is_create or (self.instance and self.instance.pk and str(admin_org.id) != str(self.instance.pk))):
+                self.add_error(
+                    "admin_user",
+                    f"The selected user '{admin_user.email}' already belongs to organization '{admin_org.name}'.",
+                )
 
         return cleaned_data
-
-
-
-
-
 
 
     def clean_code(self):
