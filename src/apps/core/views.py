@@ -617,6 +617,23 @@ def _is_api_request(request):
 
 
 def custom_404_view(request, exception=None):
+    if request.path == "/favicon.ico":
+        from django.shortcuts import redirect
+        return redirect("/static/icons/favicon.ico")
+
+    # Auto-redirect non-slash URLs if the slashed path resolves (replaces default CommonMiddleware behavior bypassed by catch-all)
+    if not request.path.endswith("/") and not _is_api_request(request):
+        slash_path = request.path + "/"
+        from django.urls import resolve, Resolver404
+        from django.shortcuts import redirect
+        try:
+            match = resolve(slash_path)
+            if match.url_name != "custom_404_fallback":
+                query = request.META.get("QUERY_STRING", "")
+                return redirect(slash_path + ("?" + query if query else ""), permanent=False)
+        except Resolver404:
+            pass
+
     if _is_api_request(request):
         return JsonResponse(
             {
