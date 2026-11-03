@@ -113,7 +113,7 @@ def _check_stores_receiver_permission(
     role_code = getattr(user, "role_code", None) or (
         user.role.code if hasattr(user, "role") and user.role else None
     )
-    is_authorized = user.is_superuser or role_code in [Role.STORES_RECEIVER, Role.SUPER_ADMIN]
+    is_authorized = user.is_superuser or role_code == Role.STORES_RECEIVER
     if not is_authorized:
         raise ValidationError(
             f"Unauthorized: Only Stores Receiver or Super Admin can {action_desc}."
@@ -388,7 +388,7 @@ def _check_inspection_permission(user: User) -> None:
     role_code = getattr(user, "role_code", None) or (
         user.role.code if hasattr(user, "role") and user.role else None
     )
-    is_authorized = user.is_superuser or role_code in [Role.STORES_RECEIVER, Role.SUPER_ADMIN]
+    is_authorized = user.is_superuser or role_code == Role.STORES_RECEIVER
     if not is_authorized:
         raise ValidationError(
             "Unauthorized: Only Stores Receiver or Super Admin can perform quality inspections."

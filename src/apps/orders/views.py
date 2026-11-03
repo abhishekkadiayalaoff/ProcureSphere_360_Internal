@@ -106,9 +106,7 @@ def detail_view(request, pk):
     amendments = po.amendments.select_related("requested_by").order_by(
         "-amendment_number"
     )
-    can_amend = role_code in (Role.PROC_EXEC, Role.PROC_MGR, Role.SUPER_ADMIN) or (
-        user.is_superuser
-    )
+    can_amend = role_code in (Role.PROC_EXEC, Role.PROC_MGR) or user.is_superuser
 
     return render(
         request,
@@ -121,8 +119,7 @@ def detail_view(request, pk):
             "can_amend": can_amend,
             "amend_form": POAmendForm(po=po) if can_amend else None,
             "role_code": role_code,
-            "is_stores_receiver": role_code in (Role.STORES_RECEIVER, Role.SUPER_ADMIN)
-            or user.is_superuser,
+            "is_stores_receiver": role_code == Role.STORES_RECEIVER or user.is_superuser,
             "is_receivable": po.status in RECEIVABLE_PO_STATUSES,
                         "base_layout": {
                 Role.FINANCE_AP: "layouts/finance_base.html",

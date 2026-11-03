@@ -1,0 +1,129 @@
+{% load i18n %}
+{% if app_list %}
+<div class="p-1">
+    <!-- Live Search & Filter Bar -->
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+        <div class="input-group" style="max-width: 380px;">
+            <span class="input-group-text bg-white border-end-0 text-muted rounded-start-pill ps-3">
+                <i class="fa-solid fa-magnifying-glass"></i>
+            </span>
+            <input type="text" id="adminModelSearch" class="form-control border-start-0 rounded-end-pill py-2 shadow-none" placeholder="Search database models or modules..." onkeyup="filterAdminModels()">
+        </div>
+        <div class="text-muted small">
+            <span class="fw-semibold text-dark">{{ app_list|length }}</span> Applications registered
+        </div>
+    </div>
+
+    <!-- Models Grid -->
+    <div class="row g-3" id="adminAppsGrid">
+        {% for app in app_list %}
+        <div class="col-12 col-md-6 col-xl-4 app-card-col" data-app-name="{{ app.name|lower }}">
+            <div class="card h-100 border border-secondary border-opacity-25 rounded-4 shadow-sm bg-white overflow-hidden transition-all hover-shadow">
+                <!-- App Header -->
+                <div class="card-header bg-light bg-opacity-75 py-2.5 px-3 border-bottom d-flex align-items-center justify-content-between">
+                    <a href="{{ app.app_url }}" class="text-decoration-none text-dark fw-bold small d-flex align-items-center gap-2">
+                        <span class="d-inline-flex align-items-center justify-content-center bg-primary bg-opacity-10 text-primary rounded-3" style="width: 28px; height: 28px;">
+                            <i class="fa-solid fa-layer-group fs-6"></i>
+                        </span>
+                        <span>{{ app.name }}</span>
+                    </a>
+                    <span class="badge bg-secondary bg-opacity-10 text-secondary rounded-pill px-2 py-1 small fw-semibold">
+                        {{ app.models|length }} model{{ app.models|length|pluralize }}
+                    </span>
+                </div>
+
+                <!-- Models List -->
+                <div class="card-body p-0">
+                    <div class="list-group list-group-flush">
+                        {% for model in app.models %}
+                        <div class="list-group-item d-flex align-items-center justify-content-between py-2 px-3 border-bottom border-light model-item-row" data-model-name="{{ model.name|lower }}">
+                            <div class="text-truncate me-2" style="max-width: 60%;">
+                                {% if model.admin_url %}
+                                <a href="{{ model.admin_url }}" class="text-decoration-none text-dark fw-medium small d-inline-block text-truncate hover-primary" title="{{ model.name }}">
+                                    <i class="fa-regular fa-file-lines text-muted me-1.5 small"></i>{{ model.name }}
+                                </a>
+                                {% else %}
+                                <span class="text-secondary small">{{ model.name }}</span>
+                                {% endif %}
+                            </div>
+                            <div class="d-flex align-items-center gap-1.5 flex-shrink-0">
+                                {% if model.add_url %}
+                                <a href="{{ model.add_url }}" class="btn btn-outline-primary btn-sm rounded-pill px-2.5 py-0.5 fw-medium" style="font-size: 0.72rem;" title="Add {{ model.name }}">
+                                    <i class="fa-solid fa-plus me-1"></i>Add
+                                </a>
+                                {% endif %}
+                                {% if model.admin_url and show_changelinks %}
+                                <a href="{{ model.admin_url }}" class="btn btn-light btn-sm text-secondary rounded-pill px-2.5 py-0.5 border fw-medium" style="font-size: 0.72rem;" title="View or edit {{ model.name }}">
+                                    {% if model.view_only %}View{% else %}Change{% endif %}
+                                </a>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Empty search state -->
+    <div id="noModelsMatch" class="text-center py-5 d-none">
+        <i class="fa-solid fa-database text-muted fa-2x mb-2"></i>
+        <div class="fw-semibold text-secondary">No models match your search query</div>
+        <small class="text-muted">Try a different keyword</small>
+    </div>
+</div>
+
+<style>
+.hover-shadow:hover {
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.08) !important;
+    border-color: rgba(13, 110, 253, 0.4) !important;
+}
+.hover-primary:hover {
+    color: #0d6efd !important;
+}
+</style>
+
+<script>
+function filterAdminModels() {
+    var query = document.getElementById('adminModelSearch').value.toLowerCase().trim();
+    var cols = document.querySelectorAll('.app-card-col');
+    var totalVisible = 0;
+
+    cols.forEach(function(col) {
+        var appName = col.getAttribute('data-app-name') || '';
+        var rows = col.querySelectorAll('.model-item-row');
+        var appHasMatch = false;
+
+        rows.forEach(function(row) {
+            var modelName = row.getAttribute('data-model-name') || '';
+            if (!query || appName.indexOf(query) !== -1 || modelName.indexOf(query) !== -1) {
+                row.style.display = '';
+                appHasMatch = true;
+            } else {
+                row.style.display = 'none';
+            }
+        });
+
+        if (appHasMatch) {
+            col.style.display = '';
+            totalVisible++;
+        } else {
+            col.style.display = 'none';
+        }
+    });
+
+    var emptyState = document.getElementById('noModelsMatch');
+    if (emptyState) {
+        if (totalVisible === 0) {
+            emptyState.classList.remove('d-none');
+        } else {
+            emptyState.classList.add('d-none');
+        }
+    }
+}
+</script>
+{% else %}
+<p class="text-muted small p-3">{% translate "You don't have permission to view or edit anything." %}</p>
+{% endif %}

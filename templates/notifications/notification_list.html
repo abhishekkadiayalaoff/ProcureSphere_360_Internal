@@ -5,46 +5,107 @@
 {% block content %}
 <div class="d-flex flex-wrap gap-2 align-items-center justify-content-between mb-4">
     <div>
-        <h2 class="fw-bold text-dark mb-1" style="font-size: 1.65rem;"><i class="fa-solid fa-bell text-cyan me-2"></i>Notifications</h2>
+        <h2 class="fw-bold text-dark mb-1" style="font-size: 1.65rem;">
+            <i class="fa-solid fa-bell text-primary me-2"></i>Notifications &amp; Alerts
+        </h2>
         <p class="text-secondary small mb-0">{{ unread_count }} unread &bull; approvals, status updates, clarifications, and escalations.</p>
     </div>
     <div class="d-flex gap-2 align-items-center">
-        <a href="?{% if not only_unread %}filter=unread{% endif %}" class="btn btn-outline-secondary btn-sm rounded-pill px-3 py-1.5 fw-medium">{% if only_unread %}Show all{% else %}Unread only{% endif %}</a>
+        <a href="?{% if not only_unread %}filter=unread{% endif %}" class="btn btn-outline-secondary btn-sm rounded-pill px-3 py-1.5 fw-medium">
+            {% if only_unread %}Show all{% else %}Unread only{% endif %}
+        </a>
         {% if unread_count %}
         <form method="post" action="{% url 'notification_mark_all_read' %}">{% csrf_token %}
-            <button class="btn btn-primary btn-sm rounded-pill px-3 py-1.5 fw-semibold shadow-sm" style="background-color: #0D6EFD; border-color: #0D6EFD;">Mark all read</button>
+            <button class="btn btn-primary btn-sm rounded-pill px-3 py-1.5 fw-semibold shadow-sm">
+                <i class="fa-solid fa-check-double me-1"></i> Mark all read
+            </button>
         </form>
         {% endif %}
     </div>
 </div>
 
-<div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-4" style="border: 1px solid #DEE2E6 !important; background-color: #FFFFFF;">
+<div class="card border border-secondary border-opacity-25 shadow-sm rounded-4 overflow-hidden mb-4 bg-white">
     <ul class="list-group list-group-flush">
         {% for n in notifications %}
-            <li class="list-group-item d-flex flex-wrap justify-content-between align-items-center gap-3 p-3 border-bottom" {% if not n.is_read %}style="background-color: rgba(13, 110, 253, 0.03);"{% endif %}>
-                <div class="min-width-0 flex-grow-1">
+            <li class="list-group-item d-flex flex-wrap justify-content-between align-items-center gap-3 p-3 border-bottom transition-all" {% if not n.is_read %}style="background-color: rgba(13, 110, 253, 0.03);"{% endif %}>
+                <div class="min-width-0 flex-grow-1" style="cursor: pointer;" data-bs-toggle="modal" data-bs-target="#notifModal{{ n.id }}">
                     <div class="d-flex align-items-center gap-2 mb-1">
                         {% if not n.is_read %}
-                        <span class="badge rounded-pill bg-primary px-2 py-0.5 fw-bold" style="font-size: 0.65rem; background-color: #0D6EFD !important;">New</span>
+                        <span class="badge rounded-pill bg-primary px-2 py-0.5 fw-bold" style="font-size: 0.65rem;">New</span>
+                        {% else %}
+                        <span class="badge rounded-pill bg-secondary bg-opacity-25 text-secondary px-2 py-0.5 fw-normal" style="font-size: 0.65rem;">Read</span>
                         {% endif %}
                         <span class="fw-bold text-dark fs-6">{{ n.title }}</span>
                     </div>
                     <div class="small text-secondary mb-1">
                         <span class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary border-opacity-25 rounded-pill px-2 py-0.5 me-1.5" style="font-size: 0.68rem;">{{ n.get_notification_type_display }}</span>
-                        <span>{{ n.created_at|date:"M d, Y H:i" }}</span>
+                        <span><i class="fa-regular fa-clock me-1"></i>{{ n.created_at|date:"M d, Y H:i" }}</span>
                     </div>
-                    <div class="small text-secondary">{{ n.message|truncatechars:300 }}</div>
+                    <div class="small text-secondary text-truncate" style="max-width: 800px;">{{ n.message }}</div>
                 </div>
-                <form method="post" action="{% url 'notification_open' n.id %}" class="align-self-center flex-shrink-0">{% csrf_token %}
-                    <button class="btn btn-sm btn-outline-primary rounded-pill px-3 py-1 fw-semibold">
-                        {% if n.target_url %}<i class="fa-solid fa-arrow-up-right-from-square me-1"></i> Open{% else %}<i class="fa-solid fa-check me-1"></i> Mark read{% endif %}
+
+                <div class="d-flex align-items-center gap-2 flex-shrink-0">
+                    <!-- View Details Modal Trigger -->
+                    <button type="button" class="btn btn-sm btn-light border text-secondary rounded-pill px-3 py-1 fw-medium" data-bs-toggle="modal" data-bs-target="#notifModal{{ n.id }}">
+                        <i class="fa-regular fa-eye me-1"></i> View
                     </button>
-                </form>
+
+                    <!-- In-Place Mark as Read Form (Never leaves notifications page) -->
+                    {% if not n.is_read %}
+                    <form method="post" action="{% url 'notification_open' n.id %}">{% csrf_token %}
+                        <input type="hidden" name="action" value="mark_read">
+                        <button type="submit" class="btn btn-sm btn-outline-primary rounded-pill px-3 py-1 fw-semibold" title="Mark as read without leaving page">
+                            <i class="fa-solid fa-check me-1"></i> Mark read
+                        </button>
+                    </form>
+                    {% endif %}
+                </div>
             </li>
+
+            <!-- Notification Detail Modal -->
+            <div class="modal fade" id="notifModal{{ n.id }}" tabindex="-1" aria-labelledby="notifModalLabel{{ n.id }}" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden bg-white">
+                        <div class="modal-header bg-light border-bottom-0 pb-2">
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary border-opacity-25 rounded-pill px-2.5 py-1 small">
+                                    {{ n.get_notification_type_display }}
+                                </span>
+                                {% if not n.is_read %}
+                                <span class="badge bg-primary text-white rounded-pill px-2 py-0.5 small">Unread</span>
+                                {% endif %}
+                            </div>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body p-4 pt-2">
+                            <h5 class="fw-bold text-dark mb-2" id="notifModalLabel{{ n.id }}">{{ n.title }}</h5>
+                            <div class="text-muted small mb-3">
+                                <i class="fa-regular fa-calendar-days me-1"></i> {{ n.created_at|date:"F d, Y at H:i" }}
+                            </div>
+                            <div class="p-3 bg-light rounded-3 text-secondary small mb-3 border" style="line-height: 1.6; white-space: pre-line;">
+                                {{ n.message }}
+                            </div>
+                        </div>
+                        <div class="modal-footer border-top bg-light py-2 px-3 d-flex justify-content-between align-items-center">
+                            <div>
+                                {% if not n.is_read %}
+                                <form method="post" action="{% url 'notification_open' n.id %}" class="d-inline">{% csrf_token %}
+                                    <input type="hidden" name="action" value="mark_read">
+                                    <button type="submit" class="btn btn-sm btn-outline-primary rounded-pill px-3">
+                                        <i class="fa-solid fa-check me-1"></i> Mark read
+                                    </button>
+                                </form>
+                                {% endif %}
+                            </div>
+                            <button type="button" class="btn btn-sm btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Close</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
         {% empty %}
             <li class="list-group-item text-center text-muted py-5 border-0">
-                <div class="brand-icon-box mx-auto mb-3" style="width: 48px; height: 48px; background: rgba(0, 184, 217, 0.12); border-radius: 12px; display: flex; align-items: center; justify-content: center;">
-                    <i class="fa-solid fa-bell-slash text-cyan fs-4"></i>
+                <div class="brand-icon-box mx-auto mb-3" style="width: 48px; height: 48px; background: rgba(13, 110, 253, 0.08); border-radius: 12px; display: flex; align-items: center; justify-content: center;">
+                    <i class="fa-solid fa-bell-slash text-primary fs-4"></i>
                 </div>
                 <h6 class="fw-bold text-dark mb-1">No notifications</h6>
                 <p class="text-secondary small mb-0">You're all caught up!</p>

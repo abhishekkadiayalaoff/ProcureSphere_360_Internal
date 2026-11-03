@@ -56,10 +56,23 @@ def notification_list_view(request):
 @login_required(login_url="/login/")
 @require_POST
 def notification_open_view(request, notification_id):
+    from apps.accounts.models import Role
     notification = get_object_or_404(Notification, pk=notification_id, recipient=request.user)
     if not notification.is_read:
         notification.is_read = True
         notification.save(update_fields=["is_read", "updated_at"])
+
+    action = request.POST.get("action", "")
+    if action == "mark_read":
+        return redirect("notification_list")
+
+    role_code = getattr(request.user, "role_code", "") or (
+        request.user.role.code if hasattr(request.user, "role") and request.user.role else ""
+    )
+    # Organization Super Admin performs system governance/masters and should not be dumped into other roles' operational desks
+    if role_code == Role.SUPER_ADMIN:
+        return redirect("notification_list")
+
     target = notification.target_url
     if target and url_has_allowed_host_and_scheme(target, allowed_hosts={request.get_host()}):
         return redirect(target)

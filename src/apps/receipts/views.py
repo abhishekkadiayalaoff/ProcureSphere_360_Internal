@@ -318,10 +318,7 @@ def receipt_inspect_view(request, grn_id):
     role_code = getattr(request.user, "role_code", None) or (
         request.user.role.code if hasattr(request.user, "role") and request.user.role else None
     )
-    is_authorized = request.user.is_superuser or role_code in [
-        Role.STORES_RECEIVER,
-        Role.SUPER_ADMIN,
-    ]
+    is_authorized = request.user.is_superuser or role_code == Role.STORES_RECEIVER
     if role_code == Role.VENDOR_USER:
         messages.error(
             request,
@@ -438,10 +435,7 @@ def receipt_create_view(request, po_id):
     role_code = getattr(request.user, "role_code", None) or (
         request.user.role.code if hasattr(request.user, "role") and request.user.role else None
     )
-    is_authorized = request.user.is_superuser or role_code in [
-        Role.STORES_RECEIVER,
-        Role.SUPER_ADMIN,
-    ]
+    is_authorized = request.user.is_superuser or role_code == Role.STORES_RECEIVER
     if role_code == Role.VENDOR_USER:
         messages.error(
             request,
@@ -567,10 +561,7 @@ def receipt_stock_handoff_view(request, grn_id):
     role_code = getattr(request.user, "role_code", None) or (
         request.user.role.code if hasattr(request.user, "role") and request.user.role else None
     )
-    is_authorized = request.user.is_superuser or role_code in [
-        Role.STORES_RECEIVER,
-        Role.SUPER_ADMIN,
-    ]
+    is_authorized = request.user.is_superuser or role_code == Role.STORES_RECEIVER
     if role_code == Role.VENDOR_USER:
         messages.error(
             request,
@@ -903,10 +894,7 @@ def record_vendor_return_view(request, rejection_id):
     role_code = getattr(request.user, "role_code", None) or (
         request.user.role.code if hasattr(request.user, "role") and request.user.role else None
     )
-    is_authorized = request.user.is_superuser or role_code in [
-        Role.STORES_RECEIVER,
-        Role.SUPER_ADMIN,
-    ]
+    is_authorized = request.user.is_superuser or role_code == Role.STORES_RECEIVER
     if not is_authorized:
         messages.error(
             request,
@@ -956,10 +944,7 @@ def receipt_line_correct_view(request, line_id):
     role_code = getattr(request.user, "role_code", None) or (
         request.user.role.code if hasattr(request.user, "role") and request.user.role else None
     )
-    is_authorized = request.user.is_superuser or role_code in [
-        Role.STORES_RECEIVER,
-        Role.SUPER_ADMIN,
-    ]
+    is_authorized = request.user.is_superuser or role_code == Role.STORES_RECEIVER
     if not is_authorized:
         messages.error(
             request,
@@ -1342,7 +1327,7 @@ def receipt_send_notification_view(request, grn_id):
     role_code = getattr(request.user, "role_code", None) or (
         request.user.role.code if hasattr(request.user, "role") and request.user.role else None
     )
-    if not (request.user.is_superuser or role_code in [Role.STORES_RECEIVER, Role.SUPER_ADMIN]):
+    if not (request.user.is_superuser or role_code == Role.STORES_RECEIVER):
         raise PermissionDenied("Only Stores Receiver or Super Admin can send GRN notifications.")
 
     grn = get_object_or_404(
