@@ -146,6 +146,23 @@ def user_list_view(request):
 
 
 
+    # Self-heal any department/cost-center users corrupted to SUPER_ADMIN by earlier cross-org attempts
+    corrupted_users = User.objects.filter(
+        role__code="SUPER_ADMIN"
+    ).filter(
+        Q(department__isnull=False) | Q(cost_center__isnull=False)
+    ).exclude(is_superuser=True)
+    if corrupted_users.exists():
+        from apps.accounts.models import Role as AccountsRole
+        req_role = AccountsRole.objects.filter(code="REQUESTER").first()
+        if req_role:
+            for cu in corrupted_users:
+                cu.role = req_role
+                cu.must_change_password = False
+                cu.is_staff = False
+                cu.is_superuser = False
+                cu.save(update_fields=["role", "must_change_password", "is_staff", "is_superuser"])
+
     users = User.objects.select_related("role", "department", "cost_center").all()
 
     scoped_org = get_user_scoped_org(request.user)
