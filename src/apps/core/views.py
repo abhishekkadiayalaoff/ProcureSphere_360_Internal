@@ -1,6 +1,7 @@
-from decimal import Decimal
+﻿from decimal import Decimal
 
 from django.conf import settings
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import connection
 from django.db.models import Avg, Count, Q, Sum
@@ -432,6 +433,13 @@ def approver_dashboard_view(request):
                 organization=user.organization
             ).first()
 
+    if not user_department:
+        messages.warning(
+            request,
+            "Your account is not linked to a department or organization. "
+            "Dashboard figures are limited until an administrator assigns your scope.",
+        )
+
     if user_department:
         dept_prs = PurchaseRequisition.objects.filter(
             Q(department=user_department) | Q(cost_center__manager=user)
@@ -636,8 +644,8 @@ def custom_404_view(request, exception=None):
     # Auto-redirect non-slash URLs if the slashed path resolves (replaces default CommonMiddleware behavior bypassed by catch-all)
     if not request.path.endswith("/") and not _is_api_request(request):
         slash_path = request.path + "/"
-        from django.urls import resolve, Resolver404
         from django.shortcuts import redirect
+        from django.urls import Resolver404, resolve
         try:
             match = resolve(slash_path)
             if match.url_name != "custom_404_fallback":

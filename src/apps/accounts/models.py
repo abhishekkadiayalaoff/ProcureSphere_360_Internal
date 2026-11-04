@@ -247,6 +247,15 @@ class User(AbstractUser):
             return self.department.organization
         if self.cost_center_id and self.cost_center and self.cost_center.department:
             return self.cost_center.department.organization
+        managed_cc_qs = getattr(self, "managed_cost_centers", None)
+        if managed_cc_qs is not None:
+            managed_cc = (
+                managed_cc_qs.select_related("department__organization")
+                .filter(department__isnull=False)
+                .first()
+            )
+            if managed_cc and managed_cc.department:
+                return managed_cc.department.organization
         admin_org = getattr(self, "administered_organizations", None)
         if admin_org:
             first_org = admin_org.first()

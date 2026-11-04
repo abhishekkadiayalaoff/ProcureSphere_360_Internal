@@ -466,7 +466,7 @@
             a.remove();
             window.URL.revokeObjectURL(url);
         } catch (err) {
-            alert('Export failed: ' + err.message);
+            window.PSToast('Export failed: ' + err.message, 'danger', 'Export error');
         }
     }
 </script>

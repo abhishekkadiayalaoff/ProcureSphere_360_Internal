@@ -2,6 +2,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.paginator import Paginator
+from django.db.models import Q
 from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
@@ -455,17 +456,6 @@ def _act_reject(event, request):
     return "Award recommendation rejected; event returned to commercial review."
 
 
-def _act_generate_po(event, request):
-    from apps.organization.models import CostCenter
-
-    cc_id = request.POST.get("cost_center_id")
-    cost_center = get_object_or_404(CostCenter, pk=cc_id) if cc_id else None
-    po = services.generate_po_from_award_service(
-        event=event, user=request.user, cost_center=cost_center
-    )
-    return f"Purchase Order {po.po_number} generated from the award."
-
-
 ACTIONS = {
     "publish": (_act_publish, "manage"),
     "close": (_act_close, "manage"),
@@ -480,7 +470,6 @@ ACTIONS = {
     "recommend-award": (_act_recommend, "manage"),
     "approve-award": (_act_approve, "approve"),
     "reject-award": (_act_reject, "approve"),
-    "generate-po": (_act_generate_po, "manage"),
 }
 
 ACTION_REDIRECTS = {
@@ -495,7 +484,6 @@ ACTION_REDIRECTS = {
     "recommend-award": ("evaluation_event", "award"),
     "approve-award": ("evaluation_event", "award"),
     "reject-award": ("evaluation_event", "award"),
-    "generate-po": ("evaluation_event", "award"),
 }
 
 
@@ -977,14 +965,34 @@ def evaluation_event_view(request, event_id):
     from apps.organization.models import CostCenter
 
     _require_bid_access(request.user)
-    event = get_object_or_404(SourcingEvent.objects.select_related("requisition"), pk=event_id)
+    event = get_object_or_404(
+        SourcingEvent.objects.select_related("requisition__cost_center"),
+        pk=event_id,
+    )
     services.sync_event_window_status(event=event)
     if not event.bids_visible_to_evaluators:
         messages.info(request, "Evaluation opens after the bid window closes.")
         return redirect("bid_portal_event", event_id=event.id)
 
     rows = build_evaluation_rows(event, request.user)
-    purchase_orders = PurchaseOrder.objects.filter(sourcing_event=event).order_by("-created_at")
+    purchase_orders = (
+        PurchaseOrder.objects.filter(Q(sourcing_event=event) | Q(award__event=event))
+        .distinct()
+        .order_by("-created_at")
+    )
+
+    cost_centers = CostCenter.objects.none()
+    if event.status == SourcingEvent.STATUS_AWARDED:
+        cost_centers = CostCenter.objects.select_related("department").order_by("code")
+        from apps.organization.selectors import resolve_user_scope_organization
+
+        scoped_org = resolve_user_scope_organization(request.user)
+        if scoped_org:
+            cost_centers = cost_centers.filter(department__organization=scoped_org)
+
+    default_cost_center = (
+        event.requisition.cost_center if event.requisition_id else None
+    )
     return render(
         request,
         "sourcing/evaluation_event.html",
@@ -1003,11 +1011,8 @@ def evaluation_event_view(request, event_id):
             "has_active_po": purchase_orders.exclude(
                 status=PurchaseOrder.STATUS_CANCELLED
             ).exists(),
-            "cost_centers": (
-                CostCenter.objects.order_by("code")
-                if event.status == SourcingEvent.STATUS_AWARDED and not event.requisition_id
-                else []
-            ),
+            "cost_centers": cost_centers,
+            "default_cost_center": default_cost_center,
             "decision_audit": get_decision_audit(event)[:100],
         },
     )
