@@ -102,15 +102,9 @@ def list_view(request):
                 .order_by("-created_at")
             )
         else:
-            items = PurchaseRequisition.objects.all().order_by("-created_at")
+            items = PurchaseRequisition.objects.none().order_by("-created_at")
     elif role_code == Role.FINANCE_AP:
         user_org = getattr(user, "effective_organization", None) or getattr(user, "organization", None)
-        if not user_org and not getattr(user, "is_superuser", False):
-            from apps.organization.models import Organization
-            user_org = (
-                Organization.objects.filter(name__icontains="Defence").first()
-                or Organization.objects.exclude(code__in=["ORG-HPE-01", "ORG-DEMO-01", "DEFAULT"]).last()
-            )
         if user_org:
             items = (
                 PurchaseRequisition.objects.filter(
@@ -122,18 +116,12 @@ def list_view(request):
                 .order_by("-created_at")
             )
         else:
-            items = PurchaseRequisition.objects.all().order_by("-created_at")
+            items = PurchaseRequisition.objects.none().order_by("-created_at")
     else:
-        items = PurchaseRequisition.objects.all().order_by("-created_at")
+        items = PurchaseRequisition.objects.none().order_by("-created_at")
 
     # Enforce multi-tenant organization boundary across all roles
     user_org = getattr(user, "effective_organization", None) or getattr(user, "organization", None)
-    if not user_org and not getattr(user, "is_superuser", False):
-        from apps.organization.models import Organization
-        user_org = (
-            Organization.objects.filter(name__icontains="Defence").first()
-            or Organization.objects.exclude(code__in=["ORG-HPE-01", "ORG-DEMO-01", "DEFAULT"]).last()
-        )
     if user_org and not (getattr(user, "is_superuser", False) and not user.organization_id):
         items = items.filter(
             Q(department__organization=user_org)
@@ -615,12 +603,6 @@ def detail_view(request, pk):
 
     # Enforce strict multi-tenant boundary for detail view
     user_org = getattr(user, "effective_organization", None) or getattr(user, "organization", None)
-    if not user_org and not getattr(user, "is_superuser", False):
-        from apps.organization.models import Organization
-        user_org = (
-            Organization.objects.filter(name__icontains="Defence").first()
-            or Organization.objects.exclude(code__in=["ORG-HPE-01", "ORG-DEMO-01", "DEFAULT"]).last()
-        )
     pr_org = (
         getattr(getattr(pr, "department", None), "organization", None)
         or getattr(getattr(getattr(pr, "cost_center", None), "department", None), "organization", None)
@@ -780,12 +762,6 @@ def approve_view(request, pk):
         )
 
         user_org = getattr(user, "effective_organization", None) or getattr(user, "organization", None)
-        if not user_org and not getattr(user, "is_superuser", False):
-            from apps.organization.models import Organization
-            user_org = (
-                Organization.objects.filter(name__icontains="Defence").first()
-                or Organization.objects.exclude(code__in=["ORG-HPE-01", "ORG-DEMO-01", "DEFAULT"]).last()
-            )
         pr_org = (
             getattr(getattr(pr, "department", None), "organization", None)
             or getattr(getattr(getattr(pr, "cost_center", None), "department", None), "organization", None)
@@ -838,12 +814,6 @@ def reject_view(request, pk):
         )
 
         user_org = getattr(user, "effective_organization", None) or getattr(user, "organization", None)
-        if not user_org and not getattr(user, "is_superuser", False):
-            from apps.organization.models import Organization
-            user_org = (
-                Organization.objects.filter(name__icontains="Defence").first()
-                or Organization.objects.exclude(code__in=["ORG-HPE-01", "ORG-DEMO-01", "DEFAULT"]).last()
-            )
         pr_org = (
             getattr(getattr(pr, "department", None), "organization", None)
             or getattr(getattr(getattr(pr, "cost_center", None), "department", None), "organization", None)

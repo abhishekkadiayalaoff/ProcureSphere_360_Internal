@@ -1,4 +1,7 @@
 import csv
+
+import json
+
 from functools import wraps
 
 import openpyxl
@@ -875,33 +878,35 @@ def org_create_view(request):
 
             send_welcome_flag = bool(form.cleaned_data.get("send_welcome_email", False))
 
-            org, admin_user, raw_pwd = create_organization_with_admin_service(
-
-                name=form.cleaned_data["name"],
-
-                code=form.cleaned_data["code"],
-
-                tax_identifier=form.cleaned_data.get("tax_identifier", ""),
-
-                address=form.cleaned_data.get("address", ""),
-
-                is_active=form.cleaned_data.get("is_active", True),
-
-                admin_email=admin_email,
-
-                admin_first_name=admin_first_name,
-
-                admin_last_name=admin_last_name,
-
-                admin_password=admin_password,
-
-                send_welcome_email_flag=send_welcome_flag,
-
-                request=request,
-
-                actor=request.user,
-
-            )
+            try:
+                org, admin_user, raw_pwd = create_organization_with_admin_service(
+                    name=form.cleaned_data["name"],
+                    code=form.cleaned_data["code"],
+                    tax_identifier=form.cleaned_data.get("tax_identifier", ""),
+                    address=form.cleaned_data.get("address", ""),
+                    is_active=form.cleaned_data.get("is_active", True),
+                    admin_email=admin_email,
+                    admin_first_name=admin_first_name,
+                    admin_last_name=admin_last_name,
+                    admin_password=admin_password,
+                    proc_mgr_email=form.cleaned_data.get("proc_mgr_email"),
+                    proc_mgr_first_name=form.cleaned_data.get("proc_mgr_first_name", ""),
+                    proc_mgr_last_name=form.cleaned_data.get("proc_mgr_last_name", ""),
+                    proc_mgr_password=form.cleaned_data.get("proc_mgr_password"),
+                    auditor_email=form.cleaned_data.get("auditor_email"),
+                    auditor_first_name=form.cleaned_data.get("auditor_first_name", ""),
+                    auditor_last_name=form.cleaned_data.get("auditor_last_name", ""),
+                    auditor_password=form.cleaned_data.get("auditor_password"),
+                    send_welcome_email_flag=send_welcome_flag,
+                    request=request,
+                    actor=request.user,
+                )
+            except ValidationError as val_err:
+                form.add_error("admin_email", str(val_err))
+                err_msg = "This user does not belong to this organization."
+                form.add_error("admin_email", err_msg)
+                messages.error(request, err_msg)
+                return render(request, "pages/dashboards/superadmin/org_form.html", {"form": form, "is_edit": False})
 
             if form.cleaned_data.get("import_standard_vendors", False):
                 from apps.vendors.services import import_standard_vendors_for_org_service
@@ -1016,6 +1021,56 @@ def org_edit_view(request, org_id):
                     admin_user_dropdown.save(update_fields=["organization"])
 
 
+            # Handle dedicated Procurement Manager update (1:1)
+            pm_email = (form.cleaned_data.get("proc_mgr_email") or "").strip().lower()
+            if pm_email:
+                role_pm, _ = Role.objects.get_or_create(code=Role.PROC_MGR, defaults={"name": "Procurement Manager"})
+                pm_user = User.objects.filter(email__iexact=pm_email).first()
+                if not pm_user:
+                    pm_user = User.objects.create_user(
+                        email=pm_email,
+                        username=pm_email,
+                        first_name=form.cleaned_data.get("proc_mgr_first_name", ""),
+                        last_name=form.cleaned_data.get("proc_mgr_last_name", ""),
+                        role=role_pm,
+                        organization=org,
+                    )
+                else:
+                    pm_user.organization = org
+                    pm_user.role = role_pm
+                    if form.cleaned_data.get("proc_mgr_first_name"):
+                        pm_user.first_name = form.cleaned_data.get("proc_mgr_first_name")
+                    if form.cleaned_data.get("proc_mgr_last_name"):
+                        pm_user.last_name = form.cleaned_data.get("proc_mgr_last_name")
+                    pm_user.save()
+                org.procurement_manager = pm_user
+                org.save(update_fields=["procurement_manager"])
+
+            # Handle dedicated Compliance Auditor update (1:1)
+            aud_email = (form.cleaned_data.get("auditor_email") or "").strip().lower()
+            if aud_email:
+                role_aud, _ = Role.objects.get_or_create(code=Role.AUDITOR, defaults={"name": "Compliance Auditor"})
+                aud_user = User.objects.filter(email__iexact=aud_email).first()
+                if not aud_user:
+                    aud_user = User.objects.create_user(
+                        email=aud_email,
+                        username=aud_email,
+                        first_name=form.cleaned_data.get("auditor_first_name", ""),
+                        last_name=form.cleaned_data.get("auditor_last_name", ""),
+                        role=role_aud,
+                        organization=org,
+                    )
+                else:
+                    aud_user.organization = org
+                    aud_user.role = role_aud
+                    if form.cleaned_data.get("auditor_first_name"):
+                        aud_user.first_name = form.cleaned_data.get("auditor_first_name")
+                    if form.cleaned_data.get("auditor_last_name"):
+                        aud_user.last_name = form.cleaned_data.get("auditor_last_name")
+                    aud_user.save()
+                org.compliance_auditor = aud_user
+                org.save(update_fields=["compliance_auditor"])
+
 
             if admin_email and (not org.admin_user or org.admin_user.email != admin_email.strip().lower()):
 
@@ -1043,24 +1098,24 @@ def org_edit_view(request, org_id):
 
                     )
 
-                    user.is_staff = True
+                    user.is_staff = False
 
                 else:
 
+                    existing_org = getattr(user, "effective_organization", None) or user.organization
+                    if existing_org and existing_org.id != org.id:
+                        messages.error(request, "This user does not belong to this organization.")
+                        return redirect("superadmin:organizations")
+                    if user.is_superuser and not user.organization_id:
+                        messages.error(request, f"The email '{norm_email}' is reserved for the Platform Admin and cannot be used.")
+                        return redirect("superadmin:organizations")
                     user.organization = org
-
                     user.role = role
-
-                    user.is_staff = True
-
+                    user.is_staff = False
                     if form.cleaned_data.get("admin_first_name"):
-
                         user.first_name = form.cleaned_data.get("admin_first_name")
-
                     if form.cleaned_data.get("admin_last_name"):
-
                         user.last_name = form.cleaned_data.get("admin_last_name")
-
                 if admin_password and admin_password.strip():
 
                     password_to_send = admin_password.strip()
@@ -1089,7 +1144,7 @@ def org_edit_view(request, org_id):
 
                 org.admin_user.organization = org
 
-                org.admin_user.is_staff = True
+                org.admin_user.is_staff = False
 
                 org.admin_user.is_active = True
 
@@ -1775,7 +1830,7 @@ def org_resend_credentials_view(request, org_id):
 
     admin_user.organization = org
 
-    admin_user.is_staff = True
+    admin_user.is_staff = False
 
     admin_user.is_active = True
 
@@ -2625,27 +2680,86 @@ def fiscal_period_edit_view(request, period_id):
 
 @super_admin_required
 
+@login_required
+@super_admin_required
 def policy_list_view(request):
-
     if not _is_super_admin(request.user):
-
         return HttpResponse(
-
             "<div class='alert alert-danger m-3'>Permission Denied: Super Admin access required.</div>",
-
             status=403,
-
         )
 
-    policies = ApprovalPolicy.objects.select_related("department").all()
-
     scoped_org = get_user_scoped_org(request.user)
+    base_qs = ApprovalPolicy.objects.select_related(
+        "organization", "department", "cost_center", "exception_department", "exception_cost_center", "exception_approver_role"
+    ).prefetch_related("steps", "steps__approver_role", "steps__specific_approver")
 
     if scoped_org:
+        base_qs = base_qs.filter(
+            Q(organization=scoped_org) | Q(department__organization=scoped_org)
+        )
 
-        policies = policies.filter(department__organization=scoped_org)
+    # Compute KPI metrics across the scoped set before search/filter
+    total_policies = base_qs.count()
+    active_policies = base_qs.filter(is_active=True, status=ApprovalPolicy.STATUS_ACTIVE).count()
+    draft_policies = base_qs.filter(status=ApprovalPolicy.STATUS_DRAFT).count()
+    exception_policies = base_qs.filter(has_exception_routing=True).count()
+    archived_policies = base_qs.filter(status=ApprovalPolicy.STATUS_ARCHIVED).count()
 
-    return render(request, "pages/dashboards/superadmin/policies.html", {"policies": policies})
+    # Search & Filters
+    q = request.GET.get("q", "").strip()
+    selected_module = request.GET.get("module", "").strip()
+    selected_status = request.GET.get("status", "").strip()
+    selected_dept = request.GET.get("department", "").strip()
+
+    filtered_qs = base_qs
+    if q:
+        filtered_qs = filtered_qs.filter(
+            Q(name__icontains=q)
+            | Q(module__icontains=q)
+            | Q(department__name__icontains=q)
+            | Q(department__code__icontains=q)
+            | Q(cost_center__code__icontains=q)
+            | Q(cost_center__name__icontains=q)
+        )
+    if selected_module:
+        filtered_qs = filtered_qs.filter(module=selected_module)
+    if selected_status:
+        if selected_status == "ACTIVE":
+            filtered_qs = filtered_qs.filter(is_active=True, status=ApprovalPolicy.STATUS_ACTIVE)
+        elif selected_status == "INACTIVE":
+            filtered_qs = filtered_qs.filter(is_active=False)
+        elif selected_status == "DRAFT":
+            filtered_qs = filtered_qs.filter(status=ApprovalPolicy.STATUS_DRAFT)
+        elif selected_status == "ARCHIVED":
+            filtered_qs = filtered_qs.filter(status=ApprovalPolicy.STATUS_ARCHIVED)
+        elif selected_status == "WITH_EXCEPTIONS":
+            filtered_qs = filtered_qs.filter(has_exception_routing=True)
+    if selected_dept:
+        filtered_qs = filtered_qs.filter(department_id=selected_dept)
+
+    filtered_qs = filtered_qs.order_by("-is_active", "module", "min_amount", "-created_at")
+
+    # Available departments for filter dropdown
+    dept_qs = Department.objects.all().order_by("name")
+    if scoped_org:
+        dept_qs = dept_qs.filter(organization=scoped_org)
+
+    context = {
+        "policies": filtered_qs,
+        "departments": dept_qs,
+        "module_choices": ApprovalPolicy.MODULE_CHOICES,
+        "total_policies": total_policies,
+        "active_policies": active_policies,
+        "draft_policies": draft_policies,
+        "exception_policies": exception_policies,
+        "archived_policies": archived_policies,
+        "q": q,
+        "selected_module": selected_module,
+        "selected_status": selected_status,
+        "selected_dept": selected_dept,
+    }
+    return render(request, "pages/dashboards/superadmin/policies.html", context)
 
 
 
@@ -2816,92 +2930,259 @@ def budget_edit_view(request, budget_id):
 
 
 @login_required
-
 @super_admin_required
-
 def policy_create_view(request):
-
     if not _is_super_admin(request.user):
-
         return HttpResponse(
-
             "<div class='alert alert-danger m-3'>Permission Denied: Super Admin access required.</div>",
-
             status=403,
-
         )
-
-
-
-    if request.method == "POST":
-
-        form = PolicyAdminForm(request.POST, request=request)
-
-        if form.is_valid():
-
-            form.save()
-
-            return HttpResponse("<script>window.location.reload();</script>")
-
-    else:
-
-        form = PolicyAdminForm(request=request, initial={"is_active": True})
-
-    return render(request, "pages/dashboards/superadmin/policy_form.html", {"form": form, "is_edit": False})
-
-
-
-
-
-@login_required
-
-@super_admin_required
-
-def policy_edit_view(request, policy_id):
-
-    if not _is_super_admin(request.user):
-
-        return HttpResponse(
-
-            "<div class='alert alert-danger m-3'>Permission Denied: Super Admin access required.</div>",
-
-            status=403,
-
-        )
-
-
-
-    policy = get_object_or_404(ApprovalPolicy, pk=policy_id)
 
     scoped_org = get_user_scoped_org(request.user)
 
-    if scoped_org and policy.department and policy.department.organization_id != scoped_org.id:
+    if request.method == "POST":
+        form = PolicyAdminForm(request.POST, request=request)
+        if form.is_valid():
+            policy = form.save()
+            from apps.audit.models import AuditLog
+            AuditLog.objects.create(
+                actor=request.user,
+                action=AuditLog.ACTION_CREATE,
+                target_model="ApprovalPolicy",
+                target_object_id=str(policy.id),
+                new_state={"name": policy.name, "module": policy.module, "status": policy.status},
+                ip_address=request.META.get("REMOTE_ADDR"),
+            )
+            return HttpResponse("<script>window.location.reload();</script>")
+    else:
+        form = PolicyAdminForm(request=request, initial={"is_active": True, "status": ApprovalPolicy.STATUS_ACTIVE})
 
+    # Prepare default initial steps for builder
+    dept_role = Role.objects.filter(code=Role.DEPT_APPROVER).first()
+    finance_role = Role.objects.filter(code=Role.FINANCE_AP).first()
+    initial_steps = []
+    if dept_role:
+        initial_steps.append({
+            "step_number": 1,
+            "role_id": str(dept_role.id),
+            "role_name": dept_role.name,
+            "user_id": "",
+            "user_name": "",
+            "description": "Department Approver Review",
+            "is_mandatory": True,
+            "approval_limit": "",
+            "step_type": "SEQUENTIAL",
+            "rejection_behavior": "STOP_WORKFLOW",
+            "escalation_hours": 48,
+        })
+    if finance_role:
+        initial_steps.append({
+            "step_number": 2,
+            "role_id": str(finance_role.id),
+            "role_name": finance_role.name,
+            "user_id": "",
+            "user_name": "",
+            "description": "Finance / AP Verification",
+            "is_mandatory": True,
+            "approval_limit": "",
+            "step_type": "SEQUENTIAL",
+            "rejection_behavior": "STOP_WORKFLOW",
+            "escalation_hours": 48,
+        })
+
+    available_roles = Role.objects.all().order_by("name")
+    user_qs = User.objects.filter(is_active=True).order_by("email")
+    if scoped_org:
+        user_qs = user_qs.filter(Q(organization=scoped_org) | Q(department__organization=scoped_org))
+
+    return render(
+        request,
+        "pages/dashboards/superadmin/policy_form.html",
+        {
+            "form": form,
+            "is_edit": False,
+            "policy": None,
+            "steps_json": json.dumps(initial_steps),
+            "available_roles": available_roles,
+            "available_users": user_qs,
+        },
+    )
+
+
+@login_required
+@super_admin_required
+def policy_edit_view(request, policy_id):
+    if not _is_super_admin(request.user):
         return HttpResponse(
-
-            "<div class='alert alert-danger m-3'>Permission Denied: You cannot modify policies of other organizations.</div>",
-
+            "<div class='alert alert-danger m-3'>Permission Denied: Super Admin access required.</div>",
             status=403,
-
         )
 
-
+    policy = get_object_or_404(
+        ApprovalPolicy.objects.select_related("organization", "department", "cost_center").prefetch_related("steps", "steps__approver_role", "steps__specific_approver"),
+        pk=policy_id
+    )
+    scoped_org = get_user_scoped_org(request.user)
+    if scoped_org:
+        if policy.organization_id and policy.organization_id != scoped_org.id:
+            return HttpResponse(
+                "<div class='alert alert-danger m-3'>Permission Denied: You cannot modify policies of other organizations.</div>",
+                status=403,
+            )
+        elif policy.department and policy.department.organization_id != scoped_org.id:
+            return HttpResponse(
+                "<div class='alert alert-danger m-3'>Permission Denied: You cannot modify policies of other organizations.</div>",
+                status=403,
+            )
 
     if request.method == "POST":
-
         form = PolicyAdminForm(request.POST, instance=policy, request=request)
-
         if form.is_valid():
-
-            form.save()
-
+            updated = form.save()
+            from apps.audit.models import AuditLog
+            AuditLog.objects.create(
+                actor=request.user,
+                action=AuditLog.ACTION_UPDATE,
+                target_model="ApprovalPolicy",
+                target_object_id=str(updated.id),
+                new_state={"name": updated.name, "module": updated.module, "status": updated.status, "version": updated.version},
+                ip_address=request.META.get("REMOTE_ADDR"),
+            )
             return HttpResponse("<script>window.location.reload();</script>")
-
     else:
-
         form = PolicyAdminForm(instance=policy, request=request)
 
-    return render(request, "pages/dashboards/superadmin/policy_form.html", {"form": form, "is_edit": True, "policy": policy})
+    steps_list = []
+    for s in policy.steps.all().order_by("step_number"):
+        steps_list.append({
+            "step_number": s.step_number,
+            "role_id": str(s.approver_role_id) if s.approver_role_id else "",
+            "role_name": s.approver_role.name if s.approver_role else "",
+            "user_id": str(s.specific_approver_id) if s.specific_approver_id else "",
+            "user_name": s.specific_approver.email if s.specific_approver else "",
+            "description": s.description or "",
+            "is_mandatory": bool(s.is_mandatory),
+            "approval_limit": str(s.approval_limit) if s.approval_limit is not None else "",
+            "step_type": s.step_type or "SEQUENTIAL",
+            "rejection_behavior": s.rejection_behavior or "STOP_WORKFLOW",
+            "escalation_hours": s.escalation_hours or "",
+        })
+
+    available_roles = Role.objects.all().order_by("name")
+    user_qs = User.objects.filter(is_active=True).order_by("email")
+    if scoped_org:
+        user_qs = user_qs.filter(Q(organization=scoped_org) | Q(department__organization=scoped_org))
+
+    return render(
+        request,
+        "pages/dashboards/superadmin/policy_form.html",
+        {
+            "form": form,
+            "is_edit": True,
+            "policy": policy,
+            "steps_json": json.dumps(steps_list),
+            "available_roles": available_roles,
+            "available_users": user_qs,
+        },
+    )
+
+
+@login_required
+@super_admin_required
+def policy_detail_view(request, policy_id):
+    if not _is_super_admin(request.user):
+        return HttpResponse("<div class='alert alert-danger m-3'>Permission Denied.</div>", status=403)
+
+    policy = get_object_or_404(
+        ApprovalPolicy.objects.select_related(
+            "organization", "department", "cost_center", "exception_department", "exception_cost_center", "exception_approver_role", "exception_specific_approver"
+        ).prefetch_related("steps", "steps__approver_role", "steps__specific_approver"),
+        pk=policy_id
+    )
+    scoped_org = get_user_scoped_org(request.user)
+    if scoped_org and policy.organization_id and policy.organization_id != scoped_org.id:
+        return HttpResponse("<div class='alert alert-danger m-3'>Permission Denied.</div>", status=403)
+
+    steps = policy.steps.all().order_by("step_number")
+    from apps.audit.models import AuditLog
+    audit_history = AuditLog.objects.filter(
+        target_model="ApprovalPolicy",
+        target_object_id=str(policy.id),
+    ).select_related("actor").order_by("-timestamp")[:10]
+
+    return render(
+        request,
+        "pages/dashboards/superadmin/policy_detail.html",
+        {
+            "policy": policy,
+            "steps": steps,
+            "audit_history": audit_history,
+        },
+    )
+
+
+@login_required
+@super_admin_required
+def policy_duplicate_view(request, policy_id):
+    if not _is_super_admin(request.user):
+        return HttpResponse("<div class='alert alert-danger m-3'>Permission Denied.</div>", status=403)
+
+    from apps.approvals.services import duplicate_approval_policy_service
+    scoped_org = get_user_scoped_org(request.user)
+    policy = get_object_or_404(ApprovalPolicy, pk=policy_id)
+    if scoped_org and policy.organization_id and policy.organization_id != scoped_org.id:
+        return HttpResponse("<div class='alert alert-danger m-3'>Permission Denied.</div>", status=403)
+
+    try:
+        new_policy = duplicate_approval_policy_service(policy_id=policy.id, actor=request.user)
+        messages.success(request, f"Policy '{new_policy.name}' created as draft clone of '{policy.name}'.")
+    except Exception as e:
+        messages.error(request, f"Error duplicating policy: {e}")
+
+    return redirect("/superadmin/policies/")
+
+
+@login_required
+@super_admin_required
+def policy_toggle_status_view(request, policy_id):
+    if not _is_super_admin(request.user):
+        return HttpResponse("<div class='alert alert-danger m-3'>Permission Denied.</div>", status=403)
+
+    from apps.approvals.services import toggle_policy_status_service
+    scoped_org = get_user_scoped_org(request.user)
+    policy = get_object_or_404(ApprovalPolicy, pk=policy_id)
+    if scoped_org and policy.organization_id and policy.organization_id != scoped_org.id:
+        return HttpResponse("<div class='alert alert-danger m-3'>Permission Denied.</div>", status=403)
+
+    try:
+        toggled = toggle_policy_status_service(policy=policy, actor=request.user)
+        status_label = "activated" if toggled.is_active else "deactivated (moved to Draft)"
+        messages.success(request, f"Policy '{toggled.name}' {status_label}.")
+    except Exception as e:
+        messages.error(request, f"Unable to toggle policy status: {e}")
+
+    return redirect("/superadmin/policies/")
+
+
+@login_required
+@super_admin_required
+def policy_archive_view(request, policy_id):
+    if not _is_super_admin(request.user):
+        return HttpResponse("<div class='alert alert-danger m-3'>Permission Denied.</div>", status=403)
+
+    from apps.approvals.services import archive_policy_service
+    scoped_org = get_user_scoped_org(request.user)
+    policy = get_object_or_404(ApprovalPolicy, pk=policy_id)
+    if scoped_org and policy.organization_id and policy.organization_id != scoped_org.id:
+        return HttpResponse("<div class='alert alert-danger m-3'>Permission Denied.</div>", status=403)
+
+    try:
+        archived = archive_policy_service(policy=policy, actor=request.user)
+        messages.success(request, f"Policy '{archived.name}' has been archived.")
+    except Exception as e:
+        messages.error(request, f"Error archiving policy: {e}")
+
+    return redirect("/superadmin/policies/")
 
 
 

@@ -1,6 +1,7 @@
-from decimal import Decimal
+﻿from decimal import Decimal
 
 from django.conf import settings
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import connection
 from django.db.models import Avg, Count, Q, Sum
@@ -69,8 +70,9 @@ def get_dashboard_url_for_user(user):
         user.role.code if hasattr(user, "role") and user.role else None
     )
 
-    if user.is_superuser and not role_code:
-        return "/superadmin/"
+    # Platform Admin (Django Admin superuser with no organization) -> /admin/
+    if user.is_superuser and not getattr(user, "organization_id", None):
+        return "/admin/"
 
     role_url_map = {
         Role.SUPER_ADMIN: "/superadmin/",
@@ -160,12 +162,6 @@ def finance_dashboard_view(request):
     selected_cc_id = request.GET.get("cost_center") or ""
 
     scoped_org = getattr(request.user, "effective_organization", None) if not (request.user.is_superuser and not request.user.organization_id) else None
-    if not scoped_org and not getattr(request.user, "is_superuser", False):
-        from apps.organization.models import Organization
-        scoped_org = (
-            Organization.objects.filter(name__icontains="Defence").first()
-            or Organization.objects.exclude(code__in=["ORG-HPE-01", "ORG-DEMO-01", "DEFAULT"]).last()
-        )
 
     departments = Department.objects.all().order_by("name")
     cost_centers = CostCenter.objects.select_related("department").all().order_by("code")
@@ -327,8 +323,14 @@ def procurement_dashboard_view(request):
 
     sync_all_event_windows()
     now = timezone.now()
+    _proc_org = getattr(user, "effective_organization", None)
+    _event_org_filter = (
+        Q(requisition__department__organization=_proc_org)
+        | Q(requisition__isnull=True, created_by__organization=_proc_org)
+    ) if _proc_org and not getattr(user, "is_superuser", False) else Q()
     closing_soon = (
         SourcingEvent.objects.filter(
+            _event_org_filter,
             status=SourcingEvent.STATUS_BID_WINDOW,
             bid_end_date__gt=now,
             bid_end_date__lte=now + timezone.timedelta(days=3),
@@ -337,6 +339,7 @@ def procurement_dashboard_view(request):
         .order_by("bid_end_date")[:8]
     )
     action_queue = SourcingEvent.objects.filter(
+        _event_org_filter,
         status__in=[
             SourcingEvent.STATUS_DRAFT,
             SourcingEvent.STATUS_TECHNICAL_REVIEW,
@@ -354,7 +357,7 @@ def procurement_dashboard_view(request):
         .order_by("-updated_at")[:8]
     )
     awarded_without_po = (
-        SourcingEvent.objects.filter(status=SourcingEvent.STATUS_AWARDED)
+        SourcingEvent.objects.filter(_event_org_filter, status=SourcingEvent.STATUS_AWARDED)
         .exclude(
             purchase_orders__status__in=[
                 PurchaseOrder.STATUS_DRAFT,
@@ -368,11 +371,17 @@ def procurement_dashboard_view(request):
         .order_by("-updated_at")[:8]
     )
     avg_scorecard = VendorScorecard.objects.aggregate(avg=Avg("composite_score"))["avg"]
+    _prs_org_filter = (
+        Q(department__organization=_proc_org)
+        | Q(cost_center__department__organization=_proc_org)
+        | Q(requester__organization=_proc_org)
+    ) if _proc_org and not getattr(user, "is_superuser", False) else Q()
     ready_prs_count = PurchaseRequisition.objects.filter(
-        status=PurchaseRequisition.STATUS_APPROVED
+        _prs_org_filter,
+        status=PurchaseRequisition.STATUS_APPROVED,
     ).count()
     context = {
-        "sourcing": get_sourcing_dashboard_metrics(),
+        "sourcing": get_sourcing_dashboard_metrics(user=user),
         "governance": get_governance_metrics(),
         "ready_prs_count": ready_prs_count,
         "open_pos": PurchaseOrder.objects.filter(
@@ -424,6 +433,13 @@ def approver_dashboard_view(request):
                 organization=user.organization
             ).first()
 
+    if not user_department:
+        messages.warning(
+            request,
+            "Your account is not linked to a department or organization. "
+            "Dashboard figures are limited until an administrator assigns your scope.",
+        )
+
     if user_department:
         dept_prs = PurchaseRequisition.objects.filter(
             Q(department=user_department) | Q(cost_center__manager=user)
@@ -433,7 +449,7 @@ def approver_dashboard_view(request):
             Q(department__organization=user.organization) | Q(cost_center__manager=user)
         ).distinct()
     else:
-        dept_prs = PurchaseRequisition.objects.all()
+        dept_prs = PurchaseRequisition.objects.none()
 
     from apps.approvals.models import ApprovalAction
     user_approved_pr_ids = ApprovalAction.objects.filter(
@@ -587,6 +603,10 @@ def home_view(request):  # noqa: C901
         user.role.code if hasattr(user, "role") and user.role else None
     )
 
+    # Platform Admin landing on home view redirects directly to Django Admin
+    if user.is_superuser and not getattr(user, "organization_id", None):
+        return redirect("/admin/")
+
     if role_code is None and not user.is_superuser:
         return render(request, "pages/dashboards/no_role.html", status=403)
 
@@ -624,8 +644,8 @@ def custom_404_view(request, exception=None):
     # Auto-redirect non-slash URLs if the slashed path resolves (replaces default CommonMiddleware behavior bypassed by catch-all)
     if not request.path.endswith("/") and not _is_api_request(request):
         slash_path = request.path + "/"
-        from django.urls import resolve, Resolver404
         from django.shortcuts import redirect
+        from django.urls import Resolver404, resolve
         try:
             match = resolve(slash_path)
             if match.url_name != "custom_404_fallback":

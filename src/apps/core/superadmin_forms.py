@@ -1,8 +1,13 @@
 from decimal import Decimal, InvalidOperation
 
 from django import forms
+
+from django.contrib.auth import password_validation
+from django.db.models import Q
+
 from django.db.models import Q
 from django.contrib.auth import password_validation
+
 from django.utils import timezone
 
 from apps.accounts.models import Role, User
@@ -426,7 +431,7 @@ class UserAdminForm(forms.ModelForm):
 
 
 
-            raise forms.ValidationError(f"User with email '{email}' already exists.")
+            raise forms.ValidationError("This user does not belong to this organization.")
 
 
 
@@ -567,6 +572,25 @@ class UserAdminForm(forms.ModelForm):
 
 
         cost_center = cleaned_data.get("cost_center")
+        role_code = getattr(role, "code", "") if role else ""
+
+        # 1:1 Dedicated Role Enforcement (Procurement Manager and Auditor)
+        target_org = cleaned_data.get("organization") or (department.organization if department else None)
+        if not target_org and self.instance and self.instance.pk:
+            target_org = getattr(self.instance, "effective_organization", None)
+
+        if role_code in [Role.PROC_MGR, Role.AUDITOR]:
+            if not target_org:
+                self.add_error("organization", f"An Organization is required for dedicated role '{role.name}'.")
+            else:
+                if role_code == Role.PROC_MGR:
+                    existing_pm = target_org.dedicated_proc_manager
+                    if existing_pm and (not self.instance or self.instance.pk != existing_pm.pk):
+                        self.add_error("role", f"Organization '{target_org.name}' already has a dedicated Procurement Manager ({existing_pm.email}). Exactly one dedicated Procurement Manager is permitted per organization (1:1).")
+                elif role_code == Role.AUDITOR:
+                    existing_aud = target_org.dedicated_auditor
+                    if existing_aud and (not self.instance or self.instance.pk != existing_aud.pk):
+                        self.add_error("role", f"Organization '{target_org.name}' already has a dedicated Compliance Auditor ({existing_aud.email}). Exactly one dedicated Compliance Auditor is permitted per organization (1:1).")
 
 
 
@@ -699,10 +723,10 @@ class UserAdminForm(forms.ModelForm):
 
 
         else:
-            # For non-requester roles, clear cost center to preserve existing role behavior
+            # All non-requester roles belong to the entire organization:
+            # strictly clear department and cost center!
+            cleaned_data["department"] = None
             cleaned_data["cost_center"] = None
-            if not self.data.get("department"):
-                cleaned_data["department"] = None
 
 
 
@@ -792,9 +816,7 @@ class UserAdminForm(forms.ModelForm):
 
 
 class OrganizationAdminForm(forms.ModelForm):
-
-
-
+    # 1. Organization Administrator
     admin_email = forms.EmailField(
 
 
@@ -1044,13 +1066,59 @@ class OrganizationAdminForm(forms.ModelForm):
 
 
         widget=forms.CheckboxInput(attrs={"class": "form-check-input", "id": "id_send_welcome_email"}),
+        help_text="Send email with login credentials (email & password) to the users via Brevo.",
+    )
 
+    # 2. Dedicated Procurement Manager (1:1 per Organization)
+    proc_mgr_email = forms.EmailField(
+        label="Procurement Manager Email",
+        required=False,
+        widget=forms.EmailInput(attrs={"class": "form-control", "placeholder": "procmgr@organization.com"}),
+        help_text="Dedicated Procurement Manager for this organization (1:1).",
+    )
+    proc_mgr_first_name = forms.CharField(
+        label="Manager First Name",
+        max_length=150,
+        required=False,
+        widget=forms.TextInput(attrs={"class": "form-control", "placeholder": "First name"}),
+    )
+    proc_mgr_last_name = forms.CharField(
+        label="Manager Last Name",
+        max_length=150,
+        required=False,
+        widget=forms.TextInput(attrs={"class": "form-control", "placeholder": "Last name"}),
+    )
+    proc_mgr_password = forms.CharField(
+        label="Manager Password",
+        required=False,
+        widget=forms.PasswordInput(attrs={"class": "form-control", "placeholder": "Leave blank to auto-generate"}),
+        help_text="Leave blank to auto-generate secure password.",
+    )
 
-
-        help_text="Send email with login credentials (email & password) to the administrator via Brevo.",
-
-
-
+    # 3. Dedicated Compliance Auditor (1:1 per Organization)
+    auditor_email = forms.EmailField(
+        label="Compliance Auditor Email",
+        required=False,
+        widget=forms.EmailInput(attrs={"class": "form-control", "placeholder": "auditor@organization.com"}),
+        help_text="Dedicated Compliance Auditor for this organization (1:1).",
+    )
+    auditor_first_name = forms.CharField(
+        label="Auditor First Name",
+        max_length=150,
+        required=False,
+        widget=forms.TextInput(attrs={"class": "form-control", "placeholder": "First name"}),
+    )
+    auditor_last_name = forms.CharField(
+        label="Auditor Last Name",
+        max_length=150,
+        required=False,
+        widget=forms.TextInput(attrs={"class": "form-control", "placeholder": "Last name"}),
+    )
+    auditor_password = forms.CharField(
+        label="Auditor Password",
+        required=False,
+        widget=forms.PasswordInput(attrs={"class": "form-control", "placeholder": "Leave blank to auto-generate"}),
+        help_text="Leave blank to auto-generate secure password.",
     )
 
 
@@ -1172,28 +1240,14 @@ class OrganizationAdminForm(forms.ModelForm):
 
 
         self.fields["send_welcome_email"].initial = is_create
-
-
-
         self.fields["import_standard_vendors"].initial = is_create
-
-
 
         if is_create:
             self.fields["is_active"].initial = True
             self.initial["is_active"] = True
             self.initial["admin_email"] = ""
-
-
-
             self.initial["admin_password"] = ""
-
-
-
             self.initial["admin_first_name"] = ""
-
-
-
             self.initial["admin_last_name"] = ""
 
             self.fields["admin_email"].widget.attrs.update({
@@ -1202,29 +1256,27 @@ class OrganizationAdminForm(forms.ModelForm):
                 "onfocus": "this.removeAttribute('readonly');",
                 "value": "",
             })
-
             self.fields["admin_password"].widget.attrs.update({
                 "autocomplete": "new-password",
                 "readonly": "readonly",
                 "onfocus": "this.removeAttribute('readonly');",
                 "value": "",
             })
-
-
-
-        elif self.instance and self.instance.admin_user:
-
-
-
-            self.fields["admin_email"].initial = self.instance.admin_user.email
-
-
-
-            self.fields["admin_first_name"].initial = self.instance.admin_user.first_name
-
-
-
-            self.fields["admin_last_name"].initial = self.instance.admin_user.last_name
+        elif self.instance:
+            if self.instance.admin_user:
+                self.fields["admin_email"].initial = self.instance.admin_user.email
+                self.fields["admin_first_name"].initial = self.instance.admin_user.first_name
+                self.fields["admin_last_name"].initial = self.instance.admin_user.last_name
+            pm = getattr(self.instance, "procurement_manager", None) or self.instance.dedicated_proc_manager
+            if pm:
+                self.fields["proc_mgr_email"].initial = pm.email
+                self.fields["proc_mgr_first_name"].initial = pm.first_name
+                self.fields["proc_mgr_last_name"].initial = pm.last_name
+            aud = getattr(self.instance, "compliance_auditor", None) or self.instance.dedicated_auditor
+            if aud:
+                self.fields["auditor_email"].initial = aud.email
+                self.fields["auditor_first_name"].initial = aud.first_name
+                self.fields["auditor_last_name"].initial = aud.last_name
 
 
 
@@ -1233,39 +1285,41 @@ class OrganizationAdminForm(forms.ModelForm):
 
 
     def clean(self):
-
-
-
         cleaned_data = super().clean()
-
-
-
         admin_user = cleaned_data.get("admin_user")
-
-
-
         admin_email = (cleaned_data.get("admin_email") or "").strip()
-
-
-
+        proc_mgr_email = (cleaned_data.get("proc_mgr_email") or "").strip()
+        auditor_email = (cleaned_data.get("auditor_email") or "").strip()
         is_create = not self.instance or not self.instance.pk
 
-
-
         if is_create and not admin_user and not admin_email:
-
-
-
             self.add_error("admin_email", "Please provide an Admin Email for the organization administrator.")
 
+        email_to_check = admin_email or (admin_user.email if admin_user else "")
+        if email_to_check:
+            norm_email = email_to_check.strip().lower()
+            existing_user = User.objects.filter(email__iexact=norm_email).first()
+            if existing_user:
+                existing_org = getattr(existing_user, "effective_organization", None) or existing_user.organization
+                if existing_org:
+                    if is_create or (self.instance and self.instance.pk and str(existing_org.id) != str(self.instance.pk)):
+                        self.add_error("admin_email", "This user does not belong to this organization.")
+                elif existing_user.is_superuser and not existing_user.organization_id:
+                    self.add_error("admin_email", "This user does not belong to this organization.")
+                elif is_create:
+                    self.add_error("admin_email", "This user does not belong to this organization.")
 
+        if admin_user:
+            admin_org = getattr(admin_user, "effective_organization", None) or admin_user.organization
+            if admin_org and (is_create or (self.instance and self.instance.pk and str(admin_org.id) != str(self.instance.pk))):
+                self.add_error("admin_user", "This user does not belong to this organization.")
+
+        # Ensure distinct emails across provisioned roles
+        provided_emails = [e.lower() for e in [admin_email, proc_mgr_email, auditor_email] if e]
+        if len(provided_emails) != len(set(provided_emails)):
+            self.add_error(None, "Admin, Procurement Manager, and Auditor must each have unique email addresses.")
 
         return cleaned_data
-
-
-
-
-
 
 
     def clean_code(self):
@@ -2497,261 +2551,281 @@ class FiscalPeriodAdminForm(forms.ModelForm):
 
 
 class PolicyAdminForm(forms.ModelForm):
-
-
+    steps_data = forms.CharField(widget=forms.HiddenInput(), required=False)
 
     class Meta:
-
-
-
         model = ApprovalPolicy
-
-
-
-        fields = ["name", "module", "department", "min_amount", "max_amount", "is_active"]
-
-
-
+        fields = [
+            "name",
+            "module",
+            "organization",
+            "department",
+            "cost_center",
+            "currency",
+            "min_amount",
+            "max_amount",
+            "status",
+            "is_active",
+            "description",
+            "all_departments",
+            "all_cost_centers",
+            "has_exception_routing",
+            "exception_amount_threshold",
+            "exception_department",
+            "exception_cost_center",
+            "exception_trigger_on_missing_cost_center",
+            "exception_trigger_on_budget_exceeded",
+            "exception_approver_role",
+            "exception_specific_approver",
+            "exception_escalation_time_hours",
+            "exception_routing_behavior",
+            "exception_reason",
+            "exception_description",
+        ]
         widgets = {
-
-
-
-            "name": forms.TextInput(attrs={"class": "form-control"}),
-
-
-
-            "module": forms.Select(attrs={"class": "form-select"}),
-
-
-
-            "department": forms.Select(attrs={"class": "form-select"}),
-
-
-
-            "min_amount": forms.NumberInput(attrs={"class": "form-control", "step": "0.01"}),
-
-
-
-            "max_amount": forms.NumberInput(attrs={"class": "form-control", "step": "0.01"}),
-
-
-
-            "is_active": forms.CheckboxInput(attrs={"class": "form-check-input"}),
-
-
-
+            "name": forms.TextInput(attrs={"class": "form-control", "placeholder": "e.g. Standard PR Approval Policy"}),
+            "module": forms.Select(attrs={"class": "form-select", "id": "id_module"}),
+            "organization": forms.Select(attrs={"class": "form-select", "id": "id_policy_organization"}),
+            "department": forms.Select(attrs={"class": "form-select", "id": "id_policy_department"}),
+            "cost_center": forms.Select(attrs={"class": "form-select", "id": "id_policy_cost_center"}),
+            "currency": forms.Select(attrs={"class": "form-select", "id": "id_currency"}),
+            "min_amount": forms.NumberInput(attrs={"class": "form-control", "step": "0.01", "placeholder": "0.00"}),
+            "max_amount": forms.NumberInput(attrs={"class": "form-control", "step": "0.01", "placeholder": "Leave blank for unlimited"}),
+            "status": forms.Select(attrs={"class": "form-select", "id": "id_policy_status"}),
+            "is_active": forms.CheckboxInput(attrs={"class": "form-check-input", "id": "id_policy_is_active"}),
+            "description": forms.Textarea(attrs={"class": "form-control", "rows": 2, "placeholder": "Brief description of policy rules"}),
+            "all_departments": forms.CheckboxInput(attrs={"class": "form-check-input", "id": "id_all_departments"}),
+            "all_cost_centers": forms.CheckboxInput(attrs={"class": "form-check-input", "id": "id_all_cost_centers"}),
+            "has_exception_routing": forms.CheckboxInput(attrs={"class": "form-check-input", "id": "id_has_exception_routing"}),
+            "exception_amount_threshold": forms.NumberInput(attrs={"class": "form-control", "step": "0.01", "placeholder": "e.g. 200000.00"}),
+            "exception_department": forms.Select(attrs={"class": "form-select"}),
+            "exception_cost_center": forms.Select(attrs={"class": "form-select"}),
+            "exception_trigger_on_missing_cost_center": forms.CheckboxInput(attrs={"class": "form-check-input"}),
+            "exception_trigger_on_budget_exceeded": forms.CheckboxInput(attrs={"class": "form-check-input"}),
+            "exception_approver_role": forms.Select(attrs={"class": "form-select"}),
+            "exception_specific_approver": forms.Select(attrs={"class": "form-select"}),
+            "exception_escalation_time_hours": forms.NumberInput(attrs={"class": "form-control", "min": "1"}),
+            "exception_routing_behavior": forms.Select(attrs={"class": "form-select"}),
+            "exception_reason": forms.TextInput(attrs={"class": "form-control", "placeholder": "e.g. High-Value Finance Manager Approval"}),
+            "exception_description": forms.Textarea(attrs={"class": "form-control", "rows": 2}),
         }
 
-
-
-
-
-
-
     def __init__(self, *args, request=None, **kwargs):
-
-
-
         self.request = request
-
-
-
         super().__init__(*args, **kwargs)
 
-
-
         scoped_org = _get_form_scoped_org(request)
+        if not scoped_org and self.instance and getattr(self.instance, "organization_id", None):
+            scoped_org = self.instance.organization
 
+        from apps.organization.models import Organization
+        if scoped_org:
+            self.fields["organization"].queryset = Organization.objects.filter(id=scoped_org.id)
+            self.fields["organization"].initial = scoped_org
+            self.fields["organization"].widget = forms.HiddenInput()
+            self.fields["organization"].required = False
+        else:
+            self.fields["organization"].queryset = Organization.objects.filter(is_active=True).order_by("name")
+            self.fields["organization"].empty_label = "-- All Organizations (Global) --"
+            self.fields["organization"].required = False
 
-
-        dept_qs = Department.objects.all().order_by("name")
-
-
+        dept_qs = Department.objects.select_related("organization").all().order_by("name")
+        cc_qs = CostCenter.objects.select_related("department").all().order_by("code")
+        role_qs = Role.objects.all().order_by("name")
+        user_qs = User.objects.filter(is_active=True).order_by("email")
 
         if scoped_org:
-
-
-
             dept_qs = dept_qs.filter(organization=scoped_org)
-
-
+            cc_qs = cc_qs.filter(department__organization=scoped_org)
+            user_qs = user_qs.filter(Q(organization=scoped_org) | Q(department__organization=scoped_org))
 
         self.fields["department"].queryset = dept_qs
-        if not self.instance.pk or getattr(self.instance, "_state", None) and self.instance._state.adding:
+        self.fields["department"].empty_label = "-- All Departments (Default) --"
+        self.fields["department"].required = False
+
+        self.fields["cost_center"].queryset = cc_qs
+        self.fields["cost_center"].empty_label = "-- All Cost Centers (Default) --"
+        self.fields["cost_center"].required = False
+
+        self.fields["exception_department"].queryset = dept_qs
+        self.fields["exception_department"].empty_label = "-- Any Department --"
+        self.fields["exception_department"].required = False
+
+        self.fields["exception_cost_center"].queryset = cc_qs
+        self.fields["exception_cost_center"].empty_label = "-- Any Cost Center --"
+        self.fields["exception_cost_center"].required = False
+
+        self.fields["exception_approver_role"].queryset = role_qs
+        self.fields["exception_approver_role"].empty_label = "-- Select Approver Role --"
+        self.fields["exception_approver_role"].required = False
+
+        self.fields["exception_specific_approver"].queryset = user_qs
+        self.fields["exception_specific_approver"].empty_label = "-- Optional Specific Approver --"
+        self.fields["exception_specific_approver"].required = False
+        self.fields["exception_routing_behavior"].required = False
+        self.fields["exception_routing_behavior"].initial = ApprovalPolicy.EXCEPTION_BEHAVIOR_ADDITIONAL
+
+        if not self.instance.pk or (getattr(self.instance, "_state", None) and self.instance._state.adding):
             self.fields["is_active"].initial = True
             self.initial["is_active"] = True
+            self.fields["status"].initial = ApprovalPolicy.STATUS_ACTIVE
+            self.initial["status"] = ApprovalPolicy.STATUS_ACTIVE
 
+    def clean(self):
+        cleaned_data = super().clean()
+        min_amount = cleaned_data.get("min_amount")
+        max_amount = cleaned_data.get("max_amount")
+        department = cleaned_data.get("department")
+        cost_center = cleaned_data.get("cost_center")
+        org = cleaned_data.get("organization") or _get_form_scoped_org(self.request)
+        module = cleaned_data.get("module")
+        is_active = cleaned_data.get("is_active", True)
+        status = cleaned_data.get("status", ApprovalPolicy.STATUS_ACTIVE)
 
+        if min_amount is not None and min_amount < Decimal("0.00"):
+            self.add_error("min_amount", "Minimum amount cannot be negative.")
 
+        if min_amount is not None and max_amount is not None:
+            if min_amount > max_amount:
+                self.add_error("min_amount", "Minimum amount cannot be greater than maximum amount.")
 
+        if department and cost_center:
+            if cost_center.department_id != department.id:
+                self.add_error("cost_center", f"Cost Center '{cost_center.code}' does not belong to Department '{department.name}'.")
 
+        # Conflict & Overlap Detection for Active Policies
+        if is_active and status == ApprovalPolicy.STATUS_ACTIVE and module:
+            qs = ApprovalPolicy.objects.filter(
+                is_active=True,
+                status=ApprovalPolicy.STATUS_ACTIVE,
+                module=module,
+                organization=org,
+                department=department,
+                cost_center=cost_center,
+            )
+            if self.instance and self.instance.pk:
+                qs = qs.exclude(pk=self.instance.pk)
 
+            for existing in qs:
+                e_min = existing.min_amount
+                e_max = existing.max_amount
+                c_min = min_amount if min_amount is not None else Decimal("0.00")
+                c_max = max_amount
+
+                overlap = (e_max is None or c_min <= e_max) and (c_max is None or e_min <= c_max)
+                if overlap:
+                    e_range = f"{existing.min_amount} - {existing.max_amount or 'Unlimited'}"
+                    self.add_error(
+                        "min_amount",
+                        f"Amount range overlaps with existing active policy '{existing.name}' ({e_range}). "
+                        "Conflicting overlapping policies with identical scope are not permitted."
+                    )
+                    break
+
+        return cleaned_data
 
     def save(self, commit=True):
-
-
-
-        instance = super().save(commit=commit)
-
-
+        instance = super().save(commit=False)
+        scoped_org = _get_form_scoped_org(self.request)
+        if scoped_org and not instance.organization_id:
+            instance.organization = scoped_org
 
         if commit:
-
-
-
+            instance.save()
+            self._save_dynamic_steps(instance)
             self._ensure_policy_steps(instance)
-
-
-
         return instance
 
+    def _save_dynamic_steps(self, policy):
+        import json
+        import logging
+        logger = logging.getLogger(__name__)
 
-
-
-
-
-
-    def _ensure_policy_steps(self, policy):
-
-
-
-        if policy.steps.exists():
-
-
-
+        raw_steps_data = self.data.get("steps_data")
+        if not raw_steps_data:
             return
 
+        try:
+            steps_list = json.loads(raw_steps_data)
+            if not isinstance(steps_list, list) or len(steps_list) == 0:
+                return
 
+            from apps.approvals.models import ApprovalStep
+            policy.steps.all().delete()
+
+            for idx, s in enumerate(steps_list, start=1):
+                role_id = s.get("role_id")
+                if not role_id:
+                    continue
+                role_obj = Role.objects.filter(id=role_id).first()
+                if not role_obj:
+                    continue
+
+                user_id = s.get("user_id")
+                specific_user = User.objects.filter(id=user_id).first() if user_id else None
+
+                ApprovalStep.objects.create(
+                    policy=policy,
+                    step_number=idx,
+                    approver_role=role_obj,
+                    specific_approver=specific_user,
+                    description=s.get("description", f"{role_obj.name} Approval"),
+                    is_mandatory=bool(s.get("is_mandatory", True)),
+                    approval_limit=Decimal(str(s["approval_limit"])) if s.get("approval_limit") else None,
+                    step_type=s.get("step_type", "SEQUENTIAL"),
+                    rejection_behavior=s.get("rejection_behavior", "STOP_WORKFLOW"),
+                    escalation_hours=int(s["escalation_hours"]) if s.get("escalation_hours") else None,
+                )
+        except Exception as e:
+            logger.warning("Error saving dynamic approval steps in PolicyAdminForm: %s", e)
+
+    def _ensure_policy_steps(self, policy):
+        if policy.steps.exists():
+            return
 
         from apps.accounts.models import Role
         from apps.approvals.models import ApprovalStep
 
-
-
-
-
-
-
         dept_role = Role.objects.filter(code=Role.DEPT_APPROVER).first()
-
-
-
         proc_role = Role.objects.filter(code=Role.PROC_MGR).first()
-
-
-
-
-
-
+        finance_role = Role.objects.filter(code=Role.FINANCE_AP).first()
 
         if policy.module == ApprovalPolicy.MODULE_PR:
-
-
-
             if dept_role:
-
-
-
                 ApprovalStep.objects.get_or_create(
-
-
-
                     policy=policy,
-
-
-
                     step_number=1,
-
-
-
                     defaults={
-
-
-
                         "approver_role": dept_role,
-
-
-
-                        "description": "Department Manager Approval",
-
-
-
+                        "description": "Department Approver Review",
                     },
-
-
-
                 )
-
-
-
-            if proc_role:
-
-
-
+            if finance_role:
                 ApprovalStep.objects.get_or_create(
-
-
-
                     policy=policy,
-
-
-
                     step_number=2,
-
-
-
                     defaults={
-
-
-
-                        "approver_role": proc_role,
-
-
-
-                        "description": "Procurement Manager Approval",
-
-
-
+                        "approver_role": finance_role,
+                        "description": "Finance / AP Approval",
                     },
-
-
-
                 )
-
-
-
         elif policy.module == ApprovalPolicy.MODULE_PO_AMENDMENT and proc_role:
-
-
-
             ApprovalStep.objects.get_or_create(
-
-
-
                 policy=policy,
-
-
-
                 step_number=1,
-
-
-
                 defaults={
-
-
-
                     "approver_role": proc_role,
-
-
-
                     "description": "Procurement Manager Approval",
-
-
-
                 },
-
-
-
+            )
+        elif dept_role:
+            ApprovalStep.objects.get_or_create(
+                policy=policy,
+                step_number=1,
+                defaults={
+                    "approver_role": dept_role,
+                    "description": "Department Approval",
+                },
             )
 
 

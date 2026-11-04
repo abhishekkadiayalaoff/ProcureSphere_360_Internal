@@ -60,6 +60,12 @@
     </div>
     {% csrf_token %}
     <div class="modal-body pt-4" style="max-height: calc(85vh - 120px); overflow-y: auto;">
+        {% if form.errors %}
+        <div class="alert alert-danger py-2 px-3 small rounded-3 mb-3 d-flex align-items-center gap-2 shadow-sm">
+            <i class="fa-solid fa-triangle-exclamation text-danger fs-6"></i>
+            <span class="fw-semibold">{% if form.admin_email.errors %}{{ form.admin_email.errors|striptags }}{% elif form.admin_user.errors %}{{ form.admin_user.errors|striptags }}{% else %}This user does not belong to this organization.{% endif %}</span>
+        </div>
+        {% endif %}
         {% if form.non_field_errors %}
         <div class="alert alert-danger">{{ form.non_field_errors }}</div>
         {% endif %}
@@ -157,6 +163,84 @@
                         <div class="small text-muted mb-2"><i class="fa-solid fa-paper-plane me-1"></i>Send Welcome Email: Login credentials will be dispatched directly to the admin user via Brevo.</div>
                         <input type="hidden" name="send_welcome_email" value="on">
                         <input type="hidden" name="send_welcome_email_present" value="1">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dedicated Procurement Manager (1:1) -->
+            <div class="col-12 mt-3">
+                <div class="card border border-warning border-opacity-25 bg-light rounded-3 p-3">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="fw-bold text-dark mb-0">
+                            <i class="fa-solid fa-user-tie text-warning me-2"></i>
+                            Dedicated Procurement Manager
+                        </h6>
+                        <span class="badge bg-warning bg-opacity-10 text-dark border border-warning border-opacity-25 small">1:1 Org Mapping</span>
+                    </div>
+                    <p class="text-muted small mb-3">
+                        Provision or assign the dedicated Procurement Manager for this organization. Data across organizations is strictly isolated.
+                    </p>
+                    <div class="row g-2">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold text-secondary small">Manager Email</label>
+                            {{ form.proc_mgr_email }}
+                            {% if form.proc_mgr_email.errors %}<div class="text-danger small">{{ form.proc_mgr_email.errors }}</div>{% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold text-secondary small">Temporary Password</label>
+                            {{ form.proc_mgr_password }}
+                            {% if form.proc_mgr_password.errors %}<div class="text-danger small">{{ form.proc_mgr_password.errors }}</div>{% endif %}
+                            <div class="form-text small text-muted">Leave blank to auto-generate.</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold text-secondary small">First Name</label>
+                            {{ form.proc_mgr_first_name }}
+                            {% if form.proc_mgr_first_name.errors %}<div class="text-danger small">{{ form.proc_mgr_first_name.errors }}</div>{% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold text-secondary small">Last Name</label>
+                            {{ form.proc_mgr_last_name }}
+                            {% if form.proc_mgr_last_name.errors %}<div class="text-danger small">{{ form.proc_mgr_last_name.errors }}</div>{% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dedicated Compliance Auditor (1:1) -->
+            <div class="col-12 mt-3">
+                <div class="card border border-info border-opacity-25 bg-light rounded-3 p-3">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="fw-bold text-dark mb-0">
+                            <i class="fa-solid fa-clipboard-check text-info me-2"></i>
+                            Dedicated Compliance Auditor
+                        </h6>
+                        <span class="badge bg-info bg-opacity-10 text-dark border border-info border-opacity-25 small">1:1 Org Mapping</span>
+                    </div>
+                    <p class="text-muted small mb-3">
+                        Provision or assign the dedicated Compliance Auditor. Audit logs and traceability reports are restricted strictly to this organization.
+                    </p>
+                    <div class="row g-2">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold text-secondary small">Auditor Email</label>
+                            {{ form.auditor_email }}
+                            {% if form.auditor_email.errors %}<div class="text-danger small">{{ form.auditor_email.errors }}</div>{% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold text-secondary small">Temporary Password</label>
+                            {{ form.auditor_password }}
+                            {% if form.auditor_password.errors %}<div class="text-danger small">{{ form.auditor_password.errors }}</div>{% endif %}
+                            <div class="form-text small text-muted">Leave blank to auto-generate.</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold text-secondary small">First Name</label>
+                            {{ form.auditor_first_name }}
+                            {% if form.auditor_first_name.errors %}<div class="text-danger small">{{ form.auditor_first_name.errors }}</div>{% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold text-secondary small">Last Name</label>
+                            {{ form.auditor_last_name }}
+                            {% if form.auditor_last_name.errors %}<div class="text-danger small">{{ form.auditor_last_name.errors }}</div>{% endif %}
+                        </div>
                     </div>
                 </div>
             </div>

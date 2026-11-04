@@ -11,14 +11,14 @@ from apps.accounts.views import (
     portal_login_view,
     portal_logout_view,
 )
+from apps.core.seo_views import robots_txt, sitemap_xml
 from apps.core.views import (
-    home_view,
     custom_404_view,
+    home_view,
     protected_media_view,
     protected_vendor_document_view,
 )
 
-from apps.core.seo_views import robots_txt, sitemap_xml
 from .healthchecks import health, readyz
 
 urlpatterns = [
@@ -37,56 +37,73 @@ urlpatterns = [
     path("logout/", portal_logout_view, name="logout"),
     path("password-change/", password_change_view, name="password_change"),
     path("accounts/change-password/", change_password_view, name="change_password"),
-    path("notifications/", include("apps.notifications.urls")),
-    path("audit/", include("apps.audit.urls")),
+
+    # Superadmin, Manager & Vendor Portals
     path("superadmin/", include("apps.core.superadmin_urls")),
     path("manager/", include("apps.core.manager_urls")),
     path("manager/api/", include("apps.core.manager_api_urls")),
     path("vendor/", include("apps.vendors.vendor_dashboard_urls")),
-    # Landing website URLs (placed before core to handle public '/' correctly)
+
+    # Public landing website - included BEFORE apps.core.urls so that
+    # anonymous traffic to "/" resolves to landing_home. Authenticated
+    # users are forwarded inside landing_home via direct Python call.
     path("", include("apps.core.landing_urls")),
-    # ERP core app URLs (fallback dashboard dispatcher)
+
+    # Core & Auth & Page Views
     path("", include("apps.core.urls")),
-    path("requisitions/", include("apps.requisitions.urls")),
-    path("approvals/", include("apps.approvals.urls")),
-    path("vendors/", include("apps.vendors.urls")),
-    path("sourcing-events/", include("apps.sourcing.urls")),
-    path("purchase-orders/", include("apps.orders.urls")),
+    path("", include(("apps.accounts.urls", "accounts"), namespace="accounts")),
+    path("", include("apps.accounts.urls")),
+    path("", include("apps.requisitions.urls")),
+    path("", include("apps.approvals.urls")),
+    path("", include("apps.vendors.urls")),
+    path("", include("apps.sourcing.urls")),
+    path("", include("apps.orders.urls")),
+    path("", include("apps.receipts.urls")),
     path("invoices/", include("apps.invoices.urls")),
-    path("contracts/", include("apps.contracts.urls")),
-    path("receipts/", include("apps.receipts.urls")),
-    path("orders/", include("apps.orders.urls")),
+    path("", include("apps.contracts.urls")),
+    path("", include("apps.scorecards.urls")),
+    path("", include("apps.notifications.urls")),
     path("reports/", include("apps.reports.urls")),
+    path("", include("apps.audit.urls")),
     path("budgets/", include("apps.budgets.urls")),
-    path("scorecards/", include("apps.scorecards.urls")),
+
     # REST API v1
     path("api/v1/auth/token/", SessionLoginView.as_view(), name="token_obtain_pair"),
     path("api/v1/auth/token/refresh/", SessionLoginView.as_view(), name="token_refresh"),
     path("api/v1/auth/logout/", SessionLogoutView.as_view(), name="session_logout"),
     path("api/v1/auth/", include("apps.accounts.api_urls")),
+    path("api/v1/accounts/", include("apps.accounts.api_urls")),
     path("api/v1/organization/", include("apps.organization.api_urls")),
     path("api/v1/approvals/", include("apps.approvals.api_urls")),
     path("api/v1/vendors/", include("apps.vendors.api_urls")),
     path("api/v1/requisitions/", include("apps.requisitions.api_urls")),
     path("api/v1/sourcing/", include("apps.sourcing.api_urls")),
+    path("api/v1/sourcing-events/", include("apps.sourcing.api_urls")),
     path("api/v1/orders/", include("apps.orders.api_urls")),
+    path("api/v1/purchase-orders/", include("apps.orders.api_urls")),
     path("api/v1/receipts/", include("apps.receipts.api_urls")),
     path("api/v1/invoices/", include("apps.invoices.api_urls")),
     path("api/v1/contracts/", include("apps.contracts.api_urls")),
-    path("api/v1/budgets/", include("apps.budgets.api_urls")),
     path("api/v1/scorecards/", include("apps.scorecards.api_urls")),
+    path("api/v1/budgets/", include("apps.budgets.api_urls")),
     path("api/v1/notifications/", include("apps.notifications.api_urls")),
     path("api/v1/reports/", include("apps.reports.api_urls")),
     path("api/v1/audit/", include("apps.audit.api_urls")),
+    path("api/v1/manager/", include("apps.core.manager_api_urls")),
+
     # OpenAPI Schema & Documentation
+    path("api/schema", SpectacularAPIView.as_view()),
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
+    path("api/docs", SpectacularSwaggerView.as_view(url_name="schema")),
     path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),
+
     # Protected Media Serving (Audit-controlled access)
     re_path(
         r"^media/vendor_docs/(?P<file_path>.*)$",
         protected_vendor_document_view,
         name="protected_vendor_document",
     ),
+    path("media/vendor_documents/<path:file_path>", protected_vendor_document_view, name="protected_vendor_document_alt"),
     re_path(r"^media/(?P<file_path>.*)$", protected_media_view, name="protected_media"),
 ]
 
