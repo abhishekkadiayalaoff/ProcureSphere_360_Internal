@@ -252,6 +252,16 @@ class User(AbstractUser):
             first_org = admin_org.first()
             if first_org:
                 return first_org
+        proc_org = getattr(self, "proc_managed_organizations", None)
+        if proc_org:
+            first_org = proc_org.first()
+            if first_org:
+                return first_org
+        audited_org = getattr(self, "audited_organizations", None)
+        if audited_org:
+            first_org = audited_org.first()
+            if first_org:
+                return first_org
         return None
 
     def save(self, *args, **kwargs):

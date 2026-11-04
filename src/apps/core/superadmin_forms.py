@@ -567,6 +567,25 @@ class UserAdminForm(forms.ModelForm):
 
 
         cost_center = cleaned_data.get("cost_center")
+        role_code = getattr(role, "code", "") if role else ""
+
+        # 1:1 Dedicated Role Enforcement (Procurement Manager and Auditor)
+        target_org = cleaned_data.get("organization") or (department.organization if department else None)
+        if not target_org and self.instance and self.instance.pk:
+            target_org = getattr(self.instance, "effective_organization", None)
+
+        if role_code in [Role.PROC_MGR, Role.AUDITOR]:
+            if not target_org:
+                self.add_error("organization", f"An Organization is required for dedicated role '{role.name}'.")
+            else:
+                if role_code == Role.PROC_MGR:
+                    existing_pm = target_org.dedicated_proc_manager
+                    if existing_pm and (not self.instance or self.instance.pk != existing_pm.pk):
+                        self.add_error("role", f"Organization '{target_org.name}' already has a dedicated Procurement Manager ({existing_pm.email}). Exactly one dedicated Procurement Manager is permitted per organization (1:1).")
+                elif role_code == Role.AUDITOR:
+                    existing_aud = target_org.dedicated_auditor
+                    if existing_aud and (not self.instance or self.instance.pk != existing_aud.pk):
+                        self.add_error("role", f"Organization '{target_org.name}' already has a dedicated Compliance Auditor ({existing_aud.email}). Exactly one dedicated Compliance Auditor is permitted per organization (1:1).")
 
 
 
@@ -792,9 +811,7 @@ class UserAdminForm(forms.ModelForm):
 
 
 class OrganizationAdminForm(forms.ModelForm):
-
-
-
+    # 1. Organization Administrator
     admin_email = forms.EmailField(
 
 
@@ -1044,13 +1061,59 @@ class OrganizationAdminForm(forms.ModelForm):
 
 
         widget=forms.CheckboxInput(attrs={"class": "form-check-input", "id": "id_send_welcome_email"}),
+        help_text="Send email with login credentials (email & password) to the users via Brevo.",
+    )
 
+    # 2. Dedicated Procurement Manager (1:1 per Organization)
+    proc_mgr_email = forms.EmailField(
+        label="Procurement Manager Email",
+        required=False,
+        widget=forms.EmailInput(attrs={"class": "form-control", "placeholder": "procmgr@organization.com"}),
+        help_text="Dedicated Procurement Manager for this organization (1:1).",
+    )
+    proc_mgr_first_name = forms.CharField(
+        label="Manager First Name",
+        max_length=150,
+        required=False,
+        widget=forms.TextInput(attrs={"class": "form-control", "placeholder": "First name"}),
+    )
+    proc_mgr_last_name = forms.CharField(
+        label="Manager Last Name",
+        max_length=150,
+        required=False,
+        widget=forms.TextInput(attrs={"class": "form-control", "placeholder": "Last name"}),
+    )
+    proc_mgr_password = forms.CharField(
+        label="Manager Password",
+        required=False,
+        widget=forms.PasswordInput(attrs={"class": "form-control", "placeholder": "Leave blank to auto-generate"}),
+        help_text="Leave blank to auto-generate secure password.",
+    )
 
-
-        help_text="Send email with login credentials (email & password) to the administrator via Brevo.",
-
-
-
+    # 3. Dedicated Compliance Auditor (1:1 per Organization)
+    auditor_email = forms.EmailField(
+        label="Compliance Auditor Email",
+        required=False,
+        widget=forms.EmailInput(attrs={"class": "form-control", "placeholder": "auditor@organization.com"}),
+        help_text="Dedicated Compliance Auditor for this organization (1:1).",
+    )
+    auditor_first_name = forms.CharField(
+        label="Auditor First Name",
+        max_length=150,
+        required=False,
+        widget=forms.TextInput(attrs={"class": "form-control", "placeholder": "First name"}),
+    )
+    auditor_last_name = forms.CharField(
+        label="Auditor Last Name",
+        max_length=150,
+        required=False,
+        widget=forms.TextInput(attrs={"class": "form-control", "placeholder": "Last name"}),
+    )
+    auditor_password = forms.CharField(
+        label="Auditor Password",
+        required=False,
+        widget=forms.PasswordInput(attrs={"class": "form-control", "placeholder": "Leave blank to auto-generate"}),
+        help_text="Leave blank to auto-generate secure password.",
     )
 
 
@@ -1172,28 +1235,14 @@ class OrganizationAdminForm(forms.ModelForm):
 
 
         self.fields["send_welcome_email"].initial = is_create
-
-
-
         self.fields["import_standard_vendors"].initial = is_create
-
-
 
         if is_create:
             self.fields["is_active"].initial = True
             self.initial["is_active"] = True
             self.initial["admin_email"] = ""
-
-
-
             self.initial["admin_password"] = ""
-
-
-
             self.initial["admin_first_name"] = ""
-
-
-
             self.initial["admin_last_name"] = ""
 
             self.fields["admin_email"].widget.attrs.update({
@@ -1202,29 +1251,27 @@ class OrganizationAdminForm(forms.ModelForm):
                 "onfocus": "this.removeAttribute('readonly');",
                 "value": "",
             })
-
             self.fields["admin_password"].widget.attrs.update({
                 "autocomplete": "new-password",
                 "readonly": "readonly",
                 "onfocus": "this.removeAttribute('readonly');",
                 "value": "",
             })
-
-
-
-        elif self.instance and self.instance.admin_user:
-
-
-
-            self.fields["admin_email"].initial = self.instance.admin_user.email
-
-
-
-            self.fields["admin_first_name"].initial = self.instance.admin_user.first_name
-
-
-
-            self.fields["admin_last_name"].initial = self.instance.admin_user.last_name
+        elif self.instance:
+            if self.instance.admin_user:
+                self.fields["admin_email"].initial = self.instance.admin_user.email
+                self.fields["admin_first_name"].initial = self.instance.admin_user.first_name
+                self.fields["admin_last_name"].initial = self.instance.admin_user.last_name
+            pm = getattr(self.instance, "procurement_manager", None) or self.instance.dedicated_proc_manager
+            if pm:
+                self.fields["proc_mgr_email"].initial = pm.email
+                self.fields["proc_mgr_first_name"].initial = pm.first_name
+                self.fields["proc_mgr_last_name"].initial = pm.last_name
+            aud = getattr(self.instance, "compliance_auditor", None) or self.instance.dedicated_auditor
+            if aud:
+                self.fields["auditor_email"].initial = aud.email
+                self.fields["auditor_first_name"].initial = aud.first_name
+                self.fields["auditor_last_name"].initial = aud.last_name
 
 
 
@@ -1236,6 +1283,8 @@ class OrganizationAdminForm(forms.ModelForm):
         cleaned_data = super().clean()
         admin_user = cleaned_data.get("admin_user")
         admin_email = (cleaned_data.get("admin_email") or "").strip()
+        proc_mgr_email = (cleaned_data.get("proc_mgr_email") or "").strip()
+        auditor_email = (cleaned_data.get("auditor_email") or "").strip()
         is_create = not self.instance or not self.instance.pk
 
         if is_create and not admin_user and not admin_email:
@@ -1259,6 +1308,11 @@ class OrganizationAdminForm(forms.ModelForm):
             admin_org = getattr(admin_user, "effective_organization", None) or admin_user.organization
             if admin_org and (is_create or (self.instance and self.instance.pk and str(admin_org.id) != str(self.instance.pk))):
                 self.add_error("admin_user", "This user does not belong to this organization.")
+
+        # Ensure distinct emails across provisioned roles
+        provided_emails = [e.lower() for e in [admin_email, proc_mgr_email, auditor_email] if e]
+        if len(provided_emails) != len(set(provided_emails)):
+            self.add_error(None, "Admin, Procurement Manager, and Auditor must each have unique email addresses.")
 
         return cleaned_data
 

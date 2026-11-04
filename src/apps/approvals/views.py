@@ -278,7 +278,7 @@ def delegation_view(request):
         role__code__in=[Role.DEPT_APPROVER, Role.PROC_MGR, Role.PROC_EXEC]
     ).exclude(pk=user.pk).select_related("role")
 
-    base_layout = _get_base_layout(role_code)
+    base_layout = _get_base_layout(user, role_code)
     return render(request, "pages/approvals/delegation.html", {
         "active_delegates": active_delegates,
         "eligible_delegates": eligible_delegates,
