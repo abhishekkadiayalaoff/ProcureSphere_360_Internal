@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 from django.urls import path
 
 
@@ -20,6 +21,15 @@ urlpatterns = [
 
     path("users/<uuid:user_id>/edit/", superadmin_views.user_edit_view, name="user_edit"),
 
+=======
+from django.urls import pathfrom . import superadmin_viewsapp_name = "superadmin"
+
+urlpatterns = [
+    path("", superadmin_views.superadmin_home_view, name="home"),
+    path("users/", superadmin_views.user_list_view, name="users"),
+    path("users/create/", superadmin_views.user_create_view, name="user_create"),
+    path("users/<uuid:user_id>/edit/", superadmin_views.user_edit_view, name="user_edit"),
+>>>>>>> dev
     path("users/<uuid:user_id>/resend-welcome/", superadmin_views.user_resend_welcome_email_view, name="user_resend_welcome"),
     path("users/<uuid:user_id>/toggle-status/", superadmin_views.user_toggle_status_view, name="user_toggle_status"),
 

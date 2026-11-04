@@ -87,8 +87,10 @@ class Command(BaseCommand):
             roles[code] = role
 
         # ── 2. Users ──────────────────────────────────────────────────────────
-        admin_hpe = self.get_or_create_user("admin@hpe.com", roles[Role.SUPER_ADMIN], is_superuser=True)
-        self.get_or_create_user("admin@procuresphere.com", roles[Role.SUPER_ADMIN], is_superuser=True, password="ProcureAdmin@360!")
+        # Platform Admin: strictly is_superuser=True, is_staff=True, organization=None, role=None
+        self.get_or_create_user("superadmin@procuresphere.com", None, is_superuser=True, password="ProcureAdmin@360!")
+        admin_hpe = self.get_or_create_user("admin@hpe.com", roles[Role.SUPER_ADMIN], is_superuser=False)
+        self.get_or_create_user("admin@procuresphere.com", roles[Role.SUPER_ADMIN], is_superuser=False, password="ProcureAdmin@360!")
         requester = self.get_or_create_user("requester@hpe.com", roles[Role.REQUESTER])
         self.get_or_create_user("requester01@procuresphere.com", roles[Role.REQUESTER], password="Requester@360!")
         approver = self.get_or_create_user("approver@hpe.com", roles[Role.DEPT_APPROVER])

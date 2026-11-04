@@ -102,15 +102,9 @@ def list_view(request):
                 .order_by("-created_at")
             )
         else:
-            items = PurchaseRequisition.objects.all().order_by("-created_at")
+            items = PurchaseRequisition.objects.none().order_by("-created_at")
     elif role_code == Role.FINANCE_AP:
         user_org = getattr(user, "effective_organization", None) or getattr(user, "organization", None)
-        if not user_org and not getattr(user, "is_superuser", False):
-            from apps.organization.models import Organization
-            user_org = (
-                Organization.objects.filter(name__icontains="Defence").first()
-                or Organization.objects.exclude(code__in=["ORG-HPE-01", "ORG-DEMO-01", "DEFAULT"]).last()
-            )
         if user_org:
             items = (
                 PurchaseRequisition.objects.filter(
@@ -122,18 +116,12 @@ def list_view(request):
                 .order_by("-created_at")
             )
         else:
-            items = PurchaseRequisition.objects.all().order_by("-created_at")
+            items = PurchaseRequisition.objects.none().order_by("-created_at")
     else:
-        items = PurchaseRequisition.objects.all().order_by("-created_at")
+        items = PurchaseRequisition.objects.none().order_by("-created_at")
 
     # Enforce multi-tenant organization boundary across all roles
     user_org = getattr(user, "effective_organization", None) or getattr(user, "organization", None)
-    if not user_org and not getattr(user, "is_superuser", False):
-        from apps.organization.models import Organization
-        user_org = (
-            Organization.objects.filter(name__icontains="Defence").first()
-            or Organization.objects.exclude(code__in=["ORG-HPE-01", "ORG-DEMO-01", "DEFAULT"]).last()
-        )
     if user_org and not (getattr(user, "is_superuser", False) and not user.organization_id):
         items = items.filter(
             Q(department__organization=user_org)
@@ -167,6 +155,8 @@ def list_view(request):
             )
         else:
             items = items.filter(status=status_filter)
+
+    items = items.select_related("requester", "department").prefetch_related("purchase_orders", "sourcing_events")
 
     # Pagination (10 items per page)
     paginator = Paginator(items, 10)
@@ -598,7 +588,7 @@ def detail_view(request, pk):
     pr = get_object_or_404(
         PurchaseRequisition.objects.select_related(
             "requester", "department", "cost_center"
-        ).prefetch_related("lines", "attachments", "purchase_orders"),
+        ).prefetch_related("lines", "attachments", "purchase_orders", "sourcing_events"),
         pk=pk,
     )
 
@@ -710,6 +700,9 @@ def detail_view(request, pk):
         if role_code in [Role.PROC_MGR, Role.SUPER_ADMIN] or user.is_superuser:
             can_approve = True
 
+    latest_po = pr.purchase_orders.order_by("-created_at").first()
+    latest_sourcing = pr.sourcing_events.order_by("-created_at").first()
+
     base_layout = _resolve_requisition_layout(user, role_code)
 
     return render(
@@ -725,6 +718,8 @@ def detail_view(request, pk):
             "can_approve": can_approve,
             "user_has_approved": user_has_approved,
             "current_step_info": current_step_info,
+            "latest_po": latest_po,
+            "latest_sourcing": latest_sourcing,
         },
     )
 

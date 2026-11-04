@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load static %}
 
 {% block title %}{% block approver_title %}Department Approver Portal{% endblock %} — ProcureSphere 360{% endblock %}
 
@@ -11,13 +12,10 @@
             <button class="navbar-toggler border-0 me-2 d-lg-none p-1" type="button" data-bs-toggle="offcanvas" data-bs-target="#approverSidebar" aria-controls="approverSidebar" aria-label="Toggle navigation">
                 <i class="fa-solid fa-bars text-white fs-4"></i>
             </button>
-            <a href="/" class="navbar-brand d-flex align-items-center text-white me-0 me-lg-4 text-truncate">
-                <div class="brand-icon-box me-2 flex-shrink-0" style="width: 32px; height: 32px; background: rgba(0, 184, 217, 0.2); border-radius: 6px; display: flex; align-items: center; justify-content: center;">
-                    <i class="fa-solid fa-layer-group text-cyan"></i>
-                </div>
-                <span class="fs-6 fs-sm-5 fw-bold tracking-tight text-truncate">ProcureSphere <span class="text-cyan">360</span></span>
-                <span class="badge bg-secondary bg-opacity-50 text-light ms-2 px-2.5 py-1 small rounded-pill d-none d-sm-inline-block" style="font-size: 0.65rem; letter-spacing: 0.04em;">Department Approver</span>
+            <a href="/approver/" class="dashboard-brand-badge me-2 me-lg-3" aria-label="ProcureSphere 360 Home">
+                <img src="{% static 'landing/images/procuresphere_360_nav_brand.png' %}" alt="ProcureSphere 360" class="dashboard-brand-logo">
             </a>
+            <span class="badge bg-secondary bg-opacity-50 text-light ms-2 px-2.5 py-1 small rounded-pill d-none d-sm-inline-block" style="font-size: 0.65rem; letter-spacing: 0.04em;">Department Approver</span>
         </div>
 
         <!-- Middle: Department Scope Pill (Matching Reference) -->
@@ -178,7 +176,7 @@
         
         <!-- Mobile Drawer Header (Hidden on Desktop) -->
         <div class="sidebar-brand-box px-3 py-3 border-bottom border-secondary border-opacity-25 flex-shrink-0 d-flex d-lg-none align-items-center justify-content-between">
-            <a href="/" class="d-flex align-items-center text-white text-decoration-none" id="approverSidebarLabel">
+            <a href="/approver/" class="d-flex align-items-center text-white text-decoration-none" id="approverSidebarLabel">
                 <div class="brand-icon-box me-2 flex-shrink-0" style="width: 32px; height: 32px; background: rgba(0, 184, 217, 0.2); border-radius: 6px; display: flex; align-items: center; justify-content: center;">
                     <i class="fa-solid fa-layer-group text-cyan"></i>
                 </div>
@@ -200,8 +198,8 @@
             <!-- Approver & Workflow Section -->
             <div class="nav-section-label">Approver &amp; Workflow</div>
 
-            <a href="/"
-               class="vendor-navlink approver-navlink {% if request.path == '/' or request.path == '/approver/dashboard/' or active_nav == 'dashboard' %}active-nav-item{% endif %}">
+            <a href="/approver/"
+               class="vendor-navlink approver-navlink {% if request.path == '/approver/' or request.path == '/approver/dashboard/' or request.path == '/' or active_nav == 'dashboard' %}active-nav-item{% endif %}">
                 <i class="fa-solid fa-gauge-high nav-icon text-cyan"></i><span>Department Dashboard</span>
             </a>
 

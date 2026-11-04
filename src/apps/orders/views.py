@@ -27,6 +27,10 @@ def list_view(request):
     if role_code == Role.VENDOR_USER:
         raise PermissionDenied("Vendors must access purchase orders via the Vendor Portal (/vendor/purchase-orders/).")
 
+    if role_code in (Role.REQUESTER, "REQUESTER"):
+        messages.info(request, "Purchase Requesters manage procurement via the Requisitions desk.")
+        return redirect("requisitions_list")
+
     scoped_qs = scope_purchase_orders_queryset(PurchaseOrder.objects.all(), user)
     if role_code == Role.STORES_RECEIVER:
         # Stores / Receiver sees only POs eligible for receiving
@@ -120,7 +124,24 @@ def detail_view(request, pk):
             "is_stores_receiver": role_code in (Role.STORES_RECEIVER, Role.SUPER_ADMIN)
             or user.is_superuser,
             "is_receivable": po.status in RECEIVABLE_PO_STATUSES,
-            "base_layout": "manager/base_manager.html" if role_code in [Role.PROC_MGR, "PROC_MGR"] else "base.html",
+                        "base_layout": {
+                Role.FINANCE_AP: "layouts/finance_base.html",
+                Role.STORES_RECEIVER: "layouts/stores_base.html",
+                Role.REQUESTER: "layouts/requester_base.html",
+                Role.DEPT_APPROVER: "layouts/approver_base.html",
+                Role.LEGAL_MGR: "layouts/legal_base.html",
+                Role.PROC_MGR: "manager/base_manager.html",
+                Role.AUDITOR: "audit/base_auditor.html",
+                Role.SUPER_ADMIN: "layouts/superadmin_base.html",
+                "FINANCE_AP": "layouts/finance_base.html",
+                "STORES_RECEIVER": "layouts/stores_base.html",
+                "REQUESTER": "layouts/requester_base.html",
+                "DEPT_APPROVER": "layouts/approver_base.html",
+                "LEGAL_MGR": "layouts/legal_base.html",
+                "PROC_MGR": "manager/base_manager.html",
+                "AUDITOR": "audit/base_auditor.html",
+                "SUPER_ADMIN": "layouts/superadmin_base.html",
+            }.get(role_code, "base.html"),
         },
     )
 

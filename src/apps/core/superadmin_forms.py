@@ -1,8 +1,13 @@
 from decimal import Decimal, InvalidOperation
 
 from django import forms
+<<<<<<< HEAD
 from django.contrib.auth import password_validation
 from django.db.models import Q
+=======
+from django.db.models import Q
+from django.contrib.auth import password_validation
+>>>>>>> dev
 from django.utils import timezone
 
 from apps.accounts.models import Role, User
@@ -426,7 +431,7 @@ class UserAdminForm(forms.ModelForm):
 
 
 
-            raise forms.ValidationError(f"User with email '{email}' already exists.")
+            raise forms.ValidationError("This user does not belong to this organization.")
 
 
 
@@ -699,10 +704,10 @@ class UserAdminForm(forms.ModelForm):
 
 
         else:
-            # For non-requester roles, clear cost center to preserve existing role behavior
+            # All non-requester roles belong to the entire organization:
+            # strictly clear department and cost center!
+            cleaned_data["department"] = None
             cleaned_data["cost_center"] = None
-            if not self.data.get("department"):
-                cleaned_data["department"] = None
 
 
 
@@ -1233,39 +1238,34 @@ class OrganizationAdminForm(forms.ModelForm):
 
 
     def clean(self):
-
-
-
         cleaned_data = super().clean()
-
-
-
         admin_user = cleaned_data.get("admin_user")
-
-
-
         admin_email = (cleaned_data.get("admin_email") or "").strip()
-
-
-
         is_create = not self.instance or not self.instance.pk
 
-
-
         if is_create and not admin_user and not admin_email:
-
-
-
             self.add_error("admin_email", "Please provide an Admin Email for the organization administrator.")
 
+        email_to_check = admin_email or (admin_user.email if admin_user else "")
+        if email_to_check:
+            norm_email = email_to_check.strip().lower()
+            existing_user = User.objects.filter(email__iexact=norm_email).first()
+            if existing_user:
+                existing_org = getattr(existing_user, "effective_organization", None) or existing_user.organization
+                if existing_org:
+                    if is_create or (self.instance and self.instance.pk and str(existing_org.id) != str(self.instance.pk)):
+                        self.add_error("admin_email", "This user does not belong to this organization.")
+                elif existing_user.is_superuser and not existing_user.organization_id:
+                    self.add_error("admin_email", "This user does not belong to this organization.")
+                elif is_create:
+                    self.add_error("admin_email", "This user does not belong to this organization.")
 
+        if admin_user:
+            admin_org = getattr(admin_user, "effective_organization", None) or admin_user.organization
+            if admin_org and (is_create or (self.instance and self.instance.pk and str(admin_org.id) != str(self.instance.pk))):
+                self.add_error("admin_user", "This user does not belong to this organization.")
 
         return cleaned_data
-
-
-
-
-
 
 
     def clean_code(self):

@@ -21,6 +21,13 @@ def get_contracts_qs(user=None, status=None, search=None):
         if role_code == Role.VENDOR_USER:
             vendor = getattr(user, "vendor", None)
             qs = qs.filter(vendor=vendor) if vendor else qs.none()
+        elif not getattr(user, "is_superuser", False):
+            scoped_org = getattr(user, "effective_organization", None)
+            if scoped_org:
+                qs = qs.filter(
+                    Q(vendor__organization=scoped_org)
+                    | Q(contract_owner__organization=scoped_org)
+                ).distinct()
 
     if status:
         qs = qs.filter(status=status)
@@ -74,6 +81,13 @@ def get_expiring_contracts(days=30, user=None):
         if role_code == Role.VENDOR_USER:
             vendor = getattr(user, "vendor", None)
             qs = qs.filter(vendor=vendor) if vendor else qs.none()
+        elif not getattr(user, "is_superuser", False):
+            scoped_org = getattr(user, "effective_organization", None)
+            if scoped_org:
+                qs = qs.filter(
+                    Q(vendor__organization=scoped_org)
+                    | Q(contract_owner__organization=scoped_org)
+                ).distinct()
     return qs.order_by("end_date")
 
 
@@ -180,6 +194,13 @@ def get_legal_dashboard_metrics(user=None):
         if role_code == Role.VENDOR_USER:
             vendor = getattr(user, "vendor", None)
             qs = qs.filter(vendor=vendor) if vendor else qs.none()
+        elif not getattr(user, "is_superuser", False):
+            scoped_org = getattr(user, "effective_organization", None)
+            if scoped_org:
+                qs = qs.filter(
+                    Q(vendor__organization=scoped_org)
+                    | Q(contract_owner__organization=scoped_org)
+                ).distinct()
 
     total_contracts = qs.count()
     active_contracts = qs.filter(
