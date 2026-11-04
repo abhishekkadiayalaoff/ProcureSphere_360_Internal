@@ -1,4 +1,4 @@
-/* ProcureSphere 360 — Design System & Custom Styles */
+﻿/* ProcureSphere 360 ΓÇö Design System & Custom Styles */
 
 :root {
     --hpe-navy: #002B49;
@@ -778,7 +778,7 @@ img, picture, svg, video, canvas {
 
 /* ===================================================================}
 
-   PROCURESPHERE 360 — UNIFIED DASHBOARD DESIGN SYSTEM (Vendor Portal Baseline)
+   PROCURESPHERE 360 ΓÇö UNIFIED DASHBOARD DESIGN SYSTEM (Vendor Portal Baseline)
    ========================================================================== */
 
 /* 1. Global Shell & Layout */
@@ -1355,3 +1355,248 @@ body.modal-open {
 
 .shadow-xs { box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1) !important; }
 .shadow-2xs { box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !important; }
+/* ==========================================================================
+   Styled Confirm Dialog & Toasts ΓÇö replaces native confirm()/alert()
+   ========================================================================== */
+body.ps-dialog-open {
+    overflow: hidden;
+}
+
+.ps-dialog-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1090;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.25rem;
+    background: rgba(15, 23, 42, 0.55);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    animation: psDialogFadeIn 0.18s ease forwards;
+}
+
+.ps-dialog-backdrop[hidden] { display: none; }
+
+.ps-dialog {
+    width: 100%;
+    max-width: 27rem;
+    background: #FFFFFF;
+    border: 1px solid #E2E8F0;
+    border-radius: 18px;
+    box-shadow: 0 24px 60px -12px rgba(15, 23, 42, 0.35);
+    padding: 1.75rem 1.5rem 1.5rem;
+    text-align: center;
+    transform: translateY(0);
+    animation: psDialogPop 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    max-height: calc(100vh - 3rem);
+    overflow-y: auto;
+}
+
+@keyframes psDialogFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes psDialogPop {
+    from { opacity: 0; transform: translateY(14px) scale(0.94); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes psDialogOut {
+    from { opacity: 1; transform: translateY(0) scale(1); }
+    to { opacity: 0; transform: translateY(10px) scale(0.96); }
+}
+
+.ps-dialog-icon {
+    width: 62px;
+    height: 62px;
+    margin: 0 auto 0.85rem;
+    border-radius: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    box-shadow: 0 6px 16px -6px rgba(15, 23, 42, 0.25);
+}
+
+.ps-dialog-icon-danger  { background: #FEE2E2; color: #E11D48; }
+.ps-dialog-icon-warning { background: #FEF3C7; color: #B45309; }
+.ps-dialog-icon-success { background: #D1FAE5; color: #047857; }
+.ps-dialog-icon-info    { background: #E0F7F8; color: #00777E; }
+
+.ps-dialog-title {
+    font-family: var(--font-heading);
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--hpe-navy);
+    margin-bottom: 0.4rem;
+    line-break: auto;
+}
+
+.ps-dialog-message {
+    font-size: 0.9rem;
+    color: #475569;
+    margin-bottom: 0.85rem;
+    white-space: pre-line;
+    overflow-wrap: anywhere;
+}
+
+.ps-dialog-details {
+    text-align: left;
+    background: #F8FAFC;
+    border: 1px solid #EEF2F7;
+    border-radius: 12px;
+    padding: 0.65rem 0.9rem;
+    margin-bottom: 0.85rem;
+}
+
+.ps-dialog-detail-row {
+    display: flex;
+    align-items: baseline;
+    gap: 0.75rem;
+    padding: 0.2rem 0;
+    font-size: 0.82rem;
+    overflow-wrap: anywhere;
+}
+
+.ps-dialog-detail-row + .ps-dialog-detail-row {
+    border-top: 1px dashed #E2E8F0;
+}
+
+.ps-dialog-detail-label {
+    color: #94A3B8;
+    min-width: 6.5rem;
+    flex-shrink: 0;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    font-size: 0.7rem;
+    font-weight: 600;
+}
+
+.ps-dialog-detail-value {
+    color: #1E293B;
+    font-weight: 500;
+}
+
+.ps-dialog-warn {
+    display: flex;
+    align-items: center;
+    text-align: left;
+    gap: 0.4rem;
+    background: #FFF7ED;
+    border: 1px solid #FED7AA;
+    color: #9A3412;
+    border-radius: 12px;
+    padding: 0.6rem 0.85rem;
+    font-size: 0.8rem;
+    margin-bottom: 1rem;
+}
+
+.ps-dialog-actions {
+    display: flex;
+    gap: 0.6rem;
+    margin-top: 0.25rem;
+}
+
+.ps-dialog-actions .btn {
+    flex: 1;
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.ps-dialog .btn-danger  { background: linear-gradient(135deg, #F43F5E, #E11D48); border: 0; color: #fff; }
+.ps-dialog .btn-danger:hover { background: linear-gradient(135deg, #E11D48, #BE123C); }
+.ps-dialog .btn-success { background: linear-gradient(135deg, #10B981, #059669); border: 0; color: #fff; }
+.ps-dialog .btn-success:hover { background: linear-gradient(135deg, #059669, #047857); }
+.ps-dialog .btn-primary { background: linear-gradient(135deg, #00B0B9, #00777E); border: 0; color: #fff; }
+.ps-dialog .btn-primary:hover { background: linear-gradient(135deg, #00777E, #005F66); }
+.ps-dialog .btn-warning { background: linear-gradient(135deg, #F59E0B, #D97706); border: 0; color: #1E293B; }
+.ps-dialog .btn-warning:hover { background: linear-gradient(135deg, #D97706, #B45309); color: #1E293B; }
+
+/* ---------- Toasts ---------- */
+.ps-toast-container {
+    position: fixed;
+    bottom: 1.25rem;
+    right: 1.25rem;
+    z-index: 1080;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    max-width: min(22rem, calc(100vw - 2.5rem));
+}
+
+.ps-toast {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    background: #FFFFFF;
+    border: 1px solid #E2E8F0;
+    border-left: 4px solid #64748B;
+    border-radius: 14px;
+    box-shadow: 0 12px 32px -8px rgba(15, 23, 42, 0.25);
+    padding: 0.8rem 0.9rem;
+    animation: psToastIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.ps-toast-leaving { animation: psToastOut 0.2s ease forwards; }
+
+@keyframes psToastIn {
+    from { opacity: 0; transform: translateX(24px); }
+    to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes psToastOut {
+    from { opacity: 1; transform: translateX(0); }
+    to { opacity: 0; transform: translateX(24px); }
+}
+
+.ps-toast-icon {
+    flex-shrink: 0;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    margin-top: 0.1rem;
+}
+
+.ps-toast-info    { border-left-color: #00B0B9; }
+.ps-toast-info    .ps-toast-icon { background: #E0F7F8; color: #00777E; }
+.ps-toast-success { border-left-color: #10B981; }
+.ps-toast-success .ps-toast-icon { background: #D1FAE5; color: #047857; }
+.ps-toast-warning { border-left-color: #F59E0B; }
+.ps-toast-warning .ps-toast-icon { background: #FEF3C7; color: #B45309; }
+.ps-toast-danger  { border-left-color: #F43F5E; }
+.ps-toast-danger  .ps-toast-icon { background: #FEE2E2; color: #E11D48; }
+
+.ps-toast-body { flex: 1; min-width: 0; }
+
+.ps-toast-title {
+    font-family: var(--font-heading);
+    font-weight: 700;
+    font-size: 0.88rem;
+    color: var(--hpe-navy);
+}
+
+.ps-toast-message {
+    font-size: 0.82rem;
+    color: #475569;
+    overflow-wrap: anywhere;
+}
+
+.ps-toast-close {
+    flex-shrink: 0;
+    background: none;
+    border: 0;
+    color: #94A3B8;
+    font-size: 0.8rem;
+    padding: 0.1rem 0.25rem;
+    border-radius: 6px;
+    transition: color 0.15s ease, background 0.15s ease;
+}
+
+.ps-toast-close:hover { color: #1E293B; background: #F1F5F9; }

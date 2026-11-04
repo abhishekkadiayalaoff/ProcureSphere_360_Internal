@@ -311,7 +311,7 @@ window.updateUserStatusLabel = function(el) {
         copyBtn.addEventListener("click", function() {
             var val = pwdInput.value;
             if (!val) {
-                alert("Please enter or generate a password first.");
+                window.PSToast("Please enter or generate a password first.", 'info', 'Nothing to copy');
                 return;
             }
             if (navigator.clipboard && navigator.clipboard.writeText) {

@@ -62,11 +62,11 @@
         <div class="col-6 col-lg-3">
             <div class="card border-0 shadow-sm rounded-3 bg-white p-3 h-100 border-start border-4 border-emerald">
                 <div class="d-flex justify-content-between align-items-start mb-2">
-                    <span class="text-muted small text-uppercase fw-bold" style="font-size: 0.7rem;">PO Amendments</span>
+                    <span class="text-muted small text-uppercase fw-bold" style="font-size: 0.7rem;">POs &amp; Change Orders</span>
                     <span class="badge bg-emerald-subtle text-emerald rounded-circle p-2"><i class="fa-solid fa-cart-shopping"></i></span>
                 </div>
                 <h3 class="fw-bold text-dark mb-1 font-heading" id="kpiPoPending">-</h3>
-                <div class="text-muted small">Change orders in review</div>
+                <div class="text-muted small">POs &amp; change orders in review</div>
             </div>
         </div>
         <div class="col-6 col-lg-3">
@@ -108,6 +108,7 @@
                         <select class="form-select form-select-sm rounded-pill" id="approvalTypeSelect" onchange="filterApprovals()">
                             <option value="all">All Transaction Types</option>
                             <option value="pr">Purchase Requisitions (PR)</option>
+                            <option value="po_approval">Purchase Orders (PO)</option>
                             <option value="po_amendment">PO Amendments (PO)</option>
                         </select>
                     </div>
@@ -295,7 +296,7 @@
 
         if (kpiTotal) kpiTotal.textContent = summary.total_pending_count ?? 0;
         if (kpiPr) kpiPr.textContent = summary.pr_pending_count ?? 0;
-        if (kpiPo) kpiPo.textContent = summary.po_amendment_pending_count ?? 0;
+        if (kpiPo) kpiPo.textContent = (summary.po_approval_pending_count ?? 0) + (summary.po_amendment_pending_count ?? 0);
         if (kpiVal) kpiVal.textContent = `$${(summary.total_pending_value || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
         if (tabPendingBadge) tabPendingBadge.textContent = summary.total_pending_count ?? 0;
         if (tabHistoryBadge) tabHistoryBadge.textContent = summary.history_count ?? 0;
@@ -333,7 +334,7 @@
                     </h4>
                     <p class="text-muted small mb-0">
                         ${currentTab === 'pending'
-                            ? 'All requisitions and change order amendments have been evaluated. Your approval queue is completely clear.'
+                            ? 'All requisitions, purchase orders and change order amendments have been evaluated. Your approval queue is completely clear.'
                             : 'No evaluated approval transactions matching the specified criteria were found.'}
                     </p>
                 </div>

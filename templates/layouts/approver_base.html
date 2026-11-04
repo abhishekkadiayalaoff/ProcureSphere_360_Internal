@@ -21,22 +21,24 @@
         <!-- Middle: Department Scope Pill (Matching Reference) -->
         <div class="d-flex align-items-center gap-2 gap-sm-3 flex-shrink-0">
             {% if user_department or user.department %}
+            {% with dept=user_department|default:user.department %}
             <div class="dropdown d-none d-md-block">
                 <button class="btn btn-dark bg-dark bg-opacity-75 border border-secondary border-opacity-50 rounded-pill px-3 py-1 text-white d-flex align-items-center dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" style="font-size: 0.85rem;">
                     <i class="fa-solid fa-globe text-cyan me-2 fs-5"></i>
                     <div class="text-start lh-sm me-2">
-                        <span class="fw-semibold small d-block mb-0">{{ user_department.name|default:user.department.name|truncatechars:35 }}</span>
-                        <span class="text-white-50 d-block" style="font-size: 0.7rem; line-height: 1;">Scope: {{ user_department.code|default:user.department.code|default:"Department Scope" }}</span>
+                        <span class="fw-semibold small d-block mb-0">{{ dept.name|default:"Department Scope"|truncatechars:35 }}</span>
+                        <span class="text-white-50 d-block" style="font-size: 0.7rem; line-height: 1;">Scope: {{ dept.code|default:"Department Scope" }}</span>
                     </div>
                     <span class="badge rounded-pill bg-success" style="font-size: 0.65rem;">Active</span>
                 </button>
                 <ul class="dropdown-menu dropdown-menu-dark shadow-lg border border-secondary border-opacity-25 small py-1">
-                    <li><a class="dropdown-item active" href="javascript:void(0)"><i class="fa-solid fa-globe me-2 text-cyan"></i>{{ user_department.name|default:user.department.name|default:"Department Scope" }}</a></li>
+                    <li><a class="dropdown-item active" href="javascript:void(0)"><i class="fa-solid fa-globe me-2 text-cyan"></i>{{ dept.name|default:"Department Scope" }}</a></li>
                     <li><a class="dropdown-item" href="/requisitions/"><i class="fa-solid fa-list me-2 text-info"></i> Department Requisitions</a></li>
                     <li><a class="dropdown-item" href="/approvals/inbox/"><i class="fa-solid fa-inbox me-2 text-warning"></i> Pending Approvals</a></li>
                     <li><a class="dropdown-item" href="/budgets/"><i class="fa-solid fa-vault me-2 text-success"></i> Cost Center Budgets</a></li>
                 </ul>
             </div>
+            {% endwith %}
             {% endif %}
 
             <!-- Notification Bell -->

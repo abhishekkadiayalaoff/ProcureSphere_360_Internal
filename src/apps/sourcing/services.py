@@ -1672,8 +1672,10 @@ def cancel_sourcing_event_service(
 @transaction.atomic
 def generate_po_from_award_service(*, event: SourcingEvent, user: User, cost_center=None):
     """
-    Creates the Purchase Order for an AWARDED event from the approved winning bid lines,
-    reusing orders.generate_purchase_order_service (budget commitment, audit, numbering).
+    Creates the DRAFT Purchase Order for an AWARDED event from the approved winning bid lines,
+    reusing orders.generate_purchase_order_service (audit, numbering).
+    The PO starts in DRAFT and must pass the approval lifecycle before issue;
+    the approved award decision stays linked to the PO for traceability.
     """
     from apps.orders.models import PurchaseOrder
     from apps.orders.services import generate_purchase_order_service
@@ -1715,4 +1717,5 @@ def generate_po_from_award_service(*, event: SourcingEvent, user: User, cost_cen
         created_by_user=user,
         requisition=event.requisition,
         sourcing_event=event,
+        award=decision,
     )

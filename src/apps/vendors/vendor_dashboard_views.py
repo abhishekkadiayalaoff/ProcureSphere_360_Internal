@@ -22,7 +22,10 @@ from apps.invoices.models import InvoiceLine, SupplierInvoice
 from apps.invoices.services import create_supplier_invoice_service
 from apps.notifications.models import Notification
 from apps.orders.models import PurchaseOrder
-from apps.orders.services import acknowledge_purchase_order_service
+from apps.orders.services import (
+    acknowledge_purchase_order_service,
+    vendor_reject_purchase_order_service,
+)
 from apps.requisitions.models import PRAttachment
 from apps.scorecards.models import VendorScorecard
 from apps.sourcing.models import (
@@ -1622,6 +1625,42 @@ def vendor_purchase_order_acknowledge_view(request, po_id):
     except ValidationError as ve:
         messages.error(
             request, f"Acknowledgement Failed: {ve.message if hasattr(ve, 'message') else str(ve)}"
+        )
+    except Exception as e:
+        messages.error(request, f"System Error: {str(e)}")
+
+    return redirect("vendor_purchase_order_detail", po_id=po.id)
+
+
+@vendor_required
+@require_POST
+def vendor_purchase_order_reject_view(request, po_id):
+    """
+    PO Rejection Action:
+    Vendor formally rejects an issued PO (e.g. cannot fulfil scope/pricing).
+    Enforces business restriction: Must be in ISSUED status and owned by vendor.
+    Returns the PO to APPROVED so procurement can resolve and re-issue or cancel.
+    """
+    vendor = request.vendor
+    po = get_object_or_404(PurchaseOrder, id=po_id)
+
+    if po.vendor != vendor and not request.user.is_superuser:
+        raise PermissionDenied("Access Denied: Unauthorized rejection attempt.")
+
+    reason = request.POST.get("rejection_reason", "").strip()
+
+    try:
+        vendor_reject_purchase_order_service(
+            po=po,
+            vendor_user=request.user,
+            reason=reason,
+        )
+        messages.success(
+            request, f"Purchase Order {po.po_number} rejected. Procurement has been notified."
+        )
+    except ValidationError as ve:
+        messages.error(
+            request, f"Rejection Failed: {ve.message if hasattr(ve, 'message') else str(ve)}"
         )
     except Exception as e:
         messages.error(request, f"System Error: {str(e)}")
