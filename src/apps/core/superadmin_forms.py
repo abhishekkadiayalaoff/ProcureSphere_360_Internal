@@ -1,13 +1,13 @@
 from decimal import Decimal, InvalidOperation
 
 from django import forms
-<<<<<<< HEAD
+
 from django.contrib.auth import password_validation
 from django.db.models import Q
-=======
+
 from django.db.models import Q
 from django.contrib.auth import password_validation
->>>>>>> dev
+
 from django.utils import timezone
 
 from apps.accounts.models import Role, User

@@ -1,8 +1,7 @@
 import csv
-<<<<<<< HEAD
+
 import json
-=======
->>>>>>> dev
+
 from functools import wraps
 
 import openpyxl
