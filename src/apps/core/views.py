@@ -519,7 +519,11 @@ def superadmin_dashboard_view(request):
     from apps.invoices.models import MatchException
     from apps.organization.models import Organization
 
-    scoped_org = getattr(user, "effective_organization", None) if not user.is_superuser else None
+    from apps.core.superadmin_views import get_user_scoped_org
+
+    scoped_org = get_user_scoped_org(user)
+    is_global_superadmin = bool(not scoped_org and user.is_superuser)
+    can_add_organization = is_global_superadmin
 
     today = timezone.now().date()
     users_qs = User.objects.all()
@@ -552,7 +556,7 @@ def superadmin_dashboard_view(request):
     pending_exceptions = exceptions_qs.count()
     audits_today = audits_qs.count()
 
-    is_global_superadmin = bool(not scoped_org)
+    # is_global_superadmin and can_add_organization are computed above based on get_user_scoped_org and user.is_superuser
 
     context = {
         "organizations": orgs_qs,

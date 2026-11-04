@@ -103,7 +103,7 @@ def create_organization_with_admin_service(
                 raise ValidationError("This user does not belong to this organization.")
             if not admin_user.organization_id and (admin_user.is_superuser or admin_user.is_staff):
                 raise ValidationError("This user does not belong to this organization.")
-            if admin_user.pk and admin_user.organization_id != org.id:
+            if admin_user.pk and admin_user.organization_id and admin_user.organization_id != org.id:
                 raise ValidationError("This user does not belong to this organization.")
 
             if admin_first_name:

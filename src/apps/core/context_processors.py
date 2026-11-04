@@ -29,6 +29,7 @@ def layout_context(request):
         elif role_code in [Role.PROC_MGR, "PROC_MGR"]:
             return {"base_layout": "manager/base_manager.html"}
         elif role_code in [Role.PROC_EXEC, "PROC_EXEC"]:
+            # Procurement Executive workspace intentionally renders with base.html (embeds proc_exec_sidebar.html)
             return {"base_layout": "base.html"}
         elif role_code in [Role.LEGAL_MGR, "LEGAL_MGR"]:
             return {"base_layout": "layouts/legal_base.html"}

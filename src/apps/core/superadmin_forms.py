@@ -1069,53 +1069,53 @@ class OrganizationAdminForm(forms.ModelForm):
         help_text="Send email with login credentials (email & password) to the users via Brevo.",
     )
 
-    # 2. Dedicated Procurement Manager (1:1 per Organization)
+    # 2. Dedicated Procurement Manager (1:1 per Organization) - Optional
     proc_mgr_email = forms.EmailField(
-        label="Procurement Manager Email",
+        label="Procurement Manager Email (Optional)",
         required=False,
-        widget=forms.EmailInput(attrs={"class": "form-control", "placeholder": "procmgr@organization.com"}),
-        help_text="Dedicated Procurement Manager for this organization (1:1).",
+        widget=forms.EmailInput(attrs={"class": "form-control", "placeholder": "procmgr@organization.com (Optional)"}),
+        help_text="Optional: Dedicated Procurement Manager for this organization (1:1). Leave blank to skip.",
     )
     proc_mgr_first_name = forms.CharField(
-        label="Manager First Name",
+        label="Manager First Name (Optional)",
         max_length=150,
         required=False,
-        widget=forms.TextInput(attrs={"class": "form-control", "placeholder": "First name"}),
+        widget=forms.TextInput(attrs={"class": "form-control", "placeholder": "First name (Optional)"}),
     )
     proc_mgr_last_name = forms.CharField(
-        label="Manager Last Name",
+        label="Manager Last Name (Optional)",
         max_length=150,
         required=False,
-        widget=forms.TextInput(attrs={"class": "form-control", "placeholder": "Last name"}),
+        widget=forms.TextInput(attrs={"class": "form-control", "placeholder": "Last name (Optional)"}),
     )
     proc_mgr_password = forms.CharField(
-        label="Manager Password",
+        label="Manager Password (Optional)",
         required=False,
         widget=forms.PasswordInput(attrs={"class": "form-control", "placeholder": "Leave blank to auto-generate"}),
         help_text="Leave blank to auto-generate secure password.",
     )
 
-    # 3. Dedicated Compliance Auditor (1:1 per Organization)
+    # 3. Dedicated Compliance Auditor (1:1 per Organization) - Optional
     auditor_email = forms.EmailField(
-        label="Compliance Auditor Email",
+        label="Compliance Auditor Email (Optional)",
         required=False,
-        widget=forms.EmailInput(attrs={"class": "form-control", "placeholder": "auditor@organization.com"}),
-        help_text="Dedicated Compliance Auditor for this organization (1:1).",
+        widget=forms.EmailInput(attrs={"class": "form-control", "placeholder": "auditor@organization.com (Optional)"}),
+        help_text="Optional: Dedicated Compliance Auditor for this organization (1:1). Leave blank to skip.",
     )
     auditor_first_name = forms.CharField(
-        label="Auditor First Name",
+        label="Auditor First Name (Optional)",
         max_length=150,
         required=False,
-        widget=forms.TextInput(attrs={"class": "form-control", "placeholder": "First name"}),
+        widget=forms.TextInput(attrs={"class": "form-control", "placeholder": "First name (Optional)"}),
     )
     auditor_last_name = forms.CharField(
-        label="Auditor Last Name",
+        label="Auditor Last Name (Optional)",
         max_length=150,
         required=False,
-        widget=forms.TextInput(attrs={"class": "form-control", "placeholder": "Last name"}),
+        widget=forms.TextInput(attrs={"class": "form-control", "placeholder": "Last name (Optional)"}),
     )
     auditor_password = forms.CharField(
-        label="Auditor Password",
+        label="Auditor Password (Optional)",
         required=False,
         widget=forms.PasswordInput(attrs={"class": "form-control", "placeholder": "Leave blank to auto-generate"}),
         help_text="Leave blank to auto-generate secure password.",

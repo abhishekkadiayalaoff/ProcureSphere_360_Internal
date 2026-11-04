@@ -275,7 +275,7 @@ def create_invoice_view(request):
         request,
         allowed_roles=[Role.FINANCE_AP, Role.SUPER_ADMIN, Role.PROC_MGR, Role.PROC_EXEC, "FINANCE_AP", "SUPER_ADMIN", "PROC_MGR", "PROC_EXEC"],
     )
-    scoped_org = getattr(request.user, "effective_organization", None) if not getattr(request.user, "is_superuser", False) else None
+    scoped_org = getattr(request.user, "effective_organization", None) if not (getattr(request.user, "is_superuser", False) and not getattr(request.user, "organization_id", None)) else None
     vendors = Vendor.objects.filter(status="ACTIVE")
     if scoped_org:
         vendors = vendors.filter(organization=scoped_org)
