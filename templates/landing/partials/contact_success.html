@@ -81,6 +81,13 @@
 
 <script>
 function resetContactForm() {
+  var img = document.getElementById('contact-vendor-img');
+  var cropper = document.querySelector('.contact-avatar-cropper');
+  if (img) {
+    img.src = '/static/landing/roles/vendor/idle.webp';
+    img.classList.remove('avatar-active-state');
+  }
+  
   var csrfToken = (document.cookie.match(/csrftoken=([^;]+)/) || [])[1] || '';
   document.getElementById('contact-form-wrapper').innerHTML = `
     <form class="rfp-form" id="contact-form"
@@ -91,7 +98,7 @@ function resetContactForm() {
       style="animation:contactSuccessIn 0.3s ease forwards;"
     >
       <input type="hidden" name="csrfmiddlewaretoken" value="${csrfToken}">
-      <div class="form-grid" style="grid-template-columns: repeat(3, 1fr);">
+      <div class="form-grid" style="grid-template-columns: repeat(2, 1fr);">
         <label>
           <span>Name</span>
           <input
@@ -107,24 +114,12 @@ function resetContactForm() {
           />
         </label>
         <label>
-          <span>Email</span>
-          <input
-            required
-            type="email"
-            name="email"
-            id="contact-email"
-            placeholder="yourname@gmail.com"
-            pattern="^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"
-            title="Please enter a valid email address with @"
-          />
-        </label>
-        <label>
           <span>Mobile Number</span>
           <div class="phone-input-group" style="display:flex;gap:8px;align-items:stretch;">
             <select
               name="country_code"
               id="contact-country-code"
-              style="width:115px;flex-shrink:0;padding:14px 10px;border:1px solid #cbd5e1;border-radius:8px;background:#f8fafc;font-size:13px;font-weight:600;color:#0f172a;cursor:pointer;outline:none;"
+              style="width:90px;flex-shrink:0;padding:14px 6px;border:1px solid #cbd5e1;border-radius:8px;background:#f8fafc;font-size:13px;font-weight:600;color:#0f172a;cursor:pointer;outline:none;"
               onchange="updatePhoneValidation(this)"
             >
               <option value="+91" data-len="10" data-ph="9876543210" data-pat="^[6-9][0-9]{9}$" selected>🇮🇳 +91</option>
@@ -152,6 +147,18 @@ function resetContactForm() {
           </div>
         </label>
       </div>
+      <label>
+        <span>Email</span>
+        <input
+          required
+          type="email"
+          name="email"
+          id="contact-email"
+          placeholder="yourname@gmail.com"
+          pattern="^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"
+          title="Please enter a valid email address with @"
+        />
+      </label>
       <label>
         <span>Message</span>
         <textarea
@@ -182,4 +189,18 @@ function resetContactForm() {
     img.style.filter = '';
   }
 }
+</script>
+
+<script>
+(function() {
+  var img = document.getElementById('contact-vendor-img');
+  var cropper = document.querySelector('.contact-avatar-cropper');
+  if (img) {
+    img.src = '/static/landing/roles/vendor/active.webp';
+    img.classList.remove('avatar-active-state');
+    void img.offsetWidth;
+    img.classList.add('avatar-active-state');
+  }
+  
+})();
 </script>

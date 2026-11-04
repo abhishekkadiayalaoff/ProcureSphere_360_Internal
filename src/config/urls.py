@@ -42,7 +42,7 @@ urlpatterns = [
     path("superadmin/", include("apps.core.superadmin_urls")),
     path("manager/", include("apps.core.manager_urls")),
     path("manager/api/", include("apps.core.manager_api_urls")),
-    path("vendor/", include("apps.vendors.urls")),
+    path("vendor/", include("apps.vendors.vendor_dashboard_urls")),
     # Landing website URLs (placed before core to handle public '/' correctly)
     path("", include("apps.core.landing_urls")),
     # ERP core app URLs (fallback dashboard dispatcher)

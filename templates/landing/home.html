@@ -60,10 +60,32 @@ function updatePhoneValidation(selectEl) {
 }
 
 // Prevent modern browsers from restoring old scroll position on page refresh
-if ('scrollRestoration' in history) {
+// Allow instant direct landing on contact form with clean URL
+var isContactTargetEarly = false;
+try {
+  isContactTargetEarly = sessionStorage.getItem('ps360_direct_contact') === 'true' || 
+                         sessionStorage.getItem('ps360_scroll_to_contact') === 'true' || 
+                         window.location.hash.includes('contact') || 
+                         window.location.search.includes('contact');
+  if (isContactTargetEarly) {
+    document.documentElement.classList.add('direct-to-contact');
+  }
+} catch(e) {}
+
+if ('scrollRestoration' in history && !isContactTargetEarly) {
   history.scrollRestoration = 'manual';
 }
 </script>
+<style>
+html.direct-to-contact #intro-screen,
+html.direct-to-contact .intro-screen {
+  display: none !important;
+}
+html.direct-to-contact body {
+  opacity: 0;
+  transition: opacity 0.12s ease-in;
+}
+</style>
 <style>
 /* ── Hero Stat 13,000+ Deep Obsidian Navy Accent ── */
 .hero-stat,
@@ -421,25 +443,13 @@ if ('scrollRestoration' in history) {
   }
 }
 
-.contact-image-wrap {
-  margin: 20px auto 0 !important;
-  max-width: 270px !important;
-  display: flex !important;
-  justify-content: center !important;
-}
 
-@media (max-width: 768px) {
-  .contact-image-wrap {
-    margin: 26px auto 0 !important;
-    max-width: 220px !important;
-  }
-}
 
 
 /* Contact section alignment & aesthetic parity */
 #contact.contact {
   display: grid !important;
-  grid-template-columns: 360px minmax(0, 1fr) !important;
+  grid-template-columns: 380px minmax(0, 1fr) !important;
   gap: 48px !important;
   align-items: center !important;
   padding: 56px clamp(24px, 5vw, 64px) !important;
@@ -457,14 +467,15 @@ if ('scrollRestoration' in history) {
 }
 
 .contact-image-wrap {
-  margin: -18px 0 0 0 !important;
+  margin: -36px 0 0 0 !important;
+  max-width: 100% !important;
   display: flex !important;
   justify-content: flex-start !important;
 }
 
 .contact-avatar-cropper {
-  width: 200px !important;
-  height: 200px !important;
+  width: 310px !important;
+  height: 285px !important;
   overflow: hidden !important;
   border-radius: 20px !important;
   position: relative !important;
@@ -472,12 +483,35 @@ if ('scrollRestoration' in history) {
 }
 
 #contact-vendor-img {
-  width: 200px !important;
+  width: 310px !important;
   height: auto !important;
   display: block !important;
-  transform: translateY(-8px) scale(1.08) !important;
+  transform: translateY(-8px) scale(1.06);
   transform-origin: top center !important;
-  transition: transform 0.3s ease !important;
+  transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.4s ease !important;
+}
+
+@keyframes avatarSuccessPop {
+  0% {
+    transform: translateY(-8px) scale(1.06);
+  }
+  35% {
+    transform: translateY(-24px) scale(1.14);
+  }
+  65% {
+    transform: translateY(-6px) scale(1.08);
+  }
+  85% {
+    transform: translateY(-11px) scale(1.07);
+  }
+  100% {
+    transform: translateY(-8px) scale(1.06);
+  }
+}
+
+#contact-vendor-img.avatar-active-state {
+  animation: avatarSuccessPop 0.75s cubic-bezier(0.34, 1.56, 0.64, 1) both !important;
+  filter: drop-shadow(0 16px 36px rgba(15, 27, 45, 0.14)) !important;
 }
 
 .rfp-form {
@@ -495,9 +529,21 @@ if ('scrollRestoration' in history) {
   }
   .contact-copy {
     text-align: center !important;
+    align-items: center !important;
   }
   .contact-copy .section-title {
     text-align: center !important;
+  }
+  .contact-image-wrap {
+    justify-content: center !important;
+    margin: -12px auto 0 !important;
+  }
+  .contact-avatar-cropper {
+    width: 230px !important;
+    height: 215px !important;
+  }
+  #contact-vendor-img {
+    width: 230px !important;
   }
 }
 
@@ -770,27 +816,27 @@ if ('scrollRestoration' in history) {
         </div>
       </div>
 
-          <!-- Trusted Brands -->
+          <!-- Multi-Industry Enterprise Sectors -->
           <div class="trusted-brands animate-on-scroll" style="margin-top:0;position:relative;padding-top:10px;padding-bottom:20px;">
             <div style="position:absolute;top:55%;left:50%;transform:translate(-50%,-50%);z-index:0;opacity:0.20;width:280px;height:280px;background-image:url('{% static "landing/images/handshake.gif" %}');background-size:contain;background-repeat:no-repeat;background-position:center;pointer-events:none;"></div>
             <div class="trusted-label" style="justify-content:flex-start;position:relative;z-index:2;">
-              <span class="green-dot"></span> TRUSTED BY GLOBAL ENTERPRISES &amp; PROCUREMENT TEAMS
+              <span class="green-dot"></span> ARCHITECTED FOR MULTI-INDUSTRY ENTERPRISE WORKFLOWS
             </div>
             <div class="brand-pills-wrapper" style="position:relative;z-index:2;">
               <div class="brand-pills-track">
                 <div class="brand-pills">
-                  <div class="brand-pill"><div class="brand-logo bg-blue"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M3 12h4l2-6 4 12 2-6h6"/></svg></div><div><strong>Apex Global</strong><span>Manufacturing</span></div></div>
-                  <div class="brand-pill"><div class="brand-logo bg-green"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="m12 3 8 4.5-8 4.5-8-4.5L12 3Z"/><path d="m4 12 8 4.5 8-4.5"/><path d="m4 16.5 8 4.5 8-4.5"/></svg></div><div><strong>Nova Systems</strong><span>Technology</span></div></div>
-                  <div class="brand-pill"><div class="brand-logo bg-amber"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><rect x="14" y="14" width="6" height="6" rx="1"/></svg></div><div><strong>Meridian</strong><span>Logistics</span></div></div>
-                  <div class="brand-pill"><div class="brand-logo bg-navy"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M12 3 5 6v5c0 4.8 2.8 8 7 10 4.2-2 7-5.2 7-10V6l-7-3Z"/><path d="m9 12 2 2 4-4"/></svg></div><div><strong>Vanguard</strong><span>Financial</span></div></div>
-                  <div class="brand-pill"><div class="brand-logo bg-blue"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M7 3h7l4 4v14H7z"/><path d="M14 3v5h5M10 13h5M10 17h5"/></svg></div><div><strong>Horizon</strong><span>Healthcare</span></div></div>
+                  <div class="brand-pill"><div class="brand-logo bg-blue"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M3 12h4l2-6 4 12 2-6h6"/></svg></div><div><strong>Industrial</strong><span>Manufacturing</span></div></div>
+                  <div class="brand-pill"><div class="brand-logo bg-green"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="m12 3 8 4.5-8 4.5-8-4.5L12 3Z"/><path d="m4 12 8 4.5 8-4.5"/><path d="m4 16.5 8 4.5 8-4.5"/></svg></div><div><strong>Enterprise IT</strong><span>Cloud &amp; Tech</span></div></div>
+                  <div class="brand-pill"><div class="brand-logo bg-amber"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><rect x="14" y="14" width="6" height="6" rx="1"/></svg></div><div><strong>Supply Chain</strong><span>Global Logistics</span></div></div>
+                  <div class="brand-pill"><div class="brand-logo bg-navy"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M12 3 5 6v5c0 4.8 2.8 8 7 10 4.2-2 7-5.2 7-10V6l-7-3Z"/><path d="m9 12 2 2 4-4"/></svg></div><div><strong>Banking &amp; FinTech</strong><span>Financial Services</span></div></div>
+                  <div class="brand-pill"><div class="brand-logo bg-blue"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M7 3h7l4 4v14H7z"/><path d="M14 3v5h5M10 13h5M10 17h5"/></svg></div><div><strong>Healthcare</strong><span>Life Sciences</span></div></div>
                 </div>
                 <div class="brand-pills" aria-hidden="true">
-                  <div class="brand-pill"><div class="brand-logo bg-blue"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M3 12h4l2-6 4 12 2-6h6"/></svg></div><div><strong>Apex Global</strong><span>Manufacturing</span></div></div>
-                  <div class="brand-pill"><div class="brand-logo bg-green"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="m12 3 8 4.5-8 4.5-8-4.5L12 3Z"/><path d="m4 12 8 4.5 8-4.5"/><path d="m4 16.5 8 4.5 8-4.5"/></svg></div><div><strong>Nova Systems</strong><span>Technology</span></div></div>
-                  <div class="brand-pill"><div class="brand-logo bg-amber"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><rect x="14" y="14" width="6" height="6" rx="1"/></svg></div><div><strong>Meridian</strong><span>Logistics</span></div></div>
-                  <div class="brand-pill"><div class="brand-logo bg-navy"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M12 3 5 6v5c0 4.8 2.8 8 7 10 4.2-2 7-5.2 7-10V6l-7-3Z"/><path d="m9 12 2 2 4-4"/></svg></div><div><strong>Vanguard</strong><span>Financial</span></div></div>
-                  <div class="brand-pill"><div class="brand-logo bg-blue"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M7 3h7l4 4v14H7z"/><path d="M14 3v5h5M10 13h5M10 17h5"/></svg></div><div><strong>Horizon</strong><span>Healthcare</span></div></div>
+                  <div class="brand-pill"><div class="brand-logo bg-blue"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M3 12h4l2-6 4 12 2-6h6"/></svg></div><div><strong>Industrial</strong><span>Manufacturing</span></div></div>
+                  <div class="brand-pill"><div class="brand-logo bg-green"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="m12 3 8 4.5-8 4.5-8-4.5L12 3Z"/><path d="m4 12 8 4.5 8-4.5"/><path d="m4 16.5 8 4.5 8-4.5"/></svg></div><div><strong>Enterprise IT</strong><span>Cloud &amp; Tech</span></div></div>
+                  <div class="brand-pill"><div class="brand-logo bg-amber"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><rect x="14" y="14" width="6" height="6" rx="1"/></svg></div><div><strong>Supply Chain</strong><span>Global Logistics</span></div></div>
+                  <div class="brand-pill"><div class="brand-logo bg-navy"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M12 3 5 6v5c0 4.8 2.8 8 7 10 4.2-2 7-5.2 7-10V6l-7-3Z"/><path d="m9 12 2 2 4-4"/></svg></div><div><strong>Banking &amp; FinTech</strong><span>Financial Services</span></div></div>
+                  <div class="brand-pill"><div class="brand-logo bg-blue"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M7 3h7l4 4v14H7z"/><path d="M14 3v5h5M10 13h5M10 17h5"/></svg></div><div><strong>Healthcare</strong><span>Life Sciences</span></div></div>
                 </div>
               </div>
             </div>
@@ -1017,7 +1063,7 @@ if ('scrollRestoration' in history) {
       hx-on::after-request="onContactFormResponse(event)"
     >
       {% csrf_token %}
-      <div class="form-grid" style="grid-template-columns: repeat(3, 1fr);">
+      <div class="form-grid" style="grid-template-columns: repeat(2, 1fr);">
         <label>
           <span>Name</span>
           <input
@@ -1033,24 +1079,12 @@ if ('scrollRestoration' in history) {
           />
         </label>
         <label>
-          <span>Email</span>
-          <input
-            required
-            type="email"
-            name="email"
-            id="contact-email"
-            placeholder="yourname@gmail.com"
-            pattern="^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
-            title="Please enter a valid email address with @ (e.g., yourname@gmail.com or name@company.com)"
-          />
-        </label>
-        <label>
           <span>Mobile Number</span>
           <div class="phone-input-group" style="display:flex;gap:8px;align-items:stretch;">
             <select
               name="country_code"
               id="contact-country-code"
-              style="width:115px;flex-shrink:0;padding:14px 10px;border:1px solid #cbd5e1;border-radius:8px;background:#f8fafc;font-size:13px;font-weight:600;color:#0f172a;cursor:pointer;outline:none;"
+              style="width:90px;flex-shrink:0;padding:14px 6px;border:1px solid #cbd5e1;border-radius:8px;background:#f8fafc;font-size:13px;font-weight:600;color:#0f172a;cursor:pointer;outline:none;"
               onchange="updatePhoneValidation(this)"
             >
               <option value="+91" data-len="10" data-ph="9876543210" data-pat="^[6-9][0-9]{9}$" selected>🇮🇳 +91</option>
@@ -1078,6 +1112,18 @@ if ('scrollRestoration' in history) {
           </div>
         </label>
       </div>
+      <label>
+        <span>Email</span>
+        <input
+          required
+          type="email"
+          name="email"
+          id="contact-email"
+          placeholder="yourname@gmail.com"
+          pattern="^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
+          title="Please enter a valid email address with @ (e.g., yourname@gmail.com or name@company.com)"
+        />
+      </label>
       <label>
         <span>Message</span>
         <textarea
@@ -1134,7 +1180,7 @@ if ('scrollRestoration' in history) {
 
 // Home page specific JS
 document.addEventListener('DOMContentLoaded', function() {
-  if ('scrollRestoration' in history) {
+  if ('scrollRestoration' in history && !isContactTargetEarly) {
     history.scrollRestoration = 'manual';
   }
 
@@ -1205,17 +1251,29 @@ document.addEventListener('DOMContentLoaded', function() {
 
     if (isContactTarget) {
       sessionStorage.removeItem('ps360_skip_intro');
+      sessionStorage.removeItem('ps360_direct_contact');
       sessionStorage.removeItem('ps360_scroll_to_contact');
-      // Execute fast scroll to contact section
-      const scrollToContactNow = () => {
+
+      // Ensure clean URL '/' without #contact
+      if (window.location.hash && window.history && window.history.replaceState) {
+        window.history.replaceState(null, '', window.location.pathname);
+      }
+
+      // Execute direct INSTANT jump to contact section
+      const jumpToContact = () => {
         const cEl = document.getElementById('contact');
         if (cEl) {
-          cEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          cEl.scrollIntoView({ behavior: 'auto', block: 'start' });
+          window.scrollTo(0, cEl.offsetTop - 70);
+        }
+        document.documentElement.classList.remove('direct-to-contact');
+        if (document.body) {
+          document.body.style.opacity = '1';
         }
       };
-      scrollToContactNow();
-      setTimeout(scrollToContactNow, 80);
-      setTimeout(scrollToContactNow, 300);
+      jumpToContact();
+      requestAnimationFrame(jumpToContact);
+      setTimeout(jumpToContact, 40);
     }
 
     if (introScreen) {
@@ -1352,11 +1410,17 @@ document.addEventListener('DOMContentLoaded', function() {
 // Contact form response handler
 function onContactFormResponse(event) {
   const contactVendorImg = document.getElementById('contact-vendor-img');
-  if (contactVendorImg && event.detail.successful) {
-    contactVendorImg.src = '{% static "landing/roles/vendor/active.webp" %}';
-    contactVendorImg.style.transform = 'scale(1.02)';
-    contactVendorImg.style.filter = 'drop-shadow(0 12px 24px rgba(36,86,214,0.2))';
-  }
+  const cropper = document.querySelector('.contact-avatar-cropper');
+  setTimeout(function() {
+    const successCard = document.querySelector('.contact-success-card');
+    if (successCard && contactVendorImg) {
+      contactVendorImg.src = '{% static "landing/roles/vendor/active.webp" %}';
+      contactVendorImg.classList.remove('avatar-active-state');
+      void contactVendorImg.offsetWidth;
+      contactVendorImg.classList.add('avatar-active-state');
+      
+    }
+  }, 40);
 }
 </script>
 {% endblock %}
