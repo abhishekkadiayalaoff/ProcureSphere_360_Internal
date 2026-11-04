@@ -88,7 +88,7 @@ def notifications_processor(request):
         else:
             pending_count = PurchaseRequisition.objects.filter(status__in=statuses).count()
     elif role_code == Role.SUPER_ADMIN:
-        scoped_org = getattr(user, "effective_organization", None) if not user.is_superuser else None
+        scoped_org = getattr(user, "effective_organization", None) if not (user.is_superuser and not getattr(user, "organization_id", None)) else None
         if scoped_org:
             pending_count = PurchaseRequisition.objects.filter(
                 department__organization=scoped_org,

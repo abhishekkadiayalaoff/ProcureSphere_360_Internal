@@ -875,7 +875,9 @@ def _admin_index(request, extra_context=None):
 
     extra_context = dict(extra_context or {})
 
-    scoped_org = getattr(request.user, "effective_organization", None) if not request.user.is_superuser else None
+    from apps.core.superadmin_views import get_user_scoped_org
+
+    scoped_org = get_user_scoped_org(request.user)
 
     is_global_superadmin = bool(request.user.is_superuser and not scoped_org)
 
