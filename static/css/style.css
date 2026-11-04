@@ -1330,3 +1330,28 @@ ul[role="tablist"]::-webkit-scrollbar-button {
 body.modal-open {
     overflow: visible !important;
 }
+
+
+/* ==========================================================================
+   Executive Desk Badge and Token Contrast Enhancements
+   ========================================================================== */
+.badge.bg-primary-subtle { background-color: #cfe2ff !important; color: #084298 !important; border: 1px solid #b6d4fe !important; }
+.badge.bg-secondary-subtle { background-color: #e2e3e5 !important; color: #41464b !important; border: 1px solid #c4c8cb !important; }
+.badge.bg-success-subtle { background-color: #d1e7dd !important; color: #0f5132 !important; border: 1px solid #badbcc !important; }
+.badge.bg-danger-subtle { background-color: #f8d7da !important; color: #842029 !important; border: 1px solid #f5c2c7 !important; }
+.badge.bg-warning-subtle { background-color: #fff3cd !important; color: #664d03 !important; border: 1px solid #ffecb5 !important; }
+.badge.bg-info-subtle { background-color: #cff4fc !important; color: #055160 !important; border: 1px solid #b6effb !important; }
+
+.badge.bg-indigo { background-color: #4F46E5 !important; color: #FFFFFF !important; }
+.badge.bg-indigo-subtle { background-color: #EEF2FF !important; color: #3730A3 !important; border: 1px solid #C7D2FE !important; }
+.badge.bg-amber { background-color: #F59E0B !important; color: #1E293B !important; }
+.badge.bg-amber-subtle { background-color: #FFFBEB !important; color: #92400E !important; border: 1px solid #FDE68A !important; }
+.badge.bg-emerald { background-color: #10B981 !important; color: #FFFFFF !important; }
+.badge.bg-emerald-subtle { background-color: #ECFDF5 !important; color: #065F46 !important; border: 1px solid #A7F3D0 !important; }
+.badge.bg-rose { background-color: #F43F5E !important; color: #FFFFFF !important; }
+.badge.bg-rose-subtle { background-color: #FFF1F2 !important; color: #9F1239 !important; border: 1px solid #FECDD3 !important; }
+.badge.bg-cyan { background-color: #00B8D9 !important; color: #1E293B !important; }
+.badge.bg-cyan-subtle { background-color: rgba(0, 184, 217, 0.12) !important; color: #007A8D !important; border: 1px solid rgba(0, 184, 217, 0.25) !important; }
+
+.shadow-xs { box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1) !important; }
+.shadow-2xs { box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !important; }

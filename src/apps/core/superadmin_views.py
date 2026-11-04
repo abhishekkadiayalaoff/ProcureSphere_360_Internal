@@ -890,6 +890,14 @@ def org_create_view(request):
                     admin_first_name=admin_first_name,
                     admin_last_name=admin_last_name,
                     admin_password=admin_password,
+                    proc_mgr_email=form.cleaned_data.get("proc_mgr_email"),
+                    proc_mgr_first_name=form.cleaned_data.get("proc_mgr_first_name", ""),
+                    proc_mgr_last_name=form.cleaned_data.get("proc_mgr_last_name", ""),
+                    proc_mgr_password=form.cleaned_data.get("proc_mgr_password"),
+                    auditor_email=form.cleaned_data.get("auditor_email"),
+                    auditor_first_name=form.cleaned_data.get("auditor_first_name", ""),
+                    auditor_last_name=form.cleaned_data.get("auditor_last_name", ""),
+                    auditor_password=form.cleaned_data.get("auditor_password"),
                     send_welcome_email_flag=send_welcome_flag,
                     request=request,
                     actor=request.user,
@@ -1013,6 +1021,56 @@ def org_edit_view(request, org_id):
 
                     admin_user_dropdown.save(update_fields=["organization"])
 
+
+            # Handle dedicated Procurement Manager update (1:1)
+            pm_email = (form.cleaned_data.get("proc_mgr_email") or "").strip().lower()
+            if pm_email:
+                role_pm, _ = Role.objects.get_or_create(code=Role.PROC_MGR, defaults={"name": "Procurement Manager"})
+                pm_user = User.objects.filter(email__iexact=pm_email).first()
+                if not pm_user:
+                    pm_user = User.objects.create_user(
+                        email=pm_email,
+                        username=pm_email,
+                        first_name=form.cleaned_data.get("proc_mgr_first_name", ""),
+                        last_name=form.cleaned_data.get("proc_mgr_last_name", ""),
+                        role=role_pm,
+                        organization=org,
+                    )
+                else:
+                    pm_user.organization = org
+                    pm_user.role = role_pm
+                    if form.cleaned_data.get("proc_mgr_first_name"):
+                        pm_user.first_name = form.cleaned_data.get("proc_mgr_first_name")
+                    if form.cleaned_data.get("proc_mgr_last_name"):
+                        pm_user.last_name = form.cleaned_data.get("proc_mgr_last_name")
+                    pm_user.save()
+                org.procurement_manager = pm_user
+                org.save(update_fields=["procurement_manager"])
+
+            # Handle dedicated Compliance Auditor update (1:1)
+            aud_email = (form.cleaned_data.get("auditor_email") or "").strip().lower()
+            if aud_email:
+                role_aud, _ = Role.objects.get_or_create(code=Role.AUDITOR, defaults={"name": "Compliance Auditor"})
+                aud_user = User.objects.filter(email__iexact=aud_email).first()
+                if not aud_user:
+                    aud_user = User.objects.create_user(
+                        email=aud_email,
+                        username=aud_email,
+                        first_name=form.cleaned_data.get("auditor_first_name", ""),
+                        last_name=form.cleaned_data.get("auditor_last_name", ""),
+                        role=role_aud,
+                        organization=org,
+                    )
+                else:
+                    aud_user.organization = org
+                    aud_user.role = role_aud
+                    if form.cleaned_data.get("auditor_first_name"):
+                        aud_user.first_name = form.cleaned_data.get("auditor_first_name")
+                    if form.cleaned_data.get("auditor_last_name"):
+                        aud_user.last_name = form.cleaned_data.get("auditor_last_name")
+                    aud_user.save()
+                org.compliance_auditor = aud_user
+                org.save(update_fields=["compliance_auditor"])
 
 
             if admin_email and (not org.admin_user or org.admin_user.email != admin_email.strip().lower()):
