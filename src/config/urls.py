@@ -51,7 +51,6 @@ urlpatterns = [
 
     # Core & Auth & Page Views
     path("", include("apps.core.urls")),
-    path("", include(("apps.accounts.urls", "accounts"), namespace="accounts")),
     path("", include("apps.accounts.urls")),
     path("", include("apps.requisitions.urls")),
     path("", include("apps.approvals.urls")),
