@@ -14,6 +14,7 @@ from .manager_api_views import (
     ManagerSupplierPerformanceAPIView,
     ManagerSupplierPerformanceDetailAPIView,
     ManagerVendorWatchlistAPIView,
+    ManagerBudgetExceptionsAPIView,
 )
 
 urlpatterns = [
@@ -26,6 +27,16 @@ urlpatterns = [
         "vendor-watchlist/",
         ManagerVendorWatchlistAPIView.as_view(),
         name="manager-vendor-watchlist-api",
+    ),
+    path(
+        "budget-exceptions/",
+        ManagerBudgetExceptionsAPIView.as_view(),
+        name="manager-budget-exceptions-api",
+    ),
+    path(
+        "policy-exceptions/",
+        ManagerBudgetExceptionsAPIView.as_view(),
+        name="manager-policy-exceptions-api",
     ),
     # Spend Analytics
     path("spend/", ManagerSpendAnalyticsAPIView.as_view(), name="manager-spend-api"),

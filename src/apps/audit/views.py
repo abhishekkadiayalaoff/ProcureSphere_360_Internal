@@ -46,7 +46,7 @@ def auditor_dashboard_view(request):
             period_days = 30
     except (ValueError, TypeError):
         period_days = 30
-    dashboard_data = get_auditor_dashboard_data(period_days=period_days)
+    dashboard_data = get_auditor_dashboard_data(period_days=period_days, user=request.user)
     vendor_compliance = get_vendor_compliance_audit(limit=10)
     approval_history = get_approval_history_audit(limit=10)
     po_changes = get_po_changes_audit(limit=10)
