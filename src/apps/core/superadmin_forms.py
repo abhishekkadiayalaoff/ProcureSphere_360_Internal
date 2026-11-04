@@ -1,8 +1,13 @@
 from decimal import Decimal, InvalidOperation
 
 from django import forms
+
+from django.contrib.auth import password_validation
+from django.db.models import Q
+
 from django.db.models import Q
 from django.contrib.auth import password_validation
+
 from django.utils import timezone
 
 from apps.accounts.models import Role, User
@@ -2546,261 +2551,281 @@ class FiscalPeriodAdminForm(forms.ModelForm):
 
 
 class PolicyAdminForm(forms.ModelForm):
-
-
+    steps_data = forms.CharField(widget=forms.HiddenInput(), required=False)
 
     class Meta:
-
-
-
         model = ApprovalPolicy
-
-
-
-        fields = ["name", "module", "department", "min_amount", "max_amount", "is_active"]
-
-
-
+        fields = [
+            "name",
+            "module",
+            "organization",
+            "department",
+            "cost_center",
+            "currency",
+            "min_amount",
+            "max_amount",
+            "status",
+            "is_active",
+            "description",
+            "all_departments",
+            "all_cost_centers",
+            "has_exception_routing",
+            "exception_amount_threshold",
+            "exception_department",
+            "exception_cost_center",
+            "exception_trigger_on_missing_cost_center",
+            "exception_trigger_on_budget_exceeded",
+            "exception_approver_role",
+            "exception_specific_approver",
+            "exception_escalation_time_hours",
+            "exception_routing_behavior",
+            "exception_reason",
+            "exception_description",
+        ]
         widgets = {
-
-
-
-            "name": forms.TextInput(attrs={"class": "form-control"}),
-
-
-
-            "module": forms.Select(attrs={"class": "form-select"}),
-
-
-
-            "department": forms.Select(attrs={"class": "form-select"}),
-
-
-
-            "min_amount": forms.NumberInput(attrs={"class": "form-control", "step": "0.01"}),
-
-
-
-            "max_amount": forms.NumberInput(attrs={"class": "form-control", "step": "0.01"}),
-
-
-
-            "is_active": forms.CheckboxInput(attrs={"class": "form-check-input"}),
-
-
-
+            "name": forms.TextInput(attrs={"class": "form-control", "placeholder": "e.g. Standard PR Approval Policy"}),
+            "module": forms.Select(attrs={"class": "form-select", "id": "id_module"}),
+            "organization": forms.Select(attrs={"class": "form-select", "id": "id_policy_organization"}),
+            "department": forms.Select(attrs={"class": "form-select", "id": "id_policy_department"}),
+            "cost_center": forms.Select(attrs={"class": "form-select", "id": "id_policy_cost_center"}),
+            "currency": forms.Select(attrs={"class": "form-select", "id": "id_currency"}),
+            "min_amount": forms.NumberInput(attrs={"class": "form-control", "step": "0.01", "placeholder": "0.00"}),
+            "max_amount": forms.NumberInput(attrs={"class": "form-control", "step": "0.01", "placeholder": "Leave blank for unlimited"}),
+            "status": forms.Select(attrs={"class": "form-select", "id": "id_policy_status"}),
+            "is_active": forms.CheckboxInput(attrs={"class": "form-check-input", "id": "id_policy_is_active"}),
+            "description": forms.Textarea(attrs={"class": "form-control", "rows": 2, "placeholder": "Brief description of policy rules"}),
+            "all_departments": forms.CheckboxInput(attrs={"class": "form-check-input", "id": "id_all_departments"}),
+            "all_cost_centers": forms.CheckboxInput(attrs={"class": "form-check-input", "id": "id_all_cost_centers"}),
+            "has_exception_routing": forms.CheckboxInput(attrs={"class": "form-check-input", "id": "id_has_exception_routing"}),
+            "exception_amount_threshold": forms.NumberInput(attrs={"class": "form-control", "step": "0.01", "placeholder": "e.g. 200000.00"}),
+            "exception_department": forms.Select(attrs={"class": "form-select"}),
+            "exception_cost_center": forms.Select(attrs={"class": "form-select"}),
+            "exception_trigger_on_missing_cost_center": forms.CheckboxInput(attrs={"class": "form-check-input"}),
+            "exception_trigger_on_budget_exceeded": forms.CheckboxInput(attrs={"class": "form-check-input"}),
+            "exception_approver_role": forms.Select(attrs={"class": "form-select"}),
+            "exception_specific_approver": forms.Select(attrs={"class": "form-select"}),
+            "exception_escalation_time_hours": forms.NumberInput(attrs={"class": "form-control", "min": "1"}),
+            "exception_routing_behavior": forms.Select(attrs={"class": "form-select"}),
+            "exception_reason": forms.TextInput(attrs={"class": "form-control", "placeholder": "e.g. High-Value Finance Manager Approval"}),
+            "exception_description": forms.Textarea(attrs={"class": "form-control", "rows": 2}),
         }
 
-
-
-
-
-
-
     def __init__(self, *args, request=None, **kwargs):
-
-
-
         self.request = request
-
-
-
         super().__init__(*args, **kwargs)
 
-
-
         scoped_org = _get_form_scoped_org(request)
+        if not scoped_org and self.instance and getattr(self.instance, "organization_id", None):
+            scoped_org = self.instance.organization
 
+        from apps.organization.models import Organization
+        if scoped_org:
+            self.fields["organization"].queryset = Organization.objects.filter(id=scoped_org.id)
+            self.fields["organization"].initial = scoped_org
+            self.fields["organization"].widget = forms.HiddenInput()
+            self.fields["organization"].required = False
+        else:
+            self.fields["organization"].queryset = Organization.objects.filter(is_active=True).order_by("name")
+            self.fields["organization"].empty_label = "-- All Organizations (Global) --"
+            self.fields["organization"].required = False
 
-
-        dept_qs = Department.objects.all().order_by("name")
-
-
+        dept_qs = Department.objects.select_related("organization").all().order_by("name")
+        cc_qs = CostCenter.objects.select_related("department").all().order_by("code")
+        role_qs = Role.objects.all().order_by("name")
+        user_qs = User.objects.filter(is_active=True).order_by("email")
 
         if scoped_org:
-
-
-
             dept_qs = dept_qs.filter(organization=scoped_org)
-
-
+            cc_qs = cc_qs.filter(department__organization=scoped_org)
+            user_qs = user_qs.filter(Q(organization=scoped_org) | Q(department__organization=scoped_org))
 
         self.fields["department"].queryset = dept_qs
-        if not self.instance.pk or getattr(self.instance, "_state", None) and self.instance._state.adding:
+        self.fields["department"].empty_label = "-- All Departments (Default) --"
+        self.fields["department"].required = False
+
+        self.fields["cost_center"].queryset = cc_qs
+        self.fields["cost_center"].empty_label = "-- All Cost Centers (Default) --"
+        self.fields["cost_center"].required = False
+
+        self.fields["exception_department"].queryset = dept_qs
+        self.fields["exception_department"].empty_label = "-- Any Department --"
+        self.fields["exception_department"].required = False
+
+        self.fields["exception_cost_center"].queryset = cc_qs
+        self.fields["exception_cost_center"].empty_label = "-- Any Cost Center --"
+        self.fields["exception_cost_center"].required = False
+
+        self.fields["exception_approver_role"].queryset = role_qs
+        self.fields["exception_approver_role"].empty_label = "-- Select Approver Role --"
+        self.fields["exception_approver_role"].required = False
+
+        self.fields["exception_specific_approver"].queryset = user_qs
+        self.fields["exception_specific_approver"].empty_label = "-- Optional Specific Approver --"
+        self.fields["exception_specific_approver"].required = False
+        self.fields["exception_routing_behavior"].required = False
+        self.fields["exception_routing_behavior"].initial = ApprovalPolicy.EXCEPTION_BEHAVIOR_ADDITIONAL
+
+        if not self.instance.pk or (getattr(self.instance, "_state", None) and self.instance._state.adding):
             self.fields["is_active"].initial = True
             self.initial["is_active"] = True
+            self.fields["status"].initial = ApprovalPolicy.STATUS_ACTIVE
+            self.initial["status"] = ApprovalPolicy.STATUS_ACTIVE
 
+    def clean(self):
+        cleaned_data = super().clean()
+        min_amount = cleaned_data.get("min_amount")
+        max_amount = cleaned_data.get("max_amount")
+        department = cleaned_data.get("department")
+        cost_center = cleaned_data.get("cost_center")
+        org = cleaned_data.get("organization") or _get_form_scoped_org(self.request)
+        module = cleaned_data.get("module")
+        is_active = cleaned_data.get("is_active", True)
+        status = cleaned_data.get("status", ApprovalPolicy.STATUS_ACTIVE)
 
+        if min_amount is not None and min_amount < Decimal("0.00"):
+            self.add_error("min_amount", "Minimum amount cannot be negative.")
 
+        if min_amount is not None and max_amount is not None:
+            if min_amount > max_amount:
+                self.add_error("min_amount", "Minimum amount cannot be greater than maximum amount.")
 
+        if department and cost_center:
+            if cost_center.department_id != department.id:
+                self.add_error("cost_center", f"Cost Center '{cost_center.code}' does not belong to Department '{department.name}'.")
 
+        # Conflict & Overlap Detection for Active Policies
+        if is_active and status == ApprovalPolicy.STATUS_ACTIVE and module:
+            qs = ApprovalPolicy.objects.filter(
+                is_active=True,
+                status=ApprovalPolicy.STATUS_ACTIVE,
+                module=module,
+                organization=org,
+                department=department,
+                cost_center=cost_center,
+            )
+            if self.instance and self.instance.pk:
+                qs = qs.exclude(pk=self.instance.pk)
 
+            for existing in qs:
+                e_min = existing.min_amount
+                e_max = existing.max_amount
+                c_min = min_amount if min_amount is not None else Decimal("0.00")
+                c_max = max_amount
+
+                overlap = (e_max is None or c_min <= e_max) and (c_max is None or e_min <= c_max)
+                if overlap:
+                    e_range = f"{existing.min_amount} - {existing.max_amount or 'Unlimited'}"
+                    self.add_error(
+                        "min_amount",
+                        f"Amount range overlaps with existing active policy '{existing.name}' ({e_range}). "
+                        "Conflicting overlapping policies with identical scope are not permitted."
+                    )
+                    break
+
+        return cleaned_data
 
     def save(self, commit=True):
-
-
-
-        instance = super().save(commit=commit)
-
-
+        instance = super().save(commit=False)
+        scoped_org = _get_form_scoped_org(self.request)
+        if scoped_org and not instance.organization_id:
+            instance.organization = scoped_org
 
         if commit:
-
-
-
+            instance.save()
+            self._save_dynamic_steps(instance)
             self._ensure_policy_steps(instance)
-
-
-
         return instance
 
+    def _save_dynamic_steps(self, policy):
+        import json
+        import logging
+        logger = logging.getLogger(__name__)
 
-
-
-
-
-
-    def _ensure_policy_steps(self, policy):
-
-
-
-        if policy.steps.exists():
-
-
-
+        raw_steps_data = self.data.get("steps_data")
+        if not raw_steps_data:
             return
 
+        try:
+            steps_list = json.loads(raw_steps_data)
+            if not isinstance(steps_list, list) or len(steps_list) == 0:
+                return
 
+            from apps.approvals.models import ApprovalStep
+            policy.steps.all().delete()
+
+            for idx, s in enumerate(steps_list, start=1):
+                role_id = s.get("role_id")
+                if not role_id:
+                    continue
+                role_obj = Role.objects.filter(id=role_id).first()
+                if not role_obj:
+                    continue
+
+                user_id = s.get("user_id")
+                specific_user = User.objects.filter(id=user_id).first() if user_id else None
+
+                ApprovalStep.objects.create(
+                    policy=policy,
+                    step_number=idx,
+                    approver_role=role_obj,
+                    specific_approver=specific_user,
+                    description=s.get("description", f"{role_obj.name} Approval"),
+                    is_mandatory=bool(s.get("is_mandatory", True)),
+                    approval_limit=Decimal(str(s["approval_limit"])) if s.get("approval_limit") else None,
+                    step_type=s.get("step_type", "SEQUENTIAL"),
+                    rejection_behavior=s.get("rejection_behavior", "STOP_WORKFLOW"),
+                    escalation_hours=int(s["escalation_hours"]) if s.get("escalation_hours") else None,
+                )
+        except Exception as e:
+            logger.warning("Error saving dynamic approval steps in PolicyAdminForm: %s", e)
+
+    def _ensure_policy_steps(self, policy):
+        if policy.steps.exists():
+            return
 
         from apps.accounts.models import Role
         from apps.approvals.models import ApprovalStep
 
-
-
-
-
-
-
         dept_role = Role.objects.filter(code=Role.DEPT_APPROVER).first()
-
-
-
         proc_role = Role.objects.filter(code=Role.PROC_MGR).first()
-
-
-
-
-
-
+        finance_role = Role.objects.filter(code=Role.FINANCE_AP).first()
 
         if policy.module == ApprovalPolicy.MODULE_PR:
-
-
-
             if dept_role:
-
-
-
                 ApprovalStep.objects.get_or_create(
-
-
-
                     policy=policy,
-
-
-
                     step_number=1,
-
-
-
                     defaults={
-
-
-
                         "approver_role": dept_role,
-
-
-
-                        "description": "Department Manager Approval",
-
-
-
+                        "description": "Department Approver Review",
                     },
-
-
-
                 )
-
-
-
-            if proc_role:
-
-
-
+            if finance_role:
                 ApprovalStep.objects.get_or_create(
-
-
-
                     policy=policy,
-
-
-
                     step_number=2,
-
-
-
                     defaults={
-
-
-
-                        "approver_role": proc_role,
-
-
-
-                        "description": "Procurement Manager Approval",
-
-
-
+                        "approver_role": finance_role,
+                        "description": "Finance / AP Approval",
                     },
-
-
-
                 )
-
-
-
         elif policy.module == ApprovalPolicy.MODULE_PO_AMENDMENT and proc_role:
-
-
-
             ApprovalStep.objects.get_or_create(
-
-
-
                 policy=policy,
-
-
-
                 step_number=1,
-
-
-
                 defaults={
-
-
-
                     "approver_role": proc_role,
-
-
-
                     "description": "Procurement Manager Approval",
-
-
-
                 },
-
-
-
+            )
+        elif dept_role:
+            ApprovalStep.objects.get_or_create(
+                policy=policy,
+                step_number=1,
+                defaults={
+                    "approver_role": dept_role,
+                    "description": "Department Approval",
+                },
             )
 
 
