@@ -26,12 +26,12 @@ def _get_manager_context(request):
     Extracts the authoritative organization/scope name from the authenticated user.
     """
     user = request.user
-    user_org_name = None
-    effective_org = getattr(user, "effective_organization", None)
-    if effective_org:
-        user_org_name = effective_org.name
+    org = getattr(user, "effective_organization", None) or getattr(user, "organization", None)
+    if not org and getattr(user, "department_id", None) and getattr(user.department, "organization_id", None):
+        org = user.department.organization
+    user_org_name = org.name if org else ("Global Enterprise" if user.is_superuser else "")
     return {
-        "user_org_name": user_org_name or ("Global Enterprise" if user.is_superuser else ""),
+        "user_org_name": user_org_name,
     }
 
 

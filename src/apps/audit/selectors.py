@@ -148,62 +148,96 @@ def get_audit_metrics(period_days: int = 30) -> Dict[str, Any]:
     }
 
 
-def get_auditor_dashboard_data(period_days: int = 30) -> Dict[str, Any]:
+def get_auditor_dashboard_data(period_days: int = 30, user=None) -> Dict[str, Any]:
     """
     Aggregates full data bundle for the Compliance Auditor Dashboard:
     KPI cards, compliance exceptions, recent audit feed, approval feed, and charts.
+    Strictly scoped by organization if user is not global superuser.
     """
     metrics = get_audit_metrics(period_days=period_days)
+    scoped_org = getattr(user, "effective_organization", None) if user and not user.is_superuser else None
 
     # 1. High-Priority Compliance Warnings
+    exc_qs = MatchException.objects.filter(status="OPEN")
+    if scoped_org:
+        exc_qs = exc_qs.filter(invoice__po__cost_center__department__organization=scoped_org)
+    elif user and not user.is_superuser:
+        exc_qs = exc_qs.none()
     open_exceptions = list(
-        MatchException.objects.filter(status="OPEN")
-        .select_related("invoice", "invoice__vendor")
-        .order_by("-created_at")[:10]
+        exc_qs.select_related("invoice", "invoice__vendor").order_by("-created_at")[:10]
     )
 
+    vnd_qs = Vendor.objects.filter(status__in=[Vendor.STATUS_ON_HOLD, Vendor.STATUS_SUSPENDED])
+    if scoped_org:
+        vnd_qs = vnd_qs.filter(organization=scoped_org)
+    elif user and not user.is_superuser:
+        vnd_qs = vnd_qs.none()
     suspended_vendors = list(
-        Vendor.objects.filter(status__in=[Vendor.STATUS_ON_HOLD, Vendor.STATUS_SUSPENDED])
-        .select_related("category")
-        .order_by("-updated_at")[:10]
+        vnd_qs.select_related("category").order_by("-updated_at")[:10]
     )
 
+    obl_qs = ContractObligation.objects.filter(is_fulfilled=False, due_date__lt=timezone.now().date())
+    if scoped_org:
+        obl_qs = obl_qs.filter(contract__vendor__organization=scoped_org)
+    elif user and not user.is_superuser:
+        obl_qs = obl_qs.none()
     overdue_obligations = list(
-        ContractObligation.objects.filter(is_fulfilled=False, due_date__lt=timezone.now().date())
-        .select_related("contract", "contract__vendor")
-        .order_by("due_date")[:10]
+        obl_qs.select_related("contract", "contract__vendor").order_by("due_date")[:10]
     )
 
+    alt_qs = ContractAlert.objects.filter(is_processed=False)
+    if scoped_org:
+        alt_qs = alt_qs.filter(contract__vendor__organization=scoped_org)
+    elif user and not user.is_superuser:
+        alt_qs = alt_qs.none()
     active_contract_alerts = list(
-        ContractAlert.objects.filter(is_processed=False)
-        .select_related("contract")
-        .order_by("-triggered_at")[:10]
+        alt_qs.select_related("contract").order_by("-triggered_at")[:10]
     )
 
-    # 2. Activity Feeds
-    recent_logs = list(AuditLog.objects.select_related("actor").order_by("-timestamp")[:25])
+    # 2. Activity Feeds (Multi-Tenant Audit Trail)
+    logs_qs = AuditLog.objects.select_related("actor")
+    if scoped_org:
+        logs_qs = logs_qs.filter(Q(actor__organization=scoped_org) | Q(actor__department__organization=scoped_org))
+    elif user and not user.is_superuser:
+        logs_qs = logs_qs.none()
+    recent_logs = list(logs_qs.order_by("-timestamp")[:25])
 
-    recent_approvals = list(
-        ApprovalAction.objects.select_related("actor", "policy_step").order_by("-created_at")[:15]
-    )
+    appr_qs = ApprovalAction.objects.select_related("actor", "policy_step")
+    if scoped_org:
+        appr_qs = appr_qs.filter(Q(actor__organization=scoped_org) | Q(actor__department__organization=scoped_org))
+    elif user and not user.is_superuser:
+        appr_qs = appr_qs.none()
+    recent_approvals = list(appr_qs.order_by("-created_at")[:15])
 
     # 3. Domain totals for auditor context
-    domain_counts = {
-        "total_prs": PurchaseRequisition.objects.count(),
-        "total_sourcing_events": SourcingEvent.objects.count(),
-        "total_bids": VendorBid.objects.count(),
-        "total_pos": PurchaseOrder.objects.count(),
-        "total_invoices": SupplierInvoice.objects.count(),
-        "total_contracts": Contract.objects.count(),
-        "total_vendors": Vendor.objects.count(),
-        "open_exceptions_count": MatchException.objects.filter(status="OPEN").count(),
-        "suspended_vendors_count": Vendor.objects.filter(
-            status__in=["ON_HOLD", "SUSPENDED"]
-        ).count(),
-        "overdue_obligations_count": ContractObligation.objects.filter(
-            is_fulfilled=False, due_date__lt=timezone.now().date()
-        ).count(),
-    }
+    if scoped_org:
+        domain_counts = {
+            "total_prs": PurchaseRequisition.objects.filter(department__organization=scoped_org).count(),
+            "total_sourcing_events": SourcingEvent.objects.filter(requisition__department__organization=scoped_org).count(),
+            "total_bids": VendorBid.objects.filter(event__requisition__department__organization=scoped_org).count(),
+            "total_pos": PurchaseOrder.objects.filter(cost_center__department__organization=scoped_org).count(),
+            "total_invoices": SupplierInvoice.objects.filter(po__cost_center__department__organization=scoped_org).count(),
+            "total_contracts": Contract.objects.filter(vendor__organization=scoped_org).count(),
+            "total_vendors": Vendor.objects.filter(organization=scoped_org).count(),
+            "open_exceptions_count": MatchException.objects.filter(invoice__po__cost_center__department__organization=scoped_org, status="OPEN").count(),
+            "suspended_vendors_count": Vendor.objects.filter(organization=scoped_org, status__in=["ON_HOLD", "SUSPENDED"]).count(),
+            "overdue_obligations_count": ContractObligation.objects.filter(contract__vendor__organization=scoped_org, is_fulfilled=False, due_date__lt=timezone.now().date()).count(),
+        }
+    elif user and not user.is_superuser:
+        domain_counts = {k: 0 for k in ["total_prs", "total_sourcing_events", "total_bids", "total_pos", "total_invoices", "total_contracts", "total_vendors", "open_exceptions_count", "suspended_vendors_count", "overdue_obligations_count"]}
+    else:
+        domain_counts = {
+            "total_prs": PurchaseRequisition.objects.count(),
+            "total_sourcing_events": SourcingEvent.objects.count(),
+            "total_bids": VendorBid.objects.count(),
+            "total_pos": PurchaseOrder.objects.count(),
+            "total_invoices": SupplierInvoice.objects.count(),
+            "total_contracts": Contract.objects.count(),
+            "total_vendors": Vendor.objects.count(),
+            "open_exceptions_count": MatchException.objects.filter(status="OPEN").count(),
+            "suspended_vendors_count": Vendor.objects.filter(status__in=["ON_HOLD", "SUSPENDED"]).count(),
+            "overdue_obligations_count": ContractObligation.objects.filter(is_fulfilled=False, due_date__lt=timezone.now().date()).count(),
+        }
 
     return {
         "metrics": metrics,
