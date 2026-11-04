@@ -101,18 +101,21 @@ def search_sourcing_events(queryset, params):
 
 
 def get_sourcing_dashboard_metrics(user=None) -> dict:
-    """RFQ/RFP KPIs for the Procurement Executive dashboard (one aggregate query)."""
+    """RFQ/RFP KPIs for the Procurement Executive dashboard (one aggregate query).
+
+    Scoped to the requesting user's organization when one is resolvable, so a
+    new organization never sees another organization's sourcing activity."""
+    from apps.organization.selectors import resolve_user_scope_organization
+
     now = timezone.now()
-    _qs = SourcingEvent.objects
-    if user and not getattr(user, "is_superuser", False):
-        _org = getattr(user, "effective_organization", None)
-        if _org:
-            from django.db.models import Q as _Q
-            _qs = SourcingEvent.objects.filter(
-                _Q(requisition__department__organization=_org)
-                | _Q(requisition__isnull=True, created_by__organization=_org)
-            )
-    return _qs.aggregate(
+    qs = SourcingEvent.objects.all()
+    scoped_org = resolve_user_scope_organization(user)
+    if scoped_org:
+        qs = qs.filter(
+            Q(requisition__department__organization=scoped_org)
+            | Q(requisition__isnull=True, created_by__department__organization=scoped_org)
+        )
+    return qs.aggregate(
         total=Count("id"),
         draft=Count("id", filter=Q(status=SourcingEvent.STATUS_DRAFT)),
         published=Count("id", filter=Q(status=SourcingEvent.STATUS_PUBLISHED)),

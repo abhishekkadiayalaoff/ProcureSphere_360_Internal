@@ -946,7 +946,16 @@
     }
 
     async function submitApproveAmendment(poId, amendmentId) {
-        if (!confirm('Are you sure you want to approve this PO Amendment? This will increment the PO version, adjust budget commitments, and require supplier re-acknowledgement.')) {
+        const ok = await window.PSConfirm({
+            title: 'Approve PO amendment?',
+            message: 'This will increment the PO version, adjust budget commitments, and require the supplier to re-acknowledge the purchase order.',
+            details: 'PO = #' + poId + ';Amendment = #' + amendmentId,
+            tone: 'warning',
+            icon: 'fa-file-circle-check',
+            confirmLabel: 'Yes, approve amendment',
+            cancelLabel: 'Go back'
+        });
+        if (!ok) {
             return;
         }
         try {

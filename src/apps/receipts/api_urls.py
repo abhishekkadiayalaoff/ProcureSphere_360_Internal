@@ -8,7 +8,7 @@ from rest_framework.response import Response
 from rest_framework.routers import DefaultRouter
 
 from apps.accounts.models import Role, User
-from apps.orders.models import POLine, PurchaseOrder
+from apps.orders.models import PurchaseOrder
 
 from .models import GoodsReceipt, ReceiptLine
 
@@ -87,7 +87,7 @@ class GoodsReceiptSerializer(serializers.ModelSerializer):
             if not po:
                 raise serializers.ValidationError({"po": ["Purchase Order is required."]})
 
-            po_lines_map = {str(l.id): l for l in po.lines.all()}
+            po_lines_map = {str(po_line.id): po_line for po_line in po.lines.all()}
             po_lines_list = list(po.lines.all())
 
             for idx, item in enumerate(lines):
