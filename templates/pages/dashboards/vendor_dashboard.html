@@ -30,13 +30,43 @@
         <div class="fs-3 text-warning"><i class="fa-solid fa-triangle-exclamation"></i></div>
         <div class="flex-grow-1">
             <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
-                <h6 class="fw-bold text-dark mb-1">Corrections Requested by Procurement Reviewer</h6>
+                <h6 class="fw-bold text-dark mb-1">Corrections Requested by Reviewer</h6>
                 <a href="/vendor/profile/" class="btn btn-warning btn-sm fw-semibold rounded-pill px-3 shadow-sm">
                     <i class="fa-solid fa-pen-to-square me-1"></i> Update &amp; Resubmit Profile
                 </a>
             </div>
             <p class="mb-0 text-muted small mt-1">
                 <strong>Reviewer Feedback:</strong> {{ vendor.status_notes|default:"Please review your corporate profile, banking settlement, and KYC document attachments." }}
+            </p>
+        </div>
+    </div>
+    {% elif vendor.status == 'REJECTED' %}
+    <div class="alert alert-danger border-danger shadow-sm rounded-4 p-3 mb-4 d-flex align-items-center gap-3">
+        <div class="fs-3 text-danger"><i class="fa-solid fa-circle-xmark"></i></div>
+        <div class="flex-grow-1">
+            <h6 class="fw-bold text-dark mb-0">Vendor Registration Rejected</h6>
+            <p class="mb-0 text-muted small mt-1">
+                Your vendor registration was rejected during compliance review. Feedback: {{ vendor.status_notes|default:"Registration rejected." }} Sourcing participation and bidding are restricted.
+            </p>
+        </div>
+    </div>
+    {% elif vendor.status == 'ON_HOLD' %}
+    <div class="alert alert-warning border-warning shadow-sm rounded-4 p-3 mb-4 d-flex align-items-center gap-3">
+        <div class="fs-3 text-warning"><i class="fa-solid fa-pause-circle"></i></div>
+        <div class="flex-grow-1">
+            <h6 class="fw-bold text-dark mb-0">Vendor Account Placed On Hold</h6>
+            <p class="mb-0 text-muted small mt-1">
+                Your account is currently on administrative hold. Notes: {{ vendor.status_notes|default:"Administrative hold active." }} Bidding and payments are restricted.
+            </p>
+        </div>
+    </div>
+    {% elif vendor.status == 'SUSPENDED' %}
+    <div class="alert alert-danger border-danger shadow-sm rounded-4 p-3 mb-4 d-flex align-items-center gap-3">
+        <div class="fs-3 text-danger"><i class="fa-solid fa-ban"></i></div>
+        <div class="flex-grow-1">
+            <h6 class="fw-bold text-dark mb-0">Vendor Account Suspended</h6>
+            <p class="mb-0 text-muted small mt-1">
+                Your account is suspended. Notes: {{ vendor.status_notes|default:"Compliance suspension in effect." }} All procurement actions are blocked.
             </p>
         </div>
     </div>

@@ -62,6 +62,23 @@ class Contract(TimeStampedModel):
     def __str__(self):
         return f"{self.contract_number} V{self.version} - {self.title} [{self.status}]"
 
+    @property
+    def days_remaining(self) -> int:
+        if not self.end_date:
+            return 0
+        from django.utils import timezone
+
+        end = self.end_date
+        if isinstance(end, str):
+            from datetime import datetime
+
+            end = datetime.strptime(end, "%Y-%m-%d").date()
+        return (end - timezone.now().date()).days
+
+    @property
+    def is_expiring_soon(self) -> bool:
+        return 0 <= self.days_remaining <= self.renewal_notice_days
+
 
 class ContractVersion(TimeStampedModel):
     contract = models.ForeignKey(Contract, on_delete=models.CASCADE, related_name="versions")

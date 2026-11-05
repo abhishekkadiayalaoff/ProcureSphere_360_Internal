@@ -32,7 +32,7 @@ def _get_user_role_code(user):
 def create_contract_service(
     *,
     title: str,
-    vendor: Vendor,
+    vendor: Vendor = None,
     contract_value: Decimal,
     start_date,
     end_date,
@@ -40,10 +40,17 @@ def create_contract_service(
     renewal_notice_days: int = 30,
     sourcing_event=None,
     po=None,
+    contract_number: str = None,
 ) -> Contract:
     """
     Creates a new Contract in DRAFT status after strict validation of mandatory fields and term dates.
     """
+    if po and not vendor:
+        vendor = po.vendor
+
+    if not vendor:
+        raise ValidationError("Vendor is required to create a contract.")
+
     if vendor.status == Vendor.STATUS_SUSPENDED:
         raise ValidationError(
             f"Vendor '{vendor.legal_name}' is suspended and cannot enter into contracts."
@@ -51,6 +58,23 @@ def create_contract_service(
 
     if not title or not str(title).strip():
         raise ValidationError("Contract title is required.")
+
+    if isinstance(start_date, str):
+        from datetime import datetime
+
+        try:
+            start_date = datetime.strptime(start_date, "%Y-%m-%d").date()
+        except ValueError:
+            raise ValidationError("Invalid start date format. Expected YYYY-MM-DD.")
+
+    if isinstance(end_date, str):
+        from datetime import datetime
+
+        try:
+            end_date = datetime.strptime(end_date, "%Y-%m-%d").date()
+        except ValueError:
+            raise ValidationError("Invalid end date format. Expected YYYY-MM-DD.")
+
     if end_date and start_date and end_date < start_date:
         raise ValidationError("Contract end date cannot be earlier than start date.")
     if contract_value is not None:
@@ -63,9 +87,14 @@ def create_contract_service(
     if renewal_notice_days is not None and renewal_notice_days <= 0:
         raise ValidationError("Renewal notice period must be a positive number of days.")
 
-    from apps.core.services import generate_document_number
+    if contract_number:
+        contract_number = str(contract_number).strip()
+        if Contract.objects.filter(contract_number=contract_number).exists():
+            raise ValidationError(f"Contract with number '{contract_number}' already exists.")
+    else:
+        from apps.core.services import generate_document_number
 
-    contract_number = generate_document_number(Contract, "contract_number", "CON")
+        contract_number = generate_document_number(Contract, "contract_number", "CON")
 
     contract = Contract.objects.create(
         contract_number=contract_number,
@@ -254,6 +283,11 @@ def approve_business_service(*, contract: Contract, user: User, notes: str = "")
     if contract.status != Contract.STATUS_BUSINESS_APPROVAL:
         raise ValidationError(
             f"Cannot perform business approval on contract in status '{contract.status}'. Mandatory legal review must be completed first."
+        )
+
+    if contract.contract_owner_id and contract.contract_owner_id == user.id:
+        raise ValidationError(
+            "Separation of duties violation: Contract creator/owner cannot approve their own contract."
         )
 
     previous_status = contract.status

@@ -50,6 +50,40 @@
 
     {% include 'partials/messages.html' %}
 
+    <!-- Filter Tabs -->
+    <ul class="nav nav-pills mb-4 gap-2">
+        <li class="nav-item">
+            <a class="nav-link rounded-pill px-3 fw-semibold {% if tab == 'all' or not tab %}active{% else %}bg-light text-dark{% endif %}" href="?tab=all">
+                All Invoices <span class="badge bg-secondary ms-1 rounded-pill">{{ counts.all }}</span>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link rounded-pill px-3 fw-semibold {% if tab == 'pending' %}active{% else %}bg-light text-dark{% endif %}" href="?tab=pending">
+                Pending Approval <span class="badge bg-secondary ms-1 rounded-pill">{{ counts.pending }}</span>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link rounded-pill px-3 fw-semibold {% if tab == 'approved' %}active{% else %}bg-light text-dark{% endif %}" href="?tab=approved">
+                Approved <span class="badge bg-secondary ms-1 rounded-pill">{{ counts.approved }}</span>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link rounded-pill px-3 fw-semibold {% if tab == 'paid' %}active{% else %}bg-light text-dark{% endif %}" href="?tab=paid">
+                Paid <span class="badge bg-secondary ms-1 rounded-pill">{{ counts.paid }}</span>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link rounded-pill px-3 fw-semibold {% if tab == 'exceptions' %}active{% else %}bg-light text-dark{% endif %}" href="?tab=exceptions">
+                Exceptions / Corrections <span class="badge bg-secondary ms-1 rounded-pill">{{ counts.exceptions }}</span>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link rounded-pill px-3 fw-semibold {% if tab == 'rejected' %}active{% else %}bg-light text-dark{% endif %}" href="?tab=rejected">
+                Rejected <span class="badge bg-secondary ms-1 rounded-pill">{{ counts.rejected }}</span>
+            </a>
+        </li>
+    </ul>
+
     <div class="card border-0 shadow-sm rounded-4">
         <div class="card-body p-0">
             <div class="table-responsive">
@@ -62,13 +96,14 @@
                             <th class="text-secondary small fw-semibold text-uppercase py-3">Amount</th>
                             <th class="text-secondary small fw-semibold text-uppercase py-3">PO Ref</th>
                             <th class="text-secondary small fw-semibold text-uppercase py-3">Status</th>
+                            <th class="text-secondary small fw-semibold text-uppercase text-end pe-4 py-3">Action</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for invoice in invoices %}
                         <tr>
                             <td class="ps-4">
-                                <span class="fw-bold text-dark">{{ invoice.invoice_number }}</span>
+                                <a href="{% url 'vendor_invoice_detail' invoice.id %}" class="fw-bold text-primary text-decoration-none font-monospace">{{ invoice.invoice_number }}</a>
                             </td>
                             <td class="text-muted small">{{ invoice.invoice_date|date:"M d, Y" }}</td>
                             <td class="text-muted small">{{ invoice.due_date|date:"M d, Y" }}</td>
@@ -91,12 +126,17 @@
                                     <span class="badge bg-warning bg-opacity-25 text-dark border border-warning rounded-pill px-2 py-1">{{ invoice.get_status_display }}</span>
                                 {% endif %}
                             </td>
+                            <td class="text-end pe-4">
+                                <a href="{% url 'vendor_invoice_detail' invoice.id %}" class="btn btn-sm btn-outline-secondary rounded-pill px-3">
+                                    <i class="fa-solid fa-eye me-1"></i> View
+                                </a>
+                            </td>
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="6" class="text-center py-5 text-muted">
+                            <td colspan="7" class="text-center py-5 text-muted">
                                 <i class="fa-solid fa-file-invoice text-secondary opacity-25 mb-3" style="font-size: 3rem;"></i>
-                                <p class="mb-0">No invoices found for your company.</p>
+                                <p class="mb-0">No invoices found under this tab.</p>
                             </td>
                         </tr>
                         {% endfor %}

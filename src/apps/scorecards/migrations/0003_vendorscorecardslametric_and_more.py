@@ -4,6 +4,9 @@ from decimal import Decimal
 from django.conf import settings
 from django.db import migrations, models
 import django.db.models.deletion
+import django
+
+_CHECK_KW = "condition" if django.VERSION >= (5, 1) else "check"
 import uuid
 
 
@@ -40,6 +43,6 @@ class Migration(migrations.Migration):
         ),
         migrations.AddConstraint(
             model_name='vendorscorecardslametric',
-            constraint=models.CheckConstraint(check=models.Q(models.Q(('contract__isnull', False), ('metric_code', 'CONTRACT')), models.Q(('contract__isnull', True), ('metric_code', 'OVERALL')), _connector='OR'), name='sla_metric_code_contract_consistency'),
+            constraint=models.CheckConstraint(**{_CHECK_KW: models.Q(models.Q(('contract__isnull', False), ('metric_code', 'CONTRACT')), models.Q(('contract__isnull', True), ('metric_code', 'OVERALL')), _connector='OR')}, name='sla_metric_code_contract_consistency'),
         ),
     ]

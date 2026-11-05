@@ -164,7 +164,9 @@ def get_sealed_vendor_bids(event: SourcingEvent, requesting_user):
     if not can_read_bids(requesting_user) or not event.bids_visible_to_evaluators:
         return VendorBid.objects.none()
 
-    return queryset.exclude(status=VendorBid.STATUS_DRAFT).order_by("total_bid_amount")
+    return queryset.filter(
+        status__in=[VendorBid.STATUS_SUBMITTED, VendorBid.STATUS_AMENDED]
+    ).order_by("total_bid_amount")
 
 
 def get_bid_attachments_for_evaluator(event: SourcingEvent, user):
