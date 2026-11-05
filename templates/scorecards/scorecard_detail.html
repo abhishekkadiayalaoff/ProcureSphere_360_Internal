@@ -15,7 +15,7 @@
         <p class="text-muted small mb-0"><code>{{ vendor.vendor_number }}</code> · <span class="badge bg-secondary">{{ vendor.get_status_display }}</span></p>
     </div>
     <div>
-        <a href="{% url 'vendor_detail' vendor.id %}#performance" class="btn btn-outline-secondary btn-sm rounded-pill px-3"><i class="fa-solid fa-building me-1"></i>Vendor Master</a>
+        <a href="{% url 'vendor_detail_performance' vendor.id %}" class="btn btn-outline-secondary btn-sm rounded-pill px-3"><i class="fa-solid fa-building me-1"></i>Vendor Master</a>
     </div>
 </div>
 

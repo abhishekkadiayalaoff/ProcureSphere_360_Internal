@@ -218,47 +218,209 @@ def vendor_create_view(request):
     return render(request, "pages/vendors/create.html", {"form": form})
 
 
-@login_required(login_url="/login/")
-def vendor_detail_view(request, vendor_id):
-    """Governance detail: master data, status, risk, performance summary, documents, history."""
+# ── Vendor detail — independent pages ─────────────────────────────────────────────────────────
+# Each former in-page section (overview, status, risk, performance, documents, contacts,
+# sourcing & POs, history) is now its own routed page with a real URL. All pages share
+# `_vendor_page_base` (governance-read permission + org-scoped vendor lookup) and render the
+# common vendor header/navigation partial, so the vendor context is preserved across
+# navigation. The legacy `/vendors/<id>/` URL keeps serving the Overview page (ASSUMP-038).
+
+VENDOR_PAGES = (  # (page key, nav label, url name)
+    ("overview", "Overview", "vendor_detail"),
+    ("status", "Status", "vendor_detail_status"),
+    ("risk", "Risk", "vendor_detail_risk"),
+    ("performance", "Performance", "vendor_detail_performance"),
+    ("documents", "Documents", "vendor_detail_documents"),
+    ("contacts", "Contacts", "vendor_detail_contacts"),
+    ("sourcing", "Sourcing & POs", "vendor_detail_sourcing"),
+    ("history", "History", "vendor_detail_history"),
+)
+
+# Section anchors legacy code used to redirect onto the detail page → destination page now.
+_DETAIL_REDIRECT_ROUTES = {
+    "governance": "vendor_detail_status",
+    "kyc": "vendor_detail_status",
+    "risk": "vendor_detail_risk",
+    "performance": "vendor_detail_performance",
+    "documents": "vendor_detail_documents",
+    "contacts": "vendor_detail_contacts",
+    "transactions": "vendor_detail_sourcing",
+    "history": "vendor_detail_history",
+}
+
+
+def _vendor_page_base(request, vendor_id, page):
+    """
+    Shared context for every independent vendor detail page: enforces the governance-read
+    permission and organisation scoping, then returns the vendor plus the header data
+    (capabilities, latest risk badge for the header, credential dispatch info, active nav).
+    Each page view adds only the data its section needs (no cross-section fan-out).
+    """
     _require_governance_view(request.user)
     vendor = _get_scoped_vendor_or_404(request, vendor_id, select_category=True)
-
-    risk_records = list(vendor.risk_records.select_related("assessed_by")[:20])
-    latest_scorecard = vendor.scorecards.select_related("evaluated_by").first()
-    exposure = get_vendor_open_transactions(vendor)
-    transitions = [
-        {"status": s, "label": TRANSITION_LABELS[s][0], "tone": TRANSITION_LABELS[s][1]}
-        for s in allowed_governance_transitions(vendor, request.user)
-    ]
     caps = governance_capabilities(request.user)
     context = {
         "vendor": vendor,
         "caps": caps,
-        **_kyc_context(vendor, caps),
-        "latest_risk": risk_records[0] if risk_records else None,
-        "risk_records": risk_records,
-        "latest_scorecard": latest_scorecard,
-        "documents": vendor.documents.select_related("verified_by").order_by("-created_at"),
-        "contacts": vendor.contacts.order_by("-is_primary", "last_name"),
-        "history": get_vendor_change_history(vendor),
-        "exposure": exposure,
-        "sourcing_history": get_vendor_sourcing_history(vendor),
-        "purchase_orders": get_vendor_purchase_orders(vendor),
-        "transitions": transitions,
-        "last_dispatch": vendor.credential_dispatches.first(),
-        "risk_form": RiskAssessmentForm(),
-        "risk_flag_choices": VendorRiskRecord.RISK_FLAG_CHOICES,
-        "risk_level_choices": VendorRiskRecord.RISK_CHOICES,
+        "page": page,
+        "nav": [
+            {"key": key, "label": label, "url_name": url_name, "active": key == page}
+            for key, label, url_name in VENDOR_PAGES
+        ],
     }
-    return render(request, "pages/vendors/detail.html", context)
+    if caps["can_operate"]:
+        context["last_dispatch"] = vendor.credential_dispatches.first()
+    context["latest_risk"] = vendor.risk_records.order_by("-created_at").first()
+    return vendor, context
 
 
 def _redirect_detail(vendor, anchor=""):
-    response = redirect("vendor_detail", vendor_id=vendor.id)
-    if anchor:
-        response["Location"] += f"#{anchor}"
-    return response
+    """After a governance/KYC action, land back on the page the action belongs to."""
+    return redirect(_DETAIL_REDIRECT_ROUTES.get(anchor, "vendor_detail"), vendor_id=vendor.id)
+
+
+def _page_transitions(vendor, user):
+    return [
+        {"status": s, "label": TRANSITION_LABELS[s][0], "tone": TRANSITION_LABELS[s][1]}
+        for s in allowed_governance_transitions(vendor, user)
+    ]
+
+
+def _vendor_awards(vendor, limit=20):
+    """Award decisions (pending + approved) that concern this vendor. Read-only."""
+    from apps.sourcing.models import AwardDecision
+
+    return (
+        AwardDecision.objects.filter(winning_bid__vendor=vendor)
+        .select_related("event", "winning_bid__vendor", "approved_by")
+        .order_by("-created_at")[:limit]
+    )
+
+
+@login_required(login_url="/login/")
+def vendor_detail_page_view__overview(request, vendor_id):
+    """Overview: vendor information, legal identity, registration and operational summary."""
+    vendor, ctx = _vendor_page_base(request, vendor_id, page="overview")
+    return render(request, "pages/vendors/pages/overview.html", ctx)
+
+
+vendor_overview_view = vendor_detail_page_view__overview
+
+
+@login_required(login_url="/login/")
+def vendor_status_page_view(request, vendor_id):
+    """Status: KYC/review/activation state, hold & suspension, governance actions, transitions."""
+    vendor, ctx = _vendor_page_base(request, vendor_id, page="status")
+    caps = ctx["caps"]
+    status_history = [
+        log
+        for log in get_vendor_change_history(vendor, limit=50)
+        if log.target_model == "Vendor"
+    ]
+    ctx.update(
+        {
+            **_kyc_context(vendor, caps),
+            "exposure": get_vendor_open_transactions(vendor),
+            "transitions": _page_transitions(vendor, request.user),
+            "status_history": status_history,
+        }
+    )
+    return render(request, "pages/vendors/pages/status.html", ctx)
+
+
+@login_required(login_url="/login/")
+def vendor_risk_page_view(request, vendor_id):
+    """Risk: current level, flags, assessment notes and full assessment history."""
+    vendor, ctx = _vendor_page_base(request, vendor_id, page="risk")
+    ctx.update(
+        {
+            "risk_records": vendor.risk_records.select_related("assessed_by")[:20],
+            "risk_form": RiskAssessmentForm(),
+            "risk_flag_choices": VendorRiskRecord.RISK_FLAG_CHOICES,
+            "risk_level_choices": VendorRiskRecord.RISK_CHOICES,
+        }
+    )
+    return render(request, "pages/vendors/pages/risk.html", ctx)
+
+
+@login_required(login_url="/login/")
+def vendor_performance_page_view(request, vendor_id):
+    """Performance: read-only latest scorecard + trend from the Supplier Performance module."""
+    vendor, ctx = _vendor_page_base(request, vendor_id, page="performance")
+    ctx.update(
+        {
+            "latest_scorecard": vendor.scorecards.select_related("evaluated_by").first(),
+            "scorecard_history": vendor.scorecards.select_related("evaluated_by").order_by(
+                "-created_at"
+            )[:12],
+        }
+    )
+    return render(request, "pages/vendors/pages/performance.html", ctx)
+
+
+@login_required(login_url="/login/")
+def vendor_documents_page_view(request, vendor_id):
+    """Documents: KYC document list with verification status, reviewer and download."""
+    vendor, ctx = _vendor_page_base(request, vendor_id, page="documents")
+    caps = ctx["caps"]
+    ctx.update(
+        {
+            **_kyc_context(vendor, caps),
+            "documents": vendor.documents.select_related("verified_by").order_by("-created_at"),
+        }
+    )
+    return render(request, "pages/vendors/pages/documents.html", ctx)
+
+
+@login_required(login_url="/login/")
+def vendor_contacts_page_view(request, vendor_id):
+    """Contacts: primary / finance / sales designations with email and phone."""
+    vendor, ctx = _vendor_page_base(request, vendor_id, page="contacts")
+    ctx["contact_groups"] = _group_vendor_contacts(vendor.contacts.order_by("-is_primary", "last_name"))
+    return render(request, "pages/vendors/pages/contacts.html", ctx)
+
+
+@login_required(login_url="/login/")
+def vendor_sourcing_page_view(request, vendor_id):
+    """Sourcing & purchase orders: invitations, bids, awards and the PO register."""
+    vendor, ctx = _vendor_page_base(request, vendor_id, page="sourcing")
+    ctx.update(
+        {
+            "exposure": get_vendor_open_transactions(vendor),
+            "sourcing_history": get_vendor_sourcing_history(vendor),
+            "purchase_orders": get_vendor_purchase_orders(vendor),
+            "awards": _vendor_awards(vendor),
+        }
+    )
+    return render(request, "pages/vendors/pages/sourcing.html", ctx)
+
+
+@login_required(login_url="/login/")
+def vendor_history_page_view(request, vendor_id):
+    """History: immutable audit trail for the vendor and its documents/risks/scorecards."""
+    vendor, ctx = _vendor_page_base(request, vendor_id, page="history")
+    ctx["history"] = get_vendor_change_history(vendor)
+    return render(request, "pages/vendors/pages/history.html", ctx)
+
+
+def _group_vendor_contacts(contacts):
+    """Buckets contacts for the Contacts page: primary, finance, sales and any other roles."""
+    groups = {"primary": [], "finance": [], "sales": [], "other": []}
+    for contact in contacts:
+        designation = (contact.designation or "").lower()
+        if contact.is_primary or "primary" in designation:
+            groups["primary"].append(contact)
+        elif "finance" in designation or "accounts" in designation:
+            groups["finance"].append(contact)
+        elif "sales" in designation:
+            groups["sales"].append(contact)
+        else:
+            groups["other"].append(contact)
+    return groups
+
+
+# The legacy URL name keeps rendering the Overview page (full backward compatibility).
+vendor_detail_view = vendor_overview_view
 
 
 def _form_errors(form):
@@ -337,7 +499,7 @@ def vendor_kyc_action_view(request, vendor_id, kyc_action):
     except ValidationError as exc:
         messages.error(request, " ".join(exc.messages))
     return _redirect_detail(
-        vendor, "documents" if kyc_action in ("verify-document", "reject-document") else ""
+        vendor, "documents" if kyc_action in ("verify-document", "reject-document") else "governance"
     )
 
 

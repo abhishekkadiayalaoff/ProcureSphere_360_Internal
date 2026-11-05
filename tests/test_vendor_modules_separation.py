@@ -14,6 +14,7 @@ from datetime import timedelta
 
 import pytest
 from django.core.exceptions import ValidationError
+from django.urls import reverse
 from django.utils import timezone
 from rest_framework.test import APIClient
 
@@ -63,7 +64,7 @@ class TestVendorMasterRegression:
     ):
         w = procurement_world
         client.force_login(w["exec"])
-        res = client.get(f"/vendors/{w['vendor_a'].id}/")
+        res = client.get(f"/vendors/{w['vendor_a'].id}/performance/")
         assert res.status_code == 200
         body = res.content.decode()
         assert "Calculate scorecard" not in body
@@ -76,7 +77,7 @@ class TestVendorMasterRegression:
         calculate_vendor_scorecard_service(
             vendor=w["vendor_a"], evaluation_period="Q5-2026", evaluated_by_user=w["exec"]
         )
-        res = client.get(f"/vendors/{w['vendor_a'].id}/")
+        res = client.get(f"/vendors/{w['vendor_a'].id}/performance/")
         assert res.status_code == 200
         body = res.content.decode()
         assert "View detailed Supplier Performance" in body
@@ -85,7 +86,7 @@ class TestVendorMasterRegression:
     def test_detail_page_keeps_no_data_empty_state(self, client, procurement_world):
         w = procurement_world
         client.force_login(w["exec"])
-        res = client.get(f"/vendors/{w['vendor_draft'].id}/")
+        res = client.get(f"/vendors/{w['vendor_draft'].id}/performance/")
         assert res.status_code == 200
         assert "No performance data available." in res.content.decode()
 
@@ -105,7 +106,7 @@ class TestVendorMasterRegression:
     ):
         w = procurement_world
         client.force_login(w["exec"])
-        res = client.get(f"/vendors/{w['vendor_a'].id}/")
+        res = client.get(f"/vendors/{w['vendor_a'].id}/performance/")
         assert res.context["latest_scorecard"] is None
         assert "scorecards" not in res.context  # heavy trend list removed
 
@@ -152,7 +153,7 @@ class TestCalculation:
         )
         card.save()
         client.force_login(w["manager"] if "manager" in w else w["exec"])
-        res = client.get(f"/vendors/{w['vendor_a'].id}/")
+        res = client.get(f"/vendors/{w['vendor_a'].id}/performance/")
         assert res.status_code == 200
         assert res.context["latest_scorecard"].composite_score == 100
 
@@ -292,7 +293,7 @@ class TestCrossModuleSync:
             vendor=w["vendor_a"], evaluation_period="Q5-2026", evaluated_by_user=w["exec"]
         )
         client.force_login(w["exec"])
-        res = client.get(f"/vendors/{w['vendor_a'].id}/")
+        res = client.get(f"/vendors/{w['vendor_a'].id}/performance/")
         assert res.status_code == 200
         latest = res.context["latest_scorecard"]
         assert latest.composite_score == 100
@@ -480,12 +481,15 @@ class TestDuplicatesPrevention:
         assert log.previous_state == {"status": Vendor.STATUS_KYC_REVIEW}
 
     def test_web_status_change_path_is_unchanged(self, client, procurement_world):
+        """The governance POST action keeps its URL name and redirects to the Status page."""
         w = procurement_world
         client.force_login(w["exec"])
         res = client.post(
-            f"/vendors/{w['vendor_a'].id}/status/", {"status": "ON_HOLD", "notes": "x"}
+            reverse("vendor_status_change", args=[w["vendor_a"].id]),
+            {"status": "ON_HOLD", "notes": "x"},
         )
         assert res.status_code == 302
+        assert res.url == reverse("vendor_detail_status", args=[w["vendor_a"].id])
         w["vendor_a"].refresh_from_db()
         assert w["vendor_a"].status == Vendor.STATUS_ON_HOLD
 
