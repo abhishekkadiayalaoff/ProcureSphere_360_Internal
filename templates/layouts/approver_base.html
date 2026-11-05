@@ -8,66 +8,62 @@
 <nav class="navbar navbar-dark bg-dark shadow-sm py-2 border-bottom border-secondary border-opacity-25 sticky-top" style="background-color: #212529 !important;">
     <div class="container-fluid px-2 px-sm-3 px-lg-4 d-flex align-items-center justify-content-between flex-nowrap">
         <!-- Brand & Mobile Toggle -->
-        <div class="d-flex align-items-center overflow-hidden me-2">
+        <div class="d-flex align-items-center flex-nowrap me-2">
             <button class="navbar-toggler border-0 me-2 d-lg-none p-1" type="button" data-bs-toggle="offcanvas" data-bs-target="#approverSidebar" aria-controls="approverSidebar" aria-label="Toggle navigation">
                 <i class="fa-solid fa-bars text-white fs-4"></i>
             </button>
             <a href="/approver/" class="dashboard-brand-badge me-2 me-lg-3" aria-label="ProcureSphere 360 Home">
                 <img src="{% static 'landing/images/procuresphere_360_nav_brand.png' %}" alt="ProcureSphere 360" class="dashboard-brand-logo">
             </a>
-            <span class="badge bg-secondary bg-opacity-50 text-light ms-2 px-2.5 py-1 small rounded-pill d-none d-sm-inline-block" style="font-size: 0.65rem; letter-spacing: 0.04em;">Department Approver</span>
         </div>
 
-        <!-- Middle: Department Scope Pill (Matching Reference) -->
         <div class="d-flex align-items-center gap-2 gap-sm-3 flex-shrink-0">
-            {% if user_department or user.department %}
-            {% with dept=user_department|default:user.department %}
-            <div class="dropdown d-none d-md-block">
-                <button class="btn btn-dark bg-dark bg-opacity-75 border border-secondary border-opacity-50 rounded-pill px-3 py-1 text-white d-flex align-items-center dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" style="font-size: 0.85rem;">
-                    <i class="fa-solid fa-globe text-cyan me-2 fs-5"></i>
-                    <div class="text-start lh-sm me-2">
-                        <span class="fw-semibold small d-block mb-0">{{ dept.name|default:"Department Scope"|truncatechars:35 }}</span>
-                        <span class="text-white-50 d-block" style="font-size: 0.7rem; line-height: 1;">Scope: {{ dept.code|default:"Department Scope" }}</span>
-                    </div>
-                    <span class="badge rounded-pill bg-success" style="font-size: 0.65rem;">Active</span>
-                </button>
-                <ul class="dropdown-menu dropdown-menu-dark shadow-lg border border-secondary border-opacity-25 small py-1">
-                    <li><a class="dropdown-item active" href="javascript:void(0)"><i class="fa-solid fa-globe me-2 text-cyan"></i>{{ dept.name|default:"Department Scope" }}</a></li>
-                    <li><a class="dropdown-item" href="/requisitions/"><i class="fa-solid fa-list me-2 text-info"></i> Department Requisitions</a></li>
-                    <li><a class="dropdown-item" href="/approvals/inbox/"><i class="fa-solid fa-inbox me-2 text-warning"></i> Pending Approvals</a></li>
-                    <li><a class="dropdown-item" href="/budgets/"><i class="fa-solid fa-vault me-2 text-success"></i> Cost Center Budgets</a></li>
-                </ul>
+            <!-- Organization / Department Information (Matching Vendor Entity Pill) -->
+            {% with dept=user_department|default:user.department|default:user.organization %}
+            <div class="d-none d-md-flex align-items-center bg-dark bg-opacity-75 border border-secondary border-opacity-50 rounded-pill px-3 py-1 text-white">
+                <i class="fa-solid fa-building text-cyan me-2 fs-5"></i>
+                <div class="text-start lh-sm">
+                    <span class="fw-semibold small d-block mb-1">{{ dept.name|default:"IT Infrastructure Operations"|truncatechars:35 }}</span>
+                    <span class="text-white-50 d-block" style="font-size: 0.7rem; line-height: 1;">{% if user.cost_center %}{{ user.cost_center.code }}{% else %}{{ dept.code|default:"CC-IT-101" }}{% endif %} &bull; Active</span>
+                </div>
+                <span class="badge ms-2 rounded-pill bg-success" style="font-size: 0.65rem;">Active</span>
             </div>
             {% endwith %}
-            {% endif %}
 
             <!-- Notification Bell -->
             <a href="/notifications/" class="btn btn-outline-secondary btn-sm position-relative text-white border-0 d-flex align-items-center justify-content-center p-0" style="width: 36px; height: 36px;" title="Notifications">
                 <i class="fa-solid fa-bell fs-5"></i>
-                {% if unread_notifications_count > 0 %}
+                {% if unread_notifications_count and unread_notifications_count > 0 %}
                 <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size: 0.65rem;">
                     {{ unread_notifications_count }}
                 </span>
                 {% elif metrics and metrics.pending_count > 0 %}
-                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-warning text-dark" style="font-size: 0.65rem;">
+                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size: 0.65rem;">
                     {{ metrics.pending_count }}
                 </span>
                 {% endif %}
             </a>
 
-            <!-- User Profile & Sign Out -->
+            <!-- User Profile Dropdown -->
             {% if user.is_authenticated %}
-            <div class="d-flex align-items-center gap-2">
-                <div class="d-none d-md-flex align-items-center px-2 px-sm-3 py-1 bg-secondary bg-opacity-25 rounded-pill border border-secondary border-opacity-50 text-white">
-                    <i class="fa-solid fa-circle-user text-cyan me-1 me-sm-2 fs-5"></i>
-                    <div class="text-start leading-tight me-1">
-                        <div class="fw-semibold text-white small text-truncate" style="max-width: 140px;">{{ user.email|default:"approver@hpe.com" }}</div>
-                        <div class="badge bg-secondary bg-opacity-75 text-cyan rounded-pill" style="font-size: 0.65rem;">Department Approver</div>
-                    </div>
-                </div>
-                <a href="/logout/" class="btn btn-outline-light btn-sm rounded-pill px-2.5 px-sm-3 text-nowrap d-inline-flex align-items-center" title="Sign Out">
-                    <i class="fa-solid fa-arrow-right-from-bracket"></i> <span class="d-none d-sm-inline ms-1">Sign Out</span>
-                </a>
+            <div class="dropdown position-relative">
+                <button class="btn p-0 border-0 bg-transparent rounded-circle vendor-profile-avatar-btn" type="button" id="approverProfileDropdown" data-bs-toggle="dropdown" aria-expanded="false" title="{{ user.email }}">
+                    <span class="vendor-avatar-ring">
+                        <i class="fa-solid fa-circle-user text-cyan"></i>
+                    </span>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end shadow-lg vendor-profile-dropdown" aria-labelledby="approverProfileDropdown">
+                    <li class="vendor-dropdown-header">
+                        <div class="vendor-email-text">{{ user.email|default:"approver@hpe.com" }}</div>
+                    </li>
+                    <li><hr class="vendor-dropdown-divider"></li>
+                    <li>
+                        <a class="vendor-dropdown-signout" href="/logout/">
+                            <i class="fa-solid fa-arrow-right-from-bracket me-2 text-danger"></i>
+                            <span>Sign Out</span>
+                        </a>
+                    </li>
+                </ul>
             </div>
             {% endif %}
         </div>
@@ -87,6 +83,99 @@
         --approver-muted-text: #6C757D;
         --approver-border: #DEE2E6;
         --approver-card-bg: #FFFFFF;
+    }
+
+    /* ========================================================================= */
+    /* Approver Navbar Profile Avatar & Dropdown (Exact Vendor Dashboard Match)  */
+    /* ========================================================================= */
+    .vendor-profile-avatar-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+        border: none;
+        background: transparent;
+        cursor: pointer;
+        position: relative;
+    }
+    .vendor-profile-avatar-btn::after {
+        display: none !important;
+    }
+    .vendor-profile-avatar-btn:focus,
+    .vendor-profile-avatar-btn:active {
+        outline: none !important;
+        box-shadow: none !important;
+    }
+    .vendor-avatar-ring {
+        width: 38px;
+        height: 38px;
+        border-radius: 50%;
+        background-color: #1e2634;
+        border: 2px solid #2563eb;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+    }
+    .vendor-profile-avatar-btn:hover .vendor-avatar-ring,
+    .vendor-profile-avatar-btn[aria-expanded="true"] .vendor-avatar-ring {
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.35);
+    }
+    .vendor-avatar-ring i {
+        font-size: 1.6rem;
+        color: #06b6d4 !important;
+        line-height: 1;
+    }
+
+    /* Dark navy profile dropdown menu */
+    .vendor-profile-dropdown {
+        background-color: #1b2332 !important;
+        border: 1px solid rgba(255, 255, 255, 0.08) !important;
+        border-radius: 12px !important;
+        box-shadow: 0 12px 28px rgba(0, 0, 0, 0.55), 0 4px 10px rgba(0, 0, 0, 0.35) !important;
+        min-width: 240px !important;
+        max-width: 320px !important;
+        padding: 14px 18px 12px 18px !important;
+        margin-top: 8px !important;
+    }
+    .vendor-dropdown-header {
+        padding: 0 !important;
+        margin-bottom: 6px !important;
+        list-style: none;
+    }
+    .vendor-email-text {
+        font-size: 0.95rem;
+        font-weight: 700;
+        color: #ffffff !important;
+        word-break: break-all;
+        line-height: 1.35;
+        letter-spacing: -0.01em;
+    }
+    .vendor-dropdown-divider {
+        border: 0 !important;
+        border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
+        margin: 8px 0 10px 0 !important;
+        opacity: 1 !important;
+    }
+    .vendor-dropdown-signout {
+        display: inline-flex;
+        align-items: center;
+        color: #ef4444 !important;
+        font-size: 0.92rem;
+        font-weight: 500;
+        text-decoration: none;
+        padding: 4px 0 !important;
+        background: transparent !important;
+        transition: color 0.15s ease, opacity 0.15s ease;
+    }
+    .vendor-dropdown-signout i {
+        color: #ef4444 !important;
+        font-size: 0.95rem;
+    }
+    .vendor-dropdown-signout:hover,
+    .vendor-dropdown-signout:focus {
+        color: #f87171 !important;
     }
 
     @media (min-width: 992px) {

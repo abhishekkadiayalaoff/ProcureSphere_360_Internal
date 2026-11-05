@@ -33,15 +33,32 @@ def create_supplier_invoice_service(
     notes: str = "",
     created_by_user=None,
     tax_rate: Decimal = Decimal("0.10"),
+    invoice_document=None,
+    require_grn: bool = False,
+    enforce_billable_limits: bool = False,
 ) -> SupplierInvoice:
     """
     Creates a new Supplier Invoice in RECEIVED status with line items.
     Enforces unique invoice_number per vendor (duplicate detection).
+    Validates PO ownership, status, accepted GRN existence, and billable limits.
     """
     if po.vendor_id != vendor.id:
         raise ValidationError(
             f"Purchase Order {po.po_number} does not belong to vendor '{vendor.legal_name}'."
         )
+
+    if po.status in [PurchaseOrder.STATUS_CANCELLED]:
+        raise ValidationError(
+            f"Cannot submit invoice against Purchase Order {po.po_number} in '{po.status}' status."
+        )
+
+    if require_grn:
+        all_receipt_lines = [rl for r in po.receipts.all() for rl in r.lines.all()]
+        total_accepted_grn_qty = sum(rl.quantity_accepted for rl in all_receipt_lines)
+        if total_accepted_grn_qty <= Decimal("0.00"):
+            raise ValidationError(
+                f"Cannot submit invoice: Purchase Order {po.po_number} has no accepted Goods Receipt Notes (GRN). A 3-way match requires accepted goods before billing."
+            )
 
     clean_inv_num = str(invoice_number).strip()
     if SupplierInvoice.objects.filter(vendor=vendor, invoice_number__iexact=clean_inv_num).exists():
@@ -61,6 +78,7 @@ def create_supplier_invoice_service(
         tax_amount=Decimal("0.00"),
         total_amount=Decimal("0.00"),
         notes=notes,
+        invoice_document=invoice_document,
     )
 
     if not line_items:
@@ -105,6 +123,23 @@ def create_supplier_invoice_service(
                 f"Negative value ({unit_price}) is not permitted."
             )
 
+        if enforce_billable_limits and po_line:
+            accepted_qty_agg = ReceiptLine.objects.filter(po_line=po_line).aggregate(
+                total_accepted=models.Sum("quantity_accepted")
+            )["total_accepted"] or Decimal("0.00")
+            prior_invoiced_qty = (
+                InvoiceLine.objects.filter(po_line=po_line)
+                .exclude(invoice__status=SupplierInvoice.STATUS_REJECTED)
+                .aggregate(total_prior=models.Sum("quantity"))["total_prior"]
+                or Decimal("0.00")
+            )
+            remaining_billable_qty = max(Decimal("0.00"), accepted_qty_agg - prior_invoiced_qty)
+            if qty > remaining_billable_qty:
+                raise ValidationError(
+                    f"Over-invoicing prevented: Cannot bill quantity {qty} for '{item_desc}'. "
+                    f"Only {remaining_billable_qty} accepted units remain eligible to be billed."
+                )
+
         line = InvoiceLine.objects.create(
             invoice=invoice,
             po_line=po_line,
@@ -120,7 +155,10 @@ def create_supplier_invoice_service(
     invoice.subtotal = subtotal
     invoice.tax_amount = tax
     invoice.total_amount = total
-    invoice.save(update_fields=["subtotal", "tax_amount", "total_amount", "updated_at"])
+    update_fields = ["subtotal", "tax_amount", "total_amount", "updated_at"]
+    if invoice_document:
+        update_fields.append("invoice_document")
+    invoice.save(update_fields=update_fields)
 
     AuditLog.objects.create(
         actor=created_by_user,
@@ -212,6 +250,8 @@ def run_3_way_match_service(
     invoice.save(update_fields=["status", "updated_at"])
 
     exceptions = []
+    max_price_var = Decimal("0.00")
+    total_qty_var = Decimal("0.00")
 
     for inv_line in invoice.lines.all():
         po_line = inv_line.po_line
@@ -256,6 +296,7 @@ def run_3_way_match_service(
 
         if inv_line.quantity > max_allowed_qty and not qty_within_amount:
             qty_diff = inv_line.quantity - remaining_accepted_qty
+            total_qty_var += qty_diff
             variance = qty_diff * inv_line.unit_price
             exc = MatchException.objects.create(
                 invoice=invoice,
@@ -277,6 +318,10 @@ def run_3_way_match_service(
 
         if inv_line.unit_price > max_allowed_price and not price_within_amount:
             unit_diff = inv_line.unit_price - po_line.unit_price
+            if po_line.unit_price > Decimal("0.00"):
+                diff_pct = (unit_diff / po_line.unit_price) * Decimal("100")
+                if diff_pct > max_price_var:
+                    max_price_var = diff_pct
             variance = unit_diff * inv_line.quantity
             exc = MatchException.objects.create(
                 invoice=invoice,
@@ -288,6 +333,34 @@ def run_3_way_match_service(
                 variance_amount=variance,
             )
             exceptions.append(exc)
+
+    # 3. Check for Total Amount discrepancy
+    calc_subtotal = sum(l.line_total for l in invoice.lines.all())
+    expected_total = calc_subtotal + invoice.tax_amount
+    if abs(invoice.total_amount - expected_total) > Decimal("0.01"):
+        exc = MatchException.objects.create(
+            invoice=invoice,
+            exception_type=MatchException.TYPE_TOTAL_VARIANCE,
+            description=f"Total amount mismatch: Stated total ${invoice.total_amount} != calculated total ${expected_total}.",
+            variance_amount=abs(invoice.total_amount - expected_total),
+        )
+        exceptions.append(exc)
+
+    # 4. Record MatchResult audit record
+    from apps.invoices.models import MatchResult
+    match_user = user or invoice.created_by
+    if not match_user:
+        from apps.accounts.models import User
+        match_user = User.objects.filter(is_superuser=True).first() or User.objects.first()
+
+    MatchResult.objects.create(
+        invoice=invoice,
+        is_matched=(len(exceptions) == 0),
+        price_variance_percentage=round(max_price_var, 2),
+        quantity_variance=round(total_qty_var, 2),
+        tolerance_applied_percentage=round(price_tolerance_pct * Decimal("100"), 2),
+        performed_by=match_user,
+    )
 
     if exceptions:
         invoice.status = SupplierInvoice.STATUS_EXCEPTION
@@ -308,7 +381,7 @@ def run_3_way_match_service(
                 target_url=f"/invoices/{invoice.id}/",
             )
     else:
-        invoice.status = SupplierInvoice.STATUS_READY_FOR_PAYMENT
+        invoice.status = SupplierInvoice.STATUS_APPROVAL
 
     invoice.save(update_fields=["status", "updated_at"])
 
@@ -486,5 +559,238 @@ def mark_invoice_paid_service(
             "amount_paid": str(payment_record.amount_paid),
         },
     )
+
+    return invoice
+
+
+@transaction.atomic
+def approve_supplier_invoice_service(
+    *,
+    invoice: SupplierInvoice,
+    user,
+    notes: str = "",
+) -> SupplierInvoice:
+    """
+    Finance / AP approves a matched invoice.
+    - Enforces Finance AP / Super Admin role authorization.
+    - Prevents duplicate invoice approval.
+    - Checks for open match exceptions (blocks approval if unresolved).
+    - Transitions status to READY_FOR_PAYMENT.
+    - Records approved_by, approved_at, and AuditLog.
+    - Dispatches notification to vendor and internal stakeholders.
+    """
+    role_code = _get_user_role_code(user)
+    if not (
+        getattr(user, "is_superuser", False)
+        or role_code in [Role.FINANCE_AP, Role.SUPER_ADMIN]
+    ):
+        raise ValidationError(
+            "Permission Denied: Only Finance / AP personnel can approve invoices."
+        )
+
+    if invoice.status in [SupplierInvoice.STATUS_READY_FOR_PAYMENT, SupplierInvoice.STATUS_PAID]:
+        raise ValidationError(
+            f"Duplicate approval blocked: Invoice '{invoice.invoice_number}' is already approved (status: {invoice.status})."
+        )
+
+    if invoice.status == SupplierInvoice.STATUS_REJECTED:
+        raise ValidationError(
+            f"Cannot approve invoice '{invoice.invoice_number}': Invoice is in REJECTED status."
+        )
+
+    open_exceptions_count = invoice.exceptions.filter(status=MatchException.STATUS_OPEN).count()
+    if open_exceptions_count > 0:
+        raise ValidationError(
+            f"Cannot approve invoice: {open_exceptions_count} open 3-way match exception(s) must be resolved first."
+        )
+
+    previous_status = invoice.status
+    invoice.status = SupplierInvoice.STATUS_READY_FOR_PAYMENT
+    invoice.approved_by = user
+    invoice.approved_at = timezone.now()
+    if notes:
+        invoice.notes = f"{invoice.notes}\n[APPROVED by {user.email}]: {notes}".strip()
+    invoice.save(update_fields=["status", "approved_by", "approved_at", "notes", "updated_at"])
+
+    AuditLog.objects.create(
+        actor=user,
+        action=AuditLog.ACTION_APPROVE,
+        target_model="SupplierInvoice",
+        target_object_id=str(invoice.id),
+        previous_state={"status": previous_status},
+        new_state={
+            "status": invoice.status,
+            "approved_by": user.email,
+            "notes": notes,
+        },
+    )
+
+    from apps.notifications.models import Notification
+    from apps.accounts.models import User
+    vendor_users = User.objects.filter(vendor=invoice.vendor, is_active=True)
+    for vu in vendor_users:
+        Notification.objects.create(
+            recipient=vu,
+            notification_type=Notification.TYPE_APPROVAL_REQUIRED,
+            title=f"Invoice Approved: {invoice.invoice_number}",
+            message=f"Your invoice {invoice.invoice_number} has been approved by Finance and is scheduled for payment.",
+            target_url=f"/vendor/invoices/{invoice.id}/",
+        )
+
+    return invoice
+
+
+@transaction.atomic
+def reject_supplier_invoice_service(
+    *,
+    invoice: SupplierInvoice,
+    user,
+    rejection_reason: str,
+) -> SupplierInvoice:
+    """
+    Finance / AP rejects an invoice with a mandatory reason.
+    - Enforces Finance AP / Super Admin role authorization.
+    - Mandatory rejection reason.
+    - Transitions status to REJECTED.
+    - Marks all open exceptions as REJECTED.
+    - Records rejected_by, rejected_at, rejection_reason, and AuditLog.
+    - Dispatches notification to vendor.
+    """
+    if not rejection_reason or not str(rejection_reason).strip():
+        raise ValidationError("A rejection reason/justification is mandatory.")
+
+    role_code = _get_user_role_code(user)
+    if not (
+        getattr(user, "is_superuser", False)
+        or role_code in [Role.FINANCE_AP, Role.SUPER_ADMIN]
+    ):
+        raise ValidationError(
+            "Permission Denied: Only Finance / AP personnel can reject invoices."
+        )
+
+    if invoice.status == SupplierInvoice.STATUS_PAID:
+        raise ValidationError(
+            f"Cannot reject invoice '{invoice.invoice_number}': Invoice is already PAID."
+        )
+
+    previous_status = invoice.status
+    clean_reason = str(rejection_reason).strip()
+    invoice.status = SupplierInvoice.STATUS_REJECTED
+    invoice.rejection_reason = clean_reason
+    invoice.rejected_by = user
+    invoice.rejected_at = timezone.now()
+    invoice.notes = f"{invoice.notes}\n[REJECTED by {user.email}]: {clean_reason}".strip()
+    invoice.save(
+        update_fields=[
+            "status",
+            "rejection_reason",
+            "rejected_by",
+            "rejected_at",
+            "notes",
+            "updated_at",
+        ]
+    )
+
+    # Mark open exceptions as rejected
+    invoice.exceptions.filter(status=MatchException.STATUS_OPEN).update(
+        status=MatchException.STATUS_REJECTED,
+        resolution_notes=clean_reason,
+        resolved_by=user,
+    )
+
+    AuditLog.objects.create(
+        actor=user,
+        action=AuditLog.ACTION_REJECT,
+        target_model="SupplierInvoice",
+        target_object_id=str(invoice.id),
+        previous_state={"status": previous_status},
+        new_state={
+            "status": invoice.status,
+            "rejection_reason": clean_reason,
+            "rejected_by": user.email,
+        },
+    )
+
+    from apps.notifications.models import Notification
+    from apps.accounts.models import User
+    vendor_users = User.objects.filter(vendor=invoice.vendor, is_active=True)
+    for vu in vendor_users:
+        Notification.objects.create(
+            recipient=vu,
+            notification_type=Notification.TYPE_EXCEPTION_RAISED,
+            title=f"Invoice Rejected: {invoice.invoice_number}",
+            message=f"Your invoice {invoice.invoice_number} has been rejected by Finance. Reason: {clean_reason}",
+            target_url=f"/vendor/invoices/{invoice.id}/",
+        )
+
+    return invoice
+
+
+@transaction.atomic
+def request_invoice_correction_service(
+    *,
+    invoice: SupplierInvoice,
+    user,
+    correction_notes: str,
+) -> SupplierInvoice:
+    """
+    Finance / AP requests vendor corrections on an invoice.
+    - Enforces Finance AP / Super Admin role authorization.
+    - Mandatory correction instructions.
+    - Transitions status to EXCEPTION.
+    - Records correction_request_notes and AuditLog.
+    - Dispatches notification to vendor.
+    """
+    if not correction_notes or not str(correction_notes).strip():
+        raise ValidationError("Correction instructions/notes are mandatory.")
+
+    role_code = _get_user_role_code(user)
+    if not (
+        getattr(user, "is_superuser", False)
+        or role_code in [Role.FINANCE_AP, Role.SUPER_ADMIN]
+    ):
+        raise ValidationError(
+            "Permission Denied: Only Finance / AP personnel can request invoice corrections."
+        )
+
+    if invoice.status in [SupplierInvoice.STATUS_PAID, SupplierInvoice.STATUS_REJECTED]:
+        raise ValidationError(
+            f"Cannot request corrections on invoice in status '{invoice.status}'."
+        )
+
+    previous_status = invoice.status
+    clean_notes = str(correction_notes).strip()
+    invoice.status = SupplierInvoice.STATUS_EXCEPTION
+    invoice.correction_request_notes = clean_notes
+    invoice.notes = f"{invoice.notes}\n[CORRECTION REQUESTED by {user.email}]: {clean_notes}".strip()
+    invoice.save(
+        update_fields=["status", "correction_request_notes", "notes", "updated_at"]
+    )
+
+    AuditLog.objects.create(
+        actor=user,
+        action=AuditLog.ACTION_UPDATE,
+        target_model="SupplierInvoice",
+        target_object_id=str(invoice.id),
+        previous_state={"status": previous_status},
+        new_state={
+            "status": invoice.status,
+            "action": "CORRECTION_REQUESTED",
+            "correction_notes": clean_notes,
+            "requested_by": user.email,
+        },
+    )
+
+    from apps.notifications.models import Notification
+    from apps.accounts.models import User
+    vendor_users = User.objects.filter(vendor=invoice.vendor, is_active=True)
+    for vu in vendor_users:
+        Notification.objects.create(
+            recipient=vu,
+            notification_type=Notification.TYPE_EXCEPTION_RAISED,
+            title=f"Correction Requested: Invoice {invoice.invoice_number}",
+            message=f"Finance has requested corrections on invoice {invoice.invoice_number}: {clean_notes}",
+            target_url=f"/vendor/invoices/{invoice.id}/",
+        )
 
     return invoice

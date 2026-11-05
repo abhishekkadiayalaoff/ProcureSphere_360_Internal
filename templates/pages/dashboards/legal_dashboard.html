@@ -289,7 +289,7 @@
                                 <div class="text-muted" style="font-size:0.72rem;">{{ dispatch.created_at|date:"M d, Y H:i" }}</div>
                             </td>
                             <td>
-                                {% if dispatch.legal_verification_status == 'PENDING' %}
+                                {% if dispatch.legal_verification_status == 'PENDING' or not dispatch.vendor.is_event_eligible %}
                                 <span class="badge bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25 rounded-pill px-2 py-1 fw-bold" style="font-size:0.72rem;">
                                     <i class="fa-solid fa-clock me-1"></i> PENDING LEGAL
                                 </span>
@@ -535,11 +535,28 @@
                                                 {% csrf_token %}
                                                 <div class="modal-body p-4">
                                                     <p class="text-muted small mb-3">
-                                                        Rejecting credentials for <strong>{{ dispatch.vendor.legal_name }}</strong> (<code>{{ dispatch.sent_to }}</code>). Portal login will remain blocked and vendor status will change to <em>Changes Required</em>.
+                                                        Review decision for <strong>{{ dispatch.vendor.legal_name }}</strong> (<code>{{ dispatch.sent_to }}</code>). Select the review action below:
                                                     </p>
                                                     <div class="mb-3">
-                                                        <label class="form-label fw-semibold small text-dark">Legal Rejection Notes & Mandatory Feedback</label>
-                                                        <textarea name="notes" required class="form-control" rows="3" placeholder="State specific compliance, KYC, or contractual reasons for rejecting portal credentials..."></textarea>
+                                                        <label class="form-label fw-semibold small text-dark">Review Action Type</label>
+                                                        <div class="d-flex gap-3">
+                                                            <div class="form-check">
+                                                                <input class="form-check-input" type="radio" name="rejection_type" id="rejChanges{{ dispatch.id }}" value="CHANGES_REQUIRED" checked>
+                                                                <label class="form-check-label small" for="rejChanges{{ dispatch.id }}">
+                                                                    <strong>Request Changes</strong> (Vendor can resubmit KYC)
+                                                                </label>
+                                                            </div>
+                                                            <div class="form-check">
+                                                                <input class="form-check-input" type="radio" name="rejection_type" id="rejOutright{{ dispatch.id }}" value="REJECT">
+                                                                <label class="form-check-label small text-danger" for="rejOutright{{ dispatch.id }}">
+                                                                    <strong>Reject Vendor</strong> (Formal rejection)
+                                                                </label>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="mb-3">
+                                                        <label class="form-label fw-semibold small text-dark">Reviewer Notes & Feedback (Mandatory)</label>
+                                                        <textarea name="notes" required class="form-control" rows="3" placeholder="State specific compliance, KYC, or contractual feedback..."></textarea>
                                                     </div>
                                                 </div>
                                                 <div class="modal-footer border-top bg-light rounded-bottom-4">

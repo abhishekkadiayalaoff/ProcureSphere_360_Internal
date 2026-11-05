@@ -1,5 +1,9 @@
 from decimal import Decimal
 
+import django
+
+_CHECK_KW = "condition" if django.VERSION >= (5, 1) else "check"
+
 from django.db import models
 
 from apps.core.models import TimeStampedModel
@@ -184,8 +188,10 @@ class VendorScorecardSLAMetric(TimeStampedModel):
         ]
         constraints = [
             models.CheckConstraint(
-                check=models.Q(contract__isnull=False, metric_code="CONTRACT")
-                | models.Q(contract__isnull=True, metric_code="OVERALL"),
+                **{
+                    _CHECK_KW: models.Q(contract__isnull=False, metric_code="CONTRACT")
+                    | models.Q(contract__isnull=True, metric_code="OVERALL")
+                },
                 name="sla_metric_code_contract_consistency",
             )
         ]

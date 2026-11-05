@@ -35,7 +35,7 @@
     </div>
     {% endif %}
 
-    <form method="POST" id="invoiceForm">
+    <form method="POST" id="invoiceForm" enctype="multipart/form-data">
         {% csrf_token %}
         <div class="row g-4">
             <!-- Left Column: PO Selection & Invoice Header -->
@@ -101,6 +101,12 @@
                                 <label class="form-label small fw-semibold text-secondary">Payment Due Date <span class="text-danger">*</span></label>
                                 <input type="date" name="due_date" class="form-control" value="{{ default_due_date }}" required>
                             </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold text-secondary">Upload Invoice Document (PDF, Image)</label>
+                            <input type="file" name="invoice_document" class="form-control" accept=".pdf,.png,.jpg,.jpeg">
+                            <small class="text-muted">Attach supplier invoice PDF or scan for Finance review.</small>
                         </div>
 
                         <div class="mb-3">

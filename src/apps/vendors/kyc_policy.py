@@ -66,6 +66,17 @@ class ProvisionalKYCPolicy:
         ],
     }
 
+    # Equivalence mapping for mandatory KYC compliance categories:
+    # Allows domestic & international equivalent proofs to satisfy requirements.
+    EQUIVALENCE_GROUPS = {
+        VendorDocument.DOC_TYPE_CERT: {VendorDocument.DOC_TYPE_CERT, VendorDocument.DOC_TYPE_INC, VendorDocument.DOC_TYPE_PAN},
+        VendorDocument.DOC_TYPE_INC: {VendorDocument.DOC_TYPE_CERT, VendorDocument.DOC_TYPE_INC, VendorDocument.DOC_TYPE_PAN},
+        VendorDocument.DOC_TYPE_PAN: {VendorDocument.DOC_TYPE_PAN, VendorDocument.DOC_TYPE_CERT, VendorDocument.DOC_TYPE_INC},
+        VendorDocument.DOC_TYPE_TAX: {VendorDocument.DOC_TYPE_TAX, VendorDocument.DOC_TYPE_GST},
+        VendorDocument.DOC_TYPE_GST: {VendorDocument.DOC_TYPE_GST, VendorDocument.DOC_TYPE_TAX},
+        VendorDocument.DOC_TYPE_BANK: {VendorDocument.DOC_TYPE_BANK},
+    }
+
     # Document validity check: warning intervals in days
     EXPIRY_REMINDER_DAYS = [30, 15, 7]
 
@@ -134,7 +145,8 @@ class ProvisionalKYCPolicy:
                 and bool(doc.file)
             )
 
-            if doc.document_type in mandatory_codes:
+            is_doc_mandatory = any(doc.document_type in cls.EQUIVALENCE_GROUPS.get(mc, {mc}) for mc in mandatory_codes)
+            if is_doc_mandatory:
                 if is_valid_verification:
                     verified_mandatory_codes.add(doc.document_type)
                 else:
@@ -145,7 +157,7 @@ class ProvisionalKYCPolicy:
                 "title": doc.title,
                 "document_type": doc.document_type,
                 "type_label": doc_type_labels.get(doc.document_type, doc.document_type),
-                "is_mandatory": doc.document_type in mandatory_codes,
+                "is_mandatory": is_doc_mandatory,
                 "status": doc_status,
                 "is_verified": doc.is_verified,
                 "is_expired": is_expired,
@@ -158,9 +170,21 @@ class ProvisionalKYCPolicy:
                 "version": getattr(doc, "version", 1),
             })
 
-        missing_mandatory = [
-            code for code in mandatory_codes if code not in uploaded_by_type
-        ]
+        # Compute mandatory satisfaction using equivalence groups
+        missing_mandatory_codes = []
+        unverified_mandatory_codes = []
+        verified_mandatory_groups = set()
+
+        for code in mandatory_codes:
+            equivs = cls.EQUIVALENCE_GROUPS.get(code, {code})
+            has_uploaded = any(t in uploaded_by_type for t in equivs)
+            has_verified = any(t in verified_mandatory_codes for t in equivs)
+            if not has_uploaded:
+                missing_mandatory_codes.append(code)
+            elif not has_verified:
+                unverified_mandatory_codes.append(code)
+            else:
+                verified_mandatory_groups.add(code)
 
         # Identify superseded documents (replaced by a verified active document)
         superseded_doc_ids = set()
@@ -169,25 +193,31 @@ class ProvisionalKYCPolicy:
                 superseded_doc_ids.add(doc.replaces_document_id)
             if doc.document_type in verified_mandatory_codes and doc.is_verified:
                 for other in documents:
-                    if other.document_type == doc.document_type and other.id != doc.id:
+                    equivs = cls.EQUIVALENCE_GROUPS.get(doc.document_type, {doc.document_type})
+                    if other.document_type in equivs and other.id != doc.id:
                         if other.status in ["REJECTED", "EXPIRED", "CHANGES_REQUIRED"] or (other.expiry_date and other.expiry_date < today):
                             superseded_doc_ids.add(other.id)
 
-        # All mandatory types must have at least one verified, non-expired copy
-        all_mandatory_verified = set(mandatory_codes).issubset(verified_mandatory_codes)
+        all_mandatory_verified = len(verified_mandatory_groups) == len(mandatory_codes)
+
+        # Helper to check if a doc belongs to any mandatory requirement
+        all_mandatory_equiv_types = set()
+        for code in mandatory_codes:
+            all_mandatory_equiv_types.update(cls.EQUIVALENCE_GROUPS.get(code, {code}))
+
         has_blocking_rejections = any(
-            doc.document_type in mandatory_codes and doc.id not in superseded_doc_ids for doc in rejected_docs
+            doc.document_type in all_mandatory_equiv_types and doc.id not in superseded_doc_ids for doc in rejected_docs
         )
         has_blocking_action_required = any(
-            doc.document_type in mandatory_codes and doc.id not in superseded_doc_ids for doc in action_required_docs
+            doc.document_type in all_mandatory_equiv_types and doc.id not in superseded_doc_ids for doc in action_required_docs
         )
         has_blocking_expirations = any(
-            doc.document_type in mandatory_codes and doc.id not in superseded_doc_ids for doc in expired_docs
+            doc.document_type in all_mandatory_equiv_types and doc.id not in superseded_doc_ids for doc in expired_docs
         )
 
         is_compliant = (
             all_mandatory_verified
-            and not missing_mandatory
+            and not missing_mandatory_codes
             and not has_blocking_rejections
             and not has_blocking_action_required
             and not has_blocking_expirations
@@ -197,12 +227,11 @@ class ProvisionalKYCPolicy:
             "is_compliant": is_compliant,
             "eligible_for_legal_approval": is_compliant,
             "mandatory_types": [doc_type_labels.get(c, c) for c in mandatory_codes],
-            "verified_mandatory_types": [doc_type_labels.get(c, c) for c in verified_mandatory_codes],
-            "missing_mandatory_types": [doc_type_labels.get(c, c) for c in missing_mandatory],
+            "verified_mandatory_types": [doc_type_labels.get(c, c) for c in verified_mandatory_groups],
+            "missing_mandatory_types": [doc_type_labels.get(c, c) for c in missing_mandatory_codes],
             "unverified_mandatory_types": [
                 doc_type_labels.get(c, c)
                 for c in unverified_mandatory_codes
-                if c not in missing_mandatory
             ],
             "expired_documents_count": len(expired_docs),
             "action_required_count": len(action_required_docs),
