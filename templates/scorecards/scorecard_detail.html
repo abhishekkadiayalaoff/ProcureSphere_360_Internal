@@ -1,0 +1,185 @@
+{% extends base_layout|default:'base.html' %}
+
+{% block title %}Supplier Performance — {{ vendor.legal_name }}{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap gap-2 align-items-center justify-content-between mb-4">
+    <div>
+        <nav aria-label="breadcrumb" class="mt-2">
+            <ol class="breadcrumb small mb-2">
+                <li class="breadcrumb-item"><a href="{% url 'scorecard_list' %}" class="text-decoration-none text-muted">Supplier Performance</a></li>
+                <li class="breadcrumb-item active fw-semibold" aria-current="page">{{ vendor.legal_name }}</li>
+            </ol>
+        </nav>
+        <h2 class="fw-bold text-dark mb-1"><i class="fa-solid fa-award text-success me-2"></i>{{ vendor.legal_name }}</h2>
+        <p class="text-muted small mb-0"><code>{{ vendor.vendor_number }}</code> · <span class="badge bg-secondary">{{ vendor.get_status_display }}</span></p>
+    </div>
+    <div>
+        <a href="{% url 'vendor_detail' vendor.id %}#performance" class="btn btn-outline-secondary btn-sm rounded-pill px-3"><i class="fa-solid fa-building me-1"></i>Vendor Master</a>
+    </div>
+</div>
+
+{% include 'partials/messages.html' %}
+
+{% if latest %}
+<div class="glass-card shadow-sm p-4 mb-3">
+    <div class="row g-4 align-items-center">
+        <div class="col-lg-3 text-center">
+            <div class="text-uppercase small text-muted fw-bold mb-2">Composite · {{ latest.evaluation_period }}</div>
+            {% if latest.composite_score is None %}
+                <div class="display-5 text-muted">—</div>
+                <span class="badge bg-secondary px-3 py-1 rounded-pill mt-2">No data</span>
+            {% else %}
+                <div class="display-5 fw-bold {% if latest.performance_band == 'GOOD' %}text-success{% elif latest.performance_band == 'WATCH' %}text-warning{% else %}text-danger{% endif %}">{{ latest.composite_score|floatformat:1 }}</div>
+                <span class="badge {% if latest.performance_band == 'GOOD' %}bg-success{% elif latest.performance_band == 'WATCH' %}bg-warning text-dark{% else %}bg-danger{% endif %} px-3 py-1 rounded-pill mt-2">{{ latest.band_display }}</span>
+            {% endif %}
+            <div class="text-muted small mt-2">Evaluated {{ latest.created_at|date:"Y-m-d" }} by {{ latest.evaluated_by.email }}</div>
+        </div>
+        <div class="col-lg-9">
+            <div class="row g-3">
+                {% for label, score in latest.indicator_rows %}
+                <div class="col-sm-6 col-md-4">
+                    <div class="p-3 bg-light rounded-3 h-100">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="small text-muted fw-semibold">{{ label }}</span>
+                            <span class="fw-bold text-dark">{% if score is None %}No data{% else %}{{ score|floatformat:1 }}{% endif %}</span>
+                        </div>
+                        <div class="progress" style="height: 6px;">
+                            <div class="progress-bar {% if score is None %}bg-secondary{% elif score >= 85 %}bg-success{% elif score >= 70 %}bg-warning{% else %}bg-danger{% endif %}" style="width: {% if score is None %}100{% else %}{{ score|floatformat:0 }}{% endif %}%; opacity: {% if score is None %}0.15{% else %}1{% endif %};"></div>
+                        </div>
+                        {% if label == 'Responsiveness' %}<small class="text-muted d-block mt-2" style="font-size: 0.7rem;">Reported separately — not weighted in composite</small>
+                        {% elif label == 'SLA' %}<small class="text-muted d-block mt-2" style="font-size: 0.7rem;">Reported separately — not weighted in composite</small>
+                        {% else %}<small class="text-muted d-block mt-2" style="font-size: 0.7rem;">Weighted in composite</small>{% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            <div class="mt-3 small text-muted">
+                Composite = Delivery 30% · Quality 30% · Price 20% · Compliance 20%, re-normalised over indicators with data (ASSUMP-012).
+            </div>
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="glass-card shadow-sm text-center py-5 mb-3">
+    <i class="fa-solid fa-award fa-3x text-muted opacity-25 mb-3"></i>
+    <h5 class="fw-semibold text-secondary">No scorecard calculated yet for this supplier.</h5>
+    <p class="text-muted small mb-0">Use <strong>Supplier Performance</strong> to run an evaluation from real transactions.</p>
+</div>
+{% endif %}
+
+<!-- SLA section -->
+<div class="glass-card shadow-sm overflow-hidden mb-3">
+    <div class="p-3 pb-0">
+        <h5 class="fw-bold text-dark mb-1"><i class="fa-solid fa-file-signature text-primary me-2"></i>Contract SLA Scorecard</h5>
+        <p class="text-muted small mb-0">Snapshot of due vendor-owned contract obligations at evaluation time (target 100% on-time fulfilment). SLA is reported separately from the composite; breaches = obligations not fulfilled on/before their due date.</p>
+    </div>
+    <div class="table-responsive mt-2">
+        {% if sla_snapshot %}
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr class="small text-uppercase text-muted">
+                    <th class="ps-3">Scope</th>
+                    <th>Due obligations</th>
+                    <th>Achievement</th>
+                    <th>Breaches</th>
+                    <th class="pe-3">Notes</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in sla_snapshot %}
+                <tr>
+                    <td class="ps-3 fw-semibold">
+                        {% if row.metric_code == 'OVERALL' %}<span class="badge bg-dark">All contracts</span>
+                        {% else %}<code>{{ row.contract.contract_number }}</code><div class="small text-muted">{{ row.contract.title|default:"Contract" }}</div>{% endif %}
+                    </td>
+                    <td class="text-center">{{ row.observations }}</td>
+                    <td class="fw-bold text-dark">{% if row.actual_pct is None %}<span class="text-muted">No data</span>{% else %}{{ row.actual_pct|floatformat:1 }}%{% endif %}</td>
+                    <td class="text-center">{% if row.breaches %}<span class="badge bg-danger">{{ row.breaches }}</span>{% else %}<span class="badge bg-success">0</span>{% endif %}</td>
+                    <td class="small text-muted pe-3">{{ row.notes|default:"—" }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="text-center pb-4 pt-2 text-muted">
+            <i class="fa-solid fa-file-signature fa-2x opacity-25 mb-2 d-block"></i>
+            No SLA metrics captured in this evaluation — no vendor-owned contract obligations were due at evaluation time.
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- SLA cross-period history -->
+<div class="glass-card shadow-sm overflow-hidden mb-3">
+    <div class="p-3">
+        <h6 class="fw-bold text-dark mb-0">SLA Trend (across evaluations)</h6>
+    </div>
+    <div class="table-responsive">
+        {% if sla_history %}
+        <table class="table table-sm table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr class="small text-uppercase text-muted">
+                    <th class="ps-3">Period</th>
+                    <th>Evaluated</th>
+                    <th>Achievement</th>
+                    <th class="pe-3">Breaches</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in sla_history %}
+                <tr>
+                    <td class="ps-3 fw-semibold">{{ row.scorecard.evaluation_period }}</td>
+                    <td class="small">{{ row.scorecard.created_at|date:"Y-m-d" }}</td>
+                    <td>{% if row.actual_pct is None %}<span class="text-muted small">No data</span>{% else %}{{ row.actual_pct|floatformat:1 }}%{% endif %}</td>
+                    <td class="pe-3">{{ row.breaches }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="text-center py-3 text-muted small">No SLA history captured yet.</div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Evaluation history -->
+<div class="glass-card shadow-sm overflow-hidden mb-3">
+    <div class="p-3">
+        <h6 class="fw-bold text-dark mb-0">Evaluation History</h6>
+    </div>
+    <div class="table-responsive">
+        {% if scorecards %}
+        <table class="table table-sm table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr class="small text-uppercase text-muted">
+                    <th class="ps-3">Period</th>
+                    <th>Delivery (30%)</th>
+                    <th>Quality (30%)</th>
+                    <th>Price (20%)</th>
+                    <th>Compliance (20%)</th>
+                    <th>Responsiveness</th>
+                    <th>SLA</th>
+                    <th>Composite</th>
+                    <th class="pe-3">Evaluated</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for card in scorecards %}
+                <tr>
+                    <td class="ps-3 fw-semibold">{{ card.evaluation_period }}</td>
+                    {% for label, score in card.indicator_rows %}
+                        <td class="small">{% if score is None %}<span class="text-muted">No data</span>{% else %}{{ score|floatformat:1 }}{% endif %}</td>
+                    {% endfor %}
+                    <td>{% if card.composite_score is None %}<span class="text-muted small">No data</span>{% else %}<span class="badge {% if card.composite_score >= 85 %}bg-success{% elif card.composite_score >= 70 %}bg-warning text-dark{% else %}bg-danger{% endif %}">{{ card.composite_score|floatformat:1 }}</span>{% endif %}</td>
+                    <td class="small text-muted pe-3">{{ card.created_at|date:"Y-m-d" }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="text-center py-3 text-muted small">No evaluations recorded yet.</div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

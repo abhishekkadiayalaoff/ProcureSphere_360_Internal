@@ -86,6 +86,7 @@
                         {% else %}<span class="badge bg-danger">{{ card.composite_score|floatformat:1 }}</span>{% endif %}
                     </td>
                     <td class="text-end pe-3">
+                        <a href="{% url 'scorecard_vendor_detail' card.vendor.id %}" class="btn btn-outline-primary btn-sm rounded-pill px-3">Details <i class="fa-solid fa-arrow-right ms-1"></i></a>
                         <a href="{% url 'vendor_detail' card.vendor.id %}#performance" class="btn btn-outline-success btn-sm rounded-pill px-3">Governance <i class="fa-solid fa-arrow-right ms-1"></i></a>
                     </td>
                 </tr>
