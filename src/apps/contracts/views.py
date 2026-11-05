@@ -708,14 +708,21 @@ def legal_reject_vendor_credentials_view(request, dispatch_id):
         messages.error(request, "Reviewer notes are required when rejecting vendor credentials.")
         return redirect("contracts_dashboard")
 
+    rejection_type = request.POST.get("rejection_type", "CHANGES_REQUIRED")
     try:
         dispatch = legal_reject_vendor_credentials_service(
-            dispatch_id=dispatch_id, legal_user=request.user, notes=notes
+            dispatch_id=dispatch_id, legal_user=request.user, notes=notes, rejection_type=rejection_type
         )
-        messages.warning(
-            request,
-            f"Vendor credentials for '{dispatch.vendor.legal_name}' rejected. Status set to Changes Required.",
-        )
+        if rejection_type.strip().upper() == "REJECT":
+            messages.warning(
+                request,
+                f"Vendor '{dispatch.vendor.legal_name}' registration formally REJECTED.",
+            )
+        else:
+            messages.warning(
+                request,
+                f"Vendor credentials for '{dispatch.vendor.legal_name}' rejected. Status set to Changes Required.",
+            )
     except ValidationError as exc:
         messages.error(request, " ".join(exc.messages) if hasattr(exc, "messages") else str(exc))
     except Exception as exc:

@@ -45,6 +45,27 @@ class SupplierInvoice(TimeStampedModel):
     total_amount = models.DecimalField(max_digits=14, decimal_places=2)
 
     notes = models.TextField(blank=True)
+    invoice_document = models.FileField(
+        upload_to="invoice_docs/%Y/%m/", null=True, blank=True
+    )
+    rejection_reason = models.TextField(blank=True, default="")
+    correction_request_notes = models.TextField(blank=True, default="")
+    approved_by = models.ForeignKey(
+        "accounts.User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="approved_invoices",
+    )
+    approved_at = models.DateTimeField(null=True, blank=True)
+    rejected_by = models.ForeignKey(
+        "accounts.User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="rejected_invoices",
+    )
+    rejected_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         unique_together = ("vendor", "invoice_number")

@@ -1,8 +1,11 @@
 from decimal import Decimal
 
+import django
 from django.db import models
 
 from apps.core.models import TimeStampedModel
+
+_CHECK_KW = "condition" if django.VERSION >= (5, 1) else "check"
 
 
 class GoodsReceipt(TimeStampedModel):
@@ -208,7 +211,7 @@ class StockItem(TimeStampedModel):
                 fields=["po_line", "location"], name="stock_item_unique_line_location"
             ),
             models.CheckConstraint(
-                check=models.Q(quantity_on_hand__gte=Decimal("0.00")),
+                **{_CHECK_KW: models.Q(quantity_on_hand__gte=Decimal("0.00"))},
                 name="stock_item_quantity_non_negative",
             ),
         ]
