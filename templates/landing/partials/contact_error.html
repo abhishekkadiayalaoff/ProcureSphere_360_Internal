@@ -13,7 +13,7 @@
   hx-on::after-request="onContactFormResponse(event)"
 >
   <input type="hidden" name="csrfmiddlewaretoken" value="">
-  <div class="form-grid" style="grid-template-columns: repeat(3, 1fr);">
+  <div class="form-grid" style="grid-template-columns: repeat(2, 1fr);">
     <label>
       <span>Name</span>
       <input
@@ -30,25 +30,12 @@
       />
     </label>
     <label>
-      <span>Email</span>
-      <input
-        required
-        type="email"
-        name="email"
-        id="contact-email"
-        placeholder="yourname@gmail.com"
-        pattern="^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
-        title="Please enter a valid email address with @ (e.g., yourname@gmail.com or name@company.com)"
-        value="{{ email|default:'' }}"
-      />
-    </label>
-    <label>
       <span>Mobile Number</span>
       <div class="phone-input-group" style="display:flex;gap:8px;align-items:stretch;">
         <select
           name="country_code"
           id="contact-country-code"
-          style="width:115px;flex-shrink:0;padding:14px 10px;border:1px solid #cbd5e1;border-radius:8px;background:#f8fafc;font-size:13px;font-weight:600;color:#0f172a;cursor:pointer;outline:none;"
+          style="width:90px;flex-shrink:0;padding:14px 6px;border:1px solid #cbd5e1;border-radius:8px;background:#f8fafc;font-size:13px;font-weight:600;color:#0f172a;cursor:pointer;outline:none;"
           onchange="updatePhoneValidation(this)"
         >
           <option value="+91" data-len="10" data-ph="9876543210" data-pat="^[6-9][0-9]{9}$" {% if country_code == '+91' or not country_code %}selected{% endif %}>🇮🇳 +91</option>
@@ -77,6 +64,19 @@
       </div>
     </label>
   </div>
+  <label>
+    <span>Email</span>
+    <input
+      required
+      type="email"
+      name="email"
+      id="contact-email"
+      placeholder="yourname@gmail.com"
+      pattern="^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
+      title="Please enter a valid email address with @ (e.g., yourname@gmail.com or name@company.com)"
+      value="{{ email|default:'' }}"
+    />
+  </label>
   <label>
     <span>Message</span>
     <textarea
