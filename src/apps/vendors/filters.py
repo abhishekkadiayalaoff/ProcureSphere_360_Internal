@@ -1,7 +1,11 @@
 import django_filters
 from django.db.models import OuterRef, Q, Subquery
 
-from apps.scorecards.models import VendorScorecard
+from apps.scorecards.models import (
+    PERFORMANCE_GOOD_THRESHOLD,
+    PERFORMANCE_ISSUE_THRESHOLD,
+    VendorScorecard,
+)
 
 from .models import Vendor, VendorCategory, VendorRiskRecord
 
@@ -19,10 +23,8 @@ PERFORMANCE_CHOICES = [
     ("NO_DATA", "No performance data"),
 ]
 
-# Composite score below which a vendor is flagged as having performance issues
-# (matches the existing scorecard colour bands used across the UI).
-PERFORMANCE_ISSUE_THRESHOLD = 70
-PERFORMANCE_GOOD_THRESHOLD = 85
+# Composite score bands are owned by the Supplier Performance app (scorecards.models)
+# and read here as annotations only — no duplicated calculation.
 
 APPROVAL_STAGE_STATUSES = [
     Vendor.STATUS_DRAFT,

@@ -32,7 +32,7 @@
 
     </div>
 
-    {% if caps.can_operate %}
+    {% if caps.can_operate and mode != 'governance' %}
 
         <div class="d-flex flex-wrap gap-2">
 
@@ -376,7 +376,7 @@
 
                         {% else %}
 
-                            <span class="badge {% if vendor.performance_band == 'good' %}bg-success{% elif vendor.performance_band == 'watch' %}bg-warning text-dark{% else %}bg-danger{% endif %}">{{ vendor.latest_composite_score|floatformat:1 }}</span>
+                            <a href="{% url 'scorecard_vendor_detail' vendor.id %}" class="text-decoration-none"><span class="badge {% if vendor.performance_band == 'good' %}bg-success{% elif vendor.performance_band == 'watch' %}bg-warning text-dark{% else %}bg-danger{% endif %}">{{ vendor.latest_composite_score|floatformat:1 }}</span></a>
 
                         {% endif %}
 
@@ -538,7 +538,7 @@
 
                         {% else %}
 
-                            <span class="badge {% if vendor.performance_band == 'good' %}bg-success{% elif vendor.performance_band == 'watch' %}bg-warning text-dark{% else %}bg-danger{% endif %}">{{ vendor.latest_composite_score|floatformat:1 }}</span>
+                            <a href="{% url 'scorecard_vendor_detail' vendor.id %}" class="text-decoration-none"><span class="badge {% if vendor.performance_band == 'good' %}bg-success{% elif vendor.performance_band == 'watch' %}bg-warning text-dark{% else %}bg-danger{% endif %}">{{ vendor.latest_composite_score|floatformat:1 }}</span></a>
 
                         {% endif %}
 
@@ -610,7 +610,9 @@
 
 
 
-<!-- Modal: Import Vendors -->
+<!-- Import-modal (master register only — governance is a read register, ASSUMP-035) -->
+
+{% if caps.can_operate and mode != 'governance' %}
 
 <div class="modal fade" id="importVendorsModal" tabindex="-1" aria-labelledby="importVendorsModalLabel" aria-hidden="true">
 
@@ -770,7 +772,7 @@
 
 </div>
 
-
+{% endif %}
 
 {% endblock %}
 

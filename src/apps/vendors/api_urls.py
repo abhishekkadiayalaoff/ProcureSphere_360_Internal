@@ -2,7 +2,7 @@ from datetime import date, timedelta
 from decimal import Decimal
 
 from django.core.exceptions import ValidationError as DjangoValidationError
-from django.db.models import Count, Prefetch, Q, Sum
+from django.db.models import Count, Prefetch, Q
 from django.http import FileResponse
 from django.shortcuts import get_object_or_404
 from django.urls import path
@@ -14,9 +14,11 @@ from rest_framework.routers import DefaultRouter
 from rest_framework.views import APIView
 
 from apps.accounts.permissions import IsProcurementManager
-from apps.audit.models import AuditLog
-from apps.audit.services import create_audit_log_service
 from apps.orders.models import PurchaseOrder
+from apps.scorecards.models import (
+    PERFORMANCE_GOOD_THRESHOLD,
+    PERFORMANCE_ISSUE_THRESHOLD,
+)
 from apps.vendors.filters import VendorFilter, annotate_governance
 from apps.vendors.models import (
     Vendor,
@@ -133,6 +135,38 @@ class VendorSerializer(serializers.ModelSerializer):
     last_risk_assessment_date = serializers.SerializerMethodField()
     last_assessed_by_email = serializers.SerializerMethodField()
 
+    performance_band = serializers.SerializerMethodField()
+    latest_performance_score = serializers.SerializerMethodField()
+    latest_performance_period = serializers.SerializerMethodField()
+
+    def _cached_latest_scorecard(self, obj):
+        cache = self._latest_scorecard_cache
+        if obj.pk not in cache:
+            cache[obj.pk] = (
+                obj.scorecards.only("composite_score", "evaluation_period")
+                .order_by("-created_at")
+                .first()
+            )
+        return cache[obj.pk]
+
+    def get_performance_band(self, obj):
+        card = self._cached_latest_scorecard(obj)
+        if card is None or card.composite_score is None:
+            return "NO_DATA"
+        if card.composite_score >= PERFORMANCE_GOOD_THRESHOLD:
+            return "GOOD"
+        if card.composite_score >= PERFORMANCE_ISSUE_THRESHOLD:
+            return "WATCH"
+        return "ISSUE"
+
+    def get_latest_performance_score(self, obj):
+        card = self._cached_latest_scorecard(obj)
+        return float(card.composite_score) if card and card.composite_score is not None else None
+
+    def get_latest_performance_period(self, obj):
+        card = self._cached_latest_scorecard(obj)
+        return card.evaluation_period if card else None
+
     active_pos_count = serializers.SerializerMethodField()
     active_pos_total_amount = serializers.SerializerMethodField()
     total_pos_count = serializers.SerializerMethodField()
@@ -167,6 +201,9 @@ class VendorSerializer(serializers.ModelSerializer):
             "risk_assessment_notes",
             "last_risk_assessment_date",
             "last_assessed_by_email",
+            "performance_band",
+            "latest_performance_score",
+            "latest_performance_period",
             "active_pos_count",
             "active_pos_total_amount",
             "total_pos_count",
@@ -180,6 +217,10 @@ class VendorSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
         read_only_fields = ["status", "vendor_number"]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._latest_scorecard_cache = {}
 
     def get_current_risk_level(self, obj):
         records = getattr(obj, "_prefetched_risk_records", None)
@@ -728,25 +769,12 @@ class VendorAssessRiskAPIView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        risk_record = VendorRiskRecord.objects.create(
+        risk_record = record_vendor_risk_assessment_service(
             vendor=vendor,
+            assessor=request.user,
             risk_level=risk_level,
             risk_flags=risk_flags,
-            assessment_notes=assessment_notes,
-            assessed_by=request.user,
-        )
-
-        # Append-only AuditLog
-        AuditLog.objects.create(
-            actor=request.user,
-            action=AuditLog.ACTION_CREATE,
-            target_model="VendorRiskRecord",
-            target_object_id=str(risk_record.id),
-            new_state={
-                "vendor": vendor.legal_name,
-                "risk_level": risk_level,
-                "notes": assessment_notes,
-            },
+            notes=assessment_notes,
         )
 
         if governance_status:
@@ -757,44 +785,28 @@ class VendorAssessRiskAPIView(APIView):
                 Vendor.STATUS_SUSPENDED,
                 Vendor.STATUS_REJECTED,
             ]:
-                if gov_status_upper == Vendor.STATUS_ACTIVE and vendor.status in [
-                    Vendor.STATUS_DRAFT,
-                    Vendor.STATUS_SUBMITTED,
-                    Vendor.STATUS_KYC_REVIEW,
-                    Vendor.STATUS_CHANGES_REQUIRED,
-                ]:
-                    try:
+                try:
+                    if gov_status_upper == Vendor.STATUS_ACTIVE and vendor.status in [
+                        Vendor.STATUS_DRAFT,
+                        Vendor.STATUS_SUBMITTED,
+                        Vendor.STATUS_KYC_REVIEW,
+                        Vendor.STATUS_CHANGES_REQUIRED,
+                    ]:
+                        # Activation is only possible through the KYC-gated service.
                         approve_vendor_service(vendor=vendor, manager=request.user, notes=assessment_notes)
-                        vendor.refresh_from_db()
-                    except (DjangoValidationError, Exception) as e:
-                        msg = getattr(e, "messages", None) or [str(e)]
-                        return Response(
-                            {"detail": f"KYC verification failed: {msg[0]}"},
-                            status=status.HTTP_400_BAD_REQUEST,
+                    else:
+                        set_vendor_status_governance_service(
+                            vendor=vendor,
+                            actor=request.user,
+                            new_status=gov_status_upper,
+                            notes=assessment_notes,
                         )
-                elif gov_status_upper == Vendor.STATUS_REJECTED and vendor.status in [
-                    Vendor.STATUS_DRAFT,
-                    Vendor.STATUS_SUBMITTED,
-                    Vendor.STATUS_KYC_REVIEW,
-                ]:
-                    previous_status = vendor.status
-                    vendor.status = Vendor.STATUS_REJECTED
-                    vendor.status_notes = assessment_notes
-                    vendor.save(update_fields=["status", "status_notes", "updated_at"])
-                    create_audit_log_service(
-                        actor=request.user,
-                        action=AuditLog.ACTION_REJECT,
-                        target_model="Vendor",
-                        target_object_id=str(vendor.id),
-                        previous_state={"status": previous_status},
-                        new_state={"status": vendor.status, "notes": assessment_notes},
-                    )
-                else:
-                    set_vendor_status_governance_service(
-                        vendor=vendor,
-                        actor=request.user,
-                        new_status=gov_status_upper,
-                        notes=assessment_notes,
+                    vendor.refresh_from_db()
+                except DjangoValidationError as exc:
+                    msg = exc.messages[0] if getattr(exc, "messages", None) else str(exc)
+                    return Response(
+                        {"detail": f"Governance status change failed: {msg}"},
+                        status=status.HTTP_400_BAD_REQUEST,
                     )
 
         return Response(
@@ -836,36 +848,14 @@ class VendorGovernanceStatusAPIView(APIView):
                 Vendor.STATUS_KYC_REVIEW,
                 Vendor.STATUS_CHANGES_REQUIRED,
             ]:
-                try:
-                    approve_vendor_service(vendor=vendor, manager=request.user, notes=notes)
-                    vendor.refresh_from_db()
-                except (DjangoValidationError, Exception) as e:
-                    msg = getattr(e, "messages", None) or [str(e)]
-                    return Response(
-                        {"detail": f"KYC verification failed: {msg[0]}"},
-                        status=status.HTTP_400_BAD_REQUEST,
-                    )
-            elif new_status == Vendor.STATUS_REJECTED and vendor.status in [
-                Vendor.STATUS_DRAFT,
-                Vendor.STATUS_SUBMITTED,
-                Vendor.STATUS_KYC_REVIEW,
-            ]:
-                previous_status = vendor.status
-                vendor.status = Vendor.STATUS_REJECTED
-                vendor.status_notes = notes
-                vendor.save(update_fields=["status", "status_notes", "updated_at"])
-                create_audit_log_service(
-                    actor=request.user,
-                    action=AuditLog.ACTION_REJECT,
-                    target_model="Vendor",
-                    target_object_id=str(vendor.id),
-                    previous_state={"status": previous_status},
-                    new_state={"status": vendor.status, "notes": notes},
-                )
+                # Activation is only possible through the KYC-gated service.
+                approve_vendor_service(vendor=vendor, manager=request.user, notes=notes)
+                vendor.refresh_from_db()
             else:
                 set_vendor_status_governance_service(
                     vendor=vendor, actor=request.user, new_status=new_status, notes=notes
                 )
+                vendor.refresh_from_db()
 
             return Response(
                 {

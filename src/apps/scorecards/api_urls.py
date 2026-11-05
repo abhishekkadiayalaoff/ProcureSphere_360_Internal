@@ -39,6 +39,8 @@ class VendorScorecardSerializer(serializers.ModelSerializer):
     vendor_status = serializers.CharField(source="vendor.status", read_only=True)
     evaluated_by_email = serializers.CharField(source="evaluated_by.email", read_only=True)
     performance_status = serializers.SerializerMethodField()
+    performance_band = serializers.SerializerMethodField()
+    band_display = serializers.SerializerMethodField()
 
     class Meta:
         model = VendorScorecard
@@ -54,9 +56,13 @@ class VendorScorecardSerializer(serializers.ModelSerializer):
             "delivery_score",
             "quality_score",
             "price_score",
+            "responsiveness_score",
             "compliance_score",
+            "sla_score",
             "composite_score",
             "performance_status",
+            "performance_band",
+            "band_display",
             "evaluator_comments",
             "evaluated_by",
             "evaluated_by_email",
@@ -84,15 +90,29 @@ class VendorScorecardSerializer(serializers.ModelSerializer):
         return attrs
 
     def get_performance_status(self, obj):
-        score = float(obj.composite_score or 0)
+        if obj.composite_score is None:
+            return "NO_DATA"
+        score = float(obj.composite_score)
         if score >= 85.0:
             return "EXCELLENT"
         elif score >= 70.0:
             return "SATISFACTORY"
         return "ATTENTION_REQUIRED"
 
+    def get_performance_band(self, obj):
+        return obj.performance_band
 
-class VendorScorecardViewSet(viewsets.ModelViewSet):
+    def get_band_display(self, obj):
+        return obj.band_display
+
+
+class VendorScorecardViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    Read-only at the resource level: scorecards are computed yet audit-preserving records,
+    not hand-editable. Writes go only through the audited `calculate` action (and the web
+    Supplier Performance page), which derives every score from real transactions.
+    """
+
     queryset = VendorScorecard.objects.select_related(
         "vendor", "vendor__category", "evaluated_by"
     ).order_by("-created_at")

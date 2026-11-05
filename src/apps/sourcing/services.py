@@ -730,8 +730,10 @@ def save_draft_bid_service(
     if timezone.now() > event.bid_end_date:
         raise ValidationError("Cannot prepare bid: Sourcing event bid deadline has passed.")
 
-    if vendor.status == Vendor.STATUS_SUSPENDED:
-        raise ValidationError(f"Vendor '{vendor.legal_name}' is suspended and cannot prepare bids.")
+    if vendor.status in (Vendor.STATUS_SUSPENDED, Vendor.STATUS_ON_HOLD):
+        raise ValidationError(
+            f"Vendor '{vendor.legal_name}' is suspended or on hold and cannot prepare bids."
+        )
 
     if user and getattr(user, "vendor_id", None):
         if user.vendor_id != vendor.id:
@@ -835,8 +837,10 @@ def submit_vendor_bid_service(
             f"Cannot submit bid: Sourcing event deadline passed on {event.bid_end_date.strftime('%Y-%m-%d %H:%M')}."
         )
 
-    if vendor.status == Vendor.STATUS_SUSPENDED:
-        raise ValidationError(f"Vendor '{vendor.legal_name}' is suspended and cannot submit bids.")
+    if vendor.status in (Vendor.STATUS_SUSPENDED, Vendor.STATUS_ON_HOLD):
+        raise ValidationError(
+            f"Vendor '{vendor.legal_name}' is suspended or on hold and cannot submit bids."
+        )
 
     if submitted_by_user and getattr(submitted_by_user, "vendor_id", None):
         if submitted_by_user.vendor_id != vendor.id:
@@ -996,6 +1000,11 @@ def amend_vendor_bid_service(
 
     if bid.status not in (VendorBid.STATUS_SUBMITTED, VendorBid.STATUS_AMENDED):
         raise ValidationError(f"Only submitted bids can be amended (current: {bid.status}).")
+
+    if bid.vendor.status in (Vendor.STATUS_SUSPENDED, Vendor.STATUS_ON_HOLD):
+        raise ValidationError(
+            f"Vendor '{bid.vendor.legal_name}' is suspended or on hold and cannot amend bids."
+        )
 
     if vendor_user and getattr(vendor_user, "vendor_id", None):
         if vendor_user.vendor_id != bid.vendor_id:

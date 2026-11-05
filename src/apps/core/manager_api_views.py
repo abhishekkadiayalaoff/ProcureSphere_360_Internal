@@ -1648,9 +1648,15 @@ class ManagerSupplierPerformanceDetailAPIView(APIView):
                     float(sc.quality_score) if sc.quality_score is not None else None
                 ),
                 "price_score": float(sc.price_score) if sc.price_score is not None else None,
+                "responsiveness_score": (
+                    float(sc.responsiveness_score)
+                    if sc.responsiveness_score is not None
+                    else None
+                ),
                 "compliance_score": (
                     float(sc.compliance_score) if sc.compliance_score is not None else None
                 ),
+                "sla_score": float(sc.sla_score) if sc.sla_score is not None else None,
                 "composite_score": (
                     float(sc.composite_score) if sc.composite_score is not None else None
                 ),

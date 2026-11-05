@@ -4,6 +4,23 @@ from django.db import models
 
 from apps.core.models import TimeStampedModel
 
+# Performance bands shared across all consumer modules (Vendor Master, Vendor Governance,
+# dashboards). Calculation stays single-sourced here; consumers only read these.
+PERFORMANCE_GOOD_THRESHOLD = Decimal("85.00")
+PERFORMANCE_ISSUE_THRESHOLD = Decimal("70.00")
+PERFORMANCE_BANDS = ("NO_DATA", "GOOD", "WATCH", "ISSUE")
+
+
+def band_for_composite(score):
+    """Upper-case band label for a composite score (None → NO_DATA). Single band authority."""
+    if score is None:
+        return "NO_DATA"
+    if score >= PERFORMANCE_GOOD_THRESHOLD:
+        return "GOOD"
+    if score >= PERFORMANCE_ISSUE_THRESHOLD:
+        return "WATCH"
+    return "ISSUE"
+
 
 class VendorScorecard(TimeStampedModel):
     vendor = models.ForeignKey(
@@ -100,6 +117,20 @@ class VendorScorecard(TimeStampedModel):
         super().save(*args, **kwargs)
 
     @property
+    def performance_band(self):
+        return band_for_composite(self.composite_score)
+
+    @property
+    def band_display(self):
+        band = self.performance_band
+        return {
+            "GOOD": "Good",
+            "WATCH": "Watch",
+            "ISSUE": "Issue",
+            "NO_DATA": "No data",
+        }[band]
+
+    @property
     def indicator_rows(self):
         return [
             ("Delivery", self.delivery_score),
@@ -112,3 +143,53 @@ class VendorScorecard(TimeStampedModel):
 
     def __str__(self):
         return f"Scorecard: {self.vendor.legal_name} [{self.evaluation_period}] Score: {self.composite_score}"
+
+
+class VendorScorecardSLAMetric(TimeStampedModel):
+    """
+    Per-scorecard snapshot of contract SLA obligation performance at evaluation time.
+    One OVERALL row plus one row per contract with due vendor obligations, so the
+    obligation data used for the SLA score is preserved as evaluation history.
+    """
+
+    MetricCodes = models.TextChoices("MetricCodes", "OVERALL CONTRACT")
+
+    scorecard = models.ForeignKey(
+        VendorScorecard, on_delete=models.CASCADE, related_name="sla_metrics"
+    )
+    contract = models.ForeignKey(
+        "contracts.Contract",
+        on_delete=models.CASCADE,
+        related_name="sla_metric_snapshots",
+        null=True,
+        blank=True,
+        help_text="Set only when metric_code is CONTRACT",
+    )
+    metric_code = models.CharField(max_length=20, choices=MetricCodes.choices)
+    target_pct = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal("100.00"))
+    actual_pct = models.DecimalField(
+        max_digits=5, decimal_places=2, null=True, blank=True, help_text="None when no data"
+    )
+    achievement_pct = models.DecimalField(
+        max_digits=5, decimal_places=2, null=True, blank=True
+    )
+    breaches = models.PositiveIntegerField(default=0)
+    observations = models.PositiveIntegerField(default=0, help_text="Due obligations counted")
+    notes = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ["scorecard__created_at", "metric_code", "contract__contract_number"]
+        indexes = [
+            models.Index(fields=["scorecard", "metric_code"], name="sla_metric_card_code_idx")
+        ]
+        constraints = [
+            models.CheckConstraint(
+                check=models.Q(contract__isnull=False, metric_code="CONTRACT")
+                | models.Q(contract__isnull=True, metric_code="OVERALL"),
+                name="sla_metric_code_contract_consistency",
+            )
+        ]
+
+    def __str__(self):
+        label = getattr(self.contract, "contract_number", None) or "Overall"
+        return f"SLA metric [{self.metric_code}] {label}: {self.actual_pct}"

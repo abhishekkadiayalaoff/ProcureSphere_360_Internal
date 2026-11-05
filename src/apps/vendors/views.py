@@ -7,14 +7,9 @@ from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
-from apps.scorecards.permissions import can_calculate_scorecards
+from apps.scorecards.models import band_for_composite
 
-from .filters import (
-    APPROVAL_STAGE_STATUSES,
-    PERFORMANCE_GOOD_THRESHOLD,
-    PERFORMANCE_ISSUE_THRESHOLD,
-    VendorFilter,
-)
+from .filters import APPROVAL_STAGE_STATUSES, VendorFilter
 from .forms import GovernanceStatusForm, RiskAssessmentForm, VendorEditForm, VendorRegistrationForm
 from .models import Vendor, VendorDocument, VendorRiskRecord
 from .permissions import (
@@ -73,7 +68,6 @@ def _require_kyc_review(user):
 
 
 def _get_scoped_vendor_or_404(request, vendor_id, select_category=False):
-    from django.db.models import Q
 
     from apps.accounts.models import Role
     qs = Vendor.objects.all()
@@ -147,13 +141,10 @@ def _kyc_context(vendor, caps):
 
 
 def _performance_band(score):
+    """Template-facing lowercase band; the thresholds are owned by the scorecards app."""
     if score is None:
         return None
-    if score >= PERFORMANCE_GOOD_THRESHOLD:
-        return "good"
-    if score >= PERFORMANCE_ISSUE_THRESHOLD:
-        return "watch"
-    return "issue"
+    return band_for_composite(score).lower()
 
 
 def _vendor_register(request, *, mode):
@@ -227,12 +218,12 @@ def vendor_create_view(request):
 
 @login_required(login_url="/login/")
 def vendor_detail_view(request, vendor_id):
-    """Governance detail: master data, status, risk, performance, documents, history."""
+    """Governance detail: master data, status, risk, performance summary, documents, history."""
     _require_governance_view(request.user)
     vendor = _get_scoped_vendor_or_404(request, vendor_id, select_category=True)
 
     risk_records = list(vendor.risk_records.select_related("assessed_by")[:20])
-    scorecards = list(vendor.scorecards.select_related("evaluated_by").order_by("-created_at")[:12])
+    latest_scorecard = vendor.scorecards.select_related("evaluated_by").first()
     exposure = get_vendor_open_transactions(vendor)
     transitions = [
         {"status": s, "label": TRANSITION_LABELS[s][0], "tone": TRANSITION_LABELS[s][1]}
@@ -242,12 +233,10 @@ def vendor_detail_view(request, vendor_id):
     context = {
         "vendor": vendor,
         "caps": caps,
-        "can_calculate_scorecard": can_calculate_scorecards(request.user),
         **_kyc_context(vendor, caps),
         "latest_risk": risk_records[0] if risk_records else None,
         "risk_records": risk_records,
-        "latest_scorecard": scorecards[0] if scorecards else None,
-        "scorecards": scorecards,
+        "latest_scorecard": latest_scorecard,
         "documents": vendor.documents.select_related("verified_by").order_by("-created_at"),
         "contacts": vendor.contacts.order_by("-is_primary", "last_name"),
         "history": get_vendor_change_history(vendor),
@@ -688,6 +677,7 @@ def vendor_import_view(request):
     # Template download
     if request.method == "GET" and request.GET.get("template") == "1":
         import csv
+
         from django.http import HttpResponse
         response = HttpResponse(content_type="text/csv")
         response["Content-Disposition"] = 'attachment; filename="vendor_import_template.csv"'
