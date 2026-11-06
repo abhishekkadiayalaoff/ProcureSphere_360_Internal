@@ -34,8 +34,6 @@
             </div>
         </div>
     </div>
-        </div>
-    </div>
 
     <!-- Loading State Skeleton for KPIs -->
     <div id="kpiLoadingState" class="row g-3 mb-4">
@@ -420,10 +418,8 @@
                     `;
                 }
 
-                const rowBorder = v.current_risk_level === 'HIGH' ? 'border-start border-4 border-danger' : '';
-
                 return `
-                    <tr class="align-middle ${rowBorder}">
+                    <tr class="align-middle">
                         <td class="ps-3">
                             <a href="/vendors/${v.id}/" class="fw-bold text-dark text-decoration-none hover-primary">${v.legal_name}</a>
                             <div class="d-flex align-items-center gap-2 mt-1">

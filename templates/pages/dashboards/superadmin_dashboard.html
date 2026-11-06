@@ -1,344 +1,423 @@
 {% extends 'layouts/superadmin_base.html' %}
 
-{% block title %}Admin Control Center — ProcureSphere 360{% endblock %}
+{% block sa_title %}Admin Control Center{% endblock %}
 
 {% block content %}
-<div class="glass-card-dark p-3 p-md-4 mb-4">
-    <div class="row align-items-center g-3">
-        <div class="col-lg-8">
+<div class="container-fluid px-0">
+
+    <!-- Welcome Header & Quick Actions (Matches Vendor Dashboard Standard) -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+        <div>
             {% if is_global_superadmin and not scoped_org %}
-            <span class="badge bg-danger rounded-pill fw-bold px-3 py-1 mb-2 text-wrap">
-                <i class="fa-solid fa-shield-halved me-1"></i> SUPER ADMIN &bull; TENANT MANAGEMENT
-            </span>
-            <h2 class="fw-bold mb-1">Super Admin Control Center</h2>
-            <p class="mb-0 small text-white-50">Create and oversee tenant organizations and provision dedicated organization administrator accounts.</p>
+            <div class="d-flex align-items-center gap-2 mb-1">
+                <span class="badge bg-danger bg-opacity-10 text-danger rounded-pill fw-bold px-2.5 py-1" style="font-size: 0.7rem; letter-spacing: 0.04em;">
+                    <i class="fa-solid fa-shield-halved me-1"></i> SUPER ADMIN &bull; TENANT MANAGEMENT
+                </span>
+            </div>
+            <h3 class="fw-bold text-dark mb-1">Super Admin Control Center</h3>
+            <p class="text-muted mb-0 small">
+                Welcome, <strong>{{ request.user.email }}</strong> &bull; Create and oversee tenant organizations, provision dedicated org admins, and govern multi-tenant security.
+            </p>
             {% else %}
-            <span class="badge bg-info text-dark rounded-pill fw-bold px-3 py-1 mb-2 text-wrap">
-                <i class="fa-solid fa-building me-1"></i> ORG ADMIN &bull; {{ scoped_org.name|upper }}
-            </span>
-            <h2 class="fw-bold mb-1">Organization Admin Dashboard</h2>
-            <p class="mb-0 small text-white-50">Manage departments, cost centers, staff users &amp; roles, and operational policies for {{ scoped_org.name }}.</p>
+            <div class="d-flex align-items-center gap-2 mb-1">
+                <span class="badge bg-info bg-opacity-10 text-info rounded-pill fw-bold px-2.5 py-1" style="font-size: 0.7rem; letter-spacing: 0.04em;">
+                    <i class="fa-solid fa-building me-1"></i> ORG ADMIN &bull; {{ scoped_org.name|upper }}
+                </span>
+            </div>
+            <h3 class="fw-bold text-dark mb-1">Organization Admin Dashboard</h3>
+            <p class="text-muted mb-0 small">
+                Welcome, <strong>{{ request.user.email }}</strong> &bull; Manage departments, cost centers, staff users &amp; roles, and operational policies for {{ scoped_org.name }}.
+            </p>
             {% endif %}
         </div>
-        <div class="col-lg-4 d-flex flex-column flex-sm-row flex-lg-wrap align-items-stretch align-items-sm-center justify-content-lg-end gap-2 mt-2 mt-lg-0">
-            <div class="badge bg-success bg-opacity-25 text-white border border-success border-opacity-50 rounded-pill px-3 py-2 fw-semibold d-flex align-items-center justify-content-center">
-                <span class="sa-status-dot me-2"></span> SYSTEM CONFIG ACTIVE
-            </div>
+        <div class="d-flex flex-wrap align-items-center gap-2">
             {% if can_add_organization and not scoped_org %}
-            <button hx-get="/superadmin/organizations/create/" hx-target="#modal-content-body" data-bs-toggle="modal" data-bs-target="#modal-container" class="btn btn-warning text-dark rounded-pill fw-bold px-4 shadow-sm text-center">
+            <button hx-get="/superadmin/organizations/create/" hx-target="#modal-content-body" data-bs-toggle="modal" data-bs-target="#modal-container" class="btn btn-primary btn-sm rounded-pill px-3 shadow-sm fw-bold">
                 <i class="fa-solid fa-plus me-1"></i> Create Organization
             </button>
             {% endif %}
-            {% if not is_global_superadmin %}
-            <a href="/superadmin/audit/" class="btn btn-warning text-dark rounded-pill fw-bold px-4 shadow-sm text-center">
+            <a href="/superadmin/audit/" class="btn btn-outline-dark btn-sm rounded-pill px-3 fw-semibold">
                 <i class="fa-solid fa-clock-rotate-left me-1"></i> Audit History
             </a>
-            {% endif %}
         </div>
     </div>
-</div>
 
-{% if is_global_superadmin and not scoped_org %}
-{# ========================================================================= #}
-{# GLOBAL SUPER ADMIN KPIS: DEDICATED SOLELY TO TENANT ORGANIZATIONS         #}
-{# ========================================================================= #}
-<div class="row g-3 mb-4">
-    <div class="col-12 col-sm-6 col-md-4">
-        <a href="/superadmin/organizations/" class="text-decoration-none">
-            <div class="stat-card h-100 sa-kpi sa-kpi-sky">
-                <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
-                    <span class="text-muted small fw-semibold text-uppercase">Total Organizations</span>
-                    <span class="badge rounded-pill text-bg-info">Tenants</span>
-                </div>
-                <div class="metric-value" style="color:#00B0B9;">{{ total_organizations|default:organizations.count }}</div>
-                <div class="mt-2 pt-2 border-top small text-secondary d-flex justify-content-between">
-                    <span>Managed client entities</span>
-                    <span class="fw-semibold" style="color:#00B0B9;">View Orgs <i class="fa-solid fa-arrow-right ms-1"></i></span>
-                </div>
+    <!-- System Status Banner (Matches Vendor Dashboard Alert Banner) -->
+    <div class="alert alert-success border-success shadow-sm rounded-4 p-3 mb-4 d-flex align-items-center gap-3">
+        <div class="fs-3 text-success flex-shrink-0"><i class="fa-solid fa-circle-check"></i></div>
+        <div class="flex-grow-1">
+            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+                <h6 class="fw-bold text-dark mb-0">System Configuration Active &bull; Multi-Tenant Isolation Enforced</h6>
+                <span class="badge bg-success rounded-pill px-2.5 py-1" style="font-size: 0.65rem;">Active &bull; Operational</span>
             </div>
-        </a>
+            <p class="mb-0 text-muted small mt-1">
+                {% if is_global_superadmin and not scoped_org %}
+                Global tenant management and audit controls are operational. All tenant entity codes, dispatches, and credential provisions are cryptographically isolated.
+                {% else %}
+                Organization parameters active. Role-based access controls, cost centers, approval thresholds, and document policies are synchronized.
+                {% endif %}
+            </p>
+        </div>
     </div>
-    <div class="col-12 col-sm-6 col-md-4">
-        <a href="/superadmin/organizations/" class="text-decoration-none">
-            <div class="stat-card h-100 sa-kpi sa-kpi-green">
-                <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
-                    <span class="text-muted small fw-semibold text-uppercase">Active Tenants</span>
-                    <span class="badge rounded-pill text-bg-success">Live</span>
-                </div>
-                <div class="metric-value" style="color:#10B981;">{{ active_organizations|default:organizations.count }}</div>
-                <div class="mt-2 pt-2 border-top small text-secondary d-flex justify-content-between">
-                    <span>Active operational orgs</span>
-                    <span class="fw-semibold" style="color:#10B981;">Active <i class="fa-solid fa-arrow-right ms-1"></i></span>
-                </div>
-            </div>
-        </a>
-    </div>
-    <div class="col-12 col-sm-12 col-md-4">
-        <a href="/superadmin/organizations/" class="text-decoration-none">
-            <div class="stat-card h-100 sa-kpi sa-kpi-royal">
-                <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
-                    <span class="text-muted small fw-semibold text-uppercase">Provisioned Admins</span>
-                    <span class="badge rounded-pill text-bg-primary">Admins</span>
-                </div>
-                <div class="metric-value" style="color:#2563EB;">{{ provisioned_admins|default:organizations.count }}</div>
-                <div class="mt-2 pt-2 border-top small text-secondary d-flex justify-content-between">
-                    <span>Dedicated org admins</span>
-                    <span class="fw-semibold" style="color:#2563EB;">Admins <i class="fa-solid fa-arrow-right ms-1"></i></span>
-                </div>
-            </div>
-        </a>
-    </div>
-</div>
-{% else %}
-{# ========================================================================= #}
-{# ORGANIZATION ADMIN KPIS: EXISTING DESIGN (Users, Budget, PRs, Audits)    #}
-{# ========================================================================= #}
-<div class="row g-3 mb-4">
-    <div class="col-12 col-sm-6 col-xl-3">
-        <a href="/superadmin/users/" class="text-decoration-none">
-            <div class="stat-card h-100 sa-kpi sa-kpi-sky">
-                <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
-                    <span class="text-muted small fw-semibold text-uppercase">Total Users</span>
-                    <span class="badge rounded-pill text-bg-info">Active</span>
-                </div>
-                <div class="metric-value" style="color:#00B0B9;">{{ metrics.total_users }}</div>
-                <div class="mt-2 pt-2 border-top small text-secondary d-flex justify-content-between">
-                    <span>Active sessions</span>
-                    <span class="fw-semibold" style="color:#00B0B9;">Users <i class="fa-solid fa-arrow-right ms-1"></i></span>
-                </div>
-            </div>
-        </a>
-    </div>
-    <div class="col-12 col-sm-6 col-xl-3">
-        <a href="/superadmin/budgets/" class="text-decoration-none">
-            <div class="stat-card h-100 sa-kpi sa-kpi-green">
-                <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
-                    <span class="text-muted small fw-semibold text-uppercase">Total Budget Allocated</span>
-                    <span class="badge rounded-pill text-bg-success">Allocated</span>
-                </div>
-                <div class="metric-value" style="color:#10B981;">${{ metrics.allocated_budget|floatformat:2 }}</div>
-                <div class="mt-2 pt-2 border-top small text-secondary d-flex justify-content-between">
-                    <span>Across all cost centers</span>
-                    <span class="fw-semibold" style="color:#10B981;">Budgets <i class="fa-solid fa-arrow-right ms-1"></i></span>
-                </div>
-            </div>
-        </a>
-    </div>
-    <div class="col-12 col-sm-6 col-xl-3">
-        <a href="/requisitions/" class="text-decoration-none">
-            <div class="stat-card h-100 sa-kpi sa-kpi-red">
-                <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
-                    <span class="text-muted small fw-semibold text-uppercase">Pending Transactions</span>
-                    <span class="badge rounded-pill text-bg-danger">Action Required</span>
-                </div>
-                <div class="metric-value" style="color:#F43F5E;">{{ metrics.pending_pr_count }} PRs</div>
-                <div class="mt-2 pt-2 border-top small text-secondary d-flex justify-content-between">
-                    <span>{{ metrics.pending_exceptions }} Match Exceptions</span>
-                    <span class="fw-semibold" style="color:#F43F5E;">Review <i class="fa-solid fa-arrow-right ms-1"></i></span>
-                </div>
-            </div>
-        </a>
-    </div>
-    <div class="col-12 col-sm-6 col-xl-3">
-        <a href="/superadmin/audit/" class="text-decoration-none">
-            <div class="stat-card h-100 sa-kpi sa-kpi-royal">
-                <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
-                    <span class="text-muted small fw-semibold text-uppercase">Audit Logs Today</span>
-                    <span class="badge rounded-pill text-bg-primary">Recorded</span>
-                </div>
-                <div class="metric-value" style="color:#2563EB;">{{ metrics.audits_today|default:"0" }}</div>
-                <div class="mt-2 pt-2 border-top small text-secondary d-flex justify-content-between">
-                    <span>All actions recorded</span>
-                    <span class="fw-semibold" style="color:#2563EB;">Logs <i class="fa-solid fa-arrow-right ms-1"></i></span>
-                </div>
-            </div>
-        </a>
-    </div>
-</div>
-{% endif %}
 
-
-{% if is_global_superadmin and not scoped_org %}
-{# ========================================================================= #}
-{# GLOBAL SUPER ADMIN: TENANT LIFECYCLE GUIDE & AUDIT OVERVIEW               #}
-{# ========================================================================= #}
-<div class="row g-4">
-    <div class="col-lg-12">
-        <div class="card shadow-sm border-0 rounded-4 h-100">
-            <div class="card-header bg-white pt-3 pt-md-4 pb-0 px-3 px-md-4 border-bottom-0">
-                <h5 class="fw-bold mb-0 text-dark">Tenant Organization Lifecycle &amp; Provisioning</h5>
+    {% if is_global_superadmin and not scoped_org %}
+    <!-- ========================================================================= -->
+    <!-- GLOBAL SUPER ADMIN: TENANT LIFECYCLE PROGRESS & PROVISIONING WIDGET       -->
+    <!-- (Styled exactly like Vendor Onboarding & Compliance Progress)             -->
+    <!-- ========================================================================= -->
+    <div class="card glass-card border-0 shadow-sm mb-4">
+        <div class="card-body p-4">
+            <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+                <div>
+                    <h5 class="fw-bold text-dark mb-1">
+                        <i class="fa-solid fa-list-check text-primary me-2"></i> Tenant Organization Lifecycle &amp; Provisioning
+                    </h5>
+                    <p class="text-muted small mb-0">
+                        Complete 3-step provisioning to establish isolated client entities, assign organization administrators, and configure governance.
+                    </p>
+                </div>
+                <div class="text-end">
+                    <span class="fs-4 fw-bold text-success">100%</span>
+                    <span class="text-muted small d-block">3 of 3 Milestones Available</span>
+                </div>
             </div>
-            <div class="card-body p-3 p-md-4">
-                <div class="row g-3">
-                    <div class="col-md-4">
-                        <div class="p-3 border rounded-3 bg-light h-100 d-flex flex-column justify-content-between">
-                            <div>
-                                <div class="badge bg-primary rounded-pill mb-2">Step 1</div>
-                                <h6 class="fw-bold text-dark mb-1">Create Organization</h6>
-                                <p class="text-muted small mb-3">Define the legal entity code, tenant name, and primary domain.</p>
+
+            <!-- Progress Bar matching Vendor Dashboard -->
+            <div class="progress mb-4" style="height: 10px; border-radius: 8px;">
+                <div class="progress-bar bg-success progress-bar-striped progress-bar-animated"
+                     role="progressbar"
+                     style="width: 100%;"
+                     aria-valuenow="100"
+                     aria-valuemin="0"
+                     aria-valuemax="100"></div>
+            </div>
+
+            <!-- 3-Step Milestone Grid -->
+            <div class="row g-3">
+                <!-- Step 1 -->
+                <div class="col-12 col-md-4">
+                    <div class="p-3 rounded-3 border border-success bg-success bg-opacity-10 h-100 d-flex flex-column justify-content-between shadow-sm">
+                        <div>
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="badge rounded-pill bg-primary">Step 1</span>
+                                <i class="fa-solid fa-circle-check text-success fs-5"></i>
                             </div>
-                            <button hx-get="/superadmin/organizations/create/" hx-target="#modal-content-body" data-bs-toggle="modal" data-bs-target="#modal-container" class="btn btn-sm btn-primary rounded-pill px-3 fw-bold w-100 w-sm-auto align-self-sm-start text-center">
-                                <i class="fa-solid fa-plus me-1"></i> New Org
-                            </button>
+                            <h6 class="fw-bold text-dark mb-1">Create Organization</h6>
+                            <p class="text-muted small mb-3">Define legal entity code, tenant name, and primary domain.</p>
+                        </div>
+                        <button hx-get="/superadmin/organizations/create/" hx-target="#modal-content-body" data-bs-toggle="modal" data-bs-target="#modal-container" class="btn btn-sm btn-primary rounded-pill px-3 fw-bold align-self-start">
+                            <i class="fa-solid fa-plus me-1"></i> New Org
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Step 2 -->
+                <div class="col-12 col-md-4">
+                    <div class="p-3 rounded-3 border border-success bg-success bg-opacity-10 h-100 d-flex flex-column justify-content-between shadow-sm">
+                        <div>
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="badge rounded-pill bg-info text-dark">Step 2</span>
+                                <i class="fa-solid fa-circle-check text-success fs-5"></i>
+                            </div>
+                            <h6 class="fw-bold text-dark mb-1">Provision Org Admin</h6>
+                            <p class="text-muted small mb-3">Assign admin email. Automated email dispatches credentials directly.</p>
+                        </div>
+                        <a href="/superadmin/organizations/" class="btn btn-sm btn-outline-dark rounded-pill px-3 fw-bold align-self-start">
+                            <i class="fa-solid fa-user-check me-1"></i> View Orgs
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Step 3 -->
+                <div class="col-12 col-md-4">
+                    <div class="p-3 rounded-3 border border-success bg-success bg-opacity-10 h-100 d-flex flex-column justify-content-between shadow-sm">
+                        <div>
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="badge rounded-pill bg-success">Step 3</span>
+                                <i class="fa-solid fa-circle-check text-success fs-5"></i>
+                            </div>
+                            <h6 class="fw-bold text-dark mb-1">Admin Self-Setup</h6>
+                            <p class="text-muted small mb-0">Org Admin logs in to configure their own Departments, Cost Centers &amp; Staff.</p>
+                        </div>
+                        <span class="badge bg-success bg-opacity-25 text-success rounded-pill px-3 py-1.5 align-self-start mt-2">
+                            <i class="fa-solid fa-shield-halved me-1"></i> Tenant Isolated
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================================================= -->
+    <!-- GLOBAL SUPER ADMIN KPIS: 3 SUMMARY METRIC CARDS                           -->
+    <!-- (Styled exactly like Vendor Dashboard Metric Cards)                       -->
+    <!-- ========================================================================= -->
+    <div class="row g-3 mb-4">
+        <!-- 1. Total Organizations -->
+        <div class="col-12 col-sm-6 col-md-4">
+            <a href="/superadmin/organizations/" class="text-decoration-none">
+                <div class="stat-card glass-card h-100 border-start border-4 border-info">
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                        <span class="text-muted small fw-semibold text-uppercase">Total Organizations</span>
+                        <div class="brand-icon-box" style="width: 32px; height: 32px; background: rgba(13, 202, 240, 0.1); border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                            <i class="fa-solid fa-building text-info"></i>
                         </div>
                     </div>
-                    <div class="col-md-4">
-                        <div class="p-3 border rounded-3 bg-light h-100 d-flex flex-column justify-content-between">
-                            <div>
-                                <div class="badge bg-info text-dark rounded-pill mb-2">Step 2</div>
-                                <h6 class="fw-bold text-dark mb-1">Provision Org Admin</h6>
-                                <p class="text-muted small mb-3">Assign admin email. Automated email dispatches credentials directly.</p>
-                            </div>
-                            <a href="/superadmin/organizations/" class="btn btn-sm btn-outline-dark rounded-pill px-3 fw-bold w-100 w-sm-auto align-self-sm-start text-center">
-                                <i class="fa-solid fa-user-check me-1"></i> View Orgs
+                    <div class="fs-3 fw-bold text-dark metric-value">{{ total_organizations|default:organizations.count }}</div>
+                    <div class="mt-2 pt-2 border-top small text-secondary d-flex justify-content-between align-items-center">
+                        <span>Managed client entities</span>
+                        <span class="fw-semibold text-info">View Orgs &rarr;</span>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+        <!-- 2. Active Tenants -->
+        <div class="col-12 col-sm-6 col-md-4">
+            <a href="/superadmin/organizations/" class="text-decoration-none">
+                <div class="stat-card glass-card h-100 border-start border-4 border-success">
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                        <span class="text-muted small fw-semibold text-uppercase">Active Tenants</span>
+                        <div class="brand-icon-box" style="width: 32px; height: 32px; background: rgba(25, 135, 84, 0.1); border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                            <i class="fa-solid fa-circle-check text-success"></i>
+                        </div>
+                    </div>
+                    <div class="fs-3 fw-bold text-dark metric-value">{{ active_organizations|default:organizations.count }}</div>
+                    <div class="mt-2 pt-2 border-top small text-secondary d-flex justify-content-between align-items-center">
+                        <span>Active operational orgs</span>
+                        <span class="fw-semibold text-success">Active &rarr;</span>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+        <!-- 3. Provisioned Admins -->
+        <div class="col-12 col-sm-12 col-md-4">
+            <a href="/superadmin/organizations/" class="text-decoration-none">
+                <div class="stat-card glass-card h-100 border-start border-4 border-primary">
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                        <span class="text-muted small fw-semibold text-uppercase">Provisioned Admins</span>
+                        <div class="brand-icon-box" style="width: 32px; height: 32px; background: rgba(13, 110, 253, 0.1); border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                            <i class="fa-solid fa-user-shield text-primary"></i>
+                        </div>
+                    </div>
+                    <div class="fs-3 fw-bold text-dark metric-value">{{ provisioned_admins|default:organizations.count }}</div>
+                    <div class="mt-2 pt-2 border-top small text-secondary d-flex justify-content-between align-items-center">
+                        <span>Dedicated org admins</span>
+                        <span class="fw-semibold text-primary">Admins &rarr;</span>
+                    </div>
+                </div>
+            </a>
+        </div>
+    </div>
+
+    {% else %}
+    <!-- ========================================================================= -->
+    <!-- ORGANIZATION ADMIN KPIS: 4 SUMMARY METRIC CARDS                           -->
+    <!-- ========================================================================= -->
+    <div class="row g-3 mb-4">
+        <div class="col-12 col-sm-6 col-xl-3">
+            <a href="/superadmin/users/" class="text-decoration-none">
+                <div class="stat-card glass-card h-100 border-start border-4 border-info">
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                        <span class="text-muted small fw-semibold text-uppercase">Total Users</span>
+                        <div class="brand-icon-box" style="width: 32px; height: 32px; background: rgba(13, 202, 240, 0.1); border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                            <i class="fa-solid fa-users text-info"></i>
+                        </div>
+                    </div>
+                    <div class="fs-3 fw-bold text-dark metric-value">{{ metrics.total_users }}</div>
+                    <div class="mt-2 pt-2 border-top small text-secondary d-flex justify-content-between align-items-center">
+                        <span>Active sessions</span>
+                        <span class="fw-semibold text-info">Users &rarr;</span>
+                    </div>
+                </div>
+            </a>
+        </div>
+        <div class="col-12 col-sm-6 col-xl-3">
+            <a href="/superadmin/budgets/" class="text-decoration-none">
+                <div class="stat-card glass-card h-100 border-start border-4 border-success">
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                        <span class="text-muted small fw-semibold text-uppercase">Total Budget Allocated</span>
+                        <div class="brand-icon-box" style="width: 32px; height: 32px; background: rgba(25, 135, 84, 0.1); border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                            <i class="fa-solid fa-sack-dollar text-success"></i>
+                        </div>
+                    </div>
+                    <div class="fs-3 fw-bold text-dark metric-value">${{ metrics.allocated_budget|floatformat:2 }}</div>
+                    <div class="mt-2 pt-2 border-top small text-secondary d-flex justify-content-between align-items-center">
+                        <span>Across all cost centers</span>
+                        <span class="fw-semibold text-success">Budgets &rarr;</span>
+                    </div>
+                </div>
+            </a>
+        </div>
+        <div class="col-12 col-sm-6 col-xl-3">
+            <a href="/requisitions/" class="text-decoration-none">
+                <div class="stat-card glass-card h-100 border-start border-4 border-danger">
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                        <span class="text-muted small fw-semibold text-uppercase">Pending Transactions</span>
+                        <div class="brand-icon-box" style="width: 32px; height: 32px; background: rgba(220, 53, 69, 0.1); border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                            <i class="fa-solid fa-clipboard-list text-danger"></i>
+                        </div>
+                    </div>
+                    <div class="fs-3 fw-bold text-dark metric-value">{{ metrics.pending_pr_count }} PRs</div>
+                    <div class="mt-2 pt-2 border-top small text-secondary d-flex justify-content-between align-items-center">
+                        <span>{{ metrics.pending_exceptions }} Match Exceptions</span>
+                        <span class="fw-semibold text-danger">Review &rarr;</span>
+                    </div>
+                </div>
+            </a>
+        </div>
+        <div class="col-12 col-sm-6 col-xl-3">
+            <a href="/superadmin/audit/" class="text-decoration-none">
+                <div class="stat-card glass-card h-100 border-start border-4 border-primary">
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                        <span class="text-muted small fw-semibold text-uppercase">Audit Logs Today</span>
+                        <div class="brand-icon-box" style="width: 32px; height: 32px; background: rgba(13, 110, 253, 0.1); border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                            <i class="fa-solid fa-clock-rotate-left text-primary"></i>
+                        </div>
+                    </div>
+                    <div class="fs-3 fw-bold text-dark metric-value">{{ metrics.audits_today|default:"0" }}</div>
+                    <div class="mt-2 pt-2 border-top small text-secondary d-flex justify-content-between align-items-center">
+                        <span>All actions recorded</span>
+                        <span class="fw-semibold text-primary">Logs &rarr;</span>
+                    </div>
+                </div>
+            </a>
+        </div>
+    </div>
+
+    <!-- ========================================================================= -->
+    <!-- ORGANIZATION ADMIN: MASTER DATA & POLICY CONFIGURATION                   -->
+    <!-- ========================================================================= -->
+    <div class="row g-4">
+        <!-- Quick Actions Panel -->
+        <div class="col-lg-8">
+            <div class="card glass-card border-0 shadow-sm rounded-4 h-100">
+                <div class="card-header bg-white pt-3 pt-md-4 pb-2 px-3 px-md-4 border-bottom-0">
+                    <h5 class="fw-bold mb-0 text-dark">
+                        <i class="fa-solid fa-sliders text-primary me-2"></i> Master Data &amp; Policy Configuration
+                    </h5>
+                </div>
+                <div class="card-body p-3 p-md-4 pt-1">
+                    <div class="row g-3">
+                        <div class="col-sm-6">
+                            <a href="/superadmin/organizations/" class="text-decoration-none">
+                                <div class="p-3 border rounded-3 bg-light hover-shadow transition-all d-flex align-items-center h-100">
+                                    <div class="brand-icon-box me-3 flex-shrink-0" style="width: 44px; height: 44px; background: rgba(245, 158, 11, 0.12); border-color: rgba(245, 158, 11, 0.3);">
+                                        <i class="fa-solid fa-sitemap text-warning fs-5"></i>
+                                    </div>
+                                    <div class="min-width-0">
+                                        <h6 class="fw-bold text-dark mb-1 text-truncate">Departments &amp; Cost Centers</h6>
+                                        <p class="text-muted small mb-0">Department units &amp; cost center allocations</p>
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
+                        <div class="col-sm-6">
+                            <a href="/superadmin/users/" class="text-decoration-none">
+                                <div class="p-3 border rounded-3 bg-light hover-shadow transition-all d-flex align-items-center h-100">
+                                    <div class="brand-icon-box me-3 flex-shrink-0" style="width: 44px; height: 44px; background: rgba(14, 165, 233, 0.12); border-color: rgba(14, 165, 233, 0.3);">
+                                        <i class="fa-solid fa-users-gear text-info fs-5"></i>
+                                    </div>
+                                    <div class="min-width-0">
+                                        <h6 class="fw-bold text-dark mb-1 text-truncate">Manage Users &amp; Roles</h6>
+                                        <p class="text-muted small mb-0">Manage RBAC permissions</p>
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
+                        <div class="col-sm-6">
+                            <a href="/vendors/" class="text-decoration-none">
+                                <div class="p-3 border rounded-3 bg-light hover-shadow transition-all d-flex align-items-center h-100">
+                                    <div class="brand-icon-box me-3 flex-shrink-0" style="width: 44px; height: 44px; background: rgba(16, 185, 129, 0.12); border-color: rgba(16, 185, 129, 0.3);">
+                                        <i class="fa-solid fa-building-user text-success fs-5"></i>
+                                    </div>
+                                    <div class="min-width-0">
+                                        <h6 class="fw-bold text-dark mb-1 text-truncate">Vendor Management</h6>
+                                        <p class="text-muted small mb-0">KYC, risk &amp; governance</p>
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
+                        <div class="col-sm-6">
+                            <a href="/superadmin/policies/" class="text-decoration-none">
+                                <div class="p-3 border rounded-3 bg-light hover-shadow transition-all d-flex align-items-center h-100">
+                                    <div class="brand-icon-box me-3 flex-shrink-0" style="width: 44px; height: 44px; background: rgba(168, 85, 247, 0.12); border-color: rgba(168, 85, 247, 0.3);">
+                                        <i class="fa-solid fa-code-branch fs-5" style="color: #a78bfa;"></i>
+                                    </div>
+                                    <div class="min-width-0">
+                                        <h6 class="fw-bold text-dark mb-1 text-truncate">Approval Policies</h6>
+                                        <p class="text-muted small mb-0">Configure routing thresholds</p>
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
+                        <div class="col-sm-6">
+                            <a href="/superadmin/budgets/" class="text-decoration-none">
+                                <div class="p-3 border rounded-3 bg-light hover-shadow transition-all d-flex align-items-center h-100">
+                                    <div class="brand-icon-box me-3 flex-shrink-0" style="width: 44px; height: 44px; background: rgba(234, 179, 8, 0.12); border-color: rgba(234, 179, 8, 0.3);">
+                                        <i class="fa-solid fa-sack-dollar fs-5" style="color: #eab308;"></i>
+                                    </div>
+                                    <div class="min-width-0">
+                                        <h6 class="fw-bold text-dark mb-1 text-truncate">Budget Allocation</h6>
+                                        <p class="text-muted small mb-0">Set limits per Cost Center</p>
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
+                        <div class="col-sm-6">
+                            <a href="/invoices/settings/tolerances/" class="text-decoration-none">
+                                <div class="p-3 border rounded-3 bg-light hover-shadow transition-all d-flex align-items-center h-100">
+                                    <div class="brand-icon-box me-3 flex-shrink-0" style="width: 44px; height: 44px; background: rgba(249, 115, 22, 0.12); border-color: rgba(249, 115, 22, 0.3);">
+                                        <i class="fa-solid fa-sliders fs-5" style="color: #f97316;"></i>
+                                    </div>
+                                    <div class="min-width-0">
+                                        <h6 class="fw-bold text-dark mb-1 text-truncate">Business Rules</h6>
+                                        <p class="text-muted small mb-0">Tolerances &amp; matching rules</p>
+                                    </div>
+                                </div>
                             </a>
                         </div>
                     </div>
-                    <div class="col-md-4">
-                        <div class="p-3 border rounded-3 bg-light h-100 d-flex flex-column justify-content-between">
-                            <div>
-                                <div class="badge bg-success rounded-pill mb-2">Step 3</div>
-                                <h6 class="fw-bold text-dark mb-1">Admin Self-Setup</h6>
-                                <p class="text-muted small mb-0">Org Admin logs in to configure their own Departments, Cost Centers, Staff &amp; Policies.</p>
-                            </div>
-                            <span class="badge bg-success bg-opacity-10 text-success rounded-pill px-3 py-1.5 align-self-start mt-2">
-                                <i class="fa-solid fa-shield me-1"></i> Tenant Isolated
-                            </span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Security & Oversight Panel -->
+        <div class="col-lg-4">
+            <div class="card glass-card border-0 shadow-sm rounded-4 h-100">
+                <div class="card-header bg-white pt-3 pt-md-4 pb-2 px-3 px-md-4 border-bottom-0">
+                    <h5 class="fw-bold mb-0 text-dark">
+                        <i class="fa-solid fa-shield-halved text-cyan me-2"></i> Security &amp; Oversight
+                    </h5>
+                </div>
+                <div class="card-body p-3 p-md-4 pt-1 d-flex flex-column gap-3 justify-content-between">
+                    <div class="d-flex align-items-start gap-3">
+                        <div class="brand-icon-box me-1 flex-shrink-0" style="width: 44px; height: 44px; background: rgba(244, 63, 94, 0.12); border-color: rgba(244, 63, 94, 0.3);">
+                            <i class="fa-solid fa-shield-halved text-danger fs-5"></i>
+                        </div>
+                        <div class="min-width-0 flex-grow-1">
+                            <h6 class="fw-bold text-dark mb-1">Immutable Audit Logs</h6>
+                            <p class="text-muted small mb-2">Every state change, creation, and approval across the ERP is logged with actor, timestamp, and IP reference.</p>
+                            <a href="/superadmin/audit/" class="btn btn-sm btn-outline-danger fw-bold rounded-pill px-3">View Audit History</a>
+                        </div>
+                    </div>
+                    <hr class="my-0 border-secondary border-opacity-15">
+                    <div class="d-flex align-items-start gap-3">
+                        <div class="brand-icon-box me-1 flex-shrink-0" style="width: 44px; height: 44px; background: rgba(16, 185, 129, 0.12); border-color: rgba(16, 185, 129, 0.3);">
+                            <i class="fa-solid fa-chart-line text-success fs-5"></i>
+                        </div>
+                        <div class="min-width-0 flex-grow-1">
+                            <h6 class="fw-bold text-dark mb-1">Reports &amp; Analytics</h6>
+                            <p class="text-muted small mb-2">Comprehensive reports across PR aging, PO tracking, invoice match exceptions, spend, and vendor performance.</p>
+                            <a href="/reports/hub/" class="btn btn-sm btn-outline-primary fw-bold rounded-pill px-3">Open Reports Hub</a>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-</div>
+    {% endif %}
 
-{% else %}
-{# ========================================================================= #}
-{# ORGANIZATION ADMIN: MASTER DATA & POLICY CONFIGURATION                   #}
-{# ========================================================================= #}
-<div class="row g-4">
-    <!-- Quick Actions Panel -->
-    <div class="col-lg-8">
-        <div class="card shadow-sm border-0 rounded-4 h-100">
-            <div class="card-header bg-white pt-3 pt-md-4 pb-0 px-3 px-md-4 border-bottom-0">
-                <h5 class="fw-bold mb-0">Master Data &amp; Policy Configuration</h5>
-            </div>
-            <div class="card-body p-3 p-md-4">
-                <div class="row g-3">
-                    <div class="col-sm-6">
-                        <a href="/superadmin/organizations/" class="text-decoration-none">
-                            <div class="p-3 border rounded-3 bg-light hover-shadow transition-all d-flex align-items-center h-100">
-                                <div class="bg-primary bg-opacity-10 p-3 rounded-circle me-3 flex-shrink-0 d-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
-                                    <i class="fa-solid fa-sitemap text-primary fs-5"></i>
-                                </div>
-                                <div class="min-width-0">
-                                    <h6 class="fw-bold text-dark mb-1 text-truncate">Departments &amp; Cost Centers</h6>
-                                    <p class="text-muted small mb-0">Department units &amp; cost center allocations</p>
-                                </div>
-                            </div>
-                        </a>
-                    </div>
-                    <div class="col-sm-6">
-                        <a href="/superadmin/users/" class="text-decoration-none">
-                            <div class="p-3 border rounded-3 bg-light hover-shadow transition-all d-flex align-items-center h-100">
-                                <div class="bg-info bg-opacity-10 p-3 rounded-circle me-3 flex-shrink-0 d-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
-                                    <i class="fa-solid fa-users-gear text-info fs-5"></i>
-                                </div>
-                                <div class="min-width-0">
-                                    <h6 class="fw-bold text-dark mb-1 text-truncate">Manage Users &amp; Roles</h6>
-                                    <p class="text-muted small mb-0">Manage RBAC permissions</p>
-                                </div>
-                            </div>
-                        </a>
-                    </div>
-                    <div class="col-sm-6">
-                        <a href="/vendors/" class="text-decoration-none">
-                            <div class="p-3 border rounded-3 bg-light hover-shadow transition-all d-flex align-items-center h-100">
-                                <div class="bg-success bg-opacity-10 p-3 rounded-circle me-3 flex-shrink-0 d-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
-                                    <i class="fa-solid fa-building-user text-success fs-5"></i>
-                                </div>
-                                <div class="min-width-0">
-                                    <h6 class="fw-bold text-dark mb-1 text-truncate">Vendor Management</h6>
-                                    <p class="text-muted small mb-0">KYC, risk &amp; governance</p>
-                                </div>
-                            </div>
-                        </a>
-                    </div>
-                    <div class="col-sm-6">
-                        <a href="/superadmin/policies/" class="text-decoration-none">
-                            <div class="p-3 border rounded-3 bg-light hover-shadow transition-all d-flex align-items-center h-100">
-                                <div class="bg-warning bg-opacity-10 p-3 rounded-circle me-3 flex-shrink-0 d-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
-                                    <i class="fa-solid fa-code-branch text-warning fs-5"></i>
-                                </div>
-                                <div class="min-width-0">
-                                    <h6 class="fw-bold text-dark mb-1 text-truncate">Approval Policies</h6>
-                                    <p class="text-muted small mb-0">Configure routing thresholds</p>
-                                </div>
-                            </div>
-                        </a>
-                    </div>
-                    <div class="col-sm-6">
-                        <a href="/superadmin/budgets/" class="text-decoration-none">
-                            <div class="p-3 border rounded-3 bg-light hover-shadow transition-all d-flex align-items-center h-100">
-                                <div class="bg-primary bg-opacity-10 p-3 rounded-circle me-3 flex-shrink-0 d-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
-                                    <i class="fa-solid fa-sack-dollar text-primary fs-5"></i>
-                                </div>
-                                <div class="min-width-0">
-                                    <h6 class="fw-bold text-dark mb-1 text-truncate">Budget Allocation</h6>
-                                    <p class="text-muted small mb-0">Set limits per Cost Center</p>
-                                </div>
-                            </div>
-                        </a>
-                    </div>
-                    <div class="col-sm-6">
-                        <a href="/invoices/settings/tolerances/" class="text-decoration-none">
-                            <div class="p-3 border rounded-3 bg-light hover-shadow transition-all d-flex align-items-center h-100">
-                                <div class="bg-dark bg-opacity-10 p-3 rounded-circle me-3 flex-shrink-0 d-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
-                                    <i class="fa-solid fa-sliders text-dark fs-5"></i>
-                                </div>
-                                <div class="min-width-0">
-                                    <h6 class="fw-bold text-dark mb-1 text-truncate">Business Rules</h6>
-                                    <p class="text-muted small mb-0">Tolerances &amp; matching rules</p>
-                                </div>
-                            </div>
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Security & Oversight Panel -->
-    <div class="col-lg-4">
-        <div class="card shadow-sm border-0 rounded-4 h-100">
-            <div class="card-header bg-white pt-3 pt-md-4 pb-0 px-3 px-md-4 border-bottom-0">
-                <h5 class="fw-bold mb-0">Security &amp; Oversight</h5>
-            </div>
-            <div class="card-body p-3 p-md-4 d-flex flex-column gap-3 justify-content-between">
-                <div class="d-flex align-items-start gap-3">
-                    <div class="bg-danger bg-opacity-10 text-danger rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style="width:50px;height:50px;">
-                        <i class="fa-solid fa-shield-halved fs-5"></i>
-                    </div>
-                    <div class="min-width-0 flex-grow-1">
-                        <h6 class="fw-bold text-dark mb-1">Immutable Audit Logs</h6>
-                        <p class="text-muted small mb-2">Every state change, creation, and approval across the ERP is logged with actor, timestamp, and IP reference.</p>
-                        <a href="/superadmin/audit/" class="btn btn-sm btn-outline-danger fw-bold rounded-pill px-3 w-100 w-sm-auto text-center">View Audit History</a>
-                    </div>
-                </div>
-                <hr class="my-0 border-secondary border-opacity-15">
-                <div class="d-flex align-items-start gap-3">
-                    <div class="bg-primary bg-opacity-10 text-primary rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style="width:50px;height:50px;">
-                        <i class="fa-solid fa-chart-line fs-5"></i>
-                    </div>
-                    <div class="min-width-0 flex-grow-1">
-                        <h6 class="fw-bold text-dark mb-1">Reports &amp; Analytics</h6>
-                        <p class="text-muted small mb-2">Comprehensive reports across PR aging, PO tracking, invoice match exceptions, spend, and vendor performance.</p>
-                        <a href="/reports/hub/" class="btn btn-sm btn-outline-primary fw-bold rounded-pill px-3 w-100 w-sm-auto text-center">Open Reports Hub</a>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
 </div>
-{% endif %}
 {% endblock %}
