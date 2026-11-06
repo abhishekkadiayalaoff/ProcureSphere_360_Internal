@@ -6,63 +6,23 @@
 {% block navbar %}
 <!-- Top Navigation Bar for Compliance Auditor (Vendor Dashboard Standard) -->
 <nav class="navbar navbar-dark bg-dark shadow-sm py-2 border-bottom border-secondary border-opacity-25 sticky-top">
-    <div class="container-fluid px-2 px-sm-3 px-lg-4 d-flex align-items-center justify-content-between flex-nowrap">
-        <div class="d-flex align-items-center flex-nowrap me-2">
-            <button class="navbar-toggler border-0 me-2 d-lg-none p-1" type="button" aria-label="Toggle navigation" onclick="toggleAuditorSidebar()">
+    <div class="container-fluid ps-2 pe-2 pe-sm-3 pe-lg-4 d-flex align-items-center justify-content-between flex-nowrap">
+        <div class="d-flex align-items-center flex-nowrap auditor-brand-wrapper">
+            <button class="navbar-toggler border-0 me-2 d-lg-none p-1" type="button" data-bs-toggle="offcanvas" data-bs-target="#auditorSidebar" aria-controls="auditorSidebar" aria-label="Toggle navigation">
                 <i class="fa-solid fa-bars text-white fs-4"></i>
             </button>
-            <a href="/audit/dashboard/" class="dashboard-brand-badge me-2 me-lg-3" aria-label="ProcureSphere 360 Home">
+            <a href="/audit/dashboard/" class="dashboard-brand-badge auditor-top-brand" aria-label="ProcureSphere 360 Home">
                 <img src="{% static 'landing/images/procuresphere_360_nav_brand.png' %}" alt="ProcureSphere 360" class="dashboard-brand-logo">
             </a>
-            <span class="d-none">Compliance Auditor</span>
         </div>
 
         <div class="d-flex align-items-center gap-2 gap-sm-3 flex-shrink-0">
-            <!-- Authoritative Organization Scope Badge -->
-            <div class="d-flex align-items-center bg-dark bg-opacity-75 border border-secondary border-opacity-50 text-white rounded-pill px-2.5 px-md-3 py-1 text-nowrap small shadow-sm" id="auditorOrgScopeBadge">
-                <i class="fa-solid fa-building-shield text-cyan me-1.5 me-md-2"></i>
-                <span class="text-white-50 me-1 d-none d-sm-inline">Scope:</span>
-                <span class="fw-semibold text-white" id="activeScopeLabel">
-                    {% if user.is_superuser %}
-                        Global Compliance Vault
-                    {% elif user.effective_organization %}
-                        {{ user.effective_organization.name }}
-                    {% elif user.organization %}
-                        {{ user.organization.name }}
-                    {% else %}
-                        Authorized Organization
-                    {% endif %}
-                </span>
-                <span class="badge bg-success bg-opacity-25 text-success border border-success border-opacity-50 ms-2 py-0.5 px-2 rounded-pill d-none d-md-inline-block" style="font-size: 0.65rem;">Active Scope</span>
-            </div>
-
-            <!-- Evidence Vault Badge -->
-            <div class="d-none d-md-flex align-items-center bg-dark bg-opacity-75 border border-secondary border-opacity-50 rounded-pill px-3 py-1 text-white small">
-                <i class="fa-solid fa-shield-halved text-cyan me-2"></i>
-                <span>Evidence Vault</span>
-            </div>
-
-            <!-- User Profile & Sign Out -->
-            {% if user.is_authenticated %}
-            <div class="d-flex align-items-center gap-2">
-                <div class="d-none d-md-flex align-items-center px-2 px-sm-3 py-1 bg-secondary bg-opacity-25 rounded-pill border border-secondary border-opacity-50 text-white">
-                    <i class="fa-solid fa-circle-user text-cyan me-1 me-sm-2 fs-5"></i>
-                    <div class="text-start leading-tight me-1">
-                        <div class="fw-semibold text-white small text-truncate" style="max-width: 140px;">{{ user.email|default:"auditor@hpe.com" }}</div>
-                        <div class="badge bg-secondary bg-opacity-75 text-cyan rounded-pill" style="font-size: 0.65rem;">Compliance Auditor</div>
-                    </div>
-                </div>
-                <span class="badge ms-2 rounded-pill bg-success" style="font-size: 0.65rem;">Active</span>
-            </div>
-            {% endif %}
-
             <!-- Notifications Icon -->
             <a href="/notifications/" class="btn btn-outline-secondary btn-sm position-relative text-white border-0 d-flex align-items-center justify-content-center p-0" style="width: 36px; height: 36px;" title="Notifications">
                 <i class="fa-solid fa-bell fs-5"></i>
                 {% if unread_notifications_count and unread_notifications_count > 0 %}
                 <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size: 0.65rem;">
                     {{ unread_notifications_count }}
-                    <span class="visually-hidden">unread notifications</span>
                 </span>
                 {% elif metrics and metrics.unread_notifications and metrics.unread_notifications > 0 %}
                 <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size: 0.65rem;">
@@ -71,23 +31,28 @@
                 {% endif %}
             </a>
 
-            <!-- User Profile Dropdown -->
+            <!-- User Profile Dropdown (Vendor Style) -->
             {% if user.is_authenticated %}
-            <div class="dropdown position-relative">
-                <button class="btn p-0 border-0 bg-transparent rounded-circle vendor-profile-avatar-btn" type="button" id="auditorProfileDropdown" data-bs-toggle="dropdown" aria-expanded="false" title="{{ user.email }}">
-                    <span class="vendor-avatar-ring">
-                        <i class="fa-solid fa-circle-user text-cyan"></i>
-                    </span>
+            <div class="dropdown">
+                <button class="btn btn-link text-decoration-none p-0 border-0 d-flex align-items-center justify-content-center rounded-circle" 
+                        type="button" 
+                        id="auditorProfileDropdown" 
+                        data-bs-toggle="dropdown" 
+                        aria-expanded="false" 
+                        title="Account Menu"
+                        style="width: 38px; height: 38px; background: rgba(255, 255, 255, 0.08); transition: all 0.2s ease;">
+                    <i class="fa-solid fa-circle-user text-cyan fs-4"></i>
                 </button>
-                <ul class="dropdown-menu dropdown-menu-end shadow-lg vendor-profile-dropdown" aria-labelledby="auditorProfileDropdown">
-                    <li class="vendor-dropdown-header">
-                        <div class="vendor-email-text">{{ user.email|default:"auditor@hpe.com" }}</div>
+                <ul class="dropdown-menu dropdown-menu-end shadow-lg py-2 mt-2" 
+                    aria-labelledby="auditorProfileDropdown" 
+                    style="min-width: 220px; background: #1e293b; border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 12px;">
+                    <li class="px-3 py-2 border-bottom border-secondary border-opacity-25">
+                        <div class="fw-semibold text-white small text-truncate" title="{{ user.email }}">{{ user.email|default:"auditor@hpe.com" }}</div>
+                        <div class="text-white-50" style="font-size: 0.72rem;">Compliance Auditor</div>
                     </li>
-                    <li><hr class="vendor-dropdown-divider"></li>
                     <li>
-                        <a class="vendor-dropdown-signout" href="/logout/">
-                            <i class="fa-solid fa-arrow-right-from-bracket me-2 text-danger"></i>
-                            <span>Sign Out</span>
+                        <a class="dropdown-item text-danger d-flex align-items-center py-2 px-3 small" href="/logout/" style="transition: background 0.15s ease;">
+                            <i class="fa-solid fa-arrow-right-from-bracket me-2" style="width: 16px;"></i> Sign Out
                         </a>
                     </li>
                 </ul>
@@ -102,19 +67,25 @@
 <!-- Mobile & Tablet Sidebar Backdrop Overlay -->
 <div id="auditorSidebarBackdrop" class="auditor-backdrop d-lg-none" onclick="toggleAuditorSidebar()"></div>
 
-<div class="d-flex align-items-start w-100" style="min-height: calc(100vh - 58px); max-width: 100vw;">
+<div class="d-flex align-items-start w-100" style="min-height: calc(100vh - 79px); max-width: 100vw;">
 
     <!-- ========================================================================= -->
-    <!-- 1. STICKY DARK SIDEBAR (Vendor Dashboard Standard: 260px, sticky top: 58px) -->
+    <!-- 1. STICKY DARK SIDEBAR (Vendor Dashboard Standard: 260px, sticky top: 79px) -->
     <!-- ========================================================================= -->
-    <aside id="auditorSidebar" class="offcanvas-lg offcanvas-start bg-dark border-end border-secondary border-opacity-25 shadow-sm text-white auditor-sidebar" tabindex="-1" aria-labelledby="auditorSidebarLabel" style="width: 260px; min-width: 260px; height: calc(100vh - 58px); position: sticky; top: 58px; z-index: 1000; overflow-y: auto; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.15) transparent;">
+    <aside id="auditorSidebar" class="offcanvas-lg offcanvas-start bg-dark border-end border-secondary border-opacity-25 shadow-sm text-white auditor-sidebar" tabindex="-1" aria-labelledby="auditorSidebarLabel" style="width: 260px; min-width: 260px; height: calc(100vh - 79px); position: sticky; top: 79px; z-index: 1000; overflow-y: auto; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.15) transparent;">
         
-        <!-- Mobile/Tablet Offcanvas Header (Hidden on Desktop) -->
-        <div class="offcanvas-header d-lg-none border-bottom border-secondary border-opacity-25 px-3 py-2.5">
-            <h6 class="offcanvas-title fw-bold text-white mb-0" id="auditorSidebarLabel"><i class="fa-solid fa-layer-group text-cyan me-2"></i>Audit Portal</h6>
-            <button class="btn btn-link text-white-50 p-1" type="button" aria-label="Close Navigation" onclick="toggleAuditorSidebar()">
-                <i class="fa-solid fa-xmark fs-5"></i>
-            </button>
+        <!-- Mobile Drawer Header (Hidden on Desktop) -->
+        <div class="sidebar-brand-box px-3 py-3 border-bottom border-secondary border-opacity-25 flex-shrink-0 d-flex d-lg-none align-items-center justify-content-between">
+            <a href="/audit/dashboard/" class="d-flex align-items-center text-white text-decoration-none" id="auditorSidebarLabel">
+                <div class="brand-icon-box me-2 flex-shrink-0" style="width: 32px; height: 32px; background: rgba(0, 184, 217, 0.2); border-radius: 6px; display: flex; align-items: center; justify-content: center;">
+                    <i class="fa-solid fa-layer-group text-cyan"></i>
+                </div>
+                <div class="overflow-hidden">
+                    <div class="fs-6 fw-bold tracking-tight text-white d-block text-truncate">ProcureSphere <span class="text-cyan">360</span></div>
+                    <span class="badge bg-secondary bg-opacity-50 text-light px-2 py-0.5 rounded-pill" style="font-size: 0.62rem; letter-spacing: 0.04em;">COMPLIANCE AUDITOR</span>
+                </div>
+            </a>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" data-bs-target="#auditorSidebar" aria-label="Close menu"></button>
         </div>
 
         <div class="px-2 py-3">
@@ -181,9 +152,22 @@
     <!-- ========================================================================= -->
     <!-- 2. MAIN CONTENT WRAPPER                                                   -->
     <!-- ========================================================================= -->
-    <main class="auditor-main-content flex-grow-1 p-3 p-md-4" style="min-width: 0; background-color: #f8fafc; min-height: calc(100vh - 58px); max-width: 100vw; overflow-x: hidden;">
+    <main class="auditor-main-content flex-grow-1 p-3 p-md-4" style="min-width: 0; background-color: #f8fafc; min-height: calc(100vh - 79px); max-width: 100vw; overflow-x: hidden;">
         
         {% block auditor_breadcrumbs %}{% endblock auditor_breadcrumbs %}
+
+        <!-- Alert Messages -->
+        {% if messages %}
+        <div class="mb-4">
+            {% for message in messages %}
+            <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show shadow-sm border-0 d-flex align-items-center py-2 px-3" role="alert">
+                <i class="fa-solid {% if message.tags == 'success' %}fa-circle-check text-success{% elif message.tags == 'error' or message.tags == 'danger' %}fa-circle-exclamation text-danger{% else %}fa-circle-info text-primary{% endif %} me-2 fs-5"></i>
+                <div class="flex-grow-1">{{ message }}</div>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
 
         <!-- Toast / Alert Region for Async Feedback -->
         <div id="auditorToastContainer" class="toast-container position-fixed top-0 end-0 p-3 z-3" style="margin-top: 65px;"></div>
@@ -361,15 +345,51 @@
         overscroll-behavior-y: contain !important;
     }
 
-    /* Desktop Sidebar (>= 992px) - Vendor Dashboard Standard: 260px, sticky top: 58px */
+    /* Brand sizing */
+    @media (min-width: 992px) {
+        .auditor-brand-wrapper {
+            width: 244px;
+            max-width: 244px;
+            flex-shrink: 0;
+        }
+        .auditor-top-brand {
+            width: 100% !important;
+            max-width: 100% !important;
+            height: 62px !important;
+            max-height: 62px !important;
+            padding: 2px 6px !important;
+            border-radius: 10px !important;
+            margin: 0 !important;
+        }
+        .auditor-top-brand .dashboard-brand-logo {
+            width: 100% !important;
+            height: 100% !important;
+            max-height: 56px !important;
+            object-fit: contain !important;
+        }
+    }
+    @media (max-width: 991.98px) {
+        .auditor-brand-wrapper { width: auto; max-width: none; }
+        .auditor-top-brand {
+            width: 190px !important;
+            max-width: 190px !important;
+            height: 48px !important;
+            max-height: 48px !important;
+            padding: 4px 8px !important;
+            border-radius: 8px !important;
+            margin: 0 !important;
+        }
+    }
+
+    /* Desktop Sidebar (>= 992px) - Vendor Dashboard Standard: 260px, sticky top: 79px */
     @media (min-width: 992px) {
         .auditor-sidebar {
             width: 260px !important;
             min-width: 260px !important;
-            height: calc(100vh - 58px) !important;
+            height: calc(100vh - 79px) !important;
             position: -webkit-sticky !important;
             position: sticky !important;
-            top: 58px !important;
+            top: 79px !important;
             z-index: 1000;
             background-color: #212529 !important;
             border-right: 1px solid rgba(255, 255, 255, 0.15) !important;
@@ -387,6 +407,17 @@
         .auditor-backdrop {
             display: none !important;
         }
+    }
+
+    /* Active nav links */
+    .vendor-navlink.active-nav-item,
+    .unified-navlink.active-nav-item,
+    .vendor-navlink.active,
+    .unified-navlink.active {
+        background: #0d6efd !important;
+        color: #fff !important;
+        font-weight: 700;
+        box-shadow: 0 2px 8px rgba(13,110,253,0.35);
     }
 
     /* Mobile & Tablet Responsive Sidebar Drawer (< 992px) */

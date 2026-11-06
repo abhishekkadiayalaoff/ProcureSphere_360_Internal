@@ -11,27 +11,31 @@
 {% block manager_content %}
 <div class="container-fluid px-0">
 
-    <!-- Page Header Area (Dark Charcoal matching Vendor Dashboard) -->
-    <div class="card border-0 shadow-sm rounded-4 p-4 mb-4 text-white" style="background-color: #212529 !important;">
-        <div class="row align-items-center g-3">
-            <div class="col-lg-7">
-                <span class="badge bg-secondary bg-opacity-50 text-light rounded-pill fw-bold px-3 py-1 mb-2" style="font-size: 0.68rem; letter-spacing: 0.05em;">
-                    <i class="fa-solid fa-shield-halved text-cyan me-1"></i> GOVERNANCE HUB &bull; PROCUREMENT MANAGER
-                </span>
-                <h1 class="fw-bold text-white mb-1 h3">Procurement Manager Executive Desk</h1>
-                <p class="text-white-50 mb-0 small">{{ user.email }} &bull; High-value approvals oversight, RFQ/RFP award decisions, PR bottlenecks, and supplier risk governance.</p>
-            </div>
-            <div class="col-lg-5 text-lg-end d-flex flex-wrap gap-2 justify-content-lg-end">
-                <a href="/manager/awards/" class="btn btn-outline-light btn-sm rounded-pill px-3 fw-semibold">
-                    <i class="fa-solid fa-award me-1"></i> Pending Awards
-                </a>
-                <a href="/manager/vendor-risk/?tab=suspension" class="btn btn-outline-danger btn-sm rounded-pill px-3 fw-semibold text-white border-danger" title="Vendor Suspension Desk">
-                    <i class="fa-solid fa-scale-balanced me-1 text-danger"></i> Suspension Desk
-                </a>
-                <button onclick="loadDashboardMetrics()" class="btn btn-primary btn-sm rounded-pill fw-bold px-3 shadow-sm" id="refreshBtn">
-                    <i class="fa-solid fa-arrows-rotate me-1" id="refreshIcon"></i> Refresh Data
-                </button>
-            </div>
+    <!-- Welcome Header & Quick Actions (Vendor Design Standard) -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+        <div>
+            <h3 class="fw-bold text-dark mb-1">
+                Procurement Manager Executive Desk
+            </h3>
+            <p class="text-muted mb-0 small">
+                Welcome, <strong>{{ user.email }}</strong> &bull; High-value approvals oversight, RFQ/RFP award decisions, PR bottlenecks, and supplier risk governance.
+            </p>
+        </div>
+        <div class="d-flex gap-2 flex-wrap">
+            <button type="button" onclick="openDashboardGovModal()" class="btn btn-outline-dark btn-sm rounded-pill px-3 fw-semibold" title="Execute Vendor Suspension or Reinstatement">
+                <i class="fa-solid fa-scale-balanced me-1"></i> Governance Action
+            </button>
+            <a href="/manager/vendor-risk/?tab=suspension" class="btn btn-outline-danger btn-sm rounded-pill px-3 fw-semibold" title="Vendor Suspension Desk">
+                <i class="fa-solid fa-scale-balanced me-1 text-danger"></i> Suspension Desk
+            </a>
+            <a href="/manager/awards/" class="btn btn-outline-dark btn-sm rounded-pill px-3 fw-semibold">
+                <i class="fa-solid fa-award me-1"></i> Pending Awards
+            </a>
+            <button onclick="loadDashboardMetrics()" class="btn btn-primary btn-sm rounded-pill fw-bold px-3 shadow-sm" id="refreshBtn">
+                <i class="fa-solid fa-arrows-rotate me-1" id="refreshIcon"></i> Refresh Data
+            </button>
+        </div>
+    </div>
         </div>
     </div>
         </div>

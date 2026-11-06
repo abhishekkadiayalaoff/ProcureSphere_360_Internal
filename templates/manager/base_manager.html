@@ -6,57 +6,52 @@
 {% block navbar %}
 <!-- Top Navigation Bar for Procurement Manager (Matching Vendor Dashboard Design System) -->
 <nav class="navbar navbar-dark bg-dark shadow-sm py-2 border-bottom border-secondary border-opacity-25 sticky-top proc-mgr-topbar" style="background-color: #212529 !important;">
-    <div class="container-fluid px-2 px-sm-3 px-lg-4 d-flex align-items-center justify-content-between flex-nowrap">
+    <div class="container-fluid ps-2 pe-2 pe-sm-3 pe-lg-4 d-flex align-items-center justify-content-between flex-nowrap">
         <!-- Brand & Mobile Drawer Toggle -->
-        <div class="d-flex align-items-center flex-nowrap me-2">
+        <div class="d-flex align-items-center flex-nowrap manager-brand-wrapper">
             <button class="navbar-toggler border-0 me-2 d-lg-none p-1" type="button" data-bs-toggle="offcanvas" data-bs-target="#managerSidebar" aria-controls="managerSidebar" aria-label="Toggle navigation">
                 <i class="fa-solid fa-bars text-white fs-4"></i>
             </button>
-            <a href="/manager/" class="dashboard-brand-badge me-2 me-lg-3" aria-label="ProcureSphere 360 Home">
+            <a href="/manager/" class="dashboard-brand-badge manager-top-brand" aria-label="ProcureSphere 360 Home">
                 <img src="{% static 'landing/images/procuresphere_360_nav_brand.png' %}" alt="ProcureSphere 360" class="dashboard-brand-logo">
             </a>
         </div>
 
-        <!-- Middle: Global Scope Pill & Right Profile Actions -->
+        <!-- Right Profile Actions -->
         <div class="d-flex align-items-center gap-2 gap-sm-3 flex-shrink-0">
-            <!-- Organization / Scope Badge (Tenant Context) -->
-            {% with org=user.organization|default:user.effective_organization %}
-            <div class="d-none d-md-flex align-items-center bg-dark bg-opacity-75 border border-secondary border-opacity-50 rounded-pill px-3 py-1 text-white">
-                <i class="fa-solid fa-building text-cyan me-2 fs-5"></i>
-                <div class="text-start lh-sm">
-                    <span class="fw-semibold small d-block mb-1">{% if org.name %}{{ org.name|truncatechars:35 }}{% elif user_org_name %}{{ user_org_name|truncatechars:35 }}{% else %}Global Enterprise{% endif %}</span>
-                    <span class="text-white-50 d-block" style="font-size: 0.7rem; line-height: 1;">{% if org.code %}{{ org.code }}{% else %}HPE-GLOBAL{% endif %} &bull; Active</span>
-                </div>
-                <span class="badge ms-2 rounded-pill bg-success" style="font-size: 0.65rem;">Active</span>
-            </div>
-            {% endwith %}
-
             <!-- Notifications Quick Indicator -->
             <a href="/manager/notifications/" class="btn btn-outline-secondary btn-sm position-relative text-white border-0 d-flex align-items-center justify-content-center p-0" style="width: 36px; height: 36px;" title="Notifications & Escalations">
                 <i class="fa-solid fa-bell fs-5"></i>
-                <span id="topbarNotificationBadge" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger {% if not unread_notifications_count or unread_notifications_count == 0 %}d-none{% endif %}" style="font-size: 0.65rem;">
-                    {{ unread_notifications_count|default:"0" }}
+                {% if unread_notifications_count and unread_notifications_count > 0 %}
+                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size: 0.65rem;">
+                    {{ unread_notifications_count }}
                     <span class="visually-hidden">unread notifications</span>
                 </span>
+                {% endif %}
             </a>
 
-            <!-- User Profile Dropdown -->
+            <!-- User Profile Dropdown (Vendor Style) -->
             {% if user.is_authenticated %}
-            <div class="dropdown position-relative">
-                <button class="btn p-0 border-0 bg-transparent rounded-circle vendor-profile-avatar-btn" type="button" id="managerProfileDropdown" data-bs-toggle="dropdown" aria-expanded="false" title="{{ user.email }}">
-                    <span class="vendor-avatar-ring">
-                        <i class="fa-solid fa-circle-user text-cyan"></i>
-                    </span>
+            <div class="dropdown">
+                <button class="btn btn-link text-decoration-none p-0 border-0 d-flex align-items-center justify-content-center rounded-circle"
+                        type="button"
+                        id="managerProfileDropdown"
+                        data-bs-toggle="dropdown"
+                        aria-expanded="false"
+                        title="Account Menu"
+                        style="width: 38px; height: 38px; background: rgba(255, 255, 255, 0.08); transition: all 0.2s ease;">
+                    <i class="fa-solid fa-circle-user text-cyan fs-4"></i>
                 </button>
-                <ul class="dropdown-menu dropdown-menu-end shadow-lg vendor-profile-dropdown" aria-labelledby="managerProfileDropdown">
-                    <li class="vendor-dropdown-header">
-                        <div class="vendor-email-text">{{ user.email }}</div>
+                <ul class="dropdown-menu dropdown-menu-end shadow-lg py-2 mt-2"
+                    aria-labelledby="managerProfileDropdown"
+                    style="min-width: 220px; background: #1e293b; border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 12px;">
+                    <li class="px-3 py-2 border-bottom border-secondary border-opacity-25">
+                        <div class="fw-semibold text-white small text-truncate" title="{{ user.email }}">{{ user.email }}</div>
+                        <div class="text-white-50" style="font-size: 0.72rem;">Procurement Manager</div>
                     </li>
-                    <li><hr class="vendor-dropdown-divider"></li>
                     <li>
-                        <a class="vendor-dropdown-signout" href="/logout/">
-                            <i class="fa-solid fa-arrow-right-from-bracket me-2 text-danger"></i>
-                            <span>Sign Out</span>
+                        <a class="dropdown-item text-danger d-flex align-items-center py-2 px-3 small" href="/logout/" style="transition: background 0.15s ease;">
+                            <i class="fa-solid fa-arrow-right-from-bracket me-2" style="width: 16px;"></i> Sign Out
                         </a>
                     </li>
                 </ul>
@@ -69,97 +64,40 @@
 
 {% block layout %}
 <style>
-    /* ========================================================================= */
-    /* Manager Navbar Profile Avatar & Dropdown (Exact Vendor Dashboard Match)   */
-    /* ========================================================================= */
-    .vendor-profile-avatar-btn {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        padding: 0;
-        border: none;
-        background: transparent;
-        cursor: pointer;
-        position: relative;
+    /* Brand sizing */
+    @media (min-width: 992px) {
+        .manager-brand-wrapper {
+            width: 244px;
+            max-width: 244px;
+            flex-shrink: 0;
+        }
+        .manager-top-brand {
+            width: 100% !important;
+            max-width: 100% !important;
+            height: 62px !important;
+            max-height: 62px !important;
+            padding: 2px 6px !important;
+            border-radius: 10px !important;
+            margin: 0 !important;
+        }
+        .manager-top-brand .dashboard-brand-logo {
+            width: 100% !important;
+            height: 100% !important;
+            max-height: 56px !important;
+            object-fit: contain !important;
+        }
     }
-    .vendor-profile-avatar-btn::after {
-        display: none !important;
-    }
-    .vendor-profile-avatar-btn:focus,
-    .vendor-profile-avatar-btn:active {
-        outline: none !important;
-        box-shadow: none !important;
-    }
-    .vendor-avatar-ring {
-        width: 38px;
-        height: 38px;
-        border-radius: 50%;
-        background-color: #1e2634;
-        border: 2px solid #2563eb;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
-    }
-    .vendor-profile-avatar-btn:hover .vendor-avatar-ring,
-    .vendor-profile-avatar-btn[aria-expanded="true"] .vendor-avatar-ring {
-        border-color: #3b82f6;
-        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.35);
-    }
-    .vendor-avatar-ring i {
-        font-size: 1.6rem;
-        color: #06b6d4 !important;
-        line-height: 1;
-    }
-
-    /* Dark navy profile dropdown menu */
-    .vendor-profile-dropdown {
-        background-color: #1b2332 !important;
-        border: 1px solid rgba(255, 255, 255, 0.08) !important;
-        border-radius: 12px !important;
-        box-shadow: 0 12px 28px rgba(0, 0, 0, 0.55), 0 4px 10px rgba(0, 0, 0, 0.35) !important;
-        min-width: 240px !important;
-        max-width: 320px !important;
-        padding: 14px 18px 12px 18px !important;
-        margin-top: 8px !important;
-    }
-    .vendor-dropdown-header {
-        padding: 0 !important;
-        margin-bottom: 6px !important;
-        list-style: none;
-    }
-    .vendor-email-text {
-        font-size: 0.95rem;
-        font-weight: 700;
-        color: #ffffff !important;
-        word-break: break-all;
-        line-height: 1.35;
-        letter-spacing: -0.01em;
-    }
-    .vendor-dropdown-divider {
-        border: 0 !important;
-        border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
-        margin: 8px 0 10px 0 !important;
-        opacity: 1 !important;
-    }
-    .vendor-dropdown-signout {
-        display: inline-flex;
-        align-items: center;
-        color: #ef4444 !important;
-        font-size: 0.92rem;
-        font-weight: 500;
-        text-decoration: none;
-        padding: 4px 0 !important;
-        background: transparent !important;
-        transition: color 0.15s ease, opacity 0.15s ease;
-    }
-    .vendor-dropdown-signout i {
-        color: #ef4444 !important;
-        font-size: 0.95rem;
-    }
-    .vendor-dropdown-signout:hover,
-    .vendor-dropdown-signout:focus {
-        color: #f87171 !important;
+    @media (max-width: 991.98px) {
+        .manager-brand-wrapper { width: auto; max-width: none; }
+        .manager-top-brand {
+            width: 190px !important;
+            max-width: 190px !important;
+            height: 48px !important;
+            max-height: 48px !important;
+            padding: 4px 8px !important;
+            border-radius: 8px !important;
+            margin: 0 !important;
+        }
     }
 
     /* Desktop Sidebar (>= 992px) */
@@ -171,9 +109,9 @@
             min-width: 260px !important;
             flex-shrink: 0 !important;
             position: sticky !important;
-            top: 58px !important;
-            height: calc(100vh - 58px) !important;
-            max-height: calc(100vh - 58px) !important;
+            top: 79px !important;
+            height: calc(100vh - 79px) !important;
+            max-height: calc(100vh - 79px) !important;
             overflow: hidden !important;
             overflow-y: hidden !important;
             display: flex !important;
@@ -280,7 +218,7 @@
     .shadow-xs { box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1) !important; }
 </style>
 
-<div class="d-flex align-items-start w-100" style="min-height: calc(100vh - 58px); max-width: 100vw; background-color: #F5F7FA;">
+<div class="d-flex align-items-start w-100" style="min-height: calc(100vh - 79px); max-width: 100vw; background-color: #F5F7FA;">
     <!-- ========================================================================= -->
     <!-- 1. STICKY DARK SIDEBAR (ProcureSphere 360 Theme: #212529)                 -->
     <!-- ========================================================================= -->
@@ -324,15 +262,6 @@
                 <span class="badge bg-warning text-dark rounded-pill fw-bold ms-auto flex-shrink-0" style="font-size: 0.68rem;">{{ pending_approvals_count }}</span>
                 {% endif %}
             </a>
-            <a href="/manager/policy-exceptions/" class="manager-nav-link d-flex align-items-center justify-content-between {% if '/manager/policy-exceptions/' in request.path %}active{% endif %}">
-                <div class="d-flex align-items-center min-width-0">
-                    <i class="fa-solid fa-triangle-exclamation nav-icon text-danger"></i>
-                    <span class="text-truncate">Policy Exceptions</span>
-                </div>
-                {% if policy_exceptions_count and policy_exceptions_count > 0 %}
-                <span class="badge bg-danger text-white rounded-pill fw-bold ms-auto flex-shrink-0" style="font-size: 0.68rem;">{{ policy_exceptions_count }}</span>
-                {% endif %}
-            </a>
             <a href="/manager/pipeline/" class="manager-nav-link {% if '/manager/pipeline/' in request.path %}active{% endif %}">
                 <i class="fa-solid fa-filter-circle-dollar nav-icon text-cyan"></i>
                 <span>Procurement Pipeline</span>
@@ -361,7 +290,11 @@
             <div class="nav-section-label">Suppliers</div>
             <a href="/manager/vendor-risk/" class="manager-nav-link {% if '/manager/vendor-risk/' in request.path %}active{% endif %}">
                 <i class="fa-solid fa-shield-halved nav-icon text-danger"></i>
-                <span>Vendor Risk &amp; Governance</span>
+                <span>Vendor Risk</span>
+            </a>
+            <a href="/manager/vendor-risk/suspension/" class="manager-nav-link {% if '/manager/vendor-risk/suspension/' in request.path %}active{% endif %}">
+                <i class="fa-solid fa-scale-balanced nav-icon text-danger"></i>
+                <span>Vendor Suspension</span>
             </a>
 
             <a href="/manager/performance/" class="manager-nav-link {% if '/manager/performance/' in request.path %}active{% endif %}">
@@ -391,6 +324,19 @@
     <!-- 2. MAIN CONTENT AREA                                                      -->
     <!-- ========================================================================= -->
     <main class="flex-grow-1 p-2 p-sm-3 p-md-4 w-100" style="min-width: 0; max-width: 100vw; overflow-x: hidden; background-color: #F5F7FA;">
+        <!-- Alert Messages -->
+        {% if messages %}
+        <div class="mb-4">
+            {% for message in messages %}
+            <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show shadow-sm border-0 d-flex align-items-center py-2 px-3" role="alert">
+                <i class="fa-solid {% if message.tags == 'success' %}fa-circle-check text-success{% elif message.tags == 'error' or message.tags == 'danger' %}fa-circle-exclamation text-danger{% else %}fa-circle-info text-primary{% endif %} me-2 fs-5"></i>
+                <div class="flex-grow-1">{{ message }}</div>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
         <!-- Toast / Alert Region for Async Feedback -->
         <div id="managerToastContainer" class="toast-container position-fixed top-0 end-0 p-3 z-3" style="margin-top: 55px;"></div>
 
