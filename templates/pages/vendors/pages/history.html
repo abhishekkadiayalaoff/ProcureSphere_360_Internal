@@ -1,0 +1,38 @@
+{% extends base_layout|default:'base.html' %}
+
+{% block title %}{{ vendor.legal_name }} — History — {{ vendor.vendor_number }}{% endblock %}
+
+{% block manager_breadcrumbs %}
+{% include 'partials/vendor_pages/breadcrumbs.html' with page_label='History' %}
+{% endblock manager_breadcrumbs %}
+
+{% block content %}
+{% include 'partials/vendor_pages/header.html' %}
+
+<div class="row g-4">
+    <div class="col-12">
+        <div class="glass-card p-4 shadow-sm">
+            <h5 class="fw-bold mb-3"><i class="fa-solid fa-clock-rotate-left me-2"></i>Change history <span class="small text-muted fw-normal">(immutable audit log)</span></h5>
+            <p class="small text-muted mb-2">Covers the vendor record and its documents, risk assessments, scorecards and contacts. Entries are append-only audit records — created, changed, approved, rejected, verified, held/suspended and reactivated states included.</p>
+            <div class="table-responsive"><table class="table table-sm small align-middle mb-0">
+                <thead><tr><th>Timestamp</th><th>Actor</th><th>Role</th><th>Action</th><th>Object</th><th>Previous state</th><th>Updated state</th></tr></thead>
+                <tbody>
+                {% for log in history %}
+                    <tr>
+                        <td class="text-nowrap">{{ log.timestamp|date:"Y-m-d H:i:s" }}</td>
+                        <td>{{ log.actor_email }}</td>
+                        <td>{{ log.actor.role.name|default:"—" }}</td>
+                        <td><span class="badge bg-light text-dark border">{{ log.get_action_display }}</span></td>
+                        <td>{{ log.target_model }}</td>
+                        <td><code class="small text-wrap">{{ log.previous_state|default:"—" }}</code></td>
+                        <td><code class="small text-wrap">{{ log.new_state|default:"—" }}</code></td>
+                    </tr>
+                {% empty %}
+                    <tr><td colspan="7" class="text-muted text-center py-3">No history recorded.</td></tr>
+                {% endfor %}
+                </tbody>
+            </table></div>
+        </div>
+    </div>
+</div>
+{% endblock %}

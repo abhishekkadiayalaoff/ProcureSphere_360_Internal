@@ -388,11 +388,11 @@
 
                         <a href="{% url 'vendor_detail' vendor.id %}" class="btn btn-sm btn-outline-secondary" title="View"><i class="fa-solid fa-eye"></i><span class="visually-hidden">View</span></a>
 
-                        <a href="{% url 'vendor_detail' vendor.id %}#risk" class="btn btn-sm btn-outline-danger" title="Risk"><i class="fa-solid fa-triangle-exclamation"></i><span class="visually-hidden">Risk</span></a>
+                        <a href="{% url 'vendor_detail_risk' vendor.id %}" class="btn btn-sm btn-outline-danger" title="Risk"><i class="fa-solid fa-triangle-exclamation"></i><span class="visually-hidden">Risk</span></a>
 
-                        <a href="{% url 'vendor_detail' vendor.id %}#performance" class="btn btn-sm btn-outline-success" title="Performance"><i class="fa-solid fa-award"></i><span class="visually-hidden">Performance</span></a>
+                        <a href="{% url 'vendor_detail_performance' vendor.id %}" class="btn btn-sm btn-outline-success" title="Performance"><i class="fa-solid fa-award"></i><span class="visually-hidden">Performance</span></a>
 
-                        <a href="{% url 'vendor_detail' vendor.id %}#history" class="btn btn-sm btn-outline-dark" title="History"><i class="fa-solid fa-clock-rotate-left"></i><span class="visually-hidden">History</span></a>
+                        <a href="{% url 'vendor_detail_history' vendor.id %}" class="btn btn-sm btn-outline-dark" title="History"><i class="fa-solid fa-clock-rotate-left"></i><span class="visually-hidden">History</span></a>
 
                     </td>
 
@@ -566,19 +566,19 @@
 
                     </a>
 
-                    <a href="{% url 'vendor_detail' vendor.id %}#risk" class="btn btn-sm btn-outline-danger rounded-pill px-2.5 py-1.5" title="Risk Assessment">
+                    <a href="{% url 'vendor_detail_risk' vendor.id %}" class="btn btn-sm btn-outline-danger rounded-pill px-2.5 py-1.5" title="Risk Assessment">
 
                         <i class="fa-solid fa-triangle-exclamation"></i>
 
                     </a>
 
-                    <a href="{% url 'vendor_detail' vendor.id %}#performance" class="btn btn-sm btn-outline-success rounded-pill px-2.5 py-1.5" title="Performance Scorecard">
+                    <a href="{% url 'vendor_detail_performance' vendor.id %}" class="btn btn-sm btn-outline-success rounded-pill px-2.5 py-1.5" title="Performance Scorecard">
 
                         <i class="fa-solid fa-award"></i>
 
                     </a>
 
-                    <a href="{% url 'vendor_detail' vendor.id %}#history" class="btn btn-sm btn-outline-dark rounded-pill px-2.5 py-1.5" title="Audit History">
+                    <a href="{% url 'vendor_detail_history' vendor.id %}" class="btn btn-sm btn-outline-dark rounded-pill px-2.5 py-1.5" title="Audit History">
 
                         <i class="fa-solid fa-clock-rotate-left"></i>
 

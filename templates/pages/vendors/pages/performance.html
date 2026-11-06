@@ -1,0 +1,61 @@
+{% extends base_layout|default:'base.html' %}
+
+{% block title %}{{ vendor.legal_name }} — Performance — {{ vendor.vendor_number }}{% endblock %}
+
+{% block manager_breadcrumbs %}
+{% include 'partials/vendor_pages/breadcrumbs.html' with page_label='Performance' %}
+{% endblock manager_breadcrumbs %}
+
+{% block content %}
+{% include 'partials/vendor_pages/header.html' %}
+
+<div class="row g-4">
+    <div class="col-lg-7">
+        <div class="glass-card p-4 shadow-sm h-100">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="fw-bold mb-0"><i class="fa-solid fa-award me-2 text-success"></i>Performance scorecard</h5>
+                {% if latest_scorecard and latest_scorecard.composite_score is not None %}
+                    <span class="badge bg-dark fs-6">{{ latest_scorecard.composite_score|floatformat:1 }}/100</span>
+                {% endif %}
+            </div>
+            {% if latest_scorecard %}
+                <div class="small text-muted mb-2">Period {{ latest_scorecard.evaluation_period }} · last calculated {{ latest_scorecard.created_at|date:"Y-m-d H:i" }}
+                    {% if latest_scorecard.band_display %}<span class="badge {% if latest_scorecard.performance_band == 'GOOD' %}bg-success{% elif latest_scorecard.performance_band == 'WATCH' %}bg-warning text-dark{% else %}bg-danger{% endif %} ms-1">{{ latest_scorecard.band_display }}</span>{% endif %}
+                </div>
+                {% for label, score in latest_scorecard.indicator_rows %}
+                    <div class="d-flex justify-content-between small"><span>{{ label }}</span><span class="fw-semibold">{% if score is None %}<span class="text-muted fw-normal">No data</span>{% else %}{{ score|floatformat:1 }}{% endif %}</span></div>
+                    <div class="progress mb-2" style="height:6px" role="progressbar" aria-label="{{ label }}" aria-valuenow="{{ score|default:0|floatformat:0 }}" aria-valuemin="0" aria-valuemax="100">
+                        <div class="progress-bar bg-success" style="width: {{ score|default:0|floatformat:0 }}%"></div>
+                    </div>
+                {% endfor %}
+                <div class="small text-muted mt-2 mb-0">Responsiveness and SLA achievement are reported separately. This page is read-only — only the <strong>Supplier Performance</strong> module can calculate or modify scorecards.</div>
+            {% else %}
+                <p class="small text-muted">No performance data available.</p>
+            {% endif %}
+        </div>
+    </div>
+    <div class="col-lg-5">
+        <div class="glass-card p-4 shadow-sm h-100">
+            <h5 class="fw-bold mb-3"><i class="fa-solid fa-chart-line me-2 text-success"></i>Scorecard trend</h5>
+            {% if scorecard_history %}
+            <div class="table-responsive"><table class="table table-sm small mb-0">
+                <thead><tr><th>Period</th><th>Composite</th><th>Band</th><th>Calculated</th></tr></thead>
+                <tbody>
+                {% for card in scorecard_history %}
+                    <tr>
+                        <td>{{ card.evaluation_period }}</td>
+                        <td class="fw-semibold">{% if card.composite_score is not None %}{{ card.composite_score|floatformat:1 }}{% else %}<span class="text-muted">No data</span>{% endif %}</td>
+                        <td>{% if card.band_display %}<span class="badge {% if card.performance_band == 'GOOD' %}bg-success{% elif card.performance_band == 'WATCH' %}bg-warning text-dark{% else %}bg-danger{% endif %}">{{ card.band_display }}</span>{% else %}—{% endif %}</td>
+                        <td class="text-nowrap">{{ card.created_at|date:"Y-m-d" }}</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table></div>
+            {% else %}
+                <p class="small text-muted mb-0">No scorecards calculated yet.</p>
+            {% endif %}
+            <a href="{% url 'scorecard_vendor_detail' vendor.id %}" class="btn btn-sm btn-outline-success rounded-pill px-3 mt-3">View detailed Supplier Performance <i class="fa-solid fa-arrow-right ms-1"></i></a>
+        </div>
+    </div>
+</div>
+{% endblock %}

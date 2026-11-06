@@ -1223,7 +1223,8 @@ select,
     border: 1px solid #cbd5e1 !important;
 }
 
-input:focus,
+/* Checkbox/radio excluded: the white background would hide Bootstrap's checked state while focused */
+input:focus:not([type="checkbox"]):not([type="radio"]),
 textarea:focus,
 select:focus,
 .form-control:focus,
