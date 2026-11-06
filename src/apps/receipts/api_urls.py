@@ -1,7 +1,7 @@
 from decimal import Decimal
 
 from django.core.exceptions import ValidationError
-from rest_framework import serializers, status, viewsets
+from rest_framework import filters, serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import SAFE_METHODS, BasePermission, IsAuthenticated
 from rest_framework.response import Response
@@ -77,6 +77,14 @@ class GoodsReceiptSerializer(serializers.ModelSerializer):
                     ]
                 }
             )
+
+        grn_num = attrs.get("grn_number")
+        if grn_num:
+            qs_grn = GoodsReceipt.objects.filter(grn_number=grn_num)
+            if self.instance:
+                qs_grn = qs_grn.exclude(pk=self.instance.pk)
+            if qs_grn.exists():
+                raise serializers.ValidationError({"grn_number": ["Goods receipt with this GRN number already exists."]})
 
         if self.instance is None:
             lines = self.initial_data.get("lines")
@@ -196,16 +204,23 @@ class GoodsReceiptPermission(IsAuthenticated):
 
 
 class GoodsReceiptViewSet(viewsets.ModelViewSet):
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ["grn_number", "delivery_note_number", "po__po_number", "remarks"]
+
     def destroy(self, request, *args, **kwargs):
-        return Response(
-            {
-                "error": {
-                    "code": "METHOD_NOT_ALLOWED",
-                    "message": "Posted goods receipts are immutable audit records and cannot be deleted. Use receipt corrections instead.",
-                }
-            },
-            status=status.HTTP_405_METHOD_NOT_ALLOWED,
-        )
+        instance = self.get_object()
+        if instance.overall_inspection_status != "PENDING" or getattr(instance, "stock_handoff_status", "") in ["COMPLETED", "HANDED_OFF", "PARTIALLY_HANDED_OFF"]:
+            return Response(
+                {
+                    "error": {
+                        "code": "VALIDATION_ERROR",
+                        "message": "Goods receipt cannot be deleted after inspection or hand-off.",
+                    }
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        instance.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
     queryset = (
@@ -216,12 +231,7 @@ class GoodsReceiptViewSet(viewsets.ModelViewSet):
     serializer_class = GoodsReceiptSerializer
     permission_classes = [GoodsReceiptPermission]
 
-    def perform_destroy(self, instance):
-        if instance.status != GoodsReceipt.STATUS_DRAFT:
-            raise serializers.ValidationError(
-                {"status": [f"Goods receipt in '{instance.status}' status cannot be deleted."]}
-            )
-        instance.delete()
+
 
     def get_queryset(self):
         user = self.request.user
@@ -304,6 +314,16 @@ class GoodsReceiptViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["post"], url_path="handoff")
     def handoff(self, request, pk=None):
         receipt = self.get_object()
+        if receipt.overall_inspection_status != "PASSED":
+            return Response(
+                {
+                    "error": {
+                        "code": "VALIDATION_ERROR",
+                        "message": "Cannot hand off to stock: Quality inspection has not been completed on this receipt.",
+                    }
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         storage_location = request.data.get("storage_location", "MAIN-WH")
         notes = request.data.get("handoff_notes", request.data.get("notes", ""))
         try:
@@ -336,6 +356,16 @@ class GoodsReceiptViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["post"], url_path="confirm")
     def confirm(self, request, pk=None):
         receipt = self.get_object()
+        if receipt.overall_inspection_status != "PASSED":
+            return Response(
+                {
+                    "error": {
+                        "code": "VALIDATION_ERROR",
+                        "message": "Cannot confirm goods receipt: Quality inspection has not been completed.",
+                    }
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         return Response(
             {
                 "message": f"Goods Receipt {receipt.grn_number} confirmed and posted.",

@@ -1,6 +1,6 @@
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
-from django.shortcuts import render
+from django.shortcuts import redirect, render
 
 from apps.accounts.models import Role
 
@@ -30,8 +30,16 @@ def _get_manager_context(request):
     if not org and getattr(user, "department_id", None) and getattr(user.department, "organization_id", None):
         org = user.department.organization
     user_org_name = org.name if org else ("Global Enterprise" if user.is_superuser else "")
+
+    from apps.requisitions.models import PurchaseRequisition
+    exc_pr_qs = PurchaseRequisition.objects.filter(status=PurchaseRequisition.STATUS_BUDGET_REVIEW)
+    if org:
+        exc_pr_qs = exc_pr_qs.filter(department__organization=org)
+    policy_exceptions_count = exc_pr_qs.count()
+
     return {
         "user_org_name": user_org_name,
+        "policy_exceptions_count": policy_exceptions_count,
     }
 
 
@@ -116,10 +124,13 @@ def manager_purchase_orders_view(request):
 def manager_vendor_risk_view(request):
     """
     GET /manager/vendor-risk/
-    Vendor Risk & Governance Desk.
+    Unified Vendor Risk & Governance Desk (Directory, Sanctions Formulation, Audit Trail).
     """
     _enforce_manager_access(request)
     context = _get_manager_context(request)
+    context["target_vendor_id"] = request.GET.get("vendor_id", "").strip()
+    context["initial_action"] = request.GET.get("action", "").strip()
+    context["active_tab"] = request.GET.get("tab", "directory").strip()
     return render(request, "manager/vendor_risk.html", context)
 
 
@@ -127,13 +138,13 @@ def manager_vendor_risk_view(request):
 def manager_vendor_suspension_view(request):
     """
     GET /manager/vendor-risk/suspension/
-    Dedicated Vendor Suspension & Governance Action Desk.
+    Redirects to unified Vendor Risk & Governance desk with suspension tab active.
+    Preserves all query parameters (e.g., vendor_id, action).
     """
     _enforce_manager_access(request)
-    context = _get_manager_context(request)
-    context["target_vendor_id"] = request.GET.get("vendor_id", "").strip()
-    context["initial_action"] = request.GET.get("action", "").strip()
-    return render(request, "manager/vendor_suspension.html", context)
+    params = request.GET.copy()
+    params["tab"] = "suspension"
+    return redirect(f"/manager/vendor-risk/?{params.urlencode()}")
 
 
 @login_required(login_url="/login/")
@@ -167,3 +178,15 @@ def manager_notifications_view(request):
     _enforce_manager_access(request)
     context = _get_manager_context(request)
     return render(request, "manager/notifications.html", context)
+
+
+@login_required(login_url="/login/")
+def manager_policy_exceptions_view(request):
+    """
+    GET /manager/policy-exceptions/
+    Policy & Budget Exceptions Governance Desk for Procurement Manager.
+    """
+    _enforce_manager_access(request)
+    context = _get_manager_context(request)
+    context["active_tab"] = request.GET.get("tab", "budget")
+    return render(request, "manager/policy_exceptions.html", context)

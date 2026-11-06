@@ -45,6 +45,7 @@ class RequestIDMiddleware:
             _request_context.request_id = None
             _request_context.client_ip = None
         response["X-Request-ID"] = request_id
+        response["Server"] = "ProcureSphere360"
         return response
 
 
@@ -117,11 +118,8 @@ class VendorPortalIsolationMiddleware:
         "/audit",
         "/admin",
         "/api/v1/requisitions",
-        "/api/v1/contracts",
-        "/api/v1/budgets",
-        "/api/v1/receipts",
-        "/api/v1/invoices",
-        "/api/v1/reports",
+                "/api/v1/budgets",
+                        "/api/v1/reports",
         "/api/v1/audit",
         "/api/v1/manager",
     )

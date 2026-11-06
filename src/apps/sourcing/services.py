@@ -147,6 +147,9 @@ def _validate_event_fields(
         errors.append("Bid start and bid deadline are required.")
     elif bid_start_date >= bid_end_date:
         errors.append("Bid start must be earlier than the bid deadline.")
+    from django.utils import timezone
+    if bid_end_date and bid_end_date < timezone.now():
+        errors.append("Bid deadline cannot be in the past.")
     tech_w, comm_w = weights
     if tech_w + comm_w != Decimal("100"):
         errors.append("Technical and commercial weights must add up to 100.")
@@ -780,6 +783,10 @@ def save_draft_bid_service(
         for item in line_items:
             qty = Decimal(str(item.get("quantity", 1)))
             unit_price = Decimal(str(item.get("quoted_unit_price", 0)))
+            if qty <= Decimal("0.00"):
+                raise ValidationError("Bid line quantity must be greater than zero.")
+            if unit_price < Decimal("0.00"):
+                raise ValidationError("Quoted unit price cannot be negative.")
             line = BidLine.objects.create(
                 bid=bid,
                 pr_line=item.get("pr_line"),
@@ -1222,6 +1229,8 @@ def answer_clarification_service(
     event = clarification.event
     if event.status in (SourcingEvent.STATUS_AWARDED, SourcingEvent.STATUS_CANCELLED):
         raise ValidationError(f"Clarifications are closed for a {event.status} event.")
+    if clarification.status == "ANSWERED":
+        raise ValidationError("This clarification has already been answered and cannot be overwritten.")
     if not (answer or "").strip():
         raise ValidationError("Answer cannot be blank.")
 

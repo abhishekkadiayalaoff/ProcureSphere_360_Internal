@@ -91,6 +91,7 @@ def detect_entity_type(identifier: str) -> str:
 def get_transaction_lifecycle_service(  # noqa: C901
     entity_type: Optional[str] = None,
     entity_identifier: str = "",
+    organization: Optional[Any] = None,
 ) -> Dict[str, Any]:
     """
     Constructs an end-to-end Source-to-Pay (S2P) lifecycle graph from any starting node:
@@ -321,6 +322,46 @@ def get_transaction_lifecycle_service(  # noqa: C901
     # If still not found, return empty payload
     if not lifecycle["is_found"]:
         return lifecycle
+
+    # Enforce organization authorization check on root object
+    if organization:
+        is_authorized = False
+        if pr_obj:
+            is_authorized = bool(pr_obj.department and pr_obj.department.organization_id == organization.id)
+        elif po_objs:
+            po = po_objs[0]
+            is_authorized = bool(
+                (po.cost_center and po.cost_center.department.organization_id == organization.id)
+                or (po.requisition and po.requisition.department.organization_id == organization.id)
+                or (po.vendor and po.vendor.organization_id == organization.id)
+            )
+        elif src_obj:
+            is_authorized = bool(src_obj.requisition and src_obj.requisition.department.organization_id == organization.id)
+        elif inv_objs:
+            inv = inv_objs[0]
+            is_authorized = bool(
+                (inv.po and inv.po.cost_center and inv.po.cost_center.department.organization_id == organization.id)
+                or (inv.vendor and inv.vendor.organization_id == organization.id)
+            )
+        elif grn_objs:
+            grn = grn_objs[0]
+            is_authorized = bool(
+                grn.po and (
+                    (grn.po.cost_center and grn.po.cost_center.department.organization_id == organization.id)
+                    or (grn.po.vendor and grn.po.vendor.organization_id == organization.id)
+                )
+            )
+        elif con_objs:
+            con = con_objs[0]
+            is_authorized = bool(con.vendor and con.vendor.organization_id == organization.id)
+        elif vendor_obj:
+            is_authorized = bool(vendor_obj.organization_id == organization.id)
+
+        if not is_authorized:
+            lifecycle["is_found"] = False
+            lifecycle["is_unauthorized"] = True
+            lifecycle["root_entity"] = None
+            return lifecycle
 
     # 2. Traverse Graph Connections Across Modules (Bidirectional Expansion)
     for _ in range(3):  # Multi-pass expansion to connect all nodes across the S2P chain
@@ -811,9 +852,11 @@ def get_transaction_lifecycle_service(  # noqa: C901
     # 4. Aggregated Chronological Audit Trail Across All Graph Nodes
     if tracked_object_ids:
         audit_query = Q(target_object_id__in=tracked_object_ids)
-        logs = (
-            AuditLog.objects.filter(audit_query).select_related("actor").order_by("timestamp")[:100]
-        )
+        logs_qs = AuditLog.objects.filter(audit_query).select_related("actor")
+        if organization:
+            from .selectors import get_scoped_audit_logs_queryset
+            logs_qs = get_scoped_audit_logs_queryset(logs_qs, organization=organization)
+        logs = logs_qs.order_by("timestamp")[:100]
         for log in logs:
             lifecycle["audit_logs"].append(
                 {
@@ -839,6 +882,7 @@ def export_auditor_data_service(  # noqa: C901
     filters: Optional[Dict[str, Any]] = None,
     actor: Optional[Any] = None,
     request: Optional[Any] = None,
+    organization: Optional[Any] = None,
 ) -> Dict[str, Any]:
     """
     Generates structured export data (CSV or JSON) for Auditor Dashboard domains,
@@ -846,6 +890,12 @@ def export_auditor_data_service(  # noqa: C901
     """
     import csv
     import io
+
+    if organization is None:
+        if actor and not actor.is_superuser:
+            organization = getattr(actor, "effective_organization", None) or getattr(actor, "organization", None)
+        elif request and request.user and not request.user.is_superuser:
+            organization = getattr(request.user, "effective_organization", None) or getattr(request.user, "organization", None)
 
     from .selectors import (
         get_approval_history_audit,
@@ -873,6 +923,7 @@ def export_auditor_data_service(  # noqa: C901
             target_model=filters.get("target_model"),
             search_term=filters.get("search"),
             limit=500,
+            organization=organization,
         )
         headers = [
             "ID",
@@ -904,6 +955,7 @@ def export_auditor_data_service(  # noqa: C901
             kyc_status=filters.get("kyc_status"),
             search=filters.get("search"),
             limit=500,
+            organization=organization,
         )
         headers = [
             "Vendor Number",
@@ -937,6 +989,7 @@ def export_auditor_data_service(  # noqa: C901
             action=filters.get("action"),
             search=filters.get("search"),
             limit=500,
+            organization=organization,
         )
         headers = [
             "Timestamp",
@@ -968,6 +1021,7 @@ def export_auditor_data_service(  # noqa: C901
             event_type=filters.get("event_type"),
             search=filters.get("search"),
             limit=500,
+            organization=organization,
         )
         headers = [
             "Event Number",
@@ -1000,6 +1054,7 @@ def export_auditor_data_service(  # noqa: C901
             status=filters.get("status"),
             search=filters.get("search"),
             limit=500,
+            organization=organization,
         )
         headers = [
             "PO Number",
@@ -1031,6 +1086,7 @@ def export_auditor_data_service(  # noqa: C901
             exception_type=filters.get("exception_type"),
             search=filters.get("search"),
             limit=500,
+            organization=organization,
         )
         headers = [
             "Invoice Number",
@@ -1061,6 +1117,7 @@ def export_auditor_data_service(  # noqa: C901
             status=filters.get("status"),
             search=filters.get("search"),
             limit=500,
+            organization=organization,
         )
         headers = [
             "Contract Number",
@@ -1095,6 +1152,7 @@ def export_auditor_data_service(  # noqa: C901
             action=filters.get("action"),
             search=filters.get("search"),
             limit=500,
+            organization=organization,
         )
         headers = [
             "Timestamp",
@@ -1125,6 +1183,7 @@ def export_auditor_data_service(  # noqa: C901
         lifecycle_data = get_transaction_lifecycle_service(
             entity_type=filters.get("entity_type", "AUTO"),
             entity_identifier=ident,
+            organization=organization,
         )
         headers = [
             "Timestamp",

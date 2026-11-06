@@ -868,7 +868,7 @@ def org_create_view(request):
 
     scoped_org = get_user_scoped_org(request.user)
 
-    if not _is_super_admin(request.user) or scoped_org is not None or not request.user.is_superuser:
+    if scoped_org is not None or not (_is_super_admin(request.user) or request.user.is_superuser):
 
         return HttpResponse(
 

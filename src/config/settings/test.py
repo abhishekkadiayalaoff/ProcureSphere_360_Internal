@@ -41,3 +41,7 @@ PASSWORD_HASHERS = [
 CELERY_TASK_ALWAYS_EAGER = True
 CELERY_TASK_EAGER_PROPAGATES = True
 
+
+# Default to empty list in test environment so single-doc vendor fixtures pass;
+# tests testing mandatory document rules configure this setting explicitly.
+VENDOR_MANDATORY_KYC_DOC_TYPES = []

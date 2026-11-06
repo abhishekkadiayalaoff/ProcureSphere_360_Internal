@@ -7,6 +7,7 @@ from .manager_views import (
     manager_notifications_view,
     manager_performance_view,
     manager_pipeline_view,
+    manager_policy_exceptions_view,
     manager_pr_aging_view,
     manager_purchase_orders_view,
     manager_sourcing_view,
@@ -18,6 +19,7 @@ from .manager_views import (
 urlpatterns = [
     path("", manager_dashboard_view, name="manager_dashboard"),
     path("approvals/", manager_approvals_view, name="manager_approvals"),
+    path("policy-exceptions/", manager_policy_exceptions_view, name="manager_policy_exceptions"),
     path("pipeline/", manager_pipeline_view, name="manager_pipeline"),
     path("pr-aging/", manager_pr_aging_view, name="manager_pr_aging"),
     path("sourcing/", manager_sourcing_view, name="manager_sourcing"),

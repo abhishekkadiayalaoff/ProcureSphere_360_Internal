@@ -1,0 +1,545 @@
+{% extends 'manager/base_manager.html' %}
+
+{% block title %}Policy & Budget Exceptions — Procurement Manager{% endblock %}
+
+{% block manager_breadcrumbs %}
+<li class="breadcrumb-item"><a href="/manager/" class="text-decoration-none text-muted">Manager</a></li>
+<li class="breadcrumb-item active text-dark fw-semibold" aria-current="page">Policy Exceptions</li>
+{% endblock manager_breadcrumbs %}
+
+{% block mobile_page_title %}Policy Exceptions{% endblock mobile_page_title %}
+
+{% block manager_content %}
+<div class="container-fluid px-0">
+
+    <!-- Page Header Area -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 gap-3">
+        <div>
+            <div class="d-flex align-items-center gap-2 mb-1">
+                <span class="badge bg-danger-subtle text-danger-emphasis border border-danger-subtle fw-bold px-3 py-1 rounded-pill shadow-xs" style="font-size: 0.75rem; letter-spacing: 0.04em;">
+                    <i class="fa-solid fa-triangle-exclamation me-1 text-danger"></i> POLICY &amp; BUDGET GOVERNANCE
+                </span>
+                <span class="text-muted small">Budget overruns, threshold variances, and 3-way match exception oversight</span>
+            </div>
+            <h1 class="h3 fw-bold text-dark mb-1 font-heading">Policy Exceptions Desk</h1>
+            <p class="text-muted small mb-0">Review budget overrun exceptions requiring Procurement Manager decision override, and monitor invoice match discrepancies under Finance &amp; AP resolution.</p>
+        </div>
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <button onclick="loadExceptionsData()" class="btn btn-outline-secondary btn-sm rounded-pill px-3 shadow-2xs" id="exceptionsRefreshBtn">
+                <i class="fa-solid fa-arrows-rotate me-1" id="exceptionsRefreshIcon"></i> Refresh Desk
+            </button>
+            <a href="/manager/spend/" class="btn btn-outline-primary btn-sm rounded-pill px-3 shadow-2xs">
+                <i class="fa-solid fa-chart-pie me-1"></i> Spend Analytics
+            </a>
+            <a href="/manager/pipeline/" class="btn btn-outline-secondary btn-sm rounded-pill px-3 shadow-2xs">
+                <i class="fa-solid fa-filter-circle-dollar me-1"></i> Pipeline
+            </a>
+        </div>
+    </div>
+
+    <!-- Executive KPI Row -->
+    <div class="row g-3 mb-4">
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="card border-0 shadow-2xs rounded-3 p-3 h-100 bg-white border-start border-4 border-danger">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <span class="text-muted small fw-semibold text-uppercase" style="font-size: 0.7rem;">Pending Budget Overruns</span>
+                    <span class="p-2 bg-danger bg-opacity-10 text-danger rounded-3"><i class="fa-solid fa-wallet fs-5"></i></span>
+                </div>
+                <h3 class="fw-bold text-dark mb-1 font-heading" id="kpiOverrunCount">0</h3>
+                <div class="small text-danger fw-semibold d-flex align-items-center gap-1">
+                    <i class="fa-solid fa-dollar-sign"></i> <span id="kpiOverrunValue">$0.00</span> total exposure
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="card border-0 shadow-2xs rounded-3 p-3 h-100 bg-white border-start border-4 border-warning">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <span class="text-muted small fw-semibold text-uppercase" style="font-size: 0.7rem;">Open Match Exceptions</span>
+                    <span class="p-2 bg-warning bg-opacity-10 text-warning rounded-3"><i class="fa-solid fa-file-circle-exclamation fs-5"></i></span>
+                </div>
+                <h3 class="fw-bold text-dark mb-1 font-heading" id="kpiMatchExceptionsCount">0</h3>
+                <div class="small text-muted">
+                    <i class="fa-solid fa-shield-halved text-cyan me-1"></i> Finance &amp; AP resolution
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="card border-0 shadow-2xs rounded-3 p-3 h-100 bg-white border-start border-4 border-success">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <span class="text-muted small fw-semibold text-uppercase" style="font-size: 0.7rem;">Approved Overruns</span>
+                    <span class="p-2 bg-success bg-opacity-10 text-success rounded-3"><i class="fa-solid fa-circle-check fs-5"></i></span>
+                </div>
+                <h3 class="fw-bold text-dark mb-1 font-heading" id="kpiApprovedCount">0</h3>
+                <div class="small text-success fw-semibold">
+                    <i class="fa-solid fa-lock text-success me-1"></i> Funds Force-Reserved
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="card border-0 shadow-2xs rounded-3 p-3 h-100 bg-white border-start border-4 border-primary">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <span class="text-muted small fw-semibold text-uppercase" style="font-size: 0.7rem;">Resolved Variances</span>
+                    <span class="p-2 bg-primary bg-opacity-10 text-primary rounded-3"><i class="fa-solid fa-handshake-angle fs-5"></i></span>
+                </div>
+                <h3 class="fw-bold text-dark mb-1 font-heading" id="kpiResolvedMatchCount">0</h3>
+                <div class="small text-muted">
+                    <i class="fa-solid fa-check-double text-primary me-1"></i> AP match verified
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Authority Boundary Notice -->
+    <div class="alert alert-light border border-secondary border-opacity-25 rounded-3 p-3 mb-4 d-flex align-items-start gap-3 shadow-2xs">
+        <div class="p-2 bg-primary bg-opacity-10 rounded-circle text-primary flex-shrink-0 mt-0.5">
+            <i class="fa-solid fa-scale-balanced fs-5"></i>
+        </div>
+        <div class="small">
+            <div class="fw-bold text-dark">Separation of Governance &amp; Decision Authority</div>
+            <div class="text-muted">
+                <strong>Budget Overrun Exceptions:</strong> As Procurement Manager, you possess authorization authority to review justification, enforce no-self-approval restrictions, and approve (with force-reserved budget allocation) or reject requisitions in <code>BUDGET_REVIEW</code> status.<br>
+                <strong>Invoice Match Exceptions:</strong> Operational resolution and override authority belongs exclusively to Finance &amp; Accounts Payable. The Procurement Manager maintains pipeline visibility to assess vendor billing performance.
+            </div>
+        </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <div class="card border-0 shadow-2xs rounded-3 bg-white mb-4">
+        <div class="card-header bg-white border-bottom border-light-subtle px-4 pt-3 pb-0">
+            <ul class="nav nav-tabs border-0 card-header-tabs" id="policyExceptionsTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link {% if active_tab != 'invoices' %}active{% endif %} fw-semibold text-dark border-0 border-bottom border-3 border-danger pb-3 px-3 d-flex align-items-center gap-2" id="budget-tab" data-bs-toggle="tab" data-bs-target="#budgetTabPane" type="button" role="tab" aria-controls="budgetTabPane" aria-selected="true">
+                        <i class="fa-solid fa-wallet text-danger"></i>
+                        <span>Budget Overrun Exceptions</span>
+                        <span class="badge bg-danger text-white rounded-pill ms-1" id="tabOverrunBadge">0</span>
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link {% if active_tab == 'invoices' %}active{% endif %} fw-semibold text-muted border-0 border-bottom border-3 border-transparent pb-3 px-3 d-flex align-items-center gap-2" id="invoices-tab" data-bs-toggle="tab" data-bs-target="#invoicesTabPane" type="button" role="tab" aria-controls="invoicesTabPane" aria-selected="false">
+                        <i class="fa-solid fa-file-invoice-dollar text-warning"></i>
+                        <span>Invoice Match Exceptions (Oversight)</span>
+                        <span class="badge bg-secondary text-white rounded-pill ms-1" id="tabInvoicesBadge">0</span>
+                    </button>
+                </li>
+            </ul>
+        </div>
+
+        <div class="card-body p-4">
+            <div class="tab-content" id="policyExceptionsTabContent">
+
+                <!-- TAB 1: BUDGET OVERRUN EXCEPTIONS -->
+                <div class="tab-pane fade {% if active_tab != 'invoices' %}show active{% endif %}" id="budgetTabPane" role="tabpanel" aria-labelledby="budget-tab">
+                    
+                    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-3">
+                        <div class="d-flex align-items-center gap-2 flex-grow-1" style="max-width: 400px;">
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text bg-light border-end-0"><i class="fa-solid fa-magnifying-glass text-muted"></i></span>
+                                <input type="text" class="form-control bg-light border-start-0" id="budgetSearchInput" placeholder="Filter by PR #, title, requester, cost center..." onkeyup="filterBudgetTable()">
+                            </div>
+                        </div>
+                        <div class="d-flex align-items-center gap-2 small text-muted">
+                            <i class="fa-solid fa-info-circle text-primary"></i> Action requires mandatory audit comments
+                        </div>
+                    </div>
+
+                    <!-- Budget Overrun PRs Table -->
+                    <div class="table-responsive rounded-2 border">
+                        <table class="table table-hover align-middle mb-0" id="budgetTable">
+                            <thead class="table-light text-uppercase fw-semibold" style="font-size: 0.72rem; letter-spacing: 0.05em;">
+                                <tr>
+                                    <th class="ps-3 py-3">Requisition</th>
+                                    <th>Requester &amp; Dept</th>
+                                    <th>Cost Center &amp; Budget</th>
+                                    <th>Requested</th>
+                                    <th>Overrun Delta</th>
+                                    <th>Aging</th>
+                                    <th class="text-end pe-3">Governance Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="budgetTableBody">
+                                <tr>
+                                    <td colspan="7" class="text-center py-5 text-muted">
+                                        <div class="spinner-border spinner-border-sm text-primary mb-2" role="status"></div>
+                                        <div>Loading budget overrun exceptions...</div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- TAB 2: INVOICE MATCH EXCEPTIONS -->
+                <div class="tab-pane fade {% if active_tab == 'invoices' %}show active{% endif %}" id="invoicesTabPane" role="tabpanel" aria-labelledby="invoices-tab">
+                    
+                    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-3">
+                        <div class="d-flex align-items-center gap-2 flex-grow-1" style="max-width: 400px;">
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text bg-light border-end-0"><i class="fa-solid fa-magnifying-glass text-muted"></i></span>
+                                <input type="text" class="form-control bg-light border-start-0" id="invoiceSearchInput" placeholder="Filter by invoice #, PO #, vendor..." onkeyup="filterInvoiceTable()">
+                            </div>
+                        </div>
+                        <div class="badge bg-info-subtle text-info-emphasis border border-info-subtle px-3 py-1.5 rounded-pill">
+                            <i class="fa-solid fa-lock me-1"></i> Read-Only Governance Oversight (Finance &amp; AP Resolver Role)
+                        </div>
+                    </div>
+
+                    <!-- Invoice Match Exceptions Table -->
+                    <div class="table-responsive rounded-2 border">
+                        <table class="table table-hover align-middle mb-0" id="invoiceTable">
+                            <thead class="table-light text-uppercase fw-semibold" style="font-size: 0.72rem; letter-spacing: 0.05em;">
+                                <tr>
+                                    <th class="ps-3 py-3">Invoice &amp; Date</th>
+                                    <th>PO Reference</th>
+                                    <th>Supplier</th>
+                                    <th>Variance Discrepancy</th>
+                                    <th>Variance %</th>
+                                    <th>Status</th>
+                                    <th class="text-end pe-3">Resolution Notes</th>
+                                </tr>
+                            </thead>
+                            <tbody id="invoiceTableBody">
+                                <tr>
+                                    <td colspan="7" class="text-center py-5 text-muted">
+                                        <div class="spinner-border spinner-border-sm text-primary mb-2" role="status"></div>
+                                        <div>Loading invoice match exceptions...</div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- MODAL: DECISION (APPROVE / REJECT BUDGET OVERRUN) -->
+<div class="modal fade" id="decisionModal" tabindex="-1" aria-labelledby="decisionModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-3">
+            <div class="modal-header border-bottom px-4 py-3" id="decisionModalHeader">
+                <h5 class="modal-title fw-bold font-heading" id="decisionModalLabel">Budget Exception Decision</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <input type="hidden" id="modalPrId">
+                <input type="hidden" id="modalAction">
+
+                <div class="p-3 bg-light rounded-3 border mb-3">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="text-muted small">Requisition:</span>
+                        <span class="fw-bold text-dark" id="modalPrNumber">PR-XXXX</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="text-muted small">Title:</span>
+                        <span class="fw-semibold text-dark text-truncate" style="max-width: 250px;" id="modalPrTitle">Requisition Title</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="text-muted small">Requester:</span>
+                        <span class="fw-medium text-dark" id="modalPrRequester">user@domain.com</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="text-muted small">Cost Center:</span>
+                        <span class="fw-medium text-dark" id="modalPrCostCenter">CC-001</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="text-muted small">Requested Amount:</span>
+                        <span class="fw-bold text-dark" id="modalPrAmount">$0.00</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="text-muted small">Calculated Overrun:</span>
+                        <span class="badge bg-danger text-white rounded-pill" id="modalPrOverrun">+$0.00</span>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="decisionComments" class="form-label fw-bold text-dark small">
+                        Mandatory Audit Justification / Decision Rationale <span class="text-danger">*</span>
+                    </label>
+                    <textarea class="form-control" id="decisionComments" rows="3" placeholder="Provide detailed rationale for overriding or rejecting this budget exception (minimum 5 characters)..." required></textarea>
+                    <div class="form-text small text-muted">
+                        This comment will be permanently recorded in the immutable AuditLog and linked ApprovalAction trail.
+                    </div>
+                </div>
+
+                <div id="selfApprovalWarning" class="alert alert-danger py-2 px-3 small d-none">
+                    <i class="fa-solid fa-ban me-1"></i> <strong>Separation of Duties Warning:</strong> You requested this requisition. Self-approval is strictly prohibited by governance policy.
+                </div>
+            </div>
+            <div class="modal-footer border-top px-4 py-3">
+                <button type="button" class="btn btn-outline-secondary btn-sm rounded-pill px-3" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-sm rounded-pill px-4 text-white fw-semibold" id="confirmDecisionBtn" onclick="submitDecision()">
+                    Confirm Decision
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let rawPrsData = [];
+    let rawInvoicesData = [];
+    let currentUserId = "{{ request.user.id }}";
+
+    document.addEventListener("DOMContentLoaded", function() {
+        loadExceptionsData();
+    });
+
+    async function loadExceptionsData() {
+        const refreshIcon = document.getElementById("exceptionsRefreshIcon");
+        if (refreshIcon) refreshIcon.classList.add("fa-spin");
+
+        try {
+            const res = await fetch("/api/v1/manager/policy-exceptions/", {
+                headers: { "Accept": "application/json" }
+            });
+            if (!res.ok) throw new Error("Failed to load policy exceptions data");
+            const data = await res.json();
+
+            // Populate KPIs
+            const metrics = data.metrics || {};
+            document.getElementById("kpiOverrunCount").textContent = metrics.kpi_overrun_count || 0;
+            document.getElementById("kpiOverrunValue").textContent = "$" + Number(metrics.kpi_overrun_value || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            document.getElementById("kpiMatchExceptionsCount").textContent = metrics.kpi_match_exceptions_count || 0;
+            document.getElementById("kpiApprovedCount").textContent = metrics.kpi_approved_exceptions_count || 0;
+            document.getElementById("kpiResolvedMatchCount").textContent = metrics.kpi_resolved_match_count || 0;
+
+            document.getElementById("tabOverrunBadge").textContent = metrics.kpi_overrun_count || 0;
+            document.getElementById("tabInvoicesBadge").textContent = metrics.kpi_match_exceptions_count || 0;
+
+            rawPrsData = data.budget_overrun_prs || [];
+            rawInvoicesData = data.invoice_match_exceptions || [];
+
+            renderBudgetTable(rawPrsData);
+            renderInvoiceTable(rawInvoicesData);
+        } catch (err) {
+            console.error("Error loading policy exceptions:", err);
+            document.getElementById("budgetTableBody").innerHTML = `<tr><td colspan="7" class="text-center py-4 text-danger"><i class="fa-solid fa-triangle-exclamation me-1"></i> Error loading budget overruns: ${err.message}</td></tr>`;
+            document.getElementById("invoiceTableBody").innerHTML = `<tr><td colspan="7" class="text-center py-4 text-danger"><i class="fa-solid fa-triangle-exclamation me-1"></i> Error loading invoice exceptions: ${err.message}</td></tr>`;
+        } finally {
+            if (refreshIcon) refreshIcon.classList.remove("fa-spin");
+        }
+    }
+
+    function renderBudgetTable(prs) {
+        const tbody = document.getElementById("budgetTableBody");
+        if (!prs || prs.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="7" class="text-center py-5 text-muted"><i class="fa-solid fa-circle-check text-success fs-3 mb-2 d-block"></i> No pending budget overrun exceptions found. All cost centers within budget bounds.</td></tr>`;
+            return;
+        }
+
+        let html = "";
+        prs.forEach(pr => {
+            const isSelf = (pr.requester_id === currentUserId);
+            const reqAmt = Number(pr.requested_amount || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            const overrunAmt = Number(pr.overrun_amount || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            const availAmt = Number(pr.available_budget || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+
+            html += `
+                <tr>
+                    <td class="ps-3">
+                        <div class="fw-bold text-dark font-monospace">${pr.pr_number}</div>
+                        <div class="small text-muted text-truncate" style="max-width: 220px;" title="${pr.title}">${pr.title}</div>
+                    </td>
+                    <td>
+                        <div class="fw-medium text-dark">${pr.requester_name}</div>
+                        <div class="small text-muted">${pr.department_name}</div>
+                    </td>
+                    <td>
+                        <div class="fw-medium text-dark font-monospace">${pr.cost_center_code}</div>
+                        <div class="small text-muted">Avail: $${availAmt}</div>
+                    </td>
+                    <td>
+                        <span class="fw-bold text-dark">$${reqAmt}</span>
+                    </td>
+                    <td>
+                        <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1 rounded-pill">
+                            <i class="fa-solid fa-arrow-trend-up me-1"></i>+$${overrunAmt}
+                        </span>
+                    </td>
+                    <td>
+                        <span class="small text-muted">${pr.pending_duration_days} day(s) pending</span>
+                    </td>
+                    <td class="text-end pe-3">
+                        <div class="d-flex justify-content-end gap-1">
+                            <button class="btn btn-sm btn-outline-success rounded-pill px-2.5 py-1 ${isSelf ? 'disabled' : ''}" 
+                                onclick="openDecisionModal('${pr.id}', '${pr.pr_number}', '${encodeURIComponent(pr.title)}', '${pr.requester_name}', '${pr.cost_center_code}', '$${reqAmt}', '+$${overrunAmt}', 'APPROVE', ${isSelf})"
+                                title="${isSelf ? 'Cannot self-approve' : 'Approve Overrun Exception'}">
+                                <i class="fa-solid fa-check me-1"></i> Approve
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger rounded-pill px-2.5 py-1" 
+                                onclick="openDecisionModal('${pr.id}', '${pr.pr_number}', '${encodeURIComponent(pr.title)}', '${pr.requester_name}', '${pr.cost_center_code}', '$${reqAmt}', '+$${overrunAmt}', 'REJECT', ${isSelf})"
+                                title="Reject Overrun Exception">
+                                <i class="fa-solid fa-xmark me-1"></i> Reject
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        });
+        tbody.innerHTML = html;
+    }
+
+    function renderInvoiceTable(exceptions) {
+        const tbody = document.getElementById("invoiceTableBody");
+        if (!exceptions || exceptions.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="7" class="text-center py-5 text-muted"><i class="fa-solid fa-circle-check text-success fs-3 mb-2 d-block"></i> No open invoice match exceptions found. All supplier billings 3-way matched cleanly.</td></tr>`;
+            return;
+        }
+
+        let html = "";
+        exceptions.forEach(exc => {
+            const invAmt = Number(exc.invoice_amount || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            const varAmt = Number(exc.variance_amount || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            const varPct = Number(exc.variance_percentage || 0).toFixed(1);
+
+            html += `
+                <tr>
+                    <td class="ps-3">
+                        <div class="fw-bold text-dark font-monospace">${exc.invoice_number}</div>
+                        <div class="small text-muted">${exc.invoice_date}</div>
+                    </td>
+                    <td>
+                        <span class="badge bg-light text-dark border font-monospace px-2 py-1">${exc.po_number || 'N/A'}</span>
+                    </td>
+                    <td>
+                        <div class="fw-medium text-dark">${exc.vendor_name}</div>
+                        <div class="small text-muted">$${invAmt} billed</div>
+                    </td>
+                    <td>
+                        <div class="fw-semibold text-danger">+$${varAmt}</div>
+                        <div class="small text-muted">${exc.exception_type_display || exc.exception_type}</div>
+                    </td>
+                    <td>
+                        <span class="badge ${varPct > 10 ? 'bg-danger' : 'bg-warning text-dark'} rounded-pill">${varPct}%</span>
+                    </td>
+                    <td>
+                        <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle px-2 py-1 rounded-pill">
+                            ${exc.status_display || exc.status}
+                        </span>
+                    </td>
+                    <td class="text-end pe-3">
+                        <span class="small text-muted fst-italic">${exc.resolution_notes || 'Pending AP Investigation'}</span>
+                    </td>
+                </tr>
+            `;
+        });
+        tbody.innerHTML = html;
+    }
+
+    function openDecisionModal(prId, prNumber, encTitle, requester, costCenter, reqAmount, overrun, action, isSelf) {
+        document.getElementById("modalPrId").value = prId;
+        document.getElementById("modalAction").value = action;
+        document.getElementById("modalPrNumber").textContent = prNumber;
+        document.getElementById("modalPrTitle").textContent = decodeURIComponent(encTitle);
+        document.getElementById("modalPrRequester").textContent = requester;
+        document.getElementById("modalPrCostCenter").textContent = costCenter;
+        document.getElementById("modalPrAmount").textContent = reqAmount;
+        document.getElementById("modalPrOverrun").textContent = overrun;
+        document.getElementById("decisionComments").value = "";
+
+        const confirmBtn = document.getElementById("confirmDecisionBtn");
+        const header = document.getElementById("decisionModalHeader");
+        const warning = document.getElementById("selfApprovalWarning");
+
+        if (action === "APPROVE") {
+            header.className = "modal-header bg-success text-white px-4 py-3";
+            document.getElementById("decisionModalLabel").textContent = "Approve Budget Overrun Exception";
+            confirmBtn.className = "btn btn-sm btn-success rounded-pill px-4 text-white fw-semibold";
+            confirmBtn.innerHTML = '<i class="fa-solid fa-check me-1"></i> Approve &amp; Reserve Funds';
+            if (isSelf) {
+                warning.classList.remove("d-none");
+                confirmBtn.disabled = true;
+            } else {
+                warning.classList.add("d-none");
+                confirmBtn.disabled = false;
+            }
+        } else {
+            header.className = "modal-header bg-danger text-white px-4 py-3";
+            document.getElementById("decisionModalLabel").textContent = "Reject Budget Exception";
+            confirmBtn.className = "btn btn-sm btn-danger rounded-pill px-4 text-white fw-semibold";
+            confirmBtn.innerHTML = '<i class="fa-solid fa-xmark me-1"></i> Reject Requisition';
+            warning.classList.add("d-none");
+            confirmBtn.disabled = false;
+        }
+
+        const modal = new bootstrap.Modal(document.getElementById("decisionModal"));
+        modal.show();
+    }
+
+    async function submitDecision() {
+        const prId = document.getElementById("modalPrId").value;
+        const action = document.getElementById("modalAction").value;
+        const comments = document.getElementById("decisionComments").value.trim();
+
+        if (!comments || comments.length < 5) {
+            alert("A detailed audit justification (minimum 5 characters) is mandatory.");
+            document.getElementById("decisionComments").focus();
+            return;
+        }
+
+        const confirmBtn = document.getElementById("confirmDecisionBtn");
+        confirmBtn.disabled = true;
+        confirmBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span> Processing...';
+
+        try {
+            const csrfToken = (document.cookie.match(/csrftoken=([\w-]+)/) || [])[1] || '';
+            const res = await fetch("/api/v1/manager/policy-exceptions/decision/", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": csrfToken
+                },
+                body: JSON.stringify({
+                    requisition_id: prId,
+                    action: action,
+                    comments: comments
+                })
+            });
+
+            const data = await res.json();
+            if (!res.ok) {
+                throw new Error(data.error ? data.error.message : "Failed to record decision.");
+            }
+
+            // Close modal & reload data
+            const modalEl = document.getElementById("decisionModal");
+            const modal = bootstrap.Modal.getInstance(modalEl);
+            if (modal) modal.hide();
+
+            alert(data.message || "Decision successfully rendered and recorded.");
+            loadExceptionsData();
+        } catch (err) {
+            alert("Error rendering exception decision: " + err.message);
+        } finally {
+            confirmBtn.disabled = false;
+        }
+    }
+
+    function filterBudgetTable() {
+        const query = (document.getElementById("budgetSearchInput").value || "").toLowerCase();
+        const filtered = rawPrsData.filter(pr => 
+            (pr.pr_number || "").toLowerCase().includes(query) ||
+            (pr.title || "").toLowerCase().includes(query) ||
+            (pr.requester_name || "").toLowerCase().includes(query) ||
+            (pr.cost_center_code || "").toLowerCase().includes(query) ||
+            (pr.department_name || "").toLowerCase().includes(query)
+        );
+        renderBudgetTable(filtered);
+    }
+
+    function filterInvoiceTable() {
+        const query = (document.getElementById("invoiceSearchInput").value || "").toLowerCase();
+        const filtered = rawInvoicesData.filter(exc => 
+            (exc.invoice_number || "").toLowerCase().includes(query) ||
+            (exc.po_number || "").toLowerCase().includes(query) ||
+            (exc.vendor_name || "").toLowerCase().includes(query) ||
+            (exc.exception_type || "").toLowerCase().includes(query)
+        );
+        renderInvoiceTable(filtered);
+    }
+</script>
+{% endblock manager_content %}
+

@@ -96,12 +96,9 @@ def receipts_list_view(request):
         )
         return redirect("vendor_dashboard")
 
-    if role_code in (Role.REQUESTER, "REQUESTER"):
-        messages.info(
-            request,
-            "Goods receipt operations are managed by Stores. Requesters can track receipts from their requisitions.",
-        )
-        return redirect("requisitions_list")
+    if not request.user.is_superuser and role_code in [Role.REQUESTER, Role.DEPT_APPROVER, Role.LEGAL_MGR]:
+        from django.core.exceptions import PermissionDenied
+        raise PermissionDenied("Access to goods receipts is denied for your role.")
 
     search_query = request.GET.get("q", "").strip()
     status_filter = request.GET.get("status", "").strip().upper()
