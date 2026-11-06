@@ -288,6 +288,13 @@ class PurchaseOrderSerializer(serializers.ModelSerializer):
                 {"vendor": [f"Cannot create Purchase Order: Vendor '{vendor.legal_name}' is not ACTIVE (current status: {vendor.status})."]}
             )
 
+        # DEF-050: A PO can only be created from an APPROVED requisition
+        requisition = attrs.get("requisition", getattr(self.instance, "requisition", None))
+        if requisition and requisition.status != "APPROVED":
+            raise serializers.ValidationError(
+                {"requisition": [f"Cannot create Purchase Order from requisition '{requisition.pr_number}': Requisition status is '{requisition.status}' (must be APPROVED)."]}
+            )
+
         if self.instance is None:
             lines_data = self.initial_data.get("lines")
             if not lines_data or not isinstance(lines_data, list) or len(lines_data) == 0:
@@ -296,6 +303,11 @@ class PurchaseOrderSerializer(serializers.ModelSerializer):
                 )
             for idx, line_item in enumerate(lines_data):
                 if isinstance(line_item, dict):
+                    desc = str(line_item.get("item_description", "")).strip()
+                    if not desc:
+                        raise serializers.ValidationError(
+                            {"lines": [f"Item description is required for line item {idx + 1}."]}
+                        )
                     price = line_item.get("unit_price")
                     if price is not None:
                         try:
@@ -844,6 +856,23 @@ class PurchaseOrderViewSet(viewsets.ModelViewSet):
 
         raw_lines = request.data.get("lines")
         if raw_lines and isinstance(raw_lines, list):
+            for idx, line in enumerate(raw_lines):
+                if not isinstance(line, dict):
+                    return Response({"error": {"code": "VALIDATION_ERROR", "message": f"Line {idx+1} must be an object."}}, status=status.HTTP_400_BAD_REQUEST)
+                if not line.get("item_description"):
+                    return Response({"error": {"code": "VALIDATION_ERROR", "message": f"Line {idx+1} is missing item_description."}}, status=status.HTTP_400_BAD_REQUEST)
+                qty = line.get("quantity")
+                price = line.get("unit_price")
+                try:
+                    from decimal import Decimal, InvalidOperation
+                    d_qty = Decimal(str(qty))
+                    d_price = Decimal(str(price))
+                    if d_qty <= 0:
+                        return Response({"error": {"code": "VALIDATION_ERROR", "message": f"Line {idx+1} quantity must be greater than zero."}}, status=status.HTTP_400_BAD_REQUEST)
+                    if d_price < 0:
+                        return Response({"error": {"code": "VALIDATION_ERROR", "message": f"Line {idx+1} unit price cannot be negative."}}, status=status.HTTP_400_BAD_REQUEST)
+                except (InvalidOperation, TypeError, ValueError):
+                    return Response({"error": {"code": "VALIDATION_ERROR", "message": f"Line {idx+1} has invalid quantity or unit price."}}, status=status.HTTP_400_BAD_REQUEST)
             lines = raw_lines
         else:
             lines = [
@@ -868,6 +897,9 @@ class PurchaseOrderViewSet(viewsets.ModelViewSet):
                     "message": f"PO Amendment #{amendment.amendment_number} submitted and pending manager approval.",
                     "amendment": POAmendmentSerializer(amendment).data,
                     "purchase_order": self.get_serializer(po).data,
+                    "version": po.version,
+                    "amendments_count": po.amendments.count(),
+                    "amendments": POAmendmentSerializer(po.amendments.all(), many=True).data,
                 },
                 status=status.HTTP_200_OK,
             )

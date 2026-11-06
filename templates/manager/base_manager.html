@@ -324,6 +324,15 @@
                 <span class="badge bg-warning text-dark rounded-pill fw-bold ms-auto flex-shrink-0" style="font-size: 0.68rem;">{{ pending_approvals_count }}</span>
                 {% endif %}
             </a>
+            <a href="/manager/policy-exceptions/" class="manager-nav-link d-flex align-items-center justify-content-between {% if '/manager/policy-exceptions/' in request.path %}active{% endif %}">
+                <div class="d-flex align-items-center min-width-0">
+                    <i class="fa-solid fa-triangle-exclamation nav-icon text-danger"></i>
+                    <span class="text-truncate">Policy Exceptions</span>
+                </div>
+                {% if policy_exceptions_count and policy_exceptions_count > 0 %}
+                <span class="badge bg-danger text-white rounded-pill fw-bold ms-auto flex-shrink-0" style="font-size: 0.68rem;">{{ policy_exceptions_count }}</span>
+                {% endif %}
+            </a>
             <a href="/manager/pipeline/" class="manager-nav-link {% if '/manager/pipeline/' in request.path %}active{% endif %}">
                 <i class="fa-solid fa-filter-circle-dollar nav-icon text-cyan"></i>
                 <span>Procurement Pipeline</span>
@@ -352,11 +361,7 @@
             <div class="nav-section-label">Suppliers</div>
             <a href="/manager/vendor-risk/" class="manager-nav-link {% if '/manager/vendor-risk/' in request.path %}active{% endif %}">
                 <i class="fa-solid fa-shield-halved nav-icon text-danger"></i>
-                <span>Vendor Risk</span>
-            </a>
-            <a href="/manager/vendor-risk/suspension/" class="manager-nav-link {% if '/manager/vendor-risk/suspension/' in request.path %}active{% endif %}">
-                <i class="fa-solid fa-scale-balanced nav-icon text-danger"></i>
-                <span>Vendor Suspension</span>
+                <span>Vendor Risk &amp; Governance</span>
             </a>
 
             <a href="/manager/performance/" class="manager-nav-link {% if '/manager/performance/' in request.path %}active{% endif %}">

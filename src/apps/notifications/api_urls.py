@@ -21,6 +21,19 @@ HIGH_PRIORITY_TYPES = [
 
 
 class NotificationSerializer(serializers.ModelSerializer):
+    def validate_target_url(self, value):
+        if not value:
+            return ""
+        val = value.strip()
+        if "://" in val or not val.startswith("/"):
+            raise serializers.ValidationError("Target URL must be a relative internal URL path starting with '/'.")
+        return val
+
+    def validate(self, attrs):
+        if self.instance and "recipient" in attrs:
+            if attrs["recipient"] != self.instance.recipient:
+                raise serializers.ValidationError({"recipient": "Notification recipient cannot be changed once assigned."})
+        return attrs
     recipient = serializers.PrimaryKeyRelatedField(
         queryset=Notification._meta.get_field("recipient").remote_field.model.objects.all(),
         required=False,

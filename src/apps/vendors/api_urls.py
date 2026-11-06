@@ -8,7 +8,7 @@ from django.shortcuts import get_object_or_404
 from django.urls import path
 from rest_framework import serializers, status, viewsets
 from rest_framework.decorators import action
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import BasePermission, IsAuthenticated, SAFE_METHODS
 from rest_framework.response import Response
 from rest_framework.routers import DefaultRouter
 from rest_framework.views import APIView
@@ -119,9 +119,28 @@ class VendorRiskRecordSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
+        read_only_fields = ["id", "assessed_by", "assessed_by_email", "created_at", "updated_at"]
 
 
 class VendorSerializer(serializers.ModelSerializer):
+    def validate_tax_identification_number(self, value):
+        if not value:
+            return value
+        val = value.strip()
+        qs = Vendor.objects.filter(tax_identification_number__iexact=val)
+        if self.instance:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
+            raise serializers.ValidationError("A vendor with this tax identification number already exists (case-insensitive).")
+        return val
+
+    def validate(self, attrs):
+        pan = (attrs.get("pan_number", getattr(self.instance, "pan_number", "")) or "").strip().upper()
+        gstin = (attrs.get("gstin", getattr(self.instance, "gstin", "")) or "").strip().upper()
+        if pan and gstin:
+            if len(gstin) >= 12 and gstin[2:12] != pan:
+                raise serializers.ValidationError({"gstin": f"GSTIN '{gstin}' does not match PAN '{pan}' (characters 3-12 must match PAN)."})
+        return attrs
     category_name = serializers.CharField(source="category.name", read_only=True)
     category_code = serializers.CharField(source="category.code", read_only=True)
     status_display = serializers.CharField(source="get_status_display", read_only=True)
@@ -333,14 +352,38 @@ class VendorSerializer(serializers.ModelSerializer):
         }
 
     def create(self, validated_data):
-        if not validated_data.get("vendor_number"):
-            from apps.core.services import generate_document_number
+        from apps.core.services import generate_document_number
+        from django.db import IntegrityError, transaction
+        import time, random
 
+        for attempt in range(15):
             validated_data["vendor_number"] = generate_document_number(
-                Vendor, "vendor_number", "VND"
+                Vendor, "vendor_number", "VND", offset=attempt
             )
-        return super().create(validated_data)
+            try:
+                with transaction.atomic():
+                    return super().create(validated_data)
+            except IntegrityError as exc:
+                if attempt < 14:
+                    time.sleep(random.uniform(0.01, 0.05))
+                    continue
+                raise
 
+
+
+class VendorRiskAndHistoryPermission(BasePermission):
+    """Restricts vendor risk and history to procurement roles, auditor and super admin."""
+    def has_permission(self, request, view):
+        user = request.user
+        if not user or not user.is_authenticated:
+            return False
+        if user.is_superuser:
+            return True
+        role = getattr(user, "role_code", None)
+        from apps.accounts.models import Role
+        if request.method in SAFE_METHODS:
+            return role in {Role.SUPER_ADMIN, Role.PROC_EXEC, Role.PROC_MGR, Role.AUDITOR}
+        return role in {Role.SUPER_ADMIN, Role.PROC_MGR}
 
 class VendorViewSet(viewsets.ModelViewSet):
     queryset = (
@@ -367,6 +410,19 @@ class VendorViewSet(viewsets.ModelViewSet):
         "email",
     ]
     ordering_fields = ["created_at", "legal_name", "vendor_number", "status"]
+
+    def get_permissions(self):
+        if hasattr(self, "action") and self.action:
+            action_func = getattr(self, self.action, None)
+            if action_func:
+                perms = None
+                if hasattr(action_func, "kwargs"):
+                    perms = action_func.kwargs.get("permission_classes")
+                if perms is None and hasattr(action_func, "permission_classes"):
+                    perms = action_func.permission_classes
+                if perms is not None:
+                    return [p() for p in perms]
+        return super().get_permissions()
 
     def get_queryset(self):
         user = self.request.user
@@ -484,7 +540,7 @@ class VendorViewSet(viewsets.ModelViewSet):
         detail=True,
         methods=["get", "post"],
         url_path="risk",
-        permission_classes=[IsAuthenticated, GovernanceOperatePermission],
+        permission_classes=[IsAuthenticated, VendorRiskAndHistoryPermission],
     )
     def risk(self, request, pk=None):
         vendor = self.get_object()
@@ -541,7 +597,7 @@ class VendorViewSet(viewsets.ModelViewSet):
         detail=True,
         methods=["get"],
         url_path="history",
-        permission_classes=[IsAuthenticated, GovernanceOperatePermission],
+        permission_classes=[IsAuthenticated, VendorRiskAndHistoryPermission],
     )
     def history(self, request, pk=None):
         vendor = self.get_object()
@@ -713,6 +769,9 @@ class VendorRiskRecordViewSet(viewsets.ModelViewSet):
     serializer_class = VendorRiskRecordSerializer
     permission_classes = [IsAuthenticated, VendorAccessPermission]
 
+    def perform_create(self, serializer):
+        serializer.save(assessed_by=self.request.user if self.request.user.is_authenticated else None)
+
     def get_queryset(self):
         qs = self.queryset
         user = self.request.user
@@ -738,7 +797,7 @@ class VendorAssessRiskAPIView(APIView):
     Records a new VendorRiskRecord and optionally updates vendor status (ACTIVE, ON_HOLD, SUSPENDED).
     """
 
-    permission_classes = [IsAuthenticated, GovernanceOperatePermission]
+    permission_classes = [IsAuthenticated, IsProcurementManager]
 
     def post(self, request, pk):
         vendor = get_object_or_404(Vendor, pk=pk)
@@ -754,6 +813,7 @@ class VendorAssessRiskAPIView(APIView):
             VendorRiskRecord.RISK_LEVEL_LOW,
             VendorRiskRecord.RISK_LEVEL_MEDIUM,
             VendorRiskRecord.RISK_LEVEL_HIGH,
+            getattr(VendorRiskRecord, "RISK_LEVEL_CRITICAL", "CRITICAL"),
         ]
         if risk_level not in valid_levels:
             return Response(

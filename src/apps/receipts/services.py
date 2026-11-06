@@ -809,6 +809,9 @@ def handoff_goods_to_stock_service(
     if not lines:
         raise ValidationError("Cannot hand off to stock: Receipt contains no line items.")
 
+    if receipt.overall_inspection_status == "PENDING":
+        raise ValidationError("Cannot hand off to stock: Quality inspection has not been completed on this receipt.")
+
     accepted_lines = [rline for rline in lines if rline.quantity_accepted > Decimal("0.00")]
     if not accepted_lines:
         raise ValidationError(
