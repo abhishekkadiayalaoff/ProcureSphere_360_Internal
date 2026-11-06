@@ -394,7 +394,7 @@
         <div class="container-fluid px-2 px-sm-3 px-lg-4 d-flex align-items-center justify-content-between flex-nowrap">
             <div class="d-flex align-items-center gap-2">
                 <a href="/superadmin/" class="dashboard-brand-badge me-2 me-lg-3" aria-label="ProcureSphere 360 Home">
-                    <img src="{% static 'landing/images/procuresphere_360_nav_brand.png' %}" alt="ProcureSphere 360" class="dashboard-brand-logo">
+                    <img src="{% static 'landing/images/procuresphere_360_nav_brand_dark.png' %}" alt="ProcureSphere 360" class="dashboard-brand-logo">
                 </a>
                 <a href="/superadmin/" class="btn btn-sm btn-outline-warning text-white rounded-pill fw-semibold px-3" title="Open Frontend Portal View">
                     <i class="fa-solid fa-desktop me-1"></i> Frontend Portal View
@@ -463,7 +463,7 @@
             <!-- Desktop Sidebar Header (Matching Requester Desk pattern) -->
             <div class="d-flex align-items-center justify-content-between px-3 pt-3 pb-2 text-secondary text-uppercase fw-bold" style="font-size: 0.68rem; letter-spacing: 0.06em;">
                 <span>{% if is_global_superadmin and not scoped_org %}Super Admin Desk{% else %}Admin Control Center{% endif %}</span>
-                <i class="fa-solid fa-shield-halved text-warning" style="font-size:0.75rem;"></i>
+                
             </div>
 
         <!-- Navigation Links -->
@@ -471,7 +471,7 @@
             <ul class="nav nav-pills flex-column gap-1" id="menu">
                 <li class="nav-item">
                     <a href="/superadmin/" class="nav-link sa-nav-link rounded-3 py-2 px-3 active">
-                        <i class="fa-solid fa-gauge-high me-2 text-cyan"></i><span>Dashboard</span>
+                        <span>Dashboard</span>
                     </a>
                 </li>
 
@@ -482,7 +482,7 @@
                 <li class="sa-nav-label">Organization Management</li>
                 <li class="nav-item">
                     <a href="/superadmin/organizations/" class="nav-link sa-nav-link rounded-3 py-2 px-3">
-                        <i class="fa-solid fa-sitemap me-2 text-info"></i><span>Organizations</span>
+                        <span>Organizations</span>
                     </a>
                 </li>
 
@@ -493,51 +493,51 @@
                 <li class="sa-nav-label">Organization &amp; Masters</li>
                 <li class="nav-item">
                     <a href="/superadmin/organizations/" class="nav-link sa-nav-link rounded-3 py-2 px-3">
-                        <i class="fa-solid fa-sitemap me-2 text-info"></i><span>Departments &amp; Cost Centers</span>
+                        <span>Departments &amp; Cost Centers</span>
                     </a>
                 </li>
                 <li class="nav-item">
                     <a href="/superadmin/users/" class="nav-link sa-nav-link rounded-3 py-2 px-3">
-                        <i class="fa-solid fa-users-gear me-2 text-cyan"></i><span>Manage Users &amp; Roles</span>
+                        <span>Manage Users &amp; Roles</span>
                     </a>
                 </li>
                 <li class="nav-item">
                     <a href="/vendors/" class="nav-link sa-nav-link rounded-3 py-2 px-3">
-                        <i class="fa-solid fa-building-user me-2 text-warning"></i><span>Vendor Management</span>
+                        <span>Vendor Management</span>
                     </a>
                 </li>
 
                 <li class="sa-nav-label">Policies &amp; Rules</li>
                 <li class="nav-item">
                     <a href="/superadmin/policies/" class="nav-link sa-nav-link rounded-3 py-2 px-3">
-                        <i class="fa-solid fa-code-branch me-2" style="color: #a78bfa;"></i><span>Approval Policies</span>
+                        <span>Approval Policies</span>
                     </a>
                 </li>
                 <li class="nav-item">
                     <a href="/superadmin/budgets/" class="nav-link sa-nav-link rounded-3 py-2 px-3">
-                        <i class="fa-solid fa-sack-dollar me-2 text-success"></i><span>Budget Configuration</span>
+                        <span>Budget Configuration</span>
                     </a>
                 </li>
                 <li class="nav-item">
                     <a href="/invoices/settings/tolerances/" class="nav-link sa-nav-link rounded-3 py-2 px-3">
-                        <i class="fa-solid fa-sliders me-2 text-info"></i><span>Business Rules</span>
+                        <span>Business Rules</span>
                     </a>
                 </li>
 
                 <li class="sa-nav-label">Oversight &amp; Audit</li>
                 <li class="nav-item">
                     <a href="/notifications/" class="nav-link sa-nav-link rounded-3 py-2 px-3">
-                        <i class="fa-solid fa-bell me-2 text-warning"></i><span>Notifications &amp; Alerts</span>
+                        <span>Notifications &amp; Alerts</span>
                     </a>
                 </li>
                 <li class="nav-item">
                     <a href="/reports/hub/" class="nav-link sa-nav-link rounded-3 py-2 px-3">
-                        <i class="fa-solid fa-chart-line me-2 text-success"></i><span>Reports &amp; Analytics</span>
+                        <span>Reports &amp; Analytics</span>
                     </a>
                 </li>
                 <li class="nav-item">
                     <a href="/superadmin/audit/" class="nav-link sa-nav-link rounded-3 py-2 px-3">
-                        <i class="fa-solid fa-clock-rotate-left me-2 text-secondary"></i><span>Audit Logs</span>
+                        <span>Audit Logs</span>
                     </a>
                 </li>
                 {% endif %}
