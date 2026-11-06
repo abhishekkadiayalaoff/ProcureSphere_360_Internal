@@ -1,0 +1,77 @@
+{% extends base_layout|default:'base.html' %}
+
+{% block title %}{{ vendor.legal_name }} — Risk — {{ vendor.vendor_number }}{% endblock %}
+
+{% block manager_breadcrumbs %}
+{% include 'partials/vendor_pages/breadcrumbs.html' with page_label='Risk' %}
+{% endblock manager_breadcrumbs %}
+
+{% block content %}
+{% include 'partials/vendor_pages/header.html' %}
+
+<div class="row g-4">
+    <div class="col-lg-6">
+        <div class="glass-card p-4 shadow-sm h-100">
+            <h5 class="fw-bold mb-3"><i class="fa-solid fa-triangle-exclamation me-2 text-danger"></i>Risk</h5>
+            {% if latest_risk %}
+                <div class="mb-2">
+                    <span class="badge {% if latest_risk.risk_level == 'HIGH' %}bg-danger{% elif latest_risk.risk_level == 'MEDIUM' %}bg-warning text-dark{% else %}bg-success{% endif %}">{{ latest_risk.get_risk_level_display }}</span>
+                    <span class="small text-muted">assessed by {{ latest_risk.assessed_by.email }} on {{ latest_risk.created_at|date:"Y-m-d H:i" }}</span>
+                </div>
+                <div class="mb-2">
+                    {% for label in latest_risk.risk_flag_labels %}<span class="badge bg-danger-subtle text-danger border border-danger-subtle me-1">{{ label }}</span>{% empty %}<span class="small text-muted">No risk flags raised.</span>{% endfor %}
+                </div>
+                <p class="small mb-3">{{ latest_risk.assessment_notes }}</p>
+            {% else %}
+                <p class="small text-muted">No risk assessment recorded yet.</p>
+            {% endif %}
+
+            {% if caps.can_operate %}
+            <details class="mb-3">
+                <summary class="small fw-semibold">Record new risk assessment</summary>
+                <form method="post" action="{% url 'vendor_risk_assess' vendor.id %}" class="small mt-2">
+                    {% csrf_token %}
+                    <label class="form-label" for="risk-level">Risk level</label>
+                    <select name="risk_level" id="risk-level" class="form-select form-select-sm mb-2">
+                        {% for value, label in risk_level_choices %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
+                    </select>
+                    <fieldset class="mb-2"><legend class="form-label fs-6 small">Risk flags</legend>
+                        <div class="row">
+                        {% for value, label in risk_flag_choices %}
+                            <div class="col-sm-6"><div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="risk_flags" value="{{ value }}" id="flag-{{ value }}">
+                                <label class="form-check-label" for="flag-{{ value }}">{{ label }}</label>
+                            </div></div>
+                        {% endfor %}
+                        </div>
+                    </fieldset>
+                    <label class="form-label" for="risk-notes">Assessment notes</label>
+                    <textarea name="notes" id="risk-notes" rows="2" class="form-control form-control-sm mb-2" required></textarea>
+                    <button class="btn btn-sm btn-danger">Save assessment</button>
+                </form>
+            </details>
+            {% else %}
+                <p class="small text-muted mb-3">Read-only access — risk assessments are recorded by procurement roles.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="col-lg-6">
+        <div class="glass-card p-4 shadow-sm h-100">
+            <h5 class="fw-bold mb-3"><i class="fa-solid fa-list-check me-2 text-danger"></i>Risk assessment history</h5>
+            {% if risk_records %}
+            <div class="table-responsive"><table class="table table-sm small mb-0">
+                <thead><tr><th>Date</th><th>Level</th><th>Flags</th><th>Assessor</th></tr></thead>
+                <tbody>
+                {% for r in risk_records %}
+                    <tr><td class="text-nowrap">{{ r.created_at|date:"Y-m-d" }}</td><td>{{ r.get_risk_level_display }}</td><td>{{ r.risk_flag_labels|join:", "|default:"—" }}</td><td>{{ r.assessed_by.email }}</td></tr>
+                {% endfor %}
+                </tbody>
+            </table></div>
+            {% else %}
+                <p class="small text-muted mb-0">No risk assessments recorded yet.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

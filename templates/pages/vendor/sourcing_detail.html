@@ -323,10 +323,16 @@
                         {% endif %}
                     </div>
 
+                    {% if not vendor.is_event_eligible or vendor.status != 'ACTIVE' %}
+                    <div class="alert alert-warning border-warning small p-2 rounded-3 mb-2">
+                        <i class="fa-solid fa-triangle-exclamation me-1"></i> Participation and bidding are restricted. Status: <strong>{{ vendor.get_status_display }}</strong>.
+                    </div>
+                    {% endif %}
+
                     {% if not invite.is_responded %}
                     <form method="POST" action="{% url 'vendor_sourcing_participate' event_id=event.id %}">
                         {% csrf_token %}
-                        <button type="submit" class="btn btn-outline-success btn-sm w-100 rounded-pill mb-2">
+                        <button type="submit" class="btn btn-outline-success btn-sm w-100 rounded-pill mb-2" {% if not vendor.is_event_eligible or vendor.status != 'ACTIVE' %}disabled title="Full KYC approval is required to participate"{% endif %}>
                             <i class="fa-solid fa-check-circle me-1"></i> Acknowledge Participation
                         </button>
                     </form>
@@ -342,6 +348,10 @@
                                     View My Submitted Bid &rarr;
                                 {% endif %}
                             </a>
+                            {% elif not vendor.is_event_eligible or vendor.status != 'ACTIVE' %}
+                            <button class="btn btn-secondary btn-sm rounded-pill py-2 shadow-sm" disabled title="Full KYC approval is required to submit bids">
+                                <i class="fa-solid fa-lock me-1"></i> Bidding Restricted (KYC Approval Required)
+                            </button>
                             {% else %}
                             <a href="{% url 'vendor_bid_create' event_id=event.id %}" class="btn btn-primary btn-sm rounded-pill py-2 shadow-sm">
                                 Prepare Bid Now &rarr;

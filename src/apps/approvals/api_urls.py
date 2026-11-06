@@ -38,10 +38,7 @@ class CanManageApprovalPolicy(BasePermission):
 
         if request.method in SAFE_METHODS:
             return True
-        return request.user.is_superuser or request.user.role_code in [
-            Role.SUPER_ADMIN,
-            Role.PROC_MGR,
-        ]
+        return request.user.is_superuser or request.user.role_code == Role.SUPER_ADMIN
 
 
 class ApprovalPolicySerializer(serializers.ModelSerializer):
@@ -53,6 +50,10 @@ class ApprovalPolicySerializer(serializers.ModelSerializer):
         from decimal import Decimal
         min_amount = attrs.get("min_amount", getattr(self.instance, "min_amount", Decimal("0.00")))
         max_amount = attrs.get("max_amount", getattr(self.instance, "max_amount", None))
+        if min_amount is not None and min_amount < Decimal("0.00"):
+            raise serializers.ValidationError(
+                {"min_amount": ["Minimum amount cannot be negative."]}
+            )
         if max_amount is not None and min_amount is not None and min_amount > max_amount:
             raise serializers.ValidationError(
                 {"min_amount": ["Minimum amount cannot be greater than maximum amount."]}

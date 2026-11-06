@@ -1,0 +1,83 @@
+<div class="d-flex flex-wrap gap-2 align-items-start justify-content-between mb-3">
+    <div>
+        <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+            <code class="h5 mb-0">{{ vendor.vendor_number }}</code>
+            {% include 'partials/vendor_status_badge.html' with status=vendor.status label=vendor.get_status_display %}
+            {% if latest_risk %}
+                <span class="badge {% if latest_risk.risk_level == 'HIGH' %}bg-danger{% elif latest_risk.risk_level == 'MEDIUM' %}bg-warning text-dark{% else %}bg-success{% endif %}">{{ latest_risk.get_risk_level_display }} risk</span>
+            {% endif %}
+        </div>
+        <h2 class="fw-bold text-dark mb-0">{{ vendor.legal_name }}</h2>
+        {% if vendor.trade_name %}<div class="text-muted small">Trading as {{ vendor.trade_name }}</div>{% endif %}
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+        {% if user.role_code == 'PROC_MGR' %}
+        <a href="/manager/vendor-risk/" class="btn btn-outline-secondary rounded-pill px-3"><i class="fa-solid fa-arrow-left me-1"></i>Back to Vendor Risk</a>
+        {% else %}
+        <a href="{% url 'vendor_governance' %}" class="btn btn-outline-secondary rounded-pill px-3"><i class="fa-solid fa-arrow-left me-1"></i>Back to {{ back_label|default:"Governance" }}</a>
+        {% endif %}
+
+        {% if caps.can_operate %}
+            {# ── Edit vendor info button (HTMX modal) ── #}
+            <div id="vendor-edit-slot">
+                <button class="btn btn-outline-primary rounded-pill px-3"
+                        hx-get="{% url 'vendor_edit' vendor.id %}"
+                        hx-target="#vendor-edit-slot"
+                        hx-swap="beforeend">
+                    <i class="fa-solid fa-pen-to-square me-1"></i>Edit info
+                </button>
+            </div>
+
+            {# ── Credentials button ── #}
+            {% if vendor.status != 'SUSPENDED' and vendor.status != 'REJECTED' %}
+                <form method="post" action="{% url 'vendor_issue_credentials' vendor.id %}"
+                      data-confirm-title="{% if last_dispatch %}Resend vendor credentials{% else %}Generate &amp; email vendor credentials{% endif %}"
+                      data-confirm-message="This will create or reset the vendor portal login and email the credentials to the registered contact. Any previous password will stop working."
+                      data-confirm-tone="info"
+                      data-confirm-icon="fa-envelope"
+                      data-confirm-confirm-label="{% if last_dispatch %}Yes, resend credentials{% else %}Generate &amp; email{% endif %}"
+                      data-confirm-details="Vendor = {{ vendor.vendor_number }} — {{ vendor.legal_name }};Recipient = {{ vendor.email }}">
+                    {% csrf_token %}
+                    <button class="btn btn-primary rounded-pill px-3" type="submit"{% if last_dispatch %} title="Last: {{ last_dispatch.get_status_display }} {{ last_dispatch.created_at|date:'d M Y H:i' }}"{% endif %}><i class="fa-solid fa-envelope me-1"></i>{% if last_dispatch %}Resend credentials{% else %}Generate &amp; email credentials{% endif %}</button>
+                </form>
+            {% endif %}
+
+            {# ── New RFQ/RFP ── #}
+            {% if vendor.status == 'ACTIVE' %}
+                <a href="{% url 'sourcing_create' %}" class="btn btn-warning rounded-pill px-3 text-dark fw-semibold"><i class="fa-solid fa-gavel me-1"></i>New RFQ/RFP</a>
+            {% endif %}
+
+            {# ── Delete vendor (DRAFT / REJECTED only) ── #}
+            {% if vendor.status == 'DRAFT' or vendor.status == 'REJECTED' %}
+                <form method="post" action="{% url 'vendor_delete' vendor.id %}"
+                      data-confirm-title="Delete {{ vendor.legal_name }}?"
+                      data-confirm-message="You are about to permanently delete vendor {{ vendor.vendor_number }} — {{ vendor.legal_name }}."
+                      data-confirm-warning="This action cannot be undone. Only DRAFT and REJECTED vendors with no linked transactions can be deleted."
+                      data-confirm-tone="danger"
+                      data-confirm-icon="fa-trash-can"
+                      data-confirm-confirm-label="Yes, delete forever"
+                      data-confirm-cancel-label="Keep vendor">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-outline-danger rounded-pill px-3">
+                        <i class="fa-solid fa-trash-can me-1"></i>Delete vendor
+                    </button>
+                </form>
+            {% endif %}
+        {% endif %}
+    </div>
+</div>
+
+{% include 'partials/messages.html' %}
+
+{% comment %}
+Section navigation for the independent vendor detail pages: every item is a real
+routed page (not an in-page anchor), so each click performs a full navigation while
+the selected vendor is preserved in the URL.
+{% endcomment %}
+<ul class="nav nav-pills small mb-4 gap-1 flex-wrap vendor-pages-nav" aria-label="Vendor detail pages">
+    {% for item in nav %}
+    <li class="nav-item">
+        <a class="nav-link py-1{% if item.active %} active{% endif %}" aria-current="{% if item.active %}page{% else %}false{% endif %}" href="{% url item.url_name vendor.id %}">{{ item.label }}</a>
+    </li>
+    {% endfor %}
+</ul>

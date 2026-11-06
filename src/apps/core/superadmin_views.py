@@ -7,6 +7,7 @@ from functools import wraps
 import openpyxl
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.core.exceptions import ValidationError
 from django.core.paginator import Paginator
 from django.db import transaction
 from django.db.models import Prefetch, Q
@@ -840,7 +841,7 @@ def org_create_view(request):
 
     scoped_org = get_user_scoped_org(request.user)
 
-    if not _is_super_admin(request.user) or scoped_org is not None or not request.user.is_superuser:
+    if scoped_org is not None or not (_is_super_admin(request.user) or request.user.is_superuser):
 
         return HttpResponse(
 
@@ -2796,6 +2797,21 @@ def _get_scoped_audit_logs(request):
             | Q(target_model="User", target_object_id__in=user_ids)
 
         )
+
+    # Pagination support for large exports — prevent timeout on big datasets
+    try:
+        limit = int(request.GET.get("limit", "10000"))
+    except (ValueError, TypeError):
+        limit = 10000
+    if limit > 50000:
+        limit = 50000
+
+    try:
+        offset = int(request.GET.get("offset", "0"))
+    except (ValueError, TypeError):
+        offset = 0
+
+    logs = logs[offset:offset + limit]
 
     return logs
 

@@ -9,8 +9,11 @@ from django.shortcuts import get_object_or_404, redirect, render
 from apps.accounts.models import Role
 from apps.invoices.models import MatchException, MatchTolerancePolicy, SupplierInvoice
 from apps.invoices.services import (
+    approve_supplier_invoice_service,
     create_supplier_invoice_service,
     mark_invoice_paid_service,
+    reject_supplier_invoice_service,
+    request_invoice_correction_service,
     resolve_match_exception_service,
     run_3_way_match_service,
 )
@@ -144,6 +147,7 @@ def invoice_detail_view(request, invoice_id):
     is_finance = request.user.is_superuser or user_role in [Role.FINANCE_AP, "FINANCE_AP"]
     is_proc = user_role in [Role.PROC_EXEC, Role.PROC_MGR, "PROC_EXEC", "PROC_MGR"]
 
+    has_open_exceptions = invoice.exceptions.filter(status=MatchException.STATUS_OPEN).exists()
     return render(
         request,
         "pages/invoices/detail.html",
@@ -155,6 +159,18 @@ def invoice_detail_view(request, invoice_id):
                 SupplierInvoice.STATUS_RECEIVED,
                 SupplierInvoice.STATUS_VALIDATION,
                 SupplierInvoice.STATUS_EXCEPTION,
+            ],
+            "can_approve": is_finance and invoice.status in [
+                SupplierInvoice.STATUS_APPROVAL,
+                SupplierInvoice.STATUS_RECEIVED,
+            ] and not has_open_exceptions,
+            "can_reject": is_finance and invoice.status not in [
+                SupplierInvoice.STATUS_PAID,
+                SupplierInvoice.STATUS_REJECTED,
+            ],
+            "can_request_correction": is_finance and invoice.status not in [
+                SupplierInvoice.STATUS_PAID,
+                SupplierInvoice.STATUS_REJECTED,
             ],
             "can_pay": is_finance and invoice.status == SupplierInvoice.STATUS_READY_FOR_PAYMENT,
         },
@@ -270,12 +286,96 @@ def pay_invoice_view(request, invoice_id):
 
 
 @login_required(login_url="/login/")
+def approve_invoice_view(request, invoice_id):
+    """
+    Finance approval action:
+    Formally approves a matched invoice, queuing it for payment disbursement.
+    """
+    _enforce_internal_invoice_access(
+        request, allowed_roles=[Role.FINANCE_AP, Role.SUPER_ADMIN, "FINANCE_AP", "SUPER_ADMIN"]
+    )
+    invoice = get_object_or_404(SupplierInvoice, id=invoice_id)
+    if request.method == "POST":
+        notes = request.POST.get("approval_notes", "").strip()
+        try:
+            approve_supplier_invoice_service(
+                invoice=invoice,
+                user=request.user,
+                notes=notes,
+            )
+            messages.success(request, f"Invoice {invoice.invoice_number} approved and ready for payment.")
+        except ValidationError as ve:
+            messages.error(request, f"Approval Failed: {ve.message if hasattr(ve, 'message') else str(ve)}")
+        except Exception as e:
+            messages.error(request, f"Approval Error: {str(e)}")
+    return redirect("invoice_detail", invoice_id=invoice.id)
+
+
+@login_required(login_url="/login/")
+def reject_invoice_view(request, invoice_id):
+    """
+    Finance rejection action:
+    Rejects an invoice with a mandatory reason.
+    """
+    _enforce_internal_invoice_access(
+        request, allowed_roles=[Role.FINANCE_AP, Role.SUPER_ADMIN, "FINANCE_AP", "SUPER_ADMIN"]
+    )
+    invoice = get_object_or_404(SupplierInvoice, id=invoice_id)
+    if request.method == "POST":
+        rejection_reason = request.POST.get("rejection_reason", "").strip()
+        if not rejection_reason:
+            messages.error(request, "A reason/justification is required to reject an invoice.")
+            return redirect("invoice_detail", invoice_id=invoice.id)
+        try:
+            reject_supplier_invoice_service(
+                invoice=invoice,
+                user=request.user,
+                rejection_reason=rejection_reason,
+            )
+            messages.warning(request, f"Invoice {invoice.invoice_number} has been rejected.")
+        except ValidationError as ve:
+            messages.error(request, f"Rejection Failed: {ve.message if hasattr(ve, 'message') else str(ve)}")
+        except Exception as e:
+            messages.error(request, f"Rejection Error: {str(e)}")
+    return redirect("invoice_detail", invoice_id=invoice.id)
+
+
+@login_required(login_url="/login/")
+def request_correction_view(request, invoice_id):
+    """
+    Finance correction request action:
+    Requests vendor corrections on an invoice with mandatory instructions.
+    """
+    _enforce_internal_invoice_access(
+        request, allowed_roles=[Role.FINANCE_AP, Role.SUPER_ADMIN, "FINANCE_AP", "SUPER_ADMIN"]
+    )
+    invoice = get_object_or_404(SupplierInvoice, id=invoice_id)
+    if request.method == "POST":
+        correction_notes = request.POST.get("correction_notes", "").strip()
+        if not correction_notes:
+            messages.error(request, "Correction instructions/notes are required.")
+            return redirect("invoice_detail", invoice_id=invoice.id)
+        try:
+            request_invoice_correction_service(
+                invoice=invoice,
+                user=request.user,
+                correction_notes=correction_notes,
+            )
+            messages.info(request, f"Correction requested for invoice {invoice.invoice_number}. Vendor has been notified.")
+        except ValidationError as ve:
+            messages.error(request, f"Correction Request Failed: {ve.message if hasattr(ve, 'message') else str(ve)}")
+        except Exception as e:
+            messages.error(request, f"Error: {str(e)}")
+    return redirect("invoice_detail", invoice_id=invoice.id)
+
+
+@login_required(login_url="/login/")
 def create_invoice_view(request):
     _enforce_internal_invoice_access(
         request,
-        allowed_roles=[Role.FINANCE_AP, Role.SUPER_ADMIN, Role.PROC_MGR, Role.PROC_EXEC, "FINANCE_AP", "SUPER_ADMIN", "PROC_MGR", "PROC_EXEC"],
+        allowed_roles=[Role.FINANCE_AP, Role.SUPER_ADMIN, "FINANCE_AP", "SUPER_ADMIN"],
     )
-    scoped_org = getattr(request.user, "effective_organization", None) if not getattr(request.user, "is_superuser", False) else None
+    scoped_org = getattr(request.user, "effective_organization", None) if not (getattr(request.user, "is_superuser", False) and not getattr(request.user, "organization_id", None)) else None
     vendors = Vendor.objects.filter(status="ACTIVE")
     if scoped_org:
         vendors = vendors.filter(organization=scoped_org)

@@ -778,6 +778,13 @@ def vendor_sourcing_participate_view(request, event_id):
     if not invite and not request.user.is_superuser:
         raise PermissionDenied("Access Denied: You do not hold an invitation for this event.")
 
+    if vendor.status != Vendor.STATUS_ACTIVE or not vendor.is_event_eligible:
+        messages.error(
+            request,
+            "Access Restricted: Sourcing participation is restricted to active, approved vendors.",
+        )
+        return redirect("vendor_sourcing_detail", event_id=event.id)
+
     try:
         sync_event_window_status(event=event)
     except Exception:
@@ -889,6 +896,13 @@ def vendor_bid_create_view(request, event_id):  # noqa: C901
         raise PermissionDenied(
             "Access Denied: You do not hold an invitation for this sourcing event."
         )
+
+    if vendor.status != Vendor.STATUS_ACTIVE or not vendor.is_event_eligible:
+        messages.error(
+            request,
+            "Access Restricted: Bidding is restricted to active, approved vendors.",
+        )
+        return redirect("vendor_sourcing_detail", event_id=event.id)
 
     now = timezone.now()
     try:
@@ -1426,6 +1440,21 @@ def vendor_purchase_orders_list_view(request):
                 PurchaseOrder.STATUS_PARTIAL_RECEIPT,
             ]
         )
+    elif tab == "accepted":
+        pos_qs = pos_qs.filter(
+            status__in=[
+                PurchaseOrder.STATUS_ACKNOWLEDGED,
+                PurchaseOrder.STATUS_PARTIAL_RECEIPT,
+                PurchaseOrder.STATUS_COMPLETED,
+            ]
+        )
+    elif tab == "rejected":
+        pos_qs = pos_qs.filter(
+            status=PurchaseOrder.STATUS_CANCELLED,
+            acknowledgement_notes__icontains="REJECTED",
+        )
+    elif tab == "cancelled":
+        pos_qs = pos_qs.filter(status=PurchaseOrder.STATUS_CANCELLED)
     elif tab == "amended":
         pos_qs = pos_qs.filter(amendments__isnull=False).distinct()
     elif tab == "completed":
@@ -1443,6 +1472,22 @@ def vendor_purchase_orders_list_view(request):
                 PurchaseOrder.STATUS_ACKNOWLEDGED,
                 PurchaseOrder.STATUS_PARTIAL_RECEIPT,
             ],
+        ).count(),
+        "accepted": PurchaseOrder.objects.filter(
+            vendor=vendor,
+            status__in=[
+                PurchaseOrder.STATUS_ACKNOWLEDGED,
+                PurchaseOrder.STATUS_PARTIAL_RECEIPT,
+                PurchaseOrder.STATUS_COMPLETED,
+            ],
+        ).count(),
+        "rejected": PurchaseOrder.objects.filter(
+            vendor=vendor,
+            status=PurchaseOrder.STATUS_CANCELLED,
+            acknowledgement_notes__icontains="REJECTED",
+        ).count(),
+        "cancelled": PurchaseOrder.objects.filter(
+            vendor=vendor, status=PurchaseOrder.STATUS_CANCELLED
         ).count(),
         "amended": PurchaseOrder.objects.filter(vendor=vendor, amendments__isnull=False)
         .distinct()
@@ -1637,9 +1682,7 @@ def vendor_purchase_order_acknowledge_view(request, po_id):
 def vendor_purchase_order_reject_view(request, po_id):
     """
     PO Rejection Action:
-    Vendor formally rejects an issued PO (e.g. cannot fulfil scope/pricing).
-    Enforces business restriction: Must be in ISSUED status and owned by vendor.
-    Returns the PO to APPROVED so procurement can resolve and re-issue or cancel.
+    Vendor rejects an issued PO with a mandatory rejection reason.
     """
     vendor = request.vendor
     po = get_object_or_404(PurchaseOrder, id=po_id)
@@ -1648,16 +1691,17 @@ def vendor_purchase_order_reject_view(request, po_id):
         raise PermissionDenied("Access Denied: Unauthorized rejection attempt.")
 
     reason = request.POST.get("rejection_reason", "").strip()
+    if not reason:
+        messages.error(request, "A reason/justification is required to reject a Purchase Order.")
+        return redirect("vendor_purchase_order_detail", po_id=po.id)
 
     try:
         vendor_reject_purchase_order_service(
             po=po,
             vendor_user=request.user,
-            reason=reason,
+            rejection_reason=reason,
         )
-        messages.success(
-            request, f"Purchase Order {po.po_number} rejected. Procurement has been notified."
-        )
+        messages.warning(request, f"Purchase Order {po.po_number} has been rejected.")
     except ValidationError as ve:
         messages.error(
             request, f"Rejection Failed: {ve.message if hasattr(ve, 'message') else str(ve)}"
@@ -1665,7 +1709,7 @@ def vendor_purchase_order_reject_view(request, po_id):
     except Exception as e:
         messages.error(request, f"System Error: {str(e)}")
 
-    return redirect("vendor_purchase_order_detail", po_id=po.id)
+    return redirect("vendor_purchase_orders_list")
 
 
 @vendor_required
@@ -1793,8 +1837,56 @@ ELIGIBLE_INVOICE_STATUSES = [
 @vendor_required
 def vendor_invoices_view(request):
     vendor = request.vendor
-    invoices = SupplierInvoice.objects.filter(vendor=vendor).order_by("-created_at")
+    invoices_qs = SupplierInvoice.objects.filter(vendor=vendor).order_by("-created_at")
     from django.db.models import Q
+
+    tab = request.GET.get("tab", "all").strip().lower()
+    if tab == "pending":
+        filtered_invoices = invoices_qs.filter(
+            status__in=[
+                SupplierInvoice.STATUS_RECEIVED,
+                SupplierInvoice.STATUS_VALIDATION,
+                SupplierInvoice.STATUS_MATCHING,
+                SupplierInvoice.STATUS_APPROVAL,
+            ]
+        )
+    elif tab == "approved":
+        filtered_invoices = invoices_qs.filter(
+            status=SupplierInvoice.STATUS_READY_FOR_PAYMENT
+        )
+    elif tab == "paid":
+        filtered_invoices = invoices_qs.filter(status=SupplierInvoice.STATUS_PAID)
+    elif tab == "exceptions":
+        filtered_invoices = invoices_qs.filter(
+            Q(status=SupplierInvoice.STATUS_EXCEPTION)
+            | ~Q(correction_request_notes="")
+        )
+    elif tab == "rejected":
+        filtered_invoices = invoices_qs.filter(status=SupplierInvoice.STATUS_REJECTED)
+    else:
+        filtered_invoices = invoices_qs
+
+    counts = {
+        "all": invoices_qs.count(),
+        "pending": invoices_qs.filter(
+            status__in=[
+                SupplierInvoice.STATUS_RECEIVED,
+                SupplierInvoice.STATUS_VALIDATION,
+                SupplierInvoice.STATUS_MATCHING,
+                SupplierInvoice.STATUS_APPROVAL,
+            ]
+        ).count(),
+        "approved": invoices_qs.filter(
+            status=SupplierInvoice.STATUS_READY_FOR_PAYMENT
+        ).count(),
+        "paid": invoices_qs.filter(status=SupplierInvoice.STATUS_PAID).count(),
+        "exceptions": invoices_qs.filter(
+            Q(status=SupplierInvoice.STATUS_EXCEPTION)
+            | ~Q(correction_request_notes="")
+        ).count(),
+        "rejected": invoices_qs.filter(status=SupplierInvoice.STATUS_REJECTED).count(),
+    }
+
     eligible_pos = PurchaseOrder.objects.filter(
         vendor=vendor
     ).filter(
@@ -1804,10 +1896,29 @@ def vendor_invoices_view(request):
     context = {
         "vendor": vendor,
         "active_nav": "invoices",
-        "invoices": invoices,
+        "invoices": filtered_invoices,
         "eligible_pos": eligible_pos,
+        "tab": tab,
+        "counts": counts,
     }
     return render(request, "pages/vendor/invoices.html", context)
+
+
+@vendor_required
+def vendor_invoice_detail_view(request, invoice_id):
+    vendor = request.vendor
+    invoice = get_object_or_404(
+        SupplierInvoice.objects.select_related("po", "vendor")
+        .prefetch_related("lines__po_line", "exceptions"),
+        id=invoice_id,
+        vendor=vendor,
+    )
+    context = {
+        "vendor": vendor,
+        "active_nav": "invoices",
+        "invoice": invoice,
+    }
+    return render(request, "pages/vendor/invoice_detail.html", context)
 
 
 @vendor_required
@@ -1882,6 +1993,7 @@ def vendor_invoice_submit_view(request, po_id=None):
     invoice_date = request.POST.get("invoice_date")
     due_date = request.POST.get("due_date")
     notes = request.POST.get("notes", "").strip()
+    invoice_doc = request.FILES.get("invoice_document")
 
     if not invoice_number or not invoice_date or not due_date:
         messages.error(request, "Invoice number, date, and due date are required.")
@@ -1920,7 +2032,10 @@ def vendor_invoice_submit_view(request, po_id=None):
             due_date=due_date,
             line_items=line_items,
             notes=notes,
-            created_by_user=request.user
+            created_by_user=request.user,
+            invoice_document=invoice_doc,
+            require_grn=True,
+            enforce_billable_limits=True,
         )
         try:
             from apps.invoices.services import run_3_way_match_service
@@ -1941,7 +2056,7 @@ def vendor_invoice_submit_view(request, po_id=None):
     except Exception as e:
         messages.error(request, f"Failed to submit invoice: {str(e)}")
 
-    return redirect("vendor_purchase_order_detail", po_id=po.id)
+    return redirect("vendor_invoices")
 
 
 @vendor_required
@@ -2039,6 +2154,16 @@ def vendor_document_download_view(request, doc_type, doc_id):
             )
         file_handle = att.file
 
+    elif doc_type == "contract":
+        from apps.contracts.models import ContractDocument
+
+        doc = get_object_or_404(ContractDocument.objects.select_related("contract"), id=doc_id)
+        if doc.contract.vendor != vendor and not request.user.is_superuser:
+            raise PermissionDenied(
+                "Access Denied: You do not have permission to access this contract document."
+            )
+        file_handle = doc.file
+
     else:
         raise Http404("Document type not found.")
 
@@ -2052,9 +2177,9 @@ def vendor_document_download_view(request, doc_type, doc_id):
     AuditLog.objects.create(
         actor=request.user,
         action=AuditLog.ACTION_EXPORT,
-        target_model="PRAttachment"
-        if doc_type == "event"
-        else ("BidAttachment" if doc_type == "bid" else "VendorDocument"),
+        target_model="ContractDocument"
+        if doc_type == "contract"
+        else ("PRAttachment" if doc_type == "event" else ("BidAttachment" if doc_type == "bid" else "VendorDocument")),
         target_object_id=str(doc_id),
         new_state={
             "document_type": doc_type,

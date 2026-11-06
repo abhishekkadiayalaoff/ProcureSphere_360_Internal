@@ -46,8 +46,8 @@ class IsNotAuditor(permissions.BasePermission):
 class CanManageContract(permissions.BasePermission):
     """
     Permission required to create, amend, terminate, or update core contract structure:
-    Legal Manager, Procurement Manager, Procurement Executive, Super Admin.
-    Requesters, Auditors, and Vendors are strictly prohibited (403) from write operations.
+    Legal Manager, Procurement Manager, Super Admin.
+    Procurement Executives, Requesters, Auditors, and Vendors are strictly prohibited (403) from write operations.
     """
 
     def has_permission(self, request, view):
@@ -63,7 +63,6 @@ class CanManageContract(permissions.BasePermission):
         return role_code in [
             Role.SUPER_ADMIN,
             Role.LEGAL_MGR,
-            Role.PROC_MGR,
         ]
 
     def has_object_permission(self, request, view, obj):

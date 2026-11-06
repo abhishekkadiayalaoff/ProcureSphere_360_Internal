@@ -754,6 +754,57 @@ def contact_submit(request):
         ctx['error'] = 'Message must be at least 10 characters long.'
         return render(request, 'landing/partials/contact_error.html', ctx)
 
+    # Extract client IP and user agent
+    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+    if x_forwarded_for:
+        ip_address = x_forwarded_for.split(',')[0].strip()
+    else:
+        ip_address = request.META.get('REMOTE_ADDR')
+    user_agent = request.META.get('HTTP_USER_AGENT', '')[:500]
+
+    # Persist enquiry to PostgreSQL database so it is received by Django admin portal
+    from apps.core.models import ContactEnquiry
+    enquiry = ContactEnquiry.objects.create(
+        name=name,
+        email=email,
+        country_code=country_code,
+        phone=phone_clean,
+        message=message,
+        ip_address=ip_address,
+        user_agent=user_agent,
+    )
+
+    # Audit trail
+    try:
+        from apps.audit.models import AuditLog
+        AuditLog.objects.create(
+            actor=request.user if getattr(request, "user", None) and request.user.is_authenticated else None,
+            action="CONTACT_ENQUIRY_SUBMITTED",
+            target_model="ContactEnquiry",
+            target_object_id=str(enquiry.id),
+            details={
+                "name": name,
+                "email": email,
+                "phone": f"{country_code} {phone_clean}",
+                "ip_address": ip_address,
+            },
+        )
+    except Exception:
+        pass
+
+    # Notify Superadmins in-app
+    try:
+        from apps.notifications.services import notify_role_users
+        notify_role_users(
+            role_codes=["SUPER_ADMIN"],
+            notification_type="SYSTEM",
+            title=f"New Landing Contact Enquiry: {name}",
+            message=f"Received a new enquiry from {name} ({email}, {country_code} {phone_clean}): {message[:120]}...",
+            target_url="/admin/core/contactenquiry/",
+        )
+    except Exception:
+        pass
+
     # Success: Render formatted response
     return render(request, 'landing/partials/contact_success.html', {
         'name': name,

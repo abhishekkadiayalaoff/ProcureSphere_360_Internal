@@ -1,7 +1,7 @@
 from decimal import Decimal
 
 from django.core.exceptions import ValidationError
-from rest_framework import serializers, status, viewsets
+from rest_framework import filters, serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import SAFE_METHODS, BasePermission, IsAuthenticated
 from rest_framework.response import Response
@@ -35,27 +35,36 @@ class CanManageSupplierInvoice(BasePermission):
         if not request.user or not request.user.is_authenticated:
             return False
 
-        if getattr(request.user, "role_code", None) == Role.AUDITOR:
-            return request.method in SAFE_METHODS
-
+        role_code = getattr(request.user, "role_code", None) or (
+            request.user.role.code if getattr(request.user, "role", None) else None
+        )
         is_vendor = (
             getattr(request.user, "is_vendor", False)
-            or getattr(request.user, "role_code", None) == Role.VENDOR_USER
+            or role_code == Role.VENDOR_USER
         )
 
+        if not request.user.is_superuser and role_code in [Role.DEPT_APPROVER, Role.LEGAL_MGR, Role.STORES_RECEIVER]:
+            return False
+
+        if role_code == Role.REQUESTER:
+            return request.method in SAFE_METHODS
+
+        if role_code == Role.AUDITOR:
+            return request.method in SAFE_METHODS
+
         if view.action in ["pay_invoice", "pay", "resolve_exception", "resolve"]:
-            if is_vendor or getattr(request.user, "role_code", None) == Role.AUDITOR:
+            if is_vendor or role_code == Role.AUDITOR:
                 return False
-            user_role = getattr(request.user, "role_code", None) or (
-                request.user.role.code if getattr(request.user, "role", None) else None
-            )
-            return request.user.is_superuser or user_role in [
-                Role.SUPER_ADMIN,
-                Role.FINANCE_AP,
-            ]
+            return request.user.is_superuser or role_code in [Role.SUPER_ADMIN, Role.FINANCE_AP]
+
+        if view.action in ["run_match", "run_3_way_match"]:
+            return request.user.is_superuser or role_code in [Role.SUPER_ADMIN, Role.FINANCE_AP]
 
         if is_vendor:
-            return request.method in SAFE_METHODS or view.action in ["create"]
+            return request.method in SAFE_METHODS or request.method == "POST" or getattr(view, "action", None) == "create"
+
+        if request.method == "POST":
+            return request.user.is_superuser or role_code in [Role.FINANCE_AP, Role.SUPER_ADMIN]
 
         role_code = getattr(request.user, "role_code", None) or (
             request.user.role.code if getattr(request.user, "role", None) else None
@@ -103,6 +112,10 @@ class MatchExceptionSerializer(serializers.ModelSerializer):
         model = MatchException
         fields = "__all__"
 
+    def create(self, validated_data):
+        validated_data["status"] = MatchException.STATUS_OPEN
+        return super().create(validated_data)
+
 
 class SupplierInvoiceSerializer(serializers.ModelSerializer):
     lines = InvoiceLineSerializer(many=True, read_only=True)
@@ -117,6 +130,10 @@ class SupplierInvoiceSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         vendor = attrs.get("vendor", getattr(self.instance, "vendor", None))
         po = attrs.get("po", getattr(self.instance, "po", None))
+        if po and po.status in [PurchaseOrder.STATUS_DRAFT, PurchaseOrder.STATUS_CANCELLED]:
+            raise serializers.ValidationError(
+                {"po": [f"Cannot create invoice against PO in status '{po.status}'. Invoices can only be issued against approved/issued POs."]}
+            )
         if not vendor and po:
             vendor = po.vendor
         if not vendor and hasattr(self, "context") and "request" in self.context:
@@ -178,8 +195,10 @@ class SupplierInvoiceViewSet(viewsets.ModelViewSet):
     queryset = (
         SupplierInvoice.objects.select_related("vendor", "po")
         .prefetch_related("lines", "exceptions")
-        .all()
+        .order_by("-created_at", "-id")
     )
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ["invoice_number", "vendor__legal_name", "po__po_number"]
     serializer_class = SupplierInvoiceSerializer
     permission_classes = [IsAuthenticated, CanManageSupplierInvoice]
 
@@ -296,6 +315,10 @@ class SupplierInvoiceViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["post"], url_path="run-match")
     def run_match(self, request, pk=None):
         invoice = self.get_object()
+        if invoice.status == SupplierInvoice.STATUS_PAID:
+            raise serializers.ValidationError(
+                {"status": "Cannot re-run 3-way matching: Paid invoices are immutable and cannot be re-matched."}
+            )
         if invoice.status in [SupplierInvoice.STATUS_PAID, SupplierInvoice.STATUS_READY_FOR_PAYMENT]:
             return Response(
                 {
@@ -362,6 +385,9 @@ class MatchExceptionViewSet(viewsets.ModelViewSet):
     serializer_class = MatchExceptionSerializer
     permission_classes = [IsAuthenticated, CanManageSupplierInvoice]
 
+    def perform_create(self, serializer):
+        serializer.save(status=MatchException.STATUS_OPEN)
+
     def get_queryset(self):
         user = self.request.user
         qs = self.queryset
@@ -376,7 +402,12 @@ class MatchExceptionViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["post"], url_path="resolve")
     def resolve_exception(self, request, pk=None):
         exception = self.get_object()
-        notes = request.data.get("resolution_notes", "Resolved by Finance")
+        notes = str(request.data.get("resolution_notes", "")).strip()
+        if not notes:
+            return Response(
+                {"error": {"code": "VALIDATION_ERROR", "message": "Resolution notes / justification are required to resolve a match exception."}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         action_type = request.data.get("action", "RESOLVE")
         try:
             resolved = resolve_match_exception_service(

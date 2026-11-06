@@ -147,6 +147,9 @@ def _validate_event_fields(
         errors.append("Bid start and bid deadline are required.")
     elif bid_start_date >= bid_end_date:
         errors.append("Bid start must be earlier than the bid deadline.")
+    from django.utils import timezone
+    if bid_end_date and bid_end_date < timezone.now():
+        errors.append("Bid deadline cannot be in the past.")
     tech_w, comm_w = weights
     if tech_w + comm_w != Decimal("100"):
         errors.append("Technical and commercial weights must add up to 100.")
@@ -730,8 +733,10 @@ def save_draft_bid_service(
     if timezone.now() > event.bid_end_date:
         raise ValidationError("Cannot prepare bid: Sourcing event bid deadline has passed.")
 
-    if vendor.status == Vendor.STATUS_SUSPENDED:
-        raise ValidationError(f"Vendor '{vendor.legal_name}' is suspended and cannot prepare bids.")
+    if vendor.status in (Vendor.STATUS_SUSPENDED, Vendor.STATUS_ON_HOLD):
+        raise ValidationError(
+            f"Vendor '{vendor.legal_name}' is suspended or on hold and cannot prepare bids."
+        )
 
     if user and getattr(user, "vendor_id", None):
         if user.vendor_id != vendor.id:
@@ -778,6 +783,10 @@ def save_draft_bid_service(
         for item in line_items:
             qty = Decimal(str(item.get("quantity", 1)))
             unit_price = Decimal(str(item.get("quoted_unit_price", 0)))
+            if qty <= Decimal("0.00"):
+                raise ValidationError("Bid line quantity must be greater than zero.")
+            if unit_price < Decimal("0.00"):
+                raise ValidationError("Quoted unit price cannot be negative.")
             line = BidLine.objects.create(
                 bid=bid,
                 pr_line=item.get("pr_line"),
@@ -835,8 +844,10 @@ def submit_vendor_bid_service(
             f"Cannot submit bid: Sourcing event deadline passed on {event.bid_end_date.strftime('%Y-%m-%d %H:%M')}."
         )
 
-    if vendor.status == Vendor.STATUS_SUSPENDED:
-        raise ValidationError(f"Vendor '{vendor.legal_name}' is suspended and cannot submit bids.")
+    if vendor.status in (Vendor.STATUS_SUSPENDED, Vendor.STATUS_ON_HOLD):
+        raise ValidationError(
+            f"Vendor '{vendor.legal_name}' is suspended or on hold and cannot submit bids."
+        )
 
     if submitted_by_user and getattr(submitted_by_user, "vendor_id", None):
         if submitted_by_user.vendor_id != vendor.id:
@@ -996,6 +1007,11 @@ def amend_vendor_bid_service(
 
     if bid.status not in (VendorBid.STATUS_SUBMITTED, VendorBid.STATUS_AMENDED):
         raise ValidationError(f"Only submitted bids can be amended (current: {bid.status}).")
+
+    if bid.vendor.status in (Vendor.STATUS_SUSPENDED, Vendor.STATUS_ON_HOLD):
+        raise ValidationError(
+            f"Vendor '{bid.vendor.legal_name}' is suspended or on hold and cannot amend bids."
+        )
 
     if vendor_user and getattr(vendor_user, "vendor_id", None):
         if vendor_user.vendor_id != bid.vendor_id:
@@ -1213,6 +1229,8 @@ def answer_clarification_service(
     event = clarification.event
     if event.status in (SourcingEvent.STATUS_AWARDED, SourcingEvent.STATUS_CANCELLED):
         raise ValidationError(f"Clarifications are closed for a {event.status} event.")
+    if clarification.status == "ANSWERED":
+        raise ValidationError("This clarification has already been answered and cannot be overwritten.")
     if not (answer or "").strip():
         raise ValidationError("Answer cannot be blank.")
 

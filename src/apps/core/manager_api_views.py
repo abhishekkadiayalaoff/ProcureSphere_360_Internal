@@ -8,6 +8,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.accounts.models import Role
 from apps.accounts.permissions import IsProcurementManager
 from apps.budgets.models import Budget, SpendLedger
 from apps.invoices.models import MatchException, SupplierInvoice
@@ -1648,9 +1649,15 @@ class ManagerSupplierPerformanceDetailAPIView(APIView):
                     float(sc.quality_score) if sc.quality_score is not None else None
                 ),
                 "price_score": float(sc.price_score) if sc.price_score is not None else None,
+                "responsiveness_score": (
+                    float(sc.responsiveness_score)
+                    if sc.responsiveness_score is not None
+                    else None
+                ),
                 "compliance_score": (
                     float(sc.compliance_score) if sc.compliance_score is not None else None
                 ),
+                "sla_score": float(sc.sla_score) if sc.sla_score is not None else None,
                 "composite_score": (
                     float(sc.composite_score) if sc.composite_score is not None else None
                 ),
@@ -2088,7 +2095,7 @@ class ManagerApprovalsAPIView(APIView):
                     'created_at': pr.created_at.isoformat(),
                     'updated_at': pr.updated_at.isoformat(),
                     'detail_url': f'/requisitions/{pr.id}/',
-                    'can_approve': pr.status in pr_pending_statuses,
+                    'can_approve': False,  # Procurement Managers maintain approval oversight only
                 })
 
         # Process PO Amendments
@@ -2126,7 +2133,7 @@ class ManagerApprovalsAPIView(APIView):
                     'created_at': am.created_at.isoformat(),
                     'updated_at': am.updated_at.isoformat(),
                     'detail_url': '/manager/purchase-orders/',
-                    'can_approve': am.status == POAmendment.STATUS_PENDING,
+                    'can_approve': False,  # Procurement Managers maintain approval oversight only
                 })
 
         # Process Purchase Orders awaiting approval
@@ -2218,6 +2225,20 @@ class ManagerApprovalActionAPIView(APIView):
     permission_classes = [IsAuthenticated, IsProcurementManager]
 
     def post(self, request):
+        # Procurement Managers maintain approval oversight only, not approval/rejection authority
+        role_code = getattr(request.user.role, 'code', None) if getattr(request.user, 'role', None) else None
+        if not request.user.is_superuser and role_code == Role.PROC_MGR:
+            return Response(
+                {
+                    'error': (
+                        'Permission Denied: Procurement Managers hold approval oversight only '
+                        'and do not possess direct approval or rejection authority. '
+                        'Decisions must be authorized by designated Department or Financial Approvers.'
+                    )
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
         item_type = str(request.data.get('item_type', '')).strip().upper()
         item_id = str(request.data.get('item_id', '')).strip()
         action = str(request.data.get('action', '')).strip().upper()
@@ -2397,11 +2418,12 @@ class ManagerBudgetExceptionsAPIView(APIView):
         org = get_user_org(request.user)
 
         from decimal import Decimal
-
-        from django.db.models import Sum
-
-        from apps.invoices.models import MatchException
+        from django.db.models import Sum, Q
+        from django.utils import timezone
         from apps.requisitions.models import PurchaseRequisition
+        from apps.invoices.models import MatchException
+        from apps.budgets.models import Budget
+        from apps.approvals.models import ApprovalAction
 
         # 1. Budget Review PRs (Overruns)
         budget_prs_qs = PurchaseRequisition.objects.filter(
@@ -2413,7 +2435,7 @@ class ManagerBudgetExceptionsAPIView(APIView):
         # 2. Match Exceptions (Variances)
         exceptions_qs = MatchException.objects.filter(
             status=MatchException.STATUS_OPEN
-        ).select_related('invoice', 'invoice__vendor', 'invoice__po')
+        ).select_related('invoice', 'invoice__vendor', 'invoice__po', 'resolved_by')
         if org:
             exceptions_qs = exceptions_qs.filter(
                 invoice__po__cost_center__department__organization=org
@@ -2423,38 +2445,111 @@ class ManagerBudgetExceptionsAPIView(APIView):
         kpi_overrun_val = budget_prs_qs.aggregate(total=Sum('total_amount'))['total'] or Decimal('0.00')
         kpi_match_count = exceptions_qs.count()
 
-        prs_data = [
-            {
+        # Count approved exceptions (override approvals)
+        appr_qs = ApprovalAction.objects.filter(
+            action="APPROVED",
+            comments__icontains="[BUDGET EXCEPTION OVERRIDE]",
+        )
+        if org:
+            appr_qs = appr_qs.filter(actor__organization=org)
+        kpi_approved_exceptions_count = appr_qs.count()
+
+        # Count resolved match exceptions
+        resolved_match_qs = MatchException.objects.filter(status=MatchException.STATUS_RESOLVED)
+        if org:
+            resolved_match_qs = resolved_match_qs.filter(
+                invoice__po__cost_center__department__organization=org
+            )
+        kpi_resolved_match_count = resolved_match_qs.count()
+
+        # Detailed PRs payload
+        prs_data = []
+        now = timezone.now()
+        for pr in budget_prs_qs.order_by('-updated_at')[:50]:
+            budget = (
+                Budget.objects.filter(
+                    cost_center=pr.cost_center,
+                    fiscal_period__is_closed=False,
+                ).order_by("-fiscal_period__start_date").first()
+            ) if pr.cost_center else None
+
+            allocated = float(budget.allocated_amount) if budget else 0.0
+            reserved = float(budget.reserved_amount) if budget else 0.0
+            committed = float(budget.committed_amount) if budget else 0.0
+            actual_spend = float(budget.actual_amount) if budget else 0.0
+            available = float(budget.available_amount) if budget else 0.0
+            requested = float(pr.total_amount)
+            overrun = float(max(Decimal("0.00"), pr.total_amount - (budget.available_amount if budget else Decimal("0.00"))))
+            pending_days = max(0, (now - pr.created_at).days) if pr.created_at else 0
+
+            # Historical actions on this PR
+            history = [
+                {
+                    "actor": a.actor.email if a.actor else "System",
+                    "action": a.action,
+                    "comments": a.comments,
+                    "timestamp": a.created_at.isoformat(),
+                }
+                for a in ApprovalAction.objects.filter(target_object_id=pr.id).select_related("actor").order_by("created_at")[:10]
+            ]
+
+            prs_data.append({
                 "id": str(pr.id),
                 "pr_number": pr.pr_number,
                 "requisition_number": pr.pr_number,
                 "title": pr.title,
+                "justification": pr.justification or "Budget overrun exception",
                 "department_name": pr.department.name if pr.department else "N/A",
                 "cost_center_code": pr.cost_center.code if pr.cost_center else "N/A",
+                "cost_center_name": pr.cost_center.name if pr.cost_center else "N/A",
                 "requester_name": (pr.requester.get_full_name() or pr.requester.email) if pr.requester else "N/A",
-                "total_amount": float(pr.total_amount),
+                "requester_email": pr.requester.email if pr.requester else "N/A",
+                "requester_id": str(pr.requester_id) if pr.requester_id else None,
+                "total_amount": requested,
+                "requested_amount": requested,
+                "allocated_budget": allocated,
+                "reserved_budget": reserved,
+                "committed_budget": committed,
+                "actual_spend": actual_spend,
+                "available_budget": available,
+                "overrun_amount": overrun,
                 "currency": getattr(pr, 'currency', 'USD'),
-                "created_at": pr.created_at.isoformat(),
+                "created_at": pr.created_at.isoformat() if pr.created_at else None,
+                "pending_duration_days": pending_days,
                 "status": pr.status,
                 "status_display": pr.get_status_display(),
-            }
-            for pr in budget_prs_qs.order_by('-updated_at')[:50]
-        ]
+                "approval_history": history,
+            })
 
-        exceptions_data = [
-            {
+        # Detailed Invoice Match Exceptions payload
+        exceptions_data = []
+        for exc in exceptions_qs.order_by('-created_at')[:50]:
+            inv = exc.invoice
+            po = inv.po if inv else None
+            po_val = float(po.total_amount) if po else 0.0
+            inv_val = float(inv.total_amount) if inv else 0.0
+            var_amt = float(exc.variance_amount or 0.0)
+            var_pct = round((var_amt / po_val * 100), 2) if po_val > 0 else 0.0
+
+            exceptions_data.append({
                 "id": str(exc.id),
-                "invoice_number": exc.invoice.invoice_number if exc.invoice else "N/A",
-                "vendor_name": exc.invoice.vendor.legal_name if exc.invoice and exc.invoice.vendor else "N/A",
+                "invoice_number": inv.invoice_number if inv else "N/A",
+                "invoice_date": inv.created_at.date().isoformat() if inv and inv.created_at else "N/A",
+                "invoice_amount": inv_val,
+                "vendor_name": inv.vendor.legal_name if inv and inv.vendor else "N/A",
+                "po_number": po.po_number if po else "N/A",
+                "po_value": po_val,
                 "exception_type": exc.exception_type,
                 "exception_type_display": exc.get_exception_type_display(),
-                "variance_amount": float(exc.variance_amount or 0),
-                "discrepancy_amount": float(exc.variance_amount or 0),
+                "variance_amount": var_amt,
+                "variance_percentage": var_pct,
+                "description": exc.description or f"{exc.get_exception_type_display()} on PO {po.po_number if po else 'N/A'}",
                 "status": exc.status,
+                "status_display": exc.get_status_display(),
+                "resolved_by": exc.resolved_by.email if exc.resolved_by else None,
+                "resolution_notes": exc.resolution_notes or "",
                 "created_at": exc.created_at.isoformat(),
-            }
-            for exc in exceptions_qs.order_by('-created_at')[:50]
-        ]
+            })
 
         return Response(
             {
@@ -2462,16 +2557,230 @@ class ManagerBudgetExceptionsAPIView(APIView):
                     "kpi_overrun_count": kpi_overrun_count,
                     "kpi_overrun_value": float(kpi_overrun_val),
                     "kpi_match_exceptions_count": kpi_match_count,
+                    "kpi_approved_exceptions_count": kpi_approved_exceptions_count,
+                    "kpi_resolved_match_count": kpi_resolved_match_count,
                     "total_exceptions_count": kpi_overrun_count + kpi_match_count,
                 },
                 "summary": {
                     "kpi_overrun_count": kpi_overrun_count,
                     "kpi_overrun_value": float(kpi_overrun_val),
                     "kpi_match_exceptions_count": kpi_match_count,
-                    "kpi_approved_exceptions_count": 0,
+                    "kpi_approved_exceptions_count": kpi_approved_exceptions_count,
+                    "kpi_resolved_match_count": kpi_resolved_match_count,
+                },
+                "kpis": {
+                    "kpi_overrun_count": kpi_overrun_count,
+                    "kpi_overrun_value": float(kpi_overrun_val),
+                    "kpi_match_exceptions_count": kpi_match_count,
+                    "kpi_approved_exceptions_count": kpi_approved_exceptions_count,
+                    "kpi_resolved_match_count": kpi_resolved_match_count,
                 },
                 "budget_overrun_prs": prs_data,
                 "invoice_match_exceptions": exceptions_data,
             },
             status=status.HTTP_200_OK,
         )
+
+
+class ManagerBudgetExceptionDecisionAPIView(APIView):
+    """
+    POST /api/v1/manager/budget-exceptions/decision/
+    POST /api/v1/manager/policy-exceptions/decision/
+
+    Procurement Manager decision desk on Policy Exceptions:
+    1. Budget Overrun Exception (Approve / Reject):
+       - Atomic transaction with budget select_for_update row-lock
+       - Enforces mandatory comments
+       - Enforces separation of duties (no self-approval)
+       - Enforces multi-tenant organization boundary
+       - Approving locks force-overrun reservation and transitions PR to STATUS_SUBMITTED
+       - Rejecting releases provisional reservation and transitions PR to STATUS_REJECTED
+       - Creates immutable ApprovalAction and AuditLog records
+    2. Invoice Match Exception override attempts:
+       - Strictly rejected with HTTP 403 Forbidden (Authority boundary: Finance & AP only).
+    """
+    permission_classes = [IsAuthenticated, IsProcurementManager]
+
+    def post(self, request):
+        user = request.user
+        org = get_user_org(user)
+
+        data = request.data or {}
+
+        # 1. Check if caller attempted to resolve invoice match exception
+        if "exception_id" in data or "match_exception_id" in data or data.get("exception_type") in ["INVOICE_MATCH", "PRICE_VARIANCE", "QTY_VARIANCE"]:
+            return Response(
+                {
+                    "code": "AUTHORITY_BOUNDARY_VIOLATION",
+                    "error": {
+                        "code": "AUTHORITY_BOUNDARY_VIOLATION",
+                        "message": "Invoice match exception resolution is strictly restricted to Finance & Accounts Payable authority. Procurement Managers have governance oversight only.",
+                    }
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        requisition_id = data.get("requisition_id") or data.get("pr_id")
+        action = (data.get("action") or data.get("decision") or "").strip().upper()
+        comments = (data.get("comments") or "").strip()
+
+        if not requisition_id:
+            return Response(
+                {
+                    "code": "VALIDATION_ERROR",
+                    "error": {"code": "VALIDATION_ERROR", "message": "Field 'requisition_id' is required."}
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if action not in ["APPROVE", "REJECT"]:
+            return Response(
+                {
+                    "code": "VALIDATION_ERROR",
+                    "error": {"code": "VALIDATION_ERROR", "message": "Action must be either 'APPROVE' or 'REJECT'."}
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if not comments or len(comments) < 5:
+            return Response(
+                {
+                    "code": "JUSTIFICATION_REQUIRED",
+                    "error": {
+                        "code": "JUSTIFICATION_REQUIRED",
+                        "message": "A detailed justification/comment (minimum 5 characters) is mandatory for exception decisions.",
+                    }
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        import uuid
+        from django.db import transaction
+        from django.db.models import Q
+        from apps.requisitions.models import PurchaseRequisition
+        from apps.approvals.models import ApprovalAction
+        from apps.audit.models import AuditLog
+        from apps.budgets.services import check_and_reserve_budget_service, release_budget_reservation_service
+
+        try:
+            req_uuid = uuid.UUID(str(requisition_id))
+        except (ValueError, TypeError):
+            req_uuid = None
+
+        pr_query = Q(id=req_uuid) if req_uuid else Q(pr_number=str(requisition_id))
+        pr = PurchaseRequisition.objects.filter(pr_query).select_related("requester", "department", "cost_center").first()
+
+        if not pr:
+            return Response(
+                {
+                    "code": "NOT_FOUND",
+                    "error": {"code": "NOT_FOUND", "message": "Purchase requisition not found."}
+                },
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # Multi-tenant isolation check
+        if org and pr.department and pr.department.organization_id != org.id:
+            return Response(
+                {
+                    "code": "ACCESS_DENIED",
+                    "error": {"code": "ACCESS_DENIED", "message": "Cross-organization requisition decision is strictly prohibited."}
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        # Separation of duties: requester cannot approve their own PR
+        if action == "APPROVE" and pr.requester_id == user.id:
+            return Response(
+                {
+                    "code": "SEPARATION_OF_DUTIES_VIOLATION",
+                    "error": {
+                        "code": "SEPARATION_OF_DUTIES_VIOLATION",
+                        "message": "Separation of duties violation: You cannot approve a budget exception for a requisition you requested yourself.",
+                    }
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        with transaction.atomic():
+            if action == "APPROVE":
+                # Force overrun reservation
+                check_and_reserve_budget_service(
+                    requisition=pr,
+                    requested_by_user=user,
+                    force_overrun=True,
+                )
+                old_status = pr.status
+                pr.status = PurchaseRequisition.STATUS_SUBMITTED
+                pr.save(update_fields=["status", "updated_at"])
+
+                ApprovalAction.objects.create(
+                    actor=user,
+                    action="APPROVED",
+                    target_object_id=pr.id,
+                    target_model_name="PurchaseRequisition",
+                    comments=f"[BUDGET EXCEPTION OVERRIDE] {comments}",
+                    previous_state={"status": old_status},
+                    new_state={"status": pr.status, "budget_override": True},
+                )
+
+                AuditLog.objects.create(
+                    actor=user,
+                    action=AuditLog.ACTION_OVERRIDE,
+                    target_model="PurchaseRequisition",
+                    target_object_id=str(pr.id),
+                    previous_state={"status": old_status},
+                    new_state={"status": pr.status, "comments": comments, "budget_override": True},
+                )
+
+                return Response(
+                    {
+                        "status": "SUCCESS",
+                        "pr_status": pr.status,
+                        "message": f"Budget overrun exception for {pr.pr_number} successfully approved and funds reserved.",
+                        "pr_number": pr.pr_number,
+                        "action": "APPROVED",
+                    },
+                    status=status.HTTP_200_OK,
+                )
+
+            elif action == "REJECT":
+                # Release budget reservation if any
+                release_budget_reservation_service(
+                    requisition=pr,
+                    user=user,
+                    reason=comments,
+                )
+                old_status = pr.status
+                pr.status = PurchaseRequisition.STATUS_REJECTED
+                pr.save(update_fields=["status", "updated_at"])
+
+                ApprovalAction.objects.create(
+                    actor=user,
+                    action="REJECTED",
+                    target_object_id=pr.id,
+                    target_model_name="PurchaseRequisition",
+                    comments=f"[BUDGET EXCEPTION REJECTION] {comments}",
+                    previous_state={"status": old_status},
+                    new_state={"status": pr.status},
+                )
+
+                AuditLog.objects.create(
+                    actor=user,
+                    action=AuditLog.ACTION_REJECT,
+                    target_model="PurchaseRequisition",
+                    target_object_id=str(pr.id),
+                    previous_state={"status": old_status},
+                    new_state={"status": pr.status, "comments": comments},
+                )
+
+                return Response(
+                    {
+                        "status": "SUCCESS",
+                        "pr_status": pr.status,
+                        "message": f"Budget overrun exception for {pr.pr_number} rejected and reservations released.",
+                        "pr_number": pr.pr_number,
+                        "action": "REJECTED",
+                    },
+                    status=status.HTTP_200_OK,
+                )

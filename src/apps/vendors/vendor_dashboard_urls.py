@@ -76,6 +76,11 @@ urlpatterns = [
     # Invoices & Payments
     path("invoices/", views.vendor_invoices_view, name="vendor_invoices"),
     path(
+        "invoices/<uuid:invoice_id>/",
+        views.vendor_invoice_detail_view,
+        name="vendor_invoice_detail",
+    ),
+    path(
         "purchase-orders/<uuid:po_id>/submit-invoice/",
         views.vendor_invoice_submit_view,
         name="vendor_invoice_submit",

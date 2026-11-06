@@ -23,12 +23,16 @@ class CanManageScorecards(permissions.BasePermission):
     def has_permission(self, request, view):
         if not request.user or not request.user.is_authenticated:
             return False
+        role = getattr(request.user, "role_code", None) or (
+            request.user.role.code if getattr(request.user, "role", None) else None
+        )
+        if not request.user.is_superuser and role in [Role.REQUESTER, Role.DEPT_APPROVER, Role.LEGAL_MGR]:
+            return False
         if request.method in permissions.SAFE_METHODS:
             return True
-        if request.user.is_superuser:
-            return True
-        role = getattr(request.user, "role_code", None)
-        return role in [Role.PROC_EXEC, Role.PROC_MGR, Role.SUPER_ADMIN]
+        if view.action == "destroy":
+            return request.user.is_superuser or role == Role.SUPER_ADMIN
+        return request.user.is_superuser or role in [Role.PROC_EXEC, Role.PROC_MGR, Role.SUPER_ADMIN]
 
 
 class VendorScorecardSerializer(serializers.ModelSerializer):
@@ -39,6 +43,8 @@ class VendorScorecardSerializer(serializers.ModelSerializer):
     vendor_status = serializers.CharField(source="vendor.status", read_only=True)
     evaluated_by_email = serializers.CharField(source="evaluated_by.email", read_only=True)
     performance_status = serializers.SerializerMethodField()
+    performance_band = serializers.SerializerMethodField()
+    band_display = serializers.SerializerMethodField()
 
     class Meta:
         model = VendorScorecard
@@ -54,15 +60,20 @@ class VendorScorecardSerializer(serializers.ModelSerializer):
             "delivery_score",
             "quality_score",
             "price_score",
+            "responsiveness_score",
             "compliance_score",
+            "sla_score",
             "composite_score",
             "performance_status",
+            "performance_band",
+            "band_display",
             "evaluator_comments",
             "evaluated_by",
             "evaluated_by_email",
             "created_at",
             "updated_at",
         ]
+        read_only_fields = ["id", "evaluated_by", "evaluated_by_email", "created_at", "updated_at"]
 
     def validate(self, attrs):
         score_fields = [
@@ -74,6 +85,15 @@ class VendorScorecardSerializer(serializers.ModelSerializer):
             "sla_score",
             "composite_score",
         ]
+        vendor = attrs.get("vendor", getattr(self.instance, "vendor", None))
+        period = attrs.get("evaluation_period", getattr(self.instance, "evaluation_period", None))
+        if vendor and period:
+            qs = VendorScorecard.objects.filter(vendor=vendor, evaluation_period=period)
+            if self.instance:
+                qs = qs.exclude(pk=self.instance.pk)
+            if qs.exists():
+                raise serializers.ValidationError({"evaluation_period": f"A scorecard for this vendor for period '{period}' already exists."})
+
         for field in score_fields:
             val = attrs.get(field)
             if val is not None:
@@ -81,18 +101,41 @@ class VendorScorecardSerializer(serializers.ModelSerializer):
                     raise serializers.ValidationError(
                         {field: f"{field} must be between 0.00 and 100.00."}
                     )
+        d_score = attrs.get("delivery_score")
+        q_score = attrs.get("quality_score")
+        p_score = attrs.get("price_score")
+        c_score = attrs.get("compliance_score")
+        comp_score = attrs.get("composite_score")
+        if all(x is not None for x in [d_score, q_score, p_score, c_score]):
+            expected_comp = (d_score + q_score + p_score + c_score) / Decimal("4.00")
+            if comp_score is not None and abs(comp_score - expected_comp) > Decimal("0.50"):
+                raise serializers.ValidationError(
+                    {"composite_score": f"Composite score ({comp_score}) does not match weighted component average ({expected_comp:.2f})."}
+                )
         return attrs
 
     def get_performance_status(self, obj):
-        score = float(obj.composite_score or 0)
+        if obj.composite_score is None:
+            return "NO_DATA"
+        score = float(obj.composite_score)
         if score >= 85.0:
             return "EXCELLENT"
         elif score >= 70.0:
             return "SATISFACTORY"
         return "ATTENTION_REQUIRED"
 
+    def get_performance_band(self, obj):
+        return obj.performance_band
+
+    def get_band_display(self, obj):
+        return obj.band_display
+
 
 class VendorScorecardViewSet(viewsets.ModelViewSet):
+    """
+    Vendor scorecard viewset supporting audited evaluation and calculation.
+    Creation automatically sets evaluated_by to current authenticated user (cannot spoof evaluated_by).
+    """
     queryset = VendorScorecard.objects.select_related(
         "vendor", "vendor__category", "evaluated_by"
     ).order_by("-created_at")
@@ -100,6 +143,9 @@ class VendorScorecardViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated, CanManageScorecards]
     search_fields = ["vendor__legal_name", "vendor__vendor_number", "evaluation_period"]
     ordering_fields = ["composite_score", "delivery_score", "quality_score", "created_at"]
+
+    def perform_create(self, serializer):
+        serializer.save(evaluated_by=self.request.user)
 
     def get_queryset(self):
         user = self.request.user

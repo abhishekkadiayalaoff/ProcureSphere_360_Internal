@@ -1,6 +1,6 @@
 from decimal import Decimal
 
-from rest_framework import serializers, viewsets
+from rest_framework import filters, serializers, viewsets
 from rest_framework.permissions import SAFE_METHODS, BasePermission, IsAuthenticated
 from rest_framework.routers import DefaultRouter
 
@@ -76,6 +76,8 @@ class BudgetViewSet(viewsets.ModelViewSet):
     serializer_class = BudgetSerializer
     permission_classes = [IsAuthenticated, CanManageBudget]
     queryset = Budget.objects.select_related("cost_center", "fiscal_period").order_by("-created_at")
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ["cost_center__code", "cost_center__name", "fiscal_period__period_code"]
 
     def get_queryset(self):
         qs = self.queryset if self.queryset is not None else Budget.objects.select_related("cost_center", "fiscal_period").order_by("-created_at")

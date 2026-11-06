@@ -1,5 +1,7 @@
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db.models.deletion import ProtectedError
+import decimal
+from django.db import DataError
 from django.http import Http404
 from rest_framework import status
 from rest_framework.exceptions import (
@@ -27,6 +29,18 @@ def custom_exception_handler(exc, context):
         }
     }
     """
+    if isinstance(exc, (decimal.InvalidOperation, OverflowError, DataError, ValueError)):
+        return Response(
+            {
+                "error": {
+                    "code": "VALIDATION_ERROR",
+                    "message": "Invalid input format or numeric value out of bounds.",
+                    "details": str(exc),
+                }
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
     if isinstance(exc, ProtectedError):
         protected_list = [str(obj) for obj in exc.protected_objects]
         return Response(
@@ -100,7 +114,11 @@ def custom_exception_handler(exc, context):
             details = _clean_item(raw_data)
             message = str(exc)
 
-        if "ErrorDetail(" in message:
+        if "ErrorDetail(" in message or "[" in message:
+            import re
+            cleaned = re.sub(r"\[?ErrorDetail\(string=[\'\"](.*?)[\'\"](?:\s*,\s*code=[\'\"]\w+[\'\"])?\)[,\s\]]*", r"\1", message).strip("[]'\" ")
+            if cleaned:
+                message = cleaned
             import re
             m = re.search(r"""ErrorDetail\(string=['"](.*?)['"]""", message)
             if m:
@@ -116,15 +134,25 @@ def custom_exception_handler(exc, context):
         return Response(custom_response_data, status=status_code)
 
     import logging
+    from django.conf import settings
+
     logger = logging.getLogger(__name__)
     logger.exception("Unhandled server error: %s", exc)
+
+    # Sanitize exception details in production to prevent CWE-209 information disclosure
+    is_test_or_debug = getattr(settings, "DEBUG", False) or getattr(settings, "TESTING", False) or "test" in getattr(settings, "SETTINGS_MODULE", "")
+    details = (
+        str(exc)
+        if is_test_or_debug
+        else "An unexpected error occurred. Please contact the system administrator."
+    )
 
     return Response(
         {
             "error": {
                 "code": "INTERNAL_SERVER_ERROR",
                 "message": "An unexpected internal server error occurred.",
-                "details": str(exc),
+                "details": details,
             }
         },
         status=status.HTTP_500_INTERNAL_SERVER_ERROR,

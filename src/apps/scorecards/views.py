@@ -8,7 +8,9 @@ from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 
 from apps.vendors.models import Vendor
+from apps.vendors.selectors import scope_vendors_queryset
 
+from .models import VendorScorecardSLAMetric
 from .permissions import can_calculate_scorecards, can_view_scorecards
 from .services import calculate_vendor_scorecard_service, latest_scorecards_queryset
 
@@ -63,6 +65,48 @@ def scorecard_list_view(request):
                 if can_calculate
                 else []
             ),
+        },
+    )
+
+
+@login_required(login_url="/login/")
+def scorecard_vendor_detail_view(request, vendor_id):
+    """
+    Per-vendor detailed Supplier Performance page (read-only, backend RBAC scoped):
+    weighted core indicators, separate responsiveness reporting, dedicated SLA
+    section with per-contract snapshots and cross-period SLA history.
+    """
+    if not can_view_scorecards(request.user):
+        raise PermissionDenied("Supplier scorecards are restricted to internal procurement roles.")
+
+    vendor = get_object_or_404(scope_vendors_queryset(Vendor.objects.all(), request.user), pk=vendor_id)
+    cards = (
+        vendor.scorecards.select_related("evaluated_by").order_by("-created_at").all()
+    )
+    latest = cards.first()
+    sla_snapshot = (
+        latest.sla_metrics.select_related("contract").all()
+        if latest
+        else VendorScorecardSLAMetric.objects.none()
+    )
+    sla_history = (
+        VendorScorecardSLAMetric.objects.filter(
+            scorecard__vendor=vendor, metric_code=VendorScorecardSLAMetric.MetricCodes.OVERALL
+        )
+        .select_related("scorecard")
+        .order_by("-scorecard__created_at")
+    )
+    return render(
+        request,
+        "scorecards/scorecard_detail.html",
+        {
+            "vendor": vendor,
+            "latest": latest,
+            "scorecards": cards[:12],
+            "sla_snapshot": sla_snapshot,
+            "overall_row": next((r for r in sla_snapshot if r.metric_code == "OVERALL"), None),
+            "contract_rows": [r for r in sla_snapshot if r.metric_code == "CONTRACT"],
+            "sla_history": sla_history[:12],
         },
     )
 

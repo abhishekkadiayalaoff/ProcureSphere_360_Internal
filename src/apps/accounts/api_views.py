@@ -3,7 +3,7 @@ from django.middleware.csrf import get_token
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import ensure_csrf_cookie
 from drf_spectacular.utils import OpenApiExample, OpenApiResponse, extend_schema
-from rest_framework import mixins, status, views, viewsets
+from rest_framework import filters, mixins, status, views, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
@@ -181,7 +181,7 @@ class SessionLoginView(views.APIView):
 
 
 class SessionLogoutView(views.APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]
 
     @extend_schema(
         summary="Session Logout",
@@ -195,6 +195,17 @@ class SessionLogoutView(views.APIView):
     )
     def post(self, request, *args, **kwargs):
         user = request.user
+        if not user or not user.is_authenticated:
+            return Response(
+                {
+                    "error": {
+                        "code": "NOT_AUTHENTICATED",
+                        "message": "Authentication credentials were not provided.",
+                        "details": "Authentication credentials were not provided.",
+                    }
+                },
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
         if user and user.is_authenticated:
             from apps.audit.models import AuditLog
             from apps.audit.services import create_audit_log_service
@@ -216,6 +227,13 @@ class SessionLogoutView(views.APIView):
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ["email", "first_name", "last_name", "role__code", "role__name"]
+
+    def get_serializer_class(self):
+        if self.action == "create":
+            return UserCreateSerializer
+        return UserSerializer
 
     def get_permissions(self):
         from .permissions import IsAuditorOrSuperAdmin, IsNotVendorUser, IsSuperAdmin

@@ -120,23 +120,72 @@ def compute_responsiveness_score(vendor):
     return round(sum(components) / len(components), 2)
 
 
-def compute_sla_score(vendor):
-    """Vendor-owned contract obligations that are due: fulfilled on/before the due date."""
+def compute_sla_metrics(vendor):
+    """
+    Single source of truth for contract SLA obligation performance: one OVERALL bucket plus
+    one bucket per contract that has due vendor obligations. A bucket with no due obligations
+    contributes no row ("No data" is never fabricated). Used both for the scorecard's
+    sla_score and for the immutable per-scorecard SLA metric snapshots.
+    """
     from apps.contracts.models import ContractObligation
 
     due = ContractObligation.objects.filter(
         contract__vendor=vendor,
         responsible_party__iexact="VENDOR",
         due_date__lte=timezone.localdate(),
+    ).select_related("contract")
+
+    buckets = {}
+    for ob in due:
+        key = ("CONTRACT", ob.contract_id)
+        bucket = buckets.setdefault(
+            key,
+            {"contract": ob.contract, "observations": 0, "met": 0},
+        )
+        bucket["observations"] += 1
+        if ob.is_fulfilled and (
+            ob.fulfilled_at is None or timezone.localdate(ob.fulfilled_at) <= ob.due_date
+        ):
+            bucket["met"] += 1
+
+    rows = []
+    observations = sum(b["observations"] for b in buckets.values())
+    met = sum(b["met"] for b in buckets.values())
+    overall_actual = _pct(met, observations)
+    rows.append(
+        {
+            "contract": None,
+            "observations": observations,
+            "met": met,
+            "breaches": observations - met,
+            "actual_pct": overall_actual,
+            "achievement_pct": overall_actual,
+            "notes": "All due vendor-owned contract obligations, on-time fulfilment share.",
+        }
     )
-    total = due.count()
-    met = sum(
-        1
-        for ob in due.only("due_date", "is_fulfilled", "fulfilled_at")
-        if ob.is_fulfilled
-        and (ob.fulfilled_at is None or timezone.localdate(ob.fulfilled_at) <= ob.due_date)
-    )
-    return _pct(met, total)
+    for (metric_code, contract_id), bucket in sorted(
+        buckets.items(), key=lambda item: item[0][1]
+    ):
+        actual = _pct(bucket["met"], bucket["observations"])
+        rows.append(
+            {
+                "contract": bucket["contract"],
+                "observations": bucket["observations"],
+                "met": bucket["met"],
+                "breaches": bucket["observations"] - bucket["met"],
+                "actual_pct": actual,
+                "achievement_pct": actual,
+                "notes": "On-time fulfilment share for this contract's due obligations.",
+            }
+        )
+    return rows
+
+
+def compute_sla_score(vendor):
+    """Vendor-owned contract obligations that are due: fulfilled on/before the due date."""
+    rows = compute_sla_metrics(vendor)
+    overall = rows[0] if rows else None
+    return overall["actual_pct"] if overall else None
 
 
 def compute_compliance_score(vendor):
@@ -163,20 +212,37 @@ def calculate_vendor_scorecard_service(
 
         raise ValidationError("Evaluation period is required.")
 
-    scorecard = VendorScorecard.objects.create(
-        vendor=vendor,
-        evaluation_period=evaluation_period,
-        delivery_score=compute_delivery_score(vendor),
-        quality_score=compute_quality_score(vendor),
-        price_score=compute_price_score(vendor),
-        responsiveness_score=compute_responsiveness_score(vendor),
-        compliance_score=compute_compliance_score(vendor),
-        sla_score=compute_sla_score(vendor),
-        evaluator_comments=comments
-        or f"Automated performance evaluation for period {evaluation_period}",
-        evaluated_by=evaluated_by_user,
-        created_by=evaluated_by_user,
-    )
+    sla_rows = compute_sla_metrics(vendor)
+
+    with transaction.atomic():
+        scorecard = VendorScorecard.objects.create(
+            vendor=vendor,
+            evaluation_period=evaluation_period,
+            delivery_score=compute_delivery_score(vendor),
+            quality_score=compute_quality_score(vendor),
+            price_score=compute_price_score(vendor),
+            responsiveness_score=compute_responsiveness_score(vendor),
+            compliance_score=compute_compliance_score(vendor),
+            sla_score=sla_rows[0]["actual_pct"] if sla_rows else None,
+            evaluator_comments=comments
+            or f"Automated performance evaluation for period {evaluation_period}",
+            evaluated_by=evaluated_by_user,
+            created_by=evaluated_by_user,
+        )
+        from .models import VendorScorecardSLAMetric
+
+        for row in sla_rows:
+            VendorScorecardSLAMetric.objects.create(
+                scorecard=scorecard,
+                metric_code="OVERALL" if row["contract"] is None else "CONTRACT",
+                contract=row["contract"],
+                target_pct=Decimal("100.00"),
+                actual_pct=row["actual_pct"],
+                achievement_pct=row["achievement_pct"],
+                breaches=row["breaches"],
+                observations=row["observations"],
+                notes=row["notes"],
+            )
 
     def _s(value):
         return None if value is None else str(value)

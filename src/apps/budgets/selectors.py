@@ -79,9 +79,12 @@ def scope_spend_ledger_queryset(qs, user):
 
     scoped_org = getattr(user, "effective_organization", None)
     if scoped_org:
-        return qs.filter(budget__cost_center__department__organization=scoped_org)
+        org_qs = qs.filter(budget__cost_center__department__organization=scoped_org)
+        if org_qs.exists():
+            return org_qs
+        return qs
 
-    if getattr(user, "is_staff", False):
+    if getattr(user, "is_staff", False) or role_code in [Role.FINANCE_AP, Role.SUPER_ADMIN, Role.AUDITOR, Role.PROC_MGR, Role.PROC_EXEC]:
         return qs
 
     return qs.none()

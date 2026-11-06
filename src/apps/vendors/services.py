@@ -1003,7 +1003,7 @@ def verify_vendor_document_decision_service(
 
         and not vendor.is_event_eligible
 
-        and vendor.status == Vendor.STATUS_ACTIVE
+        and vendor.status in (Vendor.STATUS_ACTIVE, Vendor.STATUS_SUBMITTED, Vendor.STATUS_KYC_REVIEW)
 
     ):
 
@@ -1013,7 +1013,11 @@ def verify_vendor_document_decision_service(
 
         vendor.event_eligibility_status = Vendor.ELIGIBILITY_ELIGIBLE
 
-        vendor.save(update_fields=["is_event_eligible", "event_eligibility_status", "updated_at"])
+        if vendor.status in (Vendor.STATUS_SUBMITTED, Vendor.STATUS_KYC_REVIEW):
+            vendor.status = Vendor.STATUS_ACTIVE
+            vendor.legal_approved_by = reviewer
+            vendor.legal_approved_at = timezone.now()
+        vendor.save(update_fields=["status", "is_event_eligible", "event_eligibility_status", "legal_approved_by", "legal_approved_at", "updated_at"])
 
         create_audit_log_service(
 
@@ -1211,13 +1215,13 @@ def approve_vendor_service(*, vendor: Vendor, manager: User, notes: str = "") ->
 
     """
 
-    from .permissions import can_operate_governance
+    from .permissions import can_legal_verify_vendor, can_operate_governance
 
     from .selectors import get_vendor_kyc_summary
 
 
 
-    if not can_operate_governance(manager):
+    if not (can_operate_governance(manager) or can_legal_verify_vendor(manager)):
 
         raise PermissionDenied("Your role is not authorised to activate vendors.")
 
@@ -1341,9 +1345,11 @@ VENDOR_GOVERNANCE_TRANSITIONS = {
 
     (Vendor.STATUS_CHANGES_REQUIRED, Vendor.STATUS_REJECTED): "operate",
 
+    (Vendor.STATUS_DRAFT, Vendor.STATUS_REJECTED): "operate",
+
     # Manager Direct Suspension / Blacklist from any status
 
-    (Vendor.STATUS_DRAFT, Vendor.STATUS_SUSPENDED): "suspend",
+    # (Vendor.STATUS_DRAFT, Vendor.STATUS_SUSPENDED) removed for DEF-061
 
     (Vendor.STATUS_SUBMITTED, Vendor.STATUS_SUSPENDED): "suspend",
 
@@ -1467,7 +1473,25 @@ def set_vendor_status_governance_service(
 
     vendor.status_notes = notes.strip()
 
-    vendor.save(update_fields=["status", "status_notes", "updated_at"])
+    
+    if new_status == Vendor.STATUS_SUSPENDED:
+        vendor.is_event_eligible = False
+        vendor.event_eligibility_status = Vendor.ELIGIBILITY_SUSPENDED
+    elif new_status in (Vendor.STATUS_ON_HOLD, Vendor.STATUS_REJECTED, Vendor.STATUS_CHANGES_REQUIRED):
+        vendor.is_event_eligible = False
+        vendor.event_eligibility_status = Vendor.ELIGIBILITY_INELIGIBLE
+    elif new_status == Vendor.STATUS_ACTIVE:
+        if not vendor.documents.exists():
+            vendor.is_event_eligible = True
+            vendor.event_eligibility_status = Vendor.ELIGIBILITY_ELIGIBLE
+        else:
+            eval_result = ProvisionalKYCPolicy.evaluate_vendor_kyc_compliance(vendor)
+            if eval_result.get("is_compliant", False):
+                vendor.is_event_eligible = True
+                vendor.event_eligibility_status = Vendor.ELIGIBILITY_ELIGIBLE
+
+    vendor.save(update_fields=["status", "status_notes", "is_event_eligible", "event_eligibility_status", "updated_at"])
+
 
 
 
@@ -2422,21 +2446,30 @@ def legal_validate_vendor_credentials_service(
     )
 
     if not dispatch:
-
-        raise ValidationError("Vendor credential dispatch record not found.")
-
-
-
-    if dispatch.legal_verification_status != VendorCredentialDispatch.LEGAL_STATUS_PENDING:
-
-        raise ValidationError(
-
-            f"Only pending credential dispatches can be approved. Current status: {dispatch.legal_verification_status}."
-
+        dispatch = (
+            VendorCredentialDispatch.objects.select_for_update()
+            .select_related("vendor", "user")
+            .filter(vendor_id=dispatch_id)
+            .order_by("-created_at")
+            .first()
+        )
+    if not dispatch:
+        target_vendor = Vendor.objects.select_for_update().filter(pk=dispatch_id).first()
+        if not target_vendor:
+            raise ValidationError("Vendor credential dispatch or vendor record not found.")
+        target_user = User.objects.filter(vendor=target_vendor).first()
+        dispatch = VendorCredentialDispatch.objects.create(
+            vendor=target_vendor,
+            user=target_user,
+            sent_to=target_vendor.email or "",
+            created_by=legal_user,
+            legal_verification_status=VendorCredentialDispatch.LEGAL_STATUS_PENDING,
         )
 
-
-
+    if dispatch.legal_verification_status not in [VendorCredentialDispatch.LEGAL_STATUS_PENDING, "DOCUMENTS_PENDING"] and (dispatch.vendor.status == Vendor.STATUS_ACTIVE and dispatch.vendor.is_event_eligible):
+        raise ValidationError(
+            f"Only pending credential dispatches can be approved. Current status: {dispatch.legal_verification_status}."
+        )
     vendor = dispatch.vendor
 
     user = dispatch.user
@@ -2789,11 +2822,7 @@ def legal_validate_vendor_credentials_service(
 
 @transaction.atomic
 
-def legal_reject_vendor_credentials_service(
-
-    *, dispatch_id: str | uuid.UUID, legal_user: User, notes: str
-
-) -> VendorCredentialDispatch:
+def legal_reject_vendor_credentials_service(*, dispatch_id: str | uuid.UUID, legal_user: User, notes: str, rejection_type: str = "CHANGES_REQUIRED") -> VendorCredentialDispatch:
 
     """
 
@@ -2838,21 +2867,25 @@ def legal_reject_vendor_credentials_service(
     )
 
     if not dispatch:
-
-        raise ValidationError("Vendor credential dispatch record not found.")
-
-
-
-    if dispatch.legal_verification_status != VendorCredentialDispatch.LEGAL_STATUS_PENDING:
-
-        raise ValidationError(
-
-            f"Only pending credential dispatches can be rejected. Current status: {dispatch.legal_verification_status}."
-
+        dispatch = (
+            VendorCredentialDispatch.objects.select_for_update()
+            .select_related("vendor", "user")
+            .filter(vendor_id=dispatch_id)
+            .order_by("-created_at")
+            .first()
         )
-
-
-
+    if not dispatch:
+        target_vendor = Vendor.objects.select_for_update().filter(pk=dispatch_id).first()
+        if not target_vendor:
+            raise ValidationError("Vendor credential dispatch or vendor record not found.")
+        target_user = User.objects.filter(vendor=target_vendor).first()
+        dispatch = VendorCredentialDispatch.objects.create(
+            vendor=target_vendor,
+            user=target_user,
+            sent_to=target_vendor.email or "",
+            created_by=legal_user,
+            legal_verification_status=VendorCredentialDispatch.LEGAL_STATUS_PENDING,
+        )
     vendor = dispatch.vendor
 
     user = dispatch.user
@@ -2897,7 +2930,9 @@ def legal_reject_vendor_credentials_service(
 
     previous_vendor_status = vendor.status
 
-    vendor.status = Vendor.STATUS_CHANGES_REQUIRED
+    is_outright_reject = rejection_type.strip().upper() == "REJECT"
+
+    vendor.status = Vendor.STATUS_REJECTED if is_outright_reject else Vendor.STATUS_CHANGES_REQUIRED
 
     vendor.is_event_eligible = False
 

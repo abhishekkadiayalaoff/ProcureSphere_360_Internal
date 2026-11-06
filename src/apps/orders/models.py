@@ -116,6 +116,7 @@ class PurchaseOrder(TimeStampedModel):
         related_name="acknowledged_pos",
     )
     acknowledgement_notes = models.TextField(blank=True, default="")
+    rejection_reason = models.TextField(blank=True, default="")
     vendor_rejection_reason = models.TextField(
         blank=True,
         default="",

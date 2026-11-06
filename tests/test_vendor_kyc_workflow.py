@@ -166,8 +166,9 @@ def test_tc_kyc_003_vendor_uploads_documents_and_submits(client, world):
 def test_tc_kyc_004_exec_sees_status_without_unauthorised_controls(client, world, submitted):
     client.force_login(world["exec"])
     # Draft vendor: accurate status, no approve / request-changes controls at all.
+    # (KYC & governance status content lives on the dedicated Status detail page.)
     draft = world["vendor_draft"]
-    page = client.get(reverse("vendor_detail", args=[draft.id])).content.decode()
+    page = client.get(reverse("vendor_detail_status", args=[draft.id])).content.decode()
     assert "KYC &amp; activation status" in page
     assert "Awaiting vendor documents and KYC submission." in page
     assert "Approve &amp; activate" not in page
@@ -176,14 +177,14 @@ def test_tc_kyc_004_exec_sees_status_without_unauthorised_controls(client, world
 
     # Submitted but unverified: still no activation control, blockers are listed.
     vendor, doc = submitted
-    page = client.get(reverse("vendor_detail", args=[vendor.id])).content.decode()
+    page = client.get(reverse("vendor_detail_status", args=[vendor.id])).content.decode()
     assert "awaiting verification" in page
     assert "Approve &amp; activate" not in page
-    assert ">Verify<" in page  # exec is an authorised KYC reviewer under the RBAC matrix
+    assert ">Verify<" not in page  # the Verify controls live on the Documents page now
 
     # Once documents are verified the activation control appears.
     verify_vendor_document_service(document=doc, verifier=world["legal"])
-    page = client.get(reverse("vendor_detail", args=[vendor.id])).content.decode()
+    page = client.get(reverse("vendor_detail_status", args=[vendor.id])).content.decode()
     assert "Approve &amp; activate" in page
     assert "Ready for activation by Procurement." in page
 
@@ -191,16 +192,20 @@ def test_tc_kyc_004_exec_sees_status_without_unauthorised_controls(client, world
 def test_tc_kyc_005_legal_manager_reviews_documents_but_cannot_activate(client, world, submitted):
     vendor, doc = submitted
     client.force_login(world["legal"])
-    resp = client.get(reverse("vendor_detail", args=[vendor.id]))
+    # Document review controls live on the Documents page.
+    resp = client.get(reverse("vendor_detail_documents", args=[vendor.id]))
     assert resp.status_code == 200
     page = resp.content.decode()
     assert ">Verify<" in page and ">Reject<" in page
+    assert "Approve &amp; activate" not in page  # activation is not a document action
+    # Corrections requests are governance actions on the Status page; legal may request them.
+    status_page = client.get(reverse("vendor_detail_status", args=[vendor.id])).content.decode()
+    assert "Request Changes" in status_page
+    assert "Approve &amp; activate" not in status_page  # legal cannot activate (RBAC matrix)
     queue = client.get(reverse("vendor_onboarding"))
     assert queue.status_code == 200
     assert vendor.legal_name in queue.content.decode()
     assert "/vendors/onboarding/" in client.get("/").content.decode()  # Legal sidebar link
-    assert "Request Changes" in page
-    assert "Approve &amp; activate" not in page
     assert (
         client.get(reverse("vendor_document_download", args=[vendor.id, doc.id])).status_code == 200
     )
@@ -565,7 +570,7 @@ def test_tc_kyc_014_vendor_becomes_invitable_only_after_kyc_activation(world, su
 def test_tc_kyc_015_existing_active_vendor_workflows_unaffected(client, world):
     client.force_login(world["exec"])
     active = world["vendor_a"]
-    page = client.get(reverse("vendor_detail", args=[active.id]))
+    page = client.get(reverse("vendor_detail_status", args=[active.id]))
     assert page.status_code == 200
     body = page.content.decode()
     assert "Approve &amp; activate" not in body  # already active: nothing to activate

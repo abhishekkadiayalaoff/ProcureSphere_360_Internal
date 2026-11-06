@@ -18,19 +18,26 @@
                 Procurement Manager Executive Desk
             </h3>
             <p class="text-muted mb-0 small">
-                Welcome, <strong>{{ user.email }}</strong> &bull; High-value approvals, RFQ/RFP award decisions, PR bottlenecks, and supplier risk governance.
+                Welcome, <strong>{{ user.email }}</strong> &bull; High-value approvals oversight, RFQ/RFP award decisions, PR bottlenecks, and supplier risk governance.
             </p>
         </div>
         <div class="d-flex gap-2 flex-wrap">
             <button type="button" onclick="openDashboardGovModal()" class="btn btn-outline-dark btn-sm rounded-pill px-3 fw-semibold" title="Execute Vendor Suspension or Reinstatement">
                 <i class="fa-solid fa-scale-balanced me-1"></i> Governance Action
             </button>
-            <button onclick="loadDashboardMetrics()" class="btn btn-primary btn-sm rounded-pill fw-bold px-3 shadow-sm" id="refreshBtn">
-                <i class="fa-solid fa-arrows-rotate me-1" id="refreshIcon"></i> Refresh Data
-            </button>
+            <a href="/manager/vendor-risk/?tab=suspension" class="btn btn-outline-danger btn-sm rounded-pill px-3 fw-semibold" title="Vendor Suspension Desk">
+                <i class="fa-solid fa-scale-balanced me-1 text-danger"></i> Suspension Desk
+            </a>
             <a href="/manager/awards/" class="btn btn-outline-dark btn-sm rounded-pill px-3 fw-semibold">
                 <i class="fa-solid fa-award me-1"></i> Pending Awards
             </a>
+            <button onclick="loadDashboardMetrics()" class="btn btn-primary btn-sm rounded-pill fw-bold px-3 shadow-sm" id="refreshBtn">
+                <i class="fa-solid fa-arrows-rotate me-1" id="refreshIcon"></i> Refresh Data
+            </button>
+        </div>
+    </div>
+        </div>
+    </div>
         </div>
     </div>
 
@@ -214,15 +221,17 @@
                         </div>
                     </div>
                     <div class="col-6">
-                        <div class="p-3 bg-light rounded-3 border d-flex align-items-center gap-3">
-                            <div class="p-2 bg-danger bg-opacity-10 text-danger rounded-3">
-                                <i class="fa-solid fa-file-circle-xmark fs-4"></i>
+                        <a href="/manager/policy-exceptions/?tab=invoices" class="text-decoration-none">
+                            <div class="p-3 bg-light rounded-3 border d-flex align-items-center gap-3 card-hover-effect">
+                                <div class="p-2 bg-danger bg-opacity-10 text-danger rounded-3">
+                                    <i class="fa-solid fa-file-circle-xmark fs-4"></i>
+                                </div>
+                                <div>
+                                    <div class="text-muted text-uppercase fw-semibold" style="font-size: 0.68rem;">Invoice Exceptions</div>
+                                    <h4 class="fw-bold text-danger mb-0 font-heading" id="dashOpenExceptions">0</h4>
+                                </div>
                             </div>
-                            <div>
-                                <div class="text-muted text-uppercase fw-semibold" style="font-size: 0.68rem;">Invoice Exceptions</div>
-                                <h4 class="fw-bold text-danger mb-0 font-heading" id="dashOpenExceptions">0</h4>
-                            </div>
-                        </div>
+                        </a>
                     </div>
                     <div class="col-6">
                         <div class="p-3 bg-light rounded-3 border d-flex align-items-center gap-3">
@@ -253,11 +262,11 @@
                 <h5 class="fw-bold text-dark mb-0 font-heading">Supplier Governance &amp; Sanctions Watchlist</h5>
             </div>
             <div class="d-flex gap-2">
-                <a href="/manager/vendor-risk/suspension/" class="btn btn-sm btn-outline-danger rounded-pill px-3 fw-bold">
-                    <i class="fa-solid fa-scale-balanced me-1"></i> Vendor Suspension Desk
+                <a href="/manager/vendor-risk/?tab=suspension" class="btn btn-sm btn-outline-danger rounded-pill px-3 fw-bold">
+                    <i class="fa-solid fa-scale-balanced me-1"></i> Sanctions &amp; Suspension Desk
                 </a>
                 <a href="/manager/vendor-risk/" class="btn btn-sm btn-outline-secondary rounded-pill px-3">
-                    <i class="fa-solid fa-shield-halved me-1"></i> Full Risk Desk
+                    <i class="fa-solid fa-shield-halved me-1"></i> Supplier Directory
                 </a>
             </div>
         </div>
@@ -403,20 +412,22 @@
                 let actionBtn = '';
                 if (v.status === 'SUSPENDED') {
                     actionBtn = `
-                        <a href="/manager/vendor-risk/suspension/?vendor_id=${v.id}&action=ACTIVE" class="btn btn-sm btn-outline-success rounded-pill px-3 py-1" title="Reinstate Supplier to Active">
+                        <a href="/manager/vendor-risk/?tab=suspension&vendor_id=${v.id}&action=ACTIVE" class="btn btn-sm btn-outline-success rounded-pill px-3 py-1" title="Reinstate Supplier to Active">
                             <i class="fa-solid fa-rotate-left me-1"></i> Reinstate
                         </a>
                     `;
                 } else {
                     actionBtn = `
-                        <a href="/manager/vendor-risk/suspension/?vendor_id=${v.id}&action=SUSPENDED" class="btn btn-sm btn-outline-danger rounded-pill px-3 py-1" title="Suspend / Blacklist Supplier">
+                        <a href="/manager/vendor-risk/?tab=suspension&vendor_id=${v.id}&action=SUSPENDED" class="btn btn-sm btn-outline-danger rounded-pill px-3 py-1" title="Suspend / Blacklist Supplier">
                             <i class="fa-solid fa-ban me-1"></i> Suspend
                         </a>
                     `;
                 }
 
+                const rowBorder = v.current_risk_level === 'HIGH' ? 'border-start border-4 border-danger' : '';
+
                 return `
-                    <tr class="align-middle">
+                    <tr class="align-middle ${rowBorder}">
                         <td class="ps-3">
                             <a href="/vendors/${v.id}/" class="fw-bold text-dark text-decoration-none hover-primary">${v.legal_name}</a>
                             <div class="d-flex align-items-center gap-2 mt-1">

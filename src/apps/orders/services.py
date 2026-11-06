@@ -233,6 +233,112 @@ def acknowledge_purchase_order_service(
 
 
 @transaction.atomic
+def vendor_reject_purchase_order_service(
+    *,
+    po: PurchaseOrder,
+    vendor_user: User,
+    rejection_reason: str,
+) -> PurchaseOrder:
+    """
+    Vendor rejects an issued Purchase Order.
+    - Mandatory rejection reason.
+    - Vendor ownership authorization validation.
+    - Must be in ISSUED status.
+    - Transitions PO to CANCELLED with rejection note.
+    - Releases unfulfilled financial commitment back to budget.
+    - Emits AuditLog.ACTION_REJECT.
+    - Notifies Procurement Manager, Executive, and Requester.
+    """
+    from django.core.exceptions import PermissionDenied
+
+    if not rejection_reason or not str(rejection_reason).strip():
+        raise ValidationError("A rejection reason/justification is mandatory.")
+
+    if not vendor_user.is_superuser:
+        user_vendor = getattr(vendor_user, "vendor", None)
+        if not user_vendor or user_vendor.id != po.vendor_id:
+            raise PermissionDenied(
+                "Access Denied: You cannot reject a Purchase Order issued to another vendor."
+            )
+
+    if po.status != PurchaseOrder.STATUS_ISSUED:
+        raise ValidationError(
+            f"Cannot reject Purchase Order in status '{po.status}'. Only newly ISSUED orders can be rejected."
+        )
+
+    previous_status = po.status
+    reason_clean = str(rejection_reason).strip()
+    po.status = PurchaseOrder.STATUS_CANCELLED
+    po.acknowledgement_notes = f"REJECTED BY VENDOR: {reason_clean}"
+    po.vendor_rejection_reason = reason_clean
+    po.vendor_rejected_at = timezone.now()
+    po.save(
+        update_fields=[
+            "status",
+            "acknowledgement_notes",
+            "vendor_rejection_reason",
+            "vendor_rejected_at",
+            "updated_at",
+        ]
+    )
+
+    # Release financial commitment from budget
+    budget = (
+        Budget.objects.filter(cost_center=po.cost_center)
+        .order_by("-created_at")
+        .first()
+    )
+    if budget and po.total_amount > Decimal("0.00"):
+        budget.committed_amount = max(
+            Decimal("0.00"), budget.committed_amount - po.total_amount
+        )
+        budget.save(update_fields=["committed_amount", "updated_at"])
+
+        SpendLedger.objects.create(
+            budget=budget,
+            entry_type=SpendLedger.ENTRY_COMMITMENT,
+            amount=-po.total_amount,
+            reference_number=f"{po.po_number}-REJECT",
+            description=f"Commitment release on Vendor PO Rejection: {po.po_number} ({reason_clean})",
+        )
+
+    AuditLog.objects.create(
+        actor=vendor_user,
+        action=AuditLog.ACTION_REJECT,
+        target_model="PurchaseOrder",
+        target_object_id=str(po.id),
+        previous_state={"status": previous_status},
+        new_state={
+            "status": po.status,
+            "rejection_reason": reason_clean,
+            "rejected_by": vendor_user.email,
+        },
+    )
+
+    from apps.accounts.models import Role
+    from apps.notifications.services import notify_role_users
+
+    notify_role_users(
+        role_codes=[Role.PROC_EXEC, Role.PROC_MGR, Role.SUPER_ADMIN],
+        notification_type=Notification.TYPE_EXCEPTION_RAISED,
+        title=f"Purchase Order Rejected by Vendor: {po.po_number}",
+        message=f"Vendor '{po.vendor.legal_name}' has rejected PO {po.po_number}. Reason: {reason_clean}",
+        target_url=f"/orders/{po.id}/",
+    )
+
+    if po.requisition and po.requisition.requester:
+        Notification.objects.create(
+            recipient=po.requisition.requester,
+            notification_type=Notification.TYPE_EXCEPTION_RAISED,
+            title=f"PO {po.po_number} Rejected by Vendor",
+            message=f"Vendor '{po.vendor.legal_name}' has rejected Purchase Order {po.po_number}. Reason: {reason_clean}",
+            target_url=f"/orders/{po.id}/",
+        )
+
+    return po
+
+
+@transaction.atomic
 def request_po_amendment_service(
     *,
     po: PurchaseOrder,
@@ -994,9 +1100,9 @@ def approve_purchase_order_service(
     Commits funds against the designated Cost Center budget.
     Enforces separation of duties: the submitter cannot approve their own PO.
     """
-    if po.status not in [PurchaseOrder.STATUS_DRAFT, PurchaseOrder.STATUS_APPROVAL]:
+    if po.status != PurchaseOrder.STATUS_APPROVAL:
         raise ValidationError(
-            f"Cannot approve PO in status '{po.status}'. Must be DRAFT or APPROVAL."
+            f"Cannot approve PO in status '{po.status}'. PO must be in APPROVAL status to be approved and issued."
         )
 
     if po.vendor.status == Vendor.STATUS_SUSPENDED:

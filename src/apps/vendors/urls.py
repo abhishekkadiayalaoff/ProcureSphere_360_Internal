@@ -14,15 +14,57 @@ urlpatterns = [
         views.vendor_issue_credentials_view,
         name="vendor_issue_credentials",
     ),
-    path("vendors/<uuid:vendor_id>/", views.vendor_detail_view, name="vendor_detail"),
+    # ── Independent vendor detail pages (real routes, shared header/nav) ──
+    path(
+        "vendors/<uuid:vendor_id>/overview/",
+        views.vendor_overview_view,
+        name="vendor_detail_overview",
+    ),
     path(
         "vendors/<uuid:vendor_id>/status/",
+        views.vendor_status_page_view,
+        name="vendor_detail_status",
+    ),
+    path("vendors/<uuid:vendor_id>/risk/", views.vendor_risk_page_view, name="vendor_detail_risk"),
+    path(
+        "vendors/<uuid:vendor_id>/performance/",
+        views.vendor_performance_page_view,
+        name="vendor_detail_performance",
+    ),
+    path(
+        "vendors/<uuid:vendor_id>/documents/",
+        views.vendor_documents_page_view,
+        name="vendor_detail_documents",
+    ),
+    path(
+        "vendors/<uuid:vendor_id>/contacts/",
+        views.vendor_contacts_page_view,
+        name="vendor_detail_contacts",
+    ),
+    path(
+        "vendors/<uuid:vendor_id>/sourcing/",
+        views.vendor_sourcing_page_view,
+        name="vendor_detail_sourcing",
+    ),
+    path(
+        "vendors/<uuid:vendor_id>/history/",
+        views.vendor_history_page_view,
+        name="vendor_detail_history",
+    ),
+    # POST actions for the Status page (unchanged reverse names, moved off the page path)
+    path(
+        "vendors/<uuid:vendor_id>/governance/transition/",
         views.vendor_status_change_view,
         name="vendor_status_change",
     ),
+    # POST action for the Risk page
     path(
-        "vendors/<uuid:vendor_id>/risk/", views.vendor_risk_assess_view, name="vendor_risk_assess"
+        "vendors/<uuid:vendor_id>/risk/assess/",
+        views.vendor_risk_assess_view,
+        name="vendor_risk_assess",
     ),
+    # Legacy landing URL — resolves to the Overview page (ASSUMP-038)
+    path("vendors/<uuid:vendor_id>/", views.vendor_overview_view, name="vendor_detail"),
     path(
         "vendors/<uuid:vendor_id>/kyc/<slug:kyc_action>/",
         views.vendor_kyc_action_view,

@@ -28,7 +28,7 @@ urlpatterns = [
     path("health", health, name="health"),
     path("readyz", readyz, name="readyz"),
     re_path(r"^.*prompts\.json$", lambda request: JsonResponse({})),
-    path("admin/dashboard/", home_view, name="admin_dashboard"),
+    path("admin/dashboard/", RedirectView.as_view(url="/admin/", permanent=False), name="admin_dashboard"),
     path("admin/logout/", portal_logout_view, name="admin_logout_override"),
     path("admin/", admin.site.urls),
     path("login/", portal_login_view, name="login"),
@@ -51,7 +51,6 @@ urlpatterns = [
 
     # Core & Auth & Page Views
     path("", include("apps.core.urls")),
-    path("", include(("apps.accounts.urls", "accounts"), namespace="accounts")),
     path("", include("apps.accounts.urls")),
     path("", include("apps.requisitions.urls")),
     path("", include("apps.approvals.urls")),
@@ -68,6 +67,7 @@ urlpatterns = [
     path("budgets/", include("apps.budgets.urls")),
 
     # REST API v1
+    path("api/v1/auth/login/", SessionLoginView.as_view(), name="session_login"),
     path("api/v1/auth/token/", SessionLoginView.as_view(), name="token_obtain_pair"),
     path("api/v1/auth/token/refresh/", SessionLoginView.as_view(), name="token_refresh"),
     path("api/v1/auth/logout/", SessionLogoutView.as_view(), name="session_logout"),

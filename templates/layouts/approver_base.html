@@ -8,6 +8,7 @@
 <nav class="navbar navbar-dark bg-dark shadow-sm py-2 border-bottom border-secondary border-opacity-25 sticky-top" style="background-color: #212529 !important;">
     <div class="container-fluid ps-2 pe-2 pe-sm-3 pe-lg-4 d-flex align-items-center justify-content-between flex-nowrap">
         <!-- Brand & Mobile Toggle -->
+        <!-- Brand & Mobile Toggle -->
         <div class="d-flex align-items-center flex-nowrap approver-brand-wrapper">
             <button class="navbar-toggler border-0 me-2 d-lg-none p-1" type="button" data-bs-toggle="offcanvas" data-bs-target="#approverSidebar" aria-controls="approverSidebar" aria-label="Toggle navigation">
                 <i class="fa-solid fa-bars text-white fs-4"></i>
@@ -21,12 +22,12 @@
             <!-- Notification Bell -->
             <a href="/notifications/" class="btn btn-outline-secondary btn-sm position-relative text-white border-0 d-flex align-items-center justify-content-center p-0" style="width: 36px; height: 36px;" title="Notifications">
                 <i class="fa-solid fa-bell fs-5"></i>
-                {% if unread_notifications_count > 0 %}
+                {% if unread_notifications_count and unread_notifications_count > 0 %}
                 <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size: 0.65rem;">
                     {{ unread_notifications_count }}
                 </span>
                 {% elif metrics and metrics.pending_count > 0 %}
-                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-warning text-dark" style="font-size: 0.65rem;">
+                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size: 0.65rem;">
                     {{ metrics.pending_count }}
                 </span>
                 {% endif %}
@@ -35,17 +36,17 @@
             <!-- User Profile Dropdown (Vendor Style) -->
             {% if user.is_authenticated %}
             <div class="dropdown">
-                <button class="btn btn-link text-decoration-none p-0 border-0 d-flex align-items-center justify-content-center rounded-circle"
-                        type="button"
-                        id="approverProfileDropdown"
-                        data-bs-toggle="dropdown"
-                        aria-expanded="false"
+                <button class="btn btn-link text-decoration-none p-0 border-0 d-flex align-items-center justify-content-center rounded-circle" 
+                        type="button" 
+                        id="approverProfileDropdown" 
+                        data-bs-toggle="dropdown" 
+                        aria-expanded="false" 
                         title="Account Menu"
                         style="width: 38px; height: 38px; background: rgba(255, 255, 255, 0.08); transition: all 0.2s ease;">
                     <i class="fa-solid fa-circle-user text-cyan fs-4"></i>
                 </button>
-                <ul class="dropdown-menu dropdown-menu-end shadow-lg py-2 mt-2"
-                    aria-labelledby="approverProfileDropdown"
+                <ul class="dropdown-menu dropdown-menu-end shadow-lg py-2 mt-2" 
+                    aria-labelledby="approverProfileDropdown" 
                     style="min-width: 220px; background: #1e293b; border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 12px;">
                     <li class="px-3 py-2 border-bottom border-secondary border-opacity-25">
                         <div class="fw-semibold text-white small text-truncate" title="{{ user.email }}">{{ user.email|default:"approver@hpe.com" }}</div>
@@ -119,6 +120,7 @@
 
     body.modal-open {
         overflow: visible !important;
+    }
     }
 
     @media (min-width: 992px) {
