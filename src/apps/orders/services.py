@@ -1100,9 +1100,9 @@ def approve_purchase_order_service(
     Commits funds against the designated Cost Center budget.
     Enforces separation of duties: the submitter cannot approve their own PO.
     """
-    if po.status not in [PurchaseOrder.STATUS_DRAFT, PurchaseOrder.STATUS_APPROVAL]:
+    if po.status != PurchaseOrder.STATUS_APPROVAL:
         raise ValidationError(
-            f"Cannot approve PO in status '{po.status}'. Must be DRAFT or APPROVAL."
+            f"Cannot approve PO in status '{po.status}'. PO must be in APPROVAL status to be approved and issued."
         )
 
     if po.vendor.status == Vendor.STATUS_SUSPENDED:

@@ -1,4 +1,5 @@
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from drf_spectacular.utils import extend_schema
 from rest_framework import mixins, status, viewsets
 from rest_framework.decorators import action
@@ -90,7 +91,9 @@ class SourcingEventViewSet(
 
     def get_queryset(self):
         qs = get_sourcing_events_for_user(self.request.user)
-        return search_sourcing_events(qs, self.request.query_params)
+        if getattr(self, "action", None) == "list":
+            return search_sourcing_events(qs, self.request.query_params)
+        return qs
 
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
@@ -167,6 +170,16 @@ class SourcingEventViewSet(
                     "error": {
                         "code": "INVALID_TRANSITION",
                         "message": f"Cannot close bidding on event in status '{event.status}'. Must be in BID_WINDOW.",
+                    }
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if event.bid_end_date and timezone.now() < event.bid_end_date:
+            return Response(
+                {
+                    "error": {
+                        "code": "VALIDATION_ERROR",
+                        "message": "Bidding cannot be closed before the deadline.",
                     }
                 },
                 status=status.HTTP_400_BAD_REQUEST,
@@ -446,10 +459,21 @@ class ClarificationViewSet(viewsets.ReadOnlyModelViewSet):
     @action(detail=True, methods=["post"])
     def answer(self, request, pk=None):
         _require_manage(request)
+        clarification = self.get_object()
+        if clarification.status == "ANSWERED":
+            return Response(
+                {
+                    "error": {
+                        "code": "VALIDATION_ERROR",
+                        "message": "This clarification has already been answered and cannot be overwritten.",
+                    }
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         payload = AnswerPayload(data=request.data)
         payload.is_valid(raise_exception=True)
         clarification = services.answer_clarification_service(
-            clarification=self.get_object(),
+            clarification=clarification,
             user=request.user,
             answer=payload.validated_data["answer"],
         )

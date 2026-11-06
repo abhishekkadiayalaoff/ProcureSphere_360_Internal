@@ -76,19 +76,28 @@ def suspension_fixtures(db):
 
 def test_manager_vendor_suspension_view_access_allowed(client, suspension_fixtures):
     """
-    Procurement Manager must have full access to dedicated /manager/vendor-risk/suspension/
-    and render the vendor_suspension.html template.
+    Procurement Manager accessing /manager/vendor-risk/suspension/ is seamlessly
+    redirected (HTTP 302) to the unified Vendor Risk & Governance desk with the suspension tab active.
     """
     client.force_login(suspension_fixtures["manager_user"])
     url = reverse("manager_vendor_suspension")
     response = client.get(url)
 
-    assert response.status_code == 200
-    assert "manager/vendor_suspension.html" in [t.name for t in response.templates]
-    html = response.content.decode("utf-8")
-    assert "Vendor Suspension &amp; Governance Desk" in html or "Vendor Suspension" in html
+    # 302 Redirect to unified module
+    assert response.status_code == 302
+    assert "/manager/vendor-risk/" in response.url
+    assert "tab=suspension" in response.url
+
+    # Follow redirect
+    follow_resp = client.get(url, follow=True)
+    assert follow_resp.status_code == 200
+    assert "manager/vendor_risk.html" in [t.name for t in follow_resp.templates]
+    html = follow_resp.content.decode("utf-8")
+    assert "Vendor Risk &amp; Governance Desk" in html
+    assert "Sanctions &amp; Suspension Desk" in html
     assert "Live Transaction Exposure" in html
     assert "Apply Governance Action" in html
+    assert "Supplier Risk &amp; Governance Directory" in html
 
 
 def test_manager_vendor_suspension_view_access_denied_for_requester(client, suspension_fixtures):
@@ -104,24 +113,45 @@ def test_manager_vendor_suspension_view_access_denied_for_requester(client, susp
 
 def test_manager_vendor_suspension_query_params_prefill(client, suspension_fixtures):
     """
-    Query parameters ?vendor_id=...&action=SUSPENDED must populate template context.
+    Query parameters ?vendor_id=...&action=SUSPENDED are preserved through the redirect
+    and populate the unified desk context.
     """
     vendor = suspension_fixtures["vendor"]
     client.force_login(suspension_fixtures["manager_user"])
     url = f"{reverse('manager_vendor_suspension')}?vendor_id={vendor.id}&action=SUSPENDED"
-    response = client.get(url)
+    response = client.get(url, follow=True)
 
     assert response.status_code == 200
     assert response.context["target_vendor_id"] == str(vendor.id)
     assert response.context["initial_action"] == "SUSPENDED"
+    assert response.context["active_tab"] == "suspension"
+
+
+def test_manager_unified_vendor_risk_view_tabs(client, suspension_fixtures):
+    """
+    Unified Vendor Risk & Governance Desk directly renders all three integrated governance tabs:
+    Directory, Sanctions & Suspension Desk, and Audit Trail.
+    """
+    client.force_login(suspension_fixtures["manager_user"])
+    url = reverse("manager_vendor_risk")
+    response = client.get(url)
+
+    assert response.status_code == 200
+    assert "manager/vendor_risk.html" in [t.name for t in response.templates]
+    html = response.content.decode("utf-8")
+    assert "tab-directory" in html
+    assert "tab-suspension" in html
+    assert "tab-audit" in html
+    assert "Governance Action Formulation" in html
+    assert "Comprehensive Governance Audit Ledger" in html
 
 
 def test_manager_dashboard_view_no_modals_and_has_suspension_desk_link(client, suspension_fixtures):
     """
     Executive dashboard (/manager/):
-    - Removed redundant header options (Governance Action, Pending Approvals, Pending Awards buttons in header)
+    - Removed redundant header options (Governance Action modal trigger)
     - Removed modal popup dashboardGovModal
-    - Direct links to /manager/vendor-risk/suspension/
+    - Direct links to unified sanctions desk (/manager/vendor-risk/?tab=suspension)
     - High-risk vendor row border styling present
     """
     client.force_login(suspension_fixtures["manager_user"])
@@ -135,8 +165,8 @@ def test_manager_dashboard_view_no_modals_and_has_suspension_desk_link(client, s
     assert 'id="dashboardGovModal"' not in html
     assert "openDashboardGovModal" not in html
 
-    # Assert direct link to dedicated suspension module exists
-    assert "/manager/vendor-risk/suspension/" in html
+    # Assert direct link to unified suspension module exists
+    assert "/manager/vendor-risk/?tab=suspension" in html
 
     # Assert high-risk border styling pattern exists in script
     assert "border-start border-4 border-danger" in html

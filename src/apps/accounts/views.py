@@ -40,7 +40,7 @@ def portal_login_view(request):
 
     if request.method == "POST":
 
-        email = (request.POST.get("email") or request.POST.get("username") or "").strip()
+        email = (request.POST.get("email") or request.POST.get("username") or "").strip().lower()
 
         password = request.POST.get("password", "")
 
@@ -273,6 +273,8 @@ def portal_logout_view(request):
     Logs out the user from the ERP Portal and redirects to the public landing page (/).
 
     """
+    if request.method != "POST":
+        return HttpResponseNotAllowed(["POST"], "Logout must be requested via POST.")
 
     user = request.user if request.user.is_authenticated else None
 

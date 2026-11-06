@@ -1,4 +1,5 @@
 from decimal import Decimal
+from drf_spectacular.utils import OpenApiResponse, extend_schema
 
 from rest_framework import permissions, serializers, status, viewsets
 from rest_framework.decorators import action
@@ -36,6 +37,10 @@ class PRLineSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "requisition", "estimated_total", "created_at", "updated_at"]
 
     def validate(self, attrs):
+        if self.instance and self.instance.status != PurchaseRequisition.STATUS_DRAFT:
+            raise serializers.ValidationError(
+                f"Requisitions in status '{self.instance.status}' cannot be modified. Only DRAFT requisitions can be edited."
+            )
         if "unit_price" in attrs and "estimated_unit_price" not in attrs:
             attrs["estimated_unit_price"] = attrs.pop("unit_price")
         elif "unit_price" in attrs:
@@ -64,6 +69,10 @@ class PRAttachmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = PRAttachment
         fields = "__all__"
+
+
+class RequisitionApproveSerializer(serializers.Serializer):
+    comments = serializers.CharField(required=False, allow_blank=True, default="", help_text="Approval or rejection notes.")
 
 
 class PurchaseRequisitionSerializer(serializers.ModelSerializer):
@@ -278,9 +287,10 @@ class PurchaseRequisitionViewSet(viewsets.ModelViewSet):
             user.role.code if hasattr(user, "role") and user.role else None
         )
 
-        # Vendors have zero visibility into internal purchase requisitions
-        if getattr(user, "is_vendor", False) or role_code == Role.VENDOR_USER:
-            return self.queryset.none()
+        # Vendors, Stores Receivers, and Legal have zero access to requisitions (DEF-046)
+        if getattr(user, "is_vendor", False) or role_code in [Role.VENDOR_USER, Role.STORES_RECEIVER, Role.LEGAL_MGR]:
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied("Access to purchase requisitions is denied for your role.")
 
         if user.is_superuser or role_code in [
             Role.SUPER_ADMIN,
@@ -369,6 +379,17 @@ class PurchaseRequisitionViewSet(viewsets.ModelViewSet):
         updated_pr = submit_purchase_requisition_service(requisition=pr, user=request.user)
         return Response(self.get_serializer(updated_pr).data, status=status.HTTP_200_OK)
 
+    @extend_schema(
+        summary="Approve Purchase Requisition",
+        description="Approves a submitted purchase requisition. Requires authorized approver.",
+        request=RequisitionApproveSerializer,
+        responses={
+            200: PurchaseRequisitionSerializer,
+            400: OpenApiResponse(description="Validation error or invalid status."),
+            403: OpenApiResponse(description="Permission denied or self-approval."),
+            404: OpenApiResponse(description="Requisition not found."),
+        },
+    )
     @action(detail=True, methods=["post"], url_path="approve")
     def approve(self, request, pk=None):
         pr = self.get_object()
@@ -472,9 +493,12 @@ class PurchaseRequisitionViewSet(viewsets.ModelViewSet):
                     "status": f"Cannot delete requisition in '{pr.status}' status. Only DRAFT requisitions can be deleted."
                 }
             )
-        if pr.requester_id != user.id and not user.is_superuser:
+        role_code = getattr(user, "role_code", None) or (
+            user.role.code if hasattr(user, "role") and user.role else None
+        )
+        if not (user.is_superuser or role_code == Role.SUPER_ADMIN):
             raise permissions.exceptions.PermissionDenied(
-                "You do not have permission to delete this requisition."
+                "Permission Denied: Requisition deletion is strictly restricted to Super Admin."
             )
         # Soft-cancel instead of hard delete to preserve audit history (PR-02)
         previous_status = pr.status

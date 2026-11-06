@@ -107,7 +107,22 @@ class ExportJobViewSet(viewsets.ModelViewSet):
     serializer_class = ExportJobSerializer
     permission_classes = [IsAuthenticated, CanCreateExportJob]
 
+    def get_queryset(self):
+        user = self.request.user
+        if not user or not user.is_authenticated:
+            return ExportJob.objects.none()
+        if user.is_superuser:
+            return self.queryset
+        return self.queryset.filter(requested_by=user)
+
     def perform_create(self, serializer):
+        report_type = serializer.validated_data.get("report_type")
+        role_code = getattr(self.request.user, "role_code", None) or (
+            self.request.user.role.code if getattr(self.request.user, "role", None) else None
+        )
+        if report_type == "audit_log" and not (self.request.user.is_superuser or role_code in [Role.SUPER_ADMIN, Role.AUDITOR]):
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied("Only Auditor and Super Admin can export audit logs.")
         job = serializer.save(requested_by=self.request.user)
         generate_export_job_service(job.id)
 
@@ -250,6 +265,17 @@ def supplier_performance_report_view(request):
     return Response(get_supplier_performance_report(), status=status.HTTP_200_OK)
 
 
+class CanReadAuditLogReport(permissions.BasePermission):
+    def has_permission(self, request, view):
+        if not request.user or not request.user.is_authenticated:
+            return False
+        if request.user.is_superuser:
+            return True
+        role = getattr(request.user, "role_code", None) or (
+            request.user.role.code if getattr(request.user, "role", None) else None
+        )
+        return role in [Role.SUPER_ADMIN, Role.AUDITOR, Role.PROC_MGR, Role.FINANCE_AP]
+
 class IsAuditorOrSuperAdmin(permissions.BasePermission):
     def has_permission(self, request, view):
         if not request.user or not request.user.is_authenticated:
@@ -263,7 +289,7 @@ class IsAuditorOrSuperAdmin(permissions.BasePermission):
 
 
 @api_view(["GET"])
-@permission_classes([IsAuthenticated, IsAuditorOrSuperAdmin])
+@permission_classes([IsAuthenticated, CanReadAuditLogReport])
 def audit_log_report_view(request):
     return Response(get_audit_log_report(), status=status.HTTP_200_OK)
 

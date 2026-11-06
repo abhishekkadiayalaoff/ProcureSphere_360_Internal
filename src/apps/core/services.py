@@ -1,7 +1,7 @@
 from django.utils import timezone
 
 
-def generate_document_number(model_class, field_name: str, prefix: str, padding: int = 5) -> str:
+def generate_document_number(model_class, field_name: str, prefix: str, padding: int = 5, offset: int = 0) -> str:
     """
     Safely generates the next sequential document number (e.g. VND-2026-00001, PR-2026-00001)
     by finding the highest existing sequence number for the current year/prefix,
@@ -23,6 +23,7 @@ def generate_document_number(model_class, field_name: str, prefix: str, padding:
         except (ValueError, TypeError):
             next_num = model_class.objects.count() + 1
 
+    next_num += offset
     # Guarantee uniqueness even in concurrent or deleted row edge cases
     while model_class.objects.filter(**{field_name: f"{base_prefix}{next_num:0{padding}d}"}).exists():
         next_num += 1
