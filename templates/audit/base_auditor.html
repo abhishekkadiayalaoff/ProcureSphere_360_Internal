@@ -18,43 +18,18 @@
         </div>
 
         <div class="d-flex align-items-center gap-2 gap-sm-3 flex-shrink-0">
-            <!-- Authoritative Organization Scope Badge -->
-            <div class="d-flex align-items-center bg-dark bg-opacity-75 border border-secondary border-opacity-50 text-white rounded-pill px-2.5 px-md-3 py-1 text-nowrap small shadow-sm" id="auditorOrgScopeBadge">
-                <i class="fa-solid fa-building-shield text-cyan me-1.5 me-md-2"></i>
-                <span class="text-white-50 me-1 d-none d-sm-inline">Scope:</span>
-                <span class="fw-semibold text-white" id="activeScopeLabel">
-                    {% if user.is_superuser %}
-                        Global Compliance Vault
-                    {% elif user.effective_organization %}
-                        {{ user.effective_organization.name }}
-                    {% elif user.organization %}
-                        {{ user.organization.name }}
-                    {% else %}
-                        Authorized Organization
-                    {% endif %}
-                </span>
-                <span class="badge bg-success bg-opacity-25 text-success border border-success border-opacity-50 ms-2 py-0.5 px-2 rounded-pill d-none d-md-inline-block" style="font-size: 0.65rem;">Active Scope</span>
-            </div>
-
-            <!-- Evidence Vault Badge -->
-            <div class="d-none d-md-flex align-items-center bg-dark bg-opacity-75 border border-secondary border-opacity-50 rounded-pill px-3 py-1 text-white small">
-                <i class="fa-solid fa-shield-halved text-cyan me-2"></i>
-                <span>Evidence Vault</span>
-            </div>
-
-            <!-- User Profile & Sign Out -->
-            {% if user.is_authenticated %}
-            <div class="d-flex align-items-center gap-2">
-                <div class="d-none d-md-flex align-items-center px-2 px-sm-3 py-1 bg-secondary bg-opacity-25 rounded-pill border border-secondary border-opacity-50 text-white">
-                    <i class="fa-solid fa-circle-user text-cyan me-1 me-sm-2 fs-5"></i>
-                    <div class="text-start leading-tight me-1">
-                        <div class="fw-semibold text-white small text-truncate" style="max-width: 140px;">{{ user.email|default:"auditor@hpe.com" }}</div>
-                        <div class="badge bg-secondary bg-opacity-75 text-cyan rounded-pill" style="font-size: 0.65rem;">Compliance Auditor</div>
-                    </div>
+            <!-- Organization / Department Information (Matching Vendor Entity Pill) -->
+            {% with entity=user.organization|default:user.effective_organization|default:user.department %}
+            <div class="d-none d-md-flex align-items-center bg-dark bg-opacity-75 border border-secondary border-opacity-50 rounded-pill px-3 py-1 text-white">
+                <i class="fa-solid fa-building text-cyan me-2 fs-5"></i>
+                <div class="text-start lh-sm">
+                    <span class="fw-semibold small d-block mb-1">{% if entity.name %}{{ entity.name|truncatechars:35 }}{% else %}Hewlett Packard Enterprise{% endif %}</span>
+                    <span class="text-white-50 d-block" style="font-size: 0.7rem; line-height: 1;">{% if user.cost_center %}{{ user.cost_center.code }}{% elif entity.code %}{{ entity.code }}{% else %}HPE-GLOBAL{% endif %} &bull; Active</span>
                 </div>
                 <span class="badge ms-2 rounded-pill bg-success" style="font-size: 0.65rem;">Active</span>
             </div>
-            {% endif %}
+            <span class="d-none" id="auditorOrgScopeBadge">Scope: <span id="activeScopeLabel">{{ entity.name|default:"Authorized Organization" }}</span></span>
+            {% endwith %}
 
             <!-- Notifications Icon -->
             <a href="/notifications/" class="btn btn-outline-secondary btn-sm position-relative text-white border-0 d-flex align-items-center justify-content-center p-0" style="width: 36px; height: 36px;" title="Notifications">
