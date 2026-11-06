@@ -692,7 +692,9 @@ def user_resend_welcome_email_view(request, user_id):
 
 
 
-        return HttpResponse("<script>window.location.reload();</script>")
+        response = HttpResponse("<script>window.location.reload();</script>")
+        response["HX-Refresh"] = "true"
+        return response
 
     return HttpResponse(status=405)
 
@@ -972,7 +974,9 @@ def org_create_view(request):
 
                 messages.info(request, f"Administrator account '{admin_user.email}' created (welcome email was skipped per checkbox).")
 
-            return HttpResponse("<script>window.location.reload();</script>")
+            response = HttpResponse("<script>window.location.reload();</script>")
+            response["HX-Refresh"] = "true"
+            return response
 
     else:
 
@@ -1256,7 +1260,9 @@ def org_edit_view(request, org_id):
 
             messages.success(request, f"Organization '{org.name}' updated successfully.")
 
-            return HttpResponse("<script>window.location.reload();</script>")
+            response = HttpResponse("<script>window.location.reload();</script>")
+            response["HX-Refresh"] = "true"
+            return response
 
     else:
 
@@ -1870,7 +1876,9 @@ def org_resend_credentials_view(request, org_id):
 
         messages.error(request, f"Organization '{org.name}' has no assigned administrator user.")
 
-        return HttpResponse("<script>window.location.reload();</script>")
+        response = HttpResponse("<script>window.location.reload();</script>")
+        response["HX-Refresh"] = "true"
+        return response
 
 
 
@@ -1950,7 +1958,9 @@ def org_resend_credentials_view(request, org_id):
 
 
 
-    return HttpResponse("<script>window.location.reload();</script>")
+    response = HttpResponse("<script>window.location.reload();</script>")
+    response["HX-Refresh"] = "true"
+    return response
 
 
 
@@ -2008,7 +2018,9 @@ def org_delete_view(request, org_id):
 
             if request.headers.get("HX-Request"):
 
-                return HttpResponse("<script>window.location.reload();</script>")
+                response = HttpResponse("<script>window.location.reload();</script>")
+                response["HX-Refresh"] = "true"
+                return response
 
             return redirect("superadmin:organizations")
 
@@ -2130,7 +2142,9 @@ def dept_create_view(request):
 
 
 
-            return HttpResponse("<script>window.location.reload();</script>")
+            response = HttpResponse("<script>window.location.reload();</script>")
+            response["HX-Refresh"] = "true"
+            return response
 
     else:
 
@@ -2232,7 +2246,9 @@ def dept_edit_view(request, dept_id):
 
 
 
-            return HttpResponse("<script>window.location.reload();</script>")
+            response = HttpResponse("<script>window.location.reload();</script>")
+            response["HX-Refresh"] = "true"
+            return response
 
     else:
 
@@ -2322,7 +2338,9 @@ def cost_center_create_view(request):
 
 
 
-            return HttpResponse("<script>window.location.reload();</script>")
+            response = HttpResponse("<script>window.location.reload();</script>")
+            response["HX-Refresh"] = "true"
+            return response
 
     else:
 
@@ -2432,7 +2450,9 @@ def cost_center_edit_view(request, cc_id):
 
 
 
-            return HttpResponse("<script>window.location.reload();</script>")
+            response = HttpResponse("<script>window.location.reload();</script>")
+            response["HX-Refresh"] = "true"
+            return response
 
     else:
 
@@ -2592,7 +2612,9 @@ def fiscal_period_create_view(request):
 
             )
 
-            return HttpResponse("<script>window.location.reload();</script>")
+            response = HttpResponse("<script>window.location.reload();</script>")
+            response["HX-Refresh"] = "true"
+            return response
 
     else:
 
@@ -2708,7 +2730,9 @@ def fiscal_period_edit_view(request, period_id):
 
             )
 
-            return HttpResponse("<script>window.location.reload();</script>")
+            response = HttpResponse("<script>window.location.reload();</script>")
+            response["HX-Refresh"] = "true"
+            return response
 
     else:
 
@@ -2930,7 +2954,9 @@ def budget_create_view(request):
 
             form.save()
 
-            return HttpResponse("<script>window.location.reload();</script>")
+            response = HttpResponse("<script>window.location.reload();</script>")
+            response["HX-Refresh"] = "true"
+            return response
 
     else:
 
@@ -2984,7 +3010,9 @@ def budget_edit_view(request, budget_id):
 
             form.save()
 
-            return HttpResponse("<script>window.location.reload();</script>")
+            response = HttpResponse("<script>window.location.reload();</script>")
+            response["HX-Refresh"] = "true"
+            return response
 
     else:
 
@@ -3020,7 +3048,9 @@ def policy_create_view(request):
                 new_state={"name": policy.name, "module": policy.module, "status": policy.status},
                 ip_address=request.META.get("REMOTE_ADDR"),
             )
-            return HttpResponse("<script>window.location.reload();</script>")
+            response = HttpResponse("<script>window.location.reload();</script>")
+            response["HX-Refresh"] = "true"
+            return response
     else:
         form = PolicyAdminForm(request=request, initial={"is_active": True, "status": ApprovalPolicy.STATUS_ACTIVE})
 
@@ -3115,7 +3145,9 @@ def policy_edit_view(request, policy_id):
                 new_state={"name": updated.name, "module": updated.module, "status": updated.status, "version": updated.version},
                 ip_address=request.META.get("REMOTE_ADDR"),
             )
-            return HttpResponse("<script>window.location.reload();</script>")
+            response = HttpResponse("<script>window.location.reload();</script>")
+            response["HX-Refresh"] = "true"
+            return response
     else:
         form = PolicyAdminForm(instance=policy, request=request)
 
@@ -3559,7 +3591,9 @@ def location_create_view(request):
 
             messages.success(request, f"Location '{loc.name}' ({loc.code}) created successfully.")
 
-            return HttpResponse("<script>window.location.reload();</script>")
+            response = HttpResponse("<script>window.location.reload();</script>")
+            response["HX-Refresh"] = "true"
+            return response
 
     else:
 
@@ -3651,7 +3685,9 @@ def location_edit_view(request, location_id):
 
             messages.success(request, f"Location '{updated_loc.name}' updated successfully.")
 
-            return HttpResponse("<script>window.location.reload();</script>")
+            response = HttpResponse("<script>window.location.reload();</script>")
+            response["HX-Refresh"] = "true"
+            return response
 
     else:
 
