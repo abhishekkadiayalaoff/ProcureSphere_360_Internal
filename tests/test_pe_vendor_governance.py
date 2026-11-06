@@ -10,6 +10,7 @@ from datetime import timedelta
 import pytest
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.urls import reverse
 from django.utils import timezone
 
 from apps.audit.models import AuditLog
@@ -71,20 +72,22 @@ class TestGovernancePages:
             notes="Thin margins",
         )
         client.force_login(w["exec"])
-        body = client.get(f"/vendors/{w['vendor_a'].id}/").content.decode()
-        for expected in [
-            "Alpha Hardware Ltd",
-            "Hardware",
-            "Medium Risk",
-            "Financial stability",
-            "Thin margins",
-            "No performance data available.",
-            "vendor_a tax",
-            "Ada Lovelace",
-            "Change history",
-            "Open exposure",
-        ]:
-            assert expected in body, expected
+        # Each section is now an independent page; assert the section content on its own route.
+        vendor = w["vendor_a"]
+        page_expectations = [
+            (f"/vendors/{vendor.id}/overview/", ["Alpha Hardware Ltd", "Hardware", "Operational summary"]),
+            (f"/vendors/{vendor.id}/status/", ["Open exposure", "KYC &amp; activation status"]),
+            (f"/vendors/{vendor.id}/risk/", ["Medium Risk", "Financial stability", "Thin margins"]),
+            (f"/vendors/{vendor.id}/performance/", ["No performance data available."]),
+            (f"/vendors/{vendor.id}/documents/", ["vendor_a tax", "Download"]),
+            (f"/vendors/{vendor.id}/contacts/", ["Ada Lovelace"]),
+            (f"/vendors/{vendor.id}/sourcing/", ["Open exposure", "Purchase orders"]),
+            (f"/vendors/{vendor.id}/history/", ["Change history"]),
+        ]
+        for url, expected_items in page_expectations:
+            body = client.get(url).content.decode()
+            for expected in expected_items:
+                assert expected in body, f"{expected} missing on {url}"
 
     @pytest.mark.parametrize("user_key", ["requester", "stores", "user_a"])
     def test_pages_forbidden_for_unauthorised_roles(self, client, procurement_world, user_key):
@@ -94,7 +97,8 @@ class TestGovernancePages:
             assert client.get(url).status_code == 403, url
         assert (
             client.post(
-                f"/vendors/{w['vendor_b'].id}/status/", {"status": "ON_HOLD", "notes": "x"}
+                reverse("vendor_status_change", args=[w["vendor_b"].id]),
+                {"status": "ON_HOLD", "notes": "x"},
             ).status_code
             == 403
         )
@@ -108,7 +112,8 @@ class TestGovernancePages:
             assert client.get(f"/vendors/{w['vendor_a'].id}/").status_code == 200
             assert (
                 client.post(
-                    f"/vendors/{w['vendor_a'].id}/risk/", {"risk_level": "HIGH", "notes": "x"}
+                    reverse("vendor_risk_assess", args=[w["vendor_a"].id]),
+                    {"risk_level": "HIGH", "notes": "x"},
                 ).status_code
                 == 403
             )
@@ -319,11 +324,13 @@ class TestRiskAndStatusGovernance:
         w = procurement_world
         client.force_login(w["exec"])
         res = client.post(
-            f"/vendors/{w['vendor_b'].id}/status/", {"status": "SUSPENDED", "notes": "x"}
+            reverse("vendor_status_change", args=[w["vendor_b"].id]),
+            {"status": "SUSPENDED", "notes": "x"},
         )
         assert res.status_code == 403
         res = client.post(
-            f"/vendors/{w['vendor_b'].id}/status/", {"status": "ON_HOLD", "notes": "Late KYC"}
+            reverse("vendor_status_change", args=[w["vendor_b"].id]),
+            {"status": "ON_HOLD", "notes": "Late KYC"},
         )
         assert res.status_code == 302
         w["vendor_b"].refresh_from_db()

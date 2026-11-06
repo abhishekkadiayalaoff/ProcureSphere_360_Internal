@@ -4,63 +4,51 @@
 {% block title %}{% block requester_title %}Requester Desk{% endblock %} — ProcureSphere 360{% endblock %}
 
 {% block navbar %}
-<!-- Top Navigation Bar for Requester (Matching Vendor Dashboard Design System) -->
+<!-- Top Navigation Bar for Requester (Vendor Dashboard Design System) -->
 <nav class="navbar navbar-dark bg-dark shadow-sm py-2 border-bottom border-secondary border-opacity-25 sticky-top">
-    <div class="container-fluid px-2 px-sm-3 px-lg-4 d-flex align-items-center justify-content-between flex-nowrap">
-        <!-- Brand & Mobile Toggle -->
-        <div class="d-flex align-items-center flex-nowrap me-2">
+    <div class="container-fluid ps-2 pe-2 pe-sm-3 pe-lg-4 d-flex align-items-center justify-content-between flex-nowrap">
+        <div class="d-flex align-items-center flex-nowrap requester-brand-wrapper">
             <button class="navbar-toggler border-0 me-2 d-lg-none p-1" type="button" data-bs-toggle="offcanvas" data-bs-target="#requesterSidebar" aria-controls="requesterSidebar" aria-label="Toggle navigation">
                 <i class="fa-solid fa-bars text-white fs-4"></i>
             </button>
-            <a href="/requester/" class="dashboard-brand-badge me-2 me-lg-3" aria-label="ProcureSphere 360 Home">
+            <a href="/requester/" class="dashboard-brand-badge requester-top-brand" aria-label="ProcureSphere 360 Home">
                 <img src="{% static 'landing/images/procuresphere_360_nav_brand.png' %}" alt="ProcureSphere 360" class="dashboard-brand-logo">
             </a>
         </div>
 
         <div class="d-flex align-items-center gap-2 gap-sm-3 flex-shrink-0">
-            <!-- Organization / Department Information (Matching Vendor Entity Pill) -->
-            {% with entity=user.department|default:user.organization %}
-            <div class="d-none d-md-flex align-items-center bg-dark bg-opacity-75 border border-secondary border-opacity-50 rounded-pill px-3 py-1 text-white">
-                <i class="fa-solid fa-building text-cyan me-2 fs-5"></i>
-                <div class="text-start lh-sm">
-                    <span class="fw-semibold small d-block mb-1">{{ entity.name|default:"IT Infrastructure Operations"|truncatechars:35 }}</span>
-                    <span class="text-white-50 d-block" style="font-size: 0.7rem; line-height: 1;">{% if user.cost_center %}{{ user.cost_center.code }}{% else %}{{ entity.code|default:"CC-IT-101" }}{% endif %} &bull; Active</span>
-                </div>
-                <span class="badge ms-2 rounded-pill bg-success" style="font-size: 0.65rem;">Active</span>
-            </div>
-            {% endwith %}
-
             <!-- Notification Bell -->
             <a href="/notifications/" class="btn btn-outline-secondary btn-sm position-relative text-white border-0 d-flex align-items-center justify-content-center p-0" style="width: 36px; height: 36px;" title="Notifications">
                 <i class="fa-solid fa-bell fs-5"></i>
-                {% if unread_notifications_count and unread_notifications_count > 0 %}
+                {% if unread_notifications_count > 0 %}
                 <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size: 0.65rem;">
                     {{ unread_notifications_count }}
-                </span>
-                {% elif metrics.unread_notifications and metrics.unread_notifications > 0 %}
-                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size: 0.65rem;">
-                    {{ metrics.unread_notifications }}
                 </span>
                 {% endif %}
             </a>
 
-            <!-- User Profile Dropdown -->
+            <!-- User Profile Dropdown (Vendor Style) -->
             {% if user.is_authenticated %}
-            <div class="dropdown position-relative">
-                <button class="btn p-0 border-0 bg-transparent rounded-circle vendor-profile-avatar-btn" type="button" id="requesterProfileDropdown" data-bs-toggle="dropdown" aria-expanded="false" title="{{ user.email }}">
-                    <span class="vendor-avatar-ring">
-                        <i class="fa-solid fa-circle-user text-cyan"></i>
-                    </span>
+            <div class="dropdown">
+                <button class="btn btn-link text-decoration-none p-0 border-0 d-flex align-items-center justify-content-center rounded-circle"
+                        type="button"
+                        id="requesterProfileDropdown"
+                        data-bs-toggle="dropdown"
+                        aria-expanded="false"
+                        title="Account Menu"
+                        style="width: 38px; height: 38px; background: rgba(255, 255, 255, 0.08); transition: all 0.2s ease;">
+                    <i class="fa-solid fa-circle-user text-cyan fs-4"></i>
                 </button>
-                <ul class="dropdown-menu dropdown-menu-end shadow-lg vendor-profile-dropdown" aria-labelledby="requesterProfileDropdown">
-                    <li class="vendor-dropdown-header">
-                        <div class="vendor-email-text">{{ user.email }}</div>
+                <ul class="dropdown-menu dropdown-menu-end shadow-lg py-2 mt-2"
+                    aria-labelledby="requesterProfileDropdown"
+                    style="min-width: 220px; background: #1e293b; border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 12px;">
+                    <li class="px-3 py-2 border-bottom border-secondary border-opacity-25">
+                        <div class="fw-semibold text-white small text-truncate" title="{{ user.email }}">{{ user.email }}</div>
+                        <div class="text-white-50" style="font-size: 0.72rem;">Purchase Requester</div>
                     </li>
-                    <li><hr class="vendor-dropdown-divider"></li>
                     <li>
-                        <a class="vendor-dropdown-signout" href="/logout/">
-                            <i class="fa-solid fa-arrow-right-from-bracket me-2 text-danger"></i>
-                            <span>Sign Out</span>
+                        <a class="dropdown-item text-danger d-flex align-items-center py-2 px-3 small" href="/logout/" style="transition: background 0.15s ease;">
+                            <i class="fa-solid fa-arrow-right-from-bracket me-2" style="width: 16px;"></i> Sign Out
                         </a>
                     </li>
                 </ul>
@@ -73,115 +61,33 @@
 
 {% block layout %}
 <style>
-    /* ========================================================================= */
-    /* Requester Navbar Profile Avatar & Dropdown (Exact Vendor Dashboard Match) */
-    /* ========================================================================= */
-    .vendor-profile-avatar-btn {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        padding: 0;
-        border: none;
-        background: transparent;
-        cursor: pointer;
-        position: relative;
-    }
-    .vendor-profile-avatar-btn::after {
-        display: none !important;
-    }
-    .vendor-profile-avatar-btn:focus,
-    .vendor-profile-avatar-btn:active {
-        outline: none !important;
-        box-shadow: none !important;
-    }
-    .vendor-avatar-ring {
-        width: 38px;
-        height: 38px;
-        border-radius: 50%;
-        background-color: #1e2634;
-        border: 2px solid #2563eb;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
-    }
-    .vendor-profile-avatar-btn:hover .vendor-avatar-ring,
-    .vendor-profile-avatar-btn[aria-expanded="true"] .vendor-avatar-ring {
-        border-color: #3b82f6;
-        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.35);
-    }
-    .vendor-avatar-ring i {
-        font-size: 1.6rem;
-        color: #06b6d4 !important;
-        line-height: 1;
-    }
-
-    /* Dark navy profile dropdown menu */
-    .vendor-profile-dropdown {
-        background-color: #1b2332 !important;
-        border: 1px solid rgba(255, 255, 255, 0.08) !important;
-        border-radius: 12px !important;
-        box-shadow: 0 12px 28px rgba(0, 0, 0, 0.55), 0 4px 10px rgba(0, 0, 0, 0.35) !important;
-        min-width: 240px !important;
-        max-width: 320px !important;
-        padding: 14px 18px 12px 18px !important;
-        margin-top: 8px !important;
-    }
-    .vendor-dropdown-header {
-        padding: 0 !important;
-        margin-bottom: 6px !important;
-        list-style: none;
-    }
-    .vendor-email-text {
-        font-size: 0.95rem;
-        font-weight: 700;
-        color: #ffffff !important;
-        word-break: break-all;
-        line-height: 1.35;
-        letter-spacing: -0.01em;
-    }
-    .vendor-dropdown-divider {
-        border: 0 !important;
-        border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
-        margin: 8px 0 10px 0 !important;
-        opacity: 1 !important;
-    }
-    .vendor-dropdown-signout {
-        display: inline-flex;
-        align-items: center;
-        color: #ef4444 !important;
-        font-size: 0.92rem;
-        font-weight: 500;
-        text-decoration: none;
-        padding: 4px 0 !important;
-        background: transparent !important;
-        transition: color 0.15s ease, opacity 0.15s ease;
-    }
-    .vendor-dropdown-signout i {
-        color: #ef4444 !important;
-        font-size: 0.95rem;
-    }
-    .vendor-dropdown-signout:hover,
-    .vendor-dropdown-signout:focus {
-        color: #f87171 !important;
-        opacity: 0.9;
-        text-decoration: none;
-        background: transparent !important;
-    }
-
     :root {
-        --req-header-bg: #212529;
-        --req-sidebar-bg: #212529;
-        --req-main-bg: #F5F7FA;
         --req-primary-blue: #0D6EFD;
         --req-secondary-cyan: #00B8D9;
-        --req-main-text: #172033;
-        --req-muted-text: #6C757D;
-        --req-border: #DEE2E6;
-        --req-card-bg: #FFFFFF;
+        --req-main-bg: #F5F7FA;
     }
 
     @media (min-width: 992px) {
+        .requester-brand-wrapper {
+            width: 244px;
+            max-width: 244px;
+            flex-shrink: 0;
+        }
+        .requester-top-brand {
+            width: 100% !important;
+            max-width: 100% !important;
+            height: 62px !important;
+            max-height: 62px !important;
+            padding: 2px 6px !important;
+            border-radius: 10px !important;
+            margin: 0 !important;
+        }
+        .requester-top-brand .dashboard-brand-logo {
+            width: 100% !important;
+            height: 100% !important;
+            max-height: 56px !important;
+            object-fit: contain !important;
+        }
         aside.requester-sidebar-desktop,
         .requester-sidebar-desktop,
         aside#requesterSidebar {
@@ -189,16 +95,16 @@
             min-width: 260px !important;
             flex-shrink: 0 !important;
             position: sticky !important;
-            top: 58px !important;
-            height: calc(100vh - 58px) !important;
-            max-height: calc(100vh - 58px) !important;
+            top: 79px !important;
+            height: calc(100vh - 79px) !important;
+            max-height: calc(100vh - 79px) !important;
             overflow: hidden !important;
             overflow-y: hidden !important;
             display: flex !important;
             flex-direction: column !important;
             z-index: 1000;
             align-self: flex-start;
-            background-color: var(--req-sidebar-bg) !important;
+            background-color: #212529 !important;
         }
         .requester-sidebar-desktop nav#requesterNav,
         .requester-sidebar-desktop nav {
@@ -208,14 +114,26 @@
             scrollbar-width: thin;
             scrollbar-color: rgba(255,255,255,0.15) transparent;
         }
-        .requester-sidebar-desktop nav::-webkit-scrollbar {
-            width: 4px;
-        }
+        .requester-sidebar-desktop nav::-webkit-scrollbar { width: 4px; }
         .requester-sidebar-desktop nav::-webkit-scrollbar-thumb {
             background: rgba(255,255,255,0.15);
             border-radius: 4px;
         }
     }
+    @media (max-width: 991.98px) {
+        .requester-brand-wrapper { width: auto; max-width: none; }
+        .requester-top-brand {
+            width: 190px !important;
+            max-width: 190px !important;
+            height: 48px !important;
+            max-height: 48px !important;
+            padding: 4px 8px !important;
+            border-radius: 8px !important;
+            margin: 0 !important;
+        }
+    }
+
+    body.modal-open { overflow: visible !important; }
 
     /* Section label style */
     .nav-section-label {
@@ -241,10 +159,8 @@
         text-decoration: none;
         transition: background 0.15s, color 0.15s;
     }
-    .vendor-navlink:hover,
-    .vendor-navlink:focus,
-    .req-navlink:hover,
-    .req-navlink:focus {
+    .vendor-navlink:hover, .vendor-navlink:focus,
+    .req-navlink:hover, .req-navlink:focus {
         background: rgba(255,255,255,0.08);
         color: #fff;
     }
@@ -264,10 +180,10 @@
     }
 </style>
 
-<div class="d-flex align-items-start w-100" style="min-height: calc(100vh - 58px); max-width: 100vw; background-color: var(--req-main-bg);">
+<div class="d-flex align-items-start w-100" style="min-height: calc(100vh - 79px); max-width: 100vw; background-color: var(--req-main-bg);">
     <!-- Sidebar Navigation -->
     <aside class="offcanvas-lg offcanvas-start bg-dark border-end border-secondary border-opacity-25 shadow-sm text-white requester-sidebar-desktop" tabindex="-1" id="requesterSidebar" aria-labelledby="requesterSidebarLabel">
-        
+
         <!-- Mobile Drawer Header (Hidden on Desktop) -->
         <div class="sidebar-brand-box px-3 py-3 border-bottom border-secondary border-opacity-25 flex-shrink-0 d-flex d-lg-none align-items-center justify-content-between">
             <a href="/requester/" class="d-flex align-items-center text-white text-decoration-none" id="requesterSidebarLabel">
@@ -276,7 +192,7 @@
                 </div>
                 <div class="overflow-hidden">
                     <div class="fs-6 fw-bold tracking-tight text-white d-block text-truncate">ProcureSphere <span class="text-cyan">360</span></div>
-                    <span class="badge bg-secondary bg-opacity-50 text-light px-2 py-0.5 rounded-pill" style="font-size: 0.62rem; letter-spacing: 0.04em;">REQUESTER DESK</span>
+                    <span class="badge bg-secondary bg-opacity-50 text-light px-2 rounded-pill" style="font-size: 0.62rem; letter-spacing: 0.04em;">REQUESTER DESK</span>
                 </div>
             </a>
             <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" data-bs-target="#requesterSidebar" aria-label="Close menu"></button>
@@ -289,7 +205,6 @@
                 <i class="fa-solid fa-shield-halved text-cyan" style="font-size:0.75rem;"></i>
             </div>
 
-            <!-- Main -->
             <div class="nav-section-label">Main</div>
 
             <a href="/requester/"
@@ -297,7 +212,6 @@
                 <i class="fa-solid fa-gauge-high nav-icon text-cyan"></i><span>Dashboard</span>
             </a>
 
-            <!-- Purchase Requisitions -->
             <div class="nav-section-label">Purchase Requisitions</div>
 
             <a href="/requisitions/"
@@ -347,15 +261,12 @@
 </div>
 
 <script>
-    // Handle offcanvas link clicks on mobile (<992px)
     document.querySelectorAll('#requesterSidebar a.vendor-navlink, #requesterSidebar a.req-navlink').forEach(function(link) {
         link.addEventListener('click', function() {
             var sidebarEl = document.getElementById('requesterSidebar');
             if (window.innerWidth < 992 && sidebarEl && typeof bootstrap !== 'undefined') {
                 var offcanvasInstance = bootstrap.Offcanvas.getInstance(sidebarEl);
-                if (offcanvasInstance) {
-                    offcanvasInstance.hide();
-                }
+                if (offcanvasInstance) { offcanvasInstance.hide(); }
             }
         });
     });

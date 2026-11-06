@@ -1,0 +1,49 @@
+{% extends base_layout|default:'base.html' %}
+
+{% block title %}{{ vendor.legal_name }} — Documents — {{ vendor.vendor_number }}{% endblock %}
+
+{% block manager_breadcrumbs %}
+{% include 'partials/vendor_pages/breadcrumbs.html' with page_label='Documents' %}
+{% endblock manager_breadcrumbs %}
+
+{% block content %}
+{% include 'partials/vendor_pages/header.html' %}
+
+<div class="row g-4">
+    <div class="col-12">
+        <div class="glass-card p-4 shadow-sm">
+            <h5 class="fw-bold mb-3"><i class="fa-solid fa-folder-open me-2 text-primary"></i>Documents</h5>
+            <div class="table-responsive"><table class="table table-sm align-middle small mb-0">
+                <thead><tr><th>Type</th><th>Title</th><th>Expiry</th><th>Review</th><th>Reviewer</th><th class="text-end">Actions</th></tr></thead>
+                <tbody>
+                {% for doc in documents %}
+                    <tr>
+                        <td>{{ doc.get_document_type_display }}</td>
+                        <td>{{ doc.title }}</td>
+                        <td>{{ doc.expiry_date|date:"Y-m-d"|default:"—" }}</td>
+                        <td>{% if doc.review_status == 'VERIFIED' %}<span class="badge bg-success">Verified</span>{% elif doc.review_status == 'REJECTED' %}<span class="badge bg-danger">Rejected</span>{% if doc.review_notes %}<div class="text-muted">{{ doc.review_notes }}</div>{% endif %}{% else %}<span class="badge bg-secondary">Pending</span>{% endif %}</td>
+                        <td>{% if doc.verified_by %}{{ doc.verified_by.email }}{% else %}<span class="text-muted">—</span>{% endif %}</td>
+                        <td class="text-end text-nowrap">
+                            <a class="btn btn-sm btn-outline-secondary" href="{% url 'vendor_document_download' vendor.id doc.id %}">Download</a>
+                            {% if can_review_docs and doc.review_status == 'PENDING' %}
+                            <form method="post" action="{% url 'vendor_kyc_action' vendor.id 'verify-document' %}" class="d-inline">{% csrf_token %}
+                                <input type="hidden" name="document_id" value="{{ doc.id }}">
+                                <button class="btn btn-sm btn-outline-success">Verify</button>
+                            </form>
+                            <form method="post" action="{% url 'vendor_kyc_action' vendor.id 'reject-document' %}" class="d-inline-flex gap-1">{% csrf_token %}
+                                <input type="hidden" name="document_id" value="{{ doc.id }}">
+                                <input name="notes" class="form-control form-control-sm" style="width:9rem" placeholder="Reason" required aria-label="Rejection reason">
+                                <button class="btn btn-sm btn-outline-danger">Reject</button>
+                            </form>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr><td colspan="6" class="text-muted text-center py-3">No documents uploaded.</td></tr>
+                {% endfor %}
+                </tbody>
+            </table></div>
+        </div>
+    </div>
+</div>
+{% endblock %}

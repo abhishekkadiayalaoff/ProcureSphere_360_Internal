@@ -37,8 +37,11 @@ def test_procurement_executive_end_to_end(client, procurement_world):
     client.force_login(w["exec"])
     gov = _ok(client.get("/vendors/governance/?operational_status=ACTIVE&q=Alpha"))
     assert [v.id for v in gov.context["vendors"]] == [w["vendor_a"].id]
-    detail = client.get(f"/vendors/{w['vendor_a'].id}/").content.decode()
-    assert "Low Risk" in detail and "No performance data available." in detail
+    # Risk and performance live on their independent detail pages now.
+    risk_page = client.get(f"/vendors/{w['vendor_a'].id}/risk/").content.decode()
+    assert "Low Risk" in risk_page
+    perf_page = client.get(f"/vendors/{w['vendor_a'].id}/performance/").content.decode()
+    assert "No performance data available." in perf_page
 
     # 5-6. New RFP with technical and commercial sections and bid window
     res = client.post(
@@ -206,8 +209,10 @@ def test_procurement_executive_end_to_end(client, procurement_world):
     assert card.responsiveness_score is not None and card.delivery_score is None
 
     # 27-29. Governance shows sourcing/PO relationship, performance and audit history
-    detail = client.get(f"/vendors/{w['vendor_a'].id}/").content.decode()
-    assert event.event_number in detail and po.po_number in detail and "Q4-2026" in detail
+    detail = client.get(f"/vendors/{w['vendor_a'].id}/sourcing/").content.decode()
+    assert event.event_number in detail and po.po_number in detail
+    detail = client.get(f"/vendors/{w['vendor_a'].id}/performance/").content.decode()
+    assert "Q4-2026" in detail
     trail = set(
         AuditLog.objects.filter(target_object_id=str(event.id)).values_list(
             "new_state__status", flat=True

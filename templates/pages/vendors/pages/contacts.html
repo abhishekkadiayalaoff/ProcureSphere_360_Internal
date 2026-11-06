@@ -1,0 +1,74 @@
+{% extends base_layout|default:'base.html' %}
+
+{% block title %}{{ vendor.legal_name }} — Contacts — {{ vendor.vendor_number }}{% endblock %}
+
+{% block manager_breadcrumbs %}
+{% include 'partials/vendor_pages/breadcrumbs.html' with page_label='Contacts' %}
+{% endblock manager_breadcrumbs %}
+
+{% block content %}
+{% include 'partials/vendor_pages/header.html' %}
+
+<div class="row g-4">
+    <div class="col-lg-4">
+        <div class="glass-card p-4 shadow-sm h-100">
+            <h5 class="fw-bold mb-3"><i class="fa-solid fa-user-tie me-2 text-info"></i>Primary contact</h5>
+            {% for c in contact_groups.primary %}
+                <div class="border-bottom py-2 small">
+                    <div class="fw-semibold">{{ c.first_name }} {{ c.last_name }}</div>
+                    <div class="text-muted">{{ c.designation|default:"—" }}</div>
+                    <div>{{ c.email }}{% if c.phone %} · {{ c.phone }}{% endif %}</div>
+                </div>
+            {% empty %}
+                <p class="small text-muted mb-0">No primary contact on file. Vendor communication falls back to the vendor email registered on the vendor master data.</p>
+            {% endfor %}
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="glass-card p-4 shadow-sm h-100">
+            <h5 class="fw-bold mb-3"><i class="fa-solid fa-receipt me-2 text-info"></i>Finance contact</h5>
+            {% for c in contact_groups.finance %}
+                <div class="border-bottom py-2 small">
+                    <div class="fw-semibold">{{ c.first_name }} {{ c.last_name }}</div>
+                    <div class="text-muted">{{ c.designation|default:"—" }}</div>
+                    <div>{{ c.email }}{% if c.phone %} · {{ c.phone }}{% endif %}</div>
+                </div>
+            {% empty %}
+                <p class="small text-muted mb-0">No finance contact on file.</p>
+            {% endfor %}
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="glass-card p-4 shadow-sm h-100">
+            <h5 class="fw-bold mb-3"><i class="fa-solid fa-handshake me-2 text-info"></i>Sales contact</h5>
+            {% for c in contact_groups.sales %}
+                <div class="border-bottom py-2 small">
+                    <div class="fw-semibold">{{ c.first_name }} {{ c.last_name }}</div>
+                    <div class="text-muted">{{ c.designation|default:"—" }}</div>
+                    <div>{{ c.email }}{% if c.phone %} · {{ c.phone }}{% endif %}</div>
+                </div>
+            {% empty %}
+                <p class="small text-muted mb-0">No sales contact on file.</p>
+            {% endfor %}
+        </div>
+    </div>
+    {% if contact_groups.other %}
+    <div class="col-12">
+        <div class="glass-card p-4 shadow-sm">
+            <h5 class="fw-bold mb-3"><i class="fa-solid fa-address-book me-2 text-info"></i>Other contacts</h5>
+            <div class="row g-3">
+                {% for c in contact_groups.other %}
+                <div class="col-md-4">
+                    <div class="border rounded p-3 small">
+                        <div class="fw-semibold">{{ c.first_name }} {{ c.last_name }}</div>
+                        <div class="text-muted">{{ c.designation|default:"—" }}</div>
+                        <div>{{ c.email }}{% if c.phone %} · {{ c.phone }}{% endif %}</div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

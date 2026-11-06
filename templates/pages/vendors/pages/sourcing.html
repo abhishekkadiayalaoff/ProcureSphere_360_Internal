@@ -1,0 +1,67 @@
+{% extends base_layout|default:'base.html' %}
+
+{% block title %}{{ vendor.legal_name }} — Sourcing &amp; POs — {{ vendor.vendor_number }}{% endblock %}
+
+{% block manager_breadcrumbs %}
+{% include 'partials/vendor_pages/breadcrumbs.html' with page_label='Sourcing &amp; POs' %}
+{% endblock manager_breadcrumbs %}
+
+{% block content %}
+{% include 'partials/vendor_pages/header.html' %}
+
+<div class="row g-4">
+    <div class="col-12">
+        <div class="glass-card p-4 shadow-sm mb-4">
+            <h5 class="fw-bold mb-3"><i class="fa-solid fa-gauge-high me-2 text-warning"></i>Open exposure</h5>
+            <div class="d-flex flex-wrap gap-2">
+                <span class="badge bg-light text-dark border">Open invitations: {{ exposure.summary.open_invitations }}</span>
+                <span class="badge bg-light text-dark border">Open bids: {{ exposure.summary.open_bids }}</span>
+                <span class="badge bg-light text-dark border">Pending awards: {{ exposure.summary.pending_awards }}</span>
+                <span class="badge bg-light text-dark border">Open POs: {{ exposure.summary.open_pos }}</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-6">
+        <div class="glass-card p-4 shadow-sm h-100">
+            <h5 class="fw-bold mb-3"><i class="fa-solid fa-envelope-open-text me-2 text-warning"></i>RFQ/RFP invitations</h5>
+            <div class="table-responsive"><table class="table table-sm small mb-0">
+                <thead><tr><th>Event</th><th>Status</th><th>Responded</th></tr></thead>
+                <tbody>
+                {% for inv in sourcing_history %}
+                    <tr><td><a href="{% url 'sourcing_detail' inv.event.id %}">{{ inv.event.event_number }}</a> <span class="text-muted">{{ inv.event.title|truncatechars:40 }}</span></td><td>{{ inv.event.get_status_display }}</td><td>{{ inv.is_responded|yesno:"Yes,No" }}</td></tr>
+                {% empty %}<tr><td colspan="3" class="text-muted">No invitations.</td></tr>{% endfor %}
+                </tbody>
+            </table></div>
+        </div>
+    </div>
+
+    <div class="col-lg-6">
+        <div class="glass-card p-4 shadow-sm h-100">
+            <h5 class="fw-bold mb-3"><i class="fa-solid fa-trophy me-2 text-warning"></i>Awards</h5>
+            <div class="table-responsive"><table class="table table-sm small mb-0">
+                <thead><tr><th>Event</th><th>Decision</th><th>Status</th></tr></thead>
+                <tbody>
+                {% for decision in awards %}
+                    <tr><td><a href="{% url 'sourcing_detail' decision.event.id %}">{{ decision.event.event_number }}</a> <span class="text-muted">{{ decision.event.title|truncatechars:30 }}</span></td><td>{{ decision.winning_bid.bid_number }}</td><td>{% if decision.status == 'APPROVED' %}<span class="badge bg-success">Approved</span>{% else %}<span class="badge bg-secondary">Pending approval</span>{% endif %}</td></tr>
+                {% empty %}<tr><td colspan="3" class="text-muted">No award decisions.</td></tr>{% endfor %}
+                </tbody>
+            </table></div>
+        </div>
+    </div>
+
+    <div class="col-12">
+        <div class="glass-card p-4 shadow-sm">
+            <h5 class="fw-bold mb-3"><i class="fa-solid fa-file-signature me-2 text-warning"></i>Purchase orders</h5>
+            <div class="table-responsive"><table class="table table-sm small mb-0">
+                <thead><tr><th>PO</th><th>Status</th><th class="text-end">Total</th></tr></thead>
+                <tbody>
+                {% for po in purchase_orders %}
+                    <tr><td><a href="{% url 'order_detail' po.id %}">{{ po.po_number }}</a> v{{ po.version }}</td><td>{{ po.get_status_display }}</td><td class="text-end">{{ po.total_amount|floatformat:2 }}</td></tr>
+                {% empty %}<tr><td colspan="3" class="text-muted">No purchase orders.</td></tr>{% endfor %}
+                </tbody>
+            </table></div>
+        </div>
+    </div>
+</div>
+{% endblock %}
