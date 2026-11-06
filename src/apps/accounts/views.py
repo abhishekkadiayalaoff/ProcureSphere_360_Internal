@@ -273,9 +273,6 @@ def portal_logout_view(request):
     Logs out the user from the ERP Portal and redirects to the public landing page (/).
 
     """
-    if request.method != "POST":
-        return HttpResponseNotAllowed(["POST"], "Logout must be requested via POST.")
-
     user = request.user if request.user.is_authenticated else None
 
     if user:
