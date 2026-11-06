@@ -228,63 +228,64 @@
         aside.bg-dark .sidebar-nav-container::-webkit-scrollbar-thumb:hover {
             background: rgba(255, 255, 255, 0.3) !important;
         }
-                /* Refined Neat Whitish Shade for Navbar Brand Logo */
+                        /* Seamless Brand Logo with Subtle Ambient Whitish Backlight (Zero Sticker Box) */
         .dashboard-brand-badge {
             display: inline-flex !important;
             align-items: center !important;
-            justify-content: center !important;
-            background: rgba(255, 255, 255, 0.94) !important;
-            border: 1px solid rgba(255, 255, 255, 0.35) !important;
-            border-radius: 8px !important;
-            padding: 3px 10px !important;
-            height: 44px !important;
-            max-height: 44px !important;
-            width: auto !important;
-            max-width: 220px !important;
-            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12) !important;
+            justify-content: flex-start !important;
+            background: transparent !important;
+            background-color: transparent !important;
+            border: none !important;
+            border-radius: 0 !important;
+            padding: 0 !important;
+            box-shadow: none !important;
             text-decoration: none !important;
             flex-shrink: 0 !important;
             box-sizing: border-box !important;
             vertical-align: middle !important;
-            transition: all 0.2s ease !important;
+            height: 44px !important;
+            max-height: 44px !important;
+            width: auto !important;
+            max-width: 220px !important;
+            transition: opacity 0.2s ease !important;
         }
         .dashboard-brand-badge:hover {
-            background: #ffffff !important;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18) !important;
-            transform: translateY(-1px) !important;
+            opacity: 0.88 !important;
+            background: transparent !important;
+            box-shadow: none !important;
+            transform: none !important;
         }
         .dashboard-brand-logo {
-            height: 34px !important;
-            max-height: 34px !important;
+            height: 40px !important;
+            max-height: 40px !important;
             width: auto !important;
-            max-width: 196px !important;
+            max-width: 210px !important;
             object-fit: contain !important;
             display: block !important;
+            filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.45));
         }
         @media (max-width: 768px) {
             .dashboard-brand-badge {
                 height: 38px !important;
                 max-height: 38px !important;
-                padding: 2px 8px !important;
-                border-radius: 7px !important;
+                padding: 0 !important;
             }
             .dashboard-brand-logo {
-                height: 28px !important;
-                max-height: 28px !important;
-                max-width: 160px !important;
+                height: 34px !important;
+                max-height: 34px !important;
+                max-width: 170px !important;
             }
         }
         @media (max-width: 480px) {
             .dashboard-brand-badge {
-                height: 34px !important;
-                max-height: 34px !important;
-                padding: 3px 10px !important;
-                border-radius: 6px !important;
+                height: 32px !important;
+                max-height: 32px !important;
+                padding: 0 !important;
             }
             .dashboard-brand-logo {
-                height: 24px !important;
-                max-height: 24px !important;
-                max-width: 130px !important;
+                height: 28px !important;
+                max-height: 28px !important;
+                max-width: 140px !important;
             }
         }
         /* Proc Exec brand badge matching vendor standard */
@@ -299,8 +300,8 @@
                 max-width: 100% !important;
                 height: 44px !important;
                 max-height: 44px !important;
-                padding: 3px 10px !important;
-                border-radius: 8px !important;
+                padding: 0 !important;
+                border-radius: 0 !important;
                 margin: 0 !important;
             }
             .proc-exec-top-brand .dashboard-brand-logo {
@@ -317,8 +318,8 @@
                 max-width: 190px !important;
                 height: 38px !important;
                 max-height: 38px !important;
-                padding: 2px 8px !important;
-                border-radius: 8px !important;
+                padding: 0 !important;
+                border-radius: 0 !important;
                 margin: 0 !important;
             }
         }
@@ -428,7 +429,7 @@
                     <i class="fa-solid fa-bars text-white fs-4"></i>
                 </button>
                 <a href="/procurement/" class="dashboard-brand-badge proc-exec-top-brand" aria-label="ProcureSphere 360 Home">
-                    <img src="{% static 'landing/images/procuresphere_360_nav_brand.png' %}" alt="ProcureSphere 360" class="dashboard-brand-logo">
+                    <img src="{% static 'landing/images/procuresphere_360_nav_brand_dark.png' %}" alt="ProcureSphere 360" class="dashboard-brand-logo">
                 </a>
                 <span class="d-none">Procurement Executive</span>
             </div>
@@ -491,7 +492,7 @@
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm py-2">
         <div class="container-fluid px-2 px-sm-3 px-lg-4">
             <a href="/" class="dashboard-brand-badge me-2 me-lg-3" aria-label="ProcureSphere 360 Home">
-                <img src="{% static 'landing/images/procuresphere_360_nav_brand.png' %}" alt="ProcureSphere 360" class="dashboard-brand-logo">
+                <img src="{% static 'landing/images/procuresphere_360_nav_brand_dark.png' %}" alt="ProcureSphere 360" class="dashboard-brand-logo">
             </a>
             {% if user.role_code == 'PROC_MGR' %}
             <span class="d-none">Procurement Manager</span>
