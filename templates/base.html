@@ -228,63 +228,63 @@
         aside.bg-dark .sidebar-nav-container::-webkit-scrollbar-thumb:hover {
             background: rgba(255, 255, 255, 0.3) !important;
         }
-        /* Clean Seamless Logo Brand Treatment for All Dashboards (No Sticker Box) */
+                /* Refined Neat Whitish Shade for Navbar Brand Logo */
         .dashboard-brand-badge {
             display: inline-flex !important;
             align-items: center !important;
-            justify-content: flex-start !important;
-            background: transparent !important;
-            box-shadow: none !important;
-            border: none !important;
-            border-radius: 0 !important;
-            padding: 0 !important;
+            justify-content: center !important;
+            background: rgba(255, 255, 255, 0.94) !important;
+            border: 1px solid rgba(255, 255, 255, 0.35) !important;
+            border-radius: 8px !important;
+            padding: 3px 10px !important;
+            height: 44px !important;
+            max-height: 44px !important;
+            width: auto !important;
+            max-width: 220px !important;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12) !important;
             text-decoration: none !important;
             flex-shrink: 0 !important;
             box-sizing: border-box !important;
             vertical-align: middle !important;
-            height: 48px !important;
-            max-height: 48px !important;
-            width: auto !important;
-            max-width: 240px !important;
-            transition: opacity 0.2s ease !important;
+            transition: all 0.2s ease !important;
         }
         .dashboard-brand-badge:hover {
-            opacity: 0.88 !important;
-            transform: none !important;
-            box-shadow: none !important;
+            background: #ffffff !important;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18) !important;
+            transform: translateY(-1px) !important;
         }
         .dashboard-brand-logo {
-            height: 42px !important;
-            max-height: 42px !important;
+            height: 34px !important;
+            max-height: 34px !important;
             width: auto !important;
-            max-width: 220px !important;
+            max-width: 196px !important;
             object-fit: contain !important;
             display: block !important;
         }
         @media (max-width: 768px) {
             .dashboard-brand-badge {
-                height: 40px !important;
-                max-height: 40px !important;
-                max-width: 180px !important;
-                padding: 0 !important;
+                height: 38px !important;
+                max-height: 38px !important;
+                padding: 2px 8px !important;
+                border-radius: 7px !important;
             }
             .dashboard-brand-logo {
-                height: 36px !important;
-                max-height: 36px !important;
-                max-width: 180px !important;
+                height: 28px !important;
+                max-height: 28px !important;
+                max-width: 160px !important;
             }
         }
         @media (max-width: 480px) {
             .dashboard-brand-badge {
                 height: 34px !important;
                 max-height: 34px !important;
-                max-width: 150px !important;
-                padding: 0 !important;
+                padding: 3px 10px !important;
+                border-radius: 6px !important;
             }
             .dashboard-brand-logo {
-                height: 30px !important;
-                max-height: 30px !important;
-                max-width: 140px !important;
+                height: 24px !important;
+                max-height: 24px !important;
+                max-width: 130px !important;
             }
         }
         /* Proc Exec brand badge matching vendor standard */
@@ -297,16 +297,16 @@
             .proc-exec-top-brand {
                 width: 100% !important;
                 max-width: 100% !important;
-                height: 62px !important;
-                max-height: 62px !important;
-                padding: 2px 6px !important;
-                border-radius: 10px !important;
+                height: 44px !important;
+                max-height: 44px !important;
+                padding: 3px 10px !important;
+                border-radius: 8px !important;
                 margin: 0 !important;
             }
             .proc-exec-top-brand .dashboard-brand-logo {
                 width: 100% !important;
                 height: 100% !important;
-                max-height: 56px !important;
+                max-height: 34px !important;
                 object-fit: contain !important;
             }
         }
@@ -315,9 +315,9 @@
             .proc-exec-top-brand {
                 width: 190px !important;
                 max-width: 190px !important;
-                height: 48px !important;
-                max-height: 48px !important;
-                padding: 4px 8px !important;
+                height: 38px !important;
+                max-height: 38px !important;
+                padding: 2px 8px !important;
                 border-radius: 8px !important;
                 margin: 0 !important;
             }
@@ -428,7 +428,7 @@
                     <i class="fa-solid fa-bars text-white fs-4"></i>
                 </button>
                 <a href="/procurement/" class="dashboard-brand-badge proc-exec-top-brand" aria-label="ProcureSphere 360 Home">
-                    <img src="{% static 'landing/images/procuresphere_360_nav_brand_dark.png' %}" alt="ProcureSphere 360" class="dashboard-brand-logo">
+                    <img src="{% static 'landing/images/procuresphere_360_nav_brand.png' %}" alt="ProcureSphere 360" class="dashboard-brand-logo">
                 </a>
                 <span class="d-none">Procurement Executive</span>
             </div>
@@ -491,7 +491,7 @@
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm py-2">
         <div class="container-fluid px-2 px-sm-3 px-lg-4">
             <a href="/" class="dashboard-brand-badge me-2 me-lg-3" aria-label="ProcureSphere 360 Home">
-                <img src="{% static 'landing/images/procuresphere_360_nav_brand_dark.png' %}" alt="ProcureSphere 360" class="dashboard-brand-logo">
+                <img src="{% static 'landing/images/procuresphere_360_nav_brand.png' %}" alt="ProcureSphere 360" class="dashboard-brand-logo">
             </a>
             {% if user.role_code == 'PROC_MGR' %}
             <span class="d-none">Procurement Manager</span>
