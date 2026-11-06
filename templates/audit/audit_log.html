@@ -60,12 +60,30 @@
 </div>
 
 <!-- Audit Trail Table -->
+<style>
+    .audit-log-table-wrap {
+        max-height: 65vh;
+        overflow-y: auto;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+    }
+    .audit-log-table-wrap table {
+        margin-bottom: 0;
+    }
+    .audit-log-table-wrap thead th {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        background: #f8fafc !important;
+        box-shadow: 0 2px 2px -1px rgba(0,0,0,0.08);
+    }
+</style>
 <div class="glass-card shadow-sm overflow-hidden">
     <div class="d-flex justify-content-between align-items-center p-3 border-bottom bg-light">
         <span class="fw-semibold text-dark small">Total Records: {{ total_count }}</span>
         <span class="badge bg-secondary-subtle text-secondary border">Page {{ current_page }} of {{ total_pages }}</span>
     </div>
-    <div class="table-responsive">
+    <div class="audit-log-table-wrap">
         <table class="table table-hover align-middle mb-0">
             <thead class="table-light small text-uppercase text-muted">
                 <tr>
