@@ -23,6 +23,7 @@ class Role(models.Model):
     PROC_EXEC = "PROC_EXEC"
 
     PROC_MGR = "PROC_MGR"
+    PROCUREMENT_MANAGER = "PROC_MGR"
 
     FINANCE_AP = "FINANCE_AP"
 
@@ -283,6 +284,8 @@ class User(AbstractUser):
         # Only Requesters are tied to a Department and Cost Center.
         # All other roles belong to the entire organization and have no department/cost center.
         if self.role and self.role.code != Role.REQUESTER:
+            if not self.organization_id and self.department_id and hasattr(self.department, "organization"):
+                self.organization = self.department.organization
             self.department = None
             self.cost_center = None
 

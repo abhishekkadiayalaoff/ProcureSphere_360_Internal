@@ -1349,7 +1349,7 @@ VENDOR_GOVERNANCE_TRANSITIONS = {
 
     # Manager Direct Suspension / Blacklist from any status
 
-    (Vendor.STATUS_DRAFT, Vendor.STATUS_SUSPENDED): "suspend",
+    # (Vendor.STATUS_DRAFT, Vendor.STATUS_SUSPENDED) removed for DEF-061
 
     (Vendor.STATUS_SUBMITTED, Vendor.STATUS_SUSPENDED): "suspend",
 

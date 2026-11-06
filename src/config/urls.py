@@ -67,6 +67,7 @@ urlpatterns = [
     path("budgets/", include("apps.budgets.urls")),
 
     # REST API v1
+    path("api/v1/auth/login/", SessionLoginView.as_view(), name="session_login"),
     path("api/v1/auth/token/", SessionLoginView.as_view(), name="token_obtain_pair"),
     path("api/v1/auth/token/refresh/", SessionLoginView.as_view(), name="token_refresh"),
     path("api/v1/auth/logout/", SessionLogoutView.as_view(), name="session_logout"),

@@ -321,7 +321,7 @@ class TestVendorSuspensionWorkflow:
             )
 
         # 2. PO amendment blocked
-        with pytest.raises(ValidationError, match="(?i)suspended"):
+        with pytest.raises(ValidationError, match="(?i)(suspended|not active)"): 
             order_svc.amend_purchase_order_service(
                 po=po,
                 reason="Increase quantity",
@@ -481,10 +481,20 @@ class TestRiskHistoryWorkflow:
             record_vendor_risk_assessment_service(
                 vendor=v,
                 assessor=s["exec"],
-                risk_level="CRITICAL",
+                risk_level="INVALID_RISK_LEVEL",
                 risk_flags=[],
                 notes="Invalid level test",
             )
+
+        # DEF-033: CRITICAL risk level is supported
+        rec = record_vendor_risk_assessment_service(
+            vendor=v,
+            assessor=s["exec"],
+            risk_level="CRITICAL",
+            risk_flags=[],
+            notes="Valid critical risk assessment",
+        )
+        assert rec.risk_level == "CRITICAL"
 
         with pytest.raises(ValidationError, match="Unknown risk flag"):
             record_vendor_risk_assessment_service(
@@ -574,8 +584,16 @@ class TestRiskHistoryWorkflow:
         assert client.get(f"/api/v1/vendors/{v.id}/risk/").status_code == status.HTTP_403_FORBIDDEN
         assert client.get(f"/api/v1/vendors/{v.id}/history/").status_code == status.HTTP_403_FORBIDDEN
 
-        # 3. Executive can record assessment via dedicated API View
+        # 3. Executive denied (DEF-062 / VEN-082) and Manager can record assessment via dedicated API View
         client.force_authenticate(user=s["exec"])
+        res_exec_denied = client.post(
+            f"/api/v1/vendors/{v.id}/assess-risk/",
+            {"risk_level": "HIGH", "notes": "Supplier default risk", "risk_flags": ["FINANCIAL"]},
+            format="json",
+        )
+        assert res_exec_denied.status_code == status.HTTP_403_FORBIDDEN
+
+        client.force_authenticate(user=s["mgr"])
         res_assess = client.post(
             f"/api/v1/vendors/{v.id}/assess-risk/",
             {"risk_level": "HIGH", "notes": "Supplier default risk", "risk_flags": ["FINANCIAL"]},

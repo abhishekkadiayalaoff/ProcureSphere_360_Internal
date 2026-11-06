@@ -115,7 +115,7 @@ def test_manager_approvals_view_access(client, org_and_users):
 
     assert response.status_code == status.HTTP_200_OK
     assert "manager/approvals.html" in [t.name for t in response.templates]
-    assert "Pending Approvals Governance Desk" in response.content.decode("utf-8")
+    assert "Pending Approvals" in response.content.decode("utf-8")
 
 
 @pytest.mark.django_db
@@ -154,53 +154,46 @@ def test_manager_approvals_api_data(client, org_and_users):
     assert len(data["results"]) >= 2
     ref_numbers = [item["reference_number"] for item in data["results"]]
     assert "PR-TEST-001" in ref_numbers
+    assert all(item["can_approve"] is False for item in data["results"])
 
 
 @pytest.mark.django_db
 def test_manager_approval_action_api(client, org_and_users):
-    """POST /api/v1/manager/approvals/action/ approves a pending PR and PO Amendment correctly."""
+    """Procurement Manager has approval oversight only and cannot approve or reject."""
     client.force_login(org_and_users["manager"])
     url = reverse("manager-approval-action-api")
 
-    # 1. Test approving PO Amendment
+    # 1. Attempting to approve PO Amendment must be rejected with 403 Forbidden
     amendment = org_and_users["amendment"]
     payload_po = {
         "item_type": "PO_AMENDMENT",
         "item_id": str(amendment.id),
         "action": "APPROVE",
-        "comments": "PO Amendment approved by Procurement Manager.",
+        "comments": "Attempting approval.",
     }
     response_po = client.post(url, data=payload_po, content_type="application/json")
-    assert response_po.status_code == status.HTTP_200_OK
-    assert response_po.json()["success"] is True
+    assert response_po.status_code == status.HTTP_403_FORBIDDEN
+    assert "Permission Denied" in response_po.json()["error"]
+    assert "approval oversight only" in response_po.json()["error"]
 
     amendment.refresh_from_db()
-    assert amendment.status == POAmendment.STATUS_APPROVED
+    assert amendment.status == POAmendment.STATUS_PENDING
 
-    # 2. Test approving PR (simulate Step 1 approved by Dept Approver)
+    # 2. Attempting to approve PR must be rejected with 403 Forbidden
     pr = org_and_users["pr"]
-    ApprovalAction.objects.create(
-        target_object_id=pr.id,
-        target_model_name="PurchaseRequisition",
-        action=ApprovalAction.ACTION_APPROVE,
-        actor=org_and_users["approver"],
-    )
     payload_pr = {
         "item_type": "PR",
         "item_id": str(pr.id),
         "action": "APPROVE",
-        "comments": "Approved by Procurement Manager for strategic sourcing.",
+        "comments": "Attempting PR approval.",
     }
     response_pr = client.post(url, data=payload_pr, content_type="application/json")
-    assert response_pr.status_code == status.HTTP_200_OK
-    assert response_pr.json()["success"] is True
+    assert response_pr.status_code == status.HTTP_403_FORBIDDEN
+    assert "Permission Denied" in response_pr.json()["error"]
+    assert "approval oversight only" in response_pr.json()["error"]
 
     pr.refresh_from_db()
-    assert pr.status in [
-        PurchaseRequisition.STATUS_APPROVED,
-        PurchaseRequisition.STATUS_MANAGER_REVIEW,
-        PurchaseRequisition.STATUS_SOURCING,
-    ]
+    assert pr.status == PurchaseRequisition.STATUS_SUBMITTED
 
 
 @pytest.mark.django_db

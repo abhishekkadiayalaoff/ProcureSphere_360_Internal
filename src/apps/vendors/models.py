@@ -320,11 +320,13 @@ class VendorRiskRecord(TimeStampedModel):
     RISK_LEVEL_LOW = "LOW"
     RISK_LEVEL_MEDIUM = "MEDIUM"
     RISK_LEVEL_HIGH = "HIGH"
+    RISK_LEVEL_CRITICAL = "CRITICAL"
 
     RISK_CHOICES = [
         (RISK_LEVEL_LOW, "Low Risk"),
         (RISK_LEVEL_MEDIUM, "Medium Risk"),
         (RISK_LEVEL_HIGH, "High Risk"),
+        (RISK_LEVEL_CRITICAL, "Critical Risk"),
     ]
 
     vendor = models.ForeignKey(Vendor, on_delete=models.CASCADE, related_name="risk_records")

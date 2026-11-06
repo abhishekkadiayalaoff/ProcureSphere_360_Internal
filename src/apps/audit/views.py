@@ -28,14 +28,16 @@ def _enforce_auditor_access(request):
     if not (
         user.is_superuser
         or role_code
-        in [Role.AUDITOR, Role.SUPER_ADMIN, Role.FINANCE_AP, "AUDITOR", "SUPER_ADMIN", "FINANCE_AP"]
+        in [Role.AUDITOR, Role.SUPER_ADMIN, "AUDITOR", "SUPER_ADMIN"]
     ):
         raise PermissionDenied("Access restricted to Compliance Auditor role.")
 
 
-def _auditor_scope_org(request):
-    """Organization scoping for all audit reads; None for global accounts."""
-    return resolve_user_scope_organization(request.user)
+def _get_auditor_org(request):
+    user = request.user
+    if user.is_superuser:
+        return None
+    return getattr(user, "effective_organization", None) or getattr(user, "organization", None)
 
 
 @login_required
@@ -52,14 +54,15 @@ def auditor_dashboard_view(request):
             period_days = 30
     except (ValueError, TypeError):
         period_days = 30
-    dashboard_data = get_auditor_dashboard_data(period_days=period_days, org=_auditor_scope_org(request))
-    vendor_compliance = get_vendor_compliance_audit(limit=10, org=_auditor_scope_org(request))
-    approval_history = get_approval_history_audit(limit=10, org=_auditor_scope_org(request))
-    po_changes = get_po_changes_audit(limit=10, org=_auditor_scope_org(request))
-    invoice_exceptions = get_invoice_exceptions_audit(limit=10, org=_auditor_scope_org(request))
-    contract_changes = get_contract_changes_audit(limit=10, org=_auditor_scope_org(request))
-    security_events = get_security_events_audit(limit=10, org=_auditor_scope_org(request))
-    sourcing_activity = get_sourcing_activity_audit(limit=10, org=_auditor_scope_org(request))
+    org = _get_auditor_org(request)
+    dashboard_data = get_auditor_dashboard_data(period_days=period_days, user=request.user, organization=org)
+    vendor_compliance = get_vendor_compliance_audit(limit=10, organization=org)
+    approval_history = get_approval_history_audit(limit=10, organization=org)
+    po_changes = get_po_changes_audit(limit=10, organization=org)
+    invoice_exceptions = get_invoice_exceptions_audit(limit=10, organization=org)
+    contract_changes = get_contract_changes_audit(limit=10, organization=org)
+    security_events = get_security_events_audit(limit=10, organization=org)
+    sourcing_activity = get_sourcing_activity_audit(limit=10, organization=org)
 
     context = {
         "metrics": {
@@ -118,6 +121,7 @@ def audit_log_view(request):
         limit = 50
 
     offset = (page - 1) * limit
+    org = _get_auditor_org(request)
 
     data = get_audit_logs(
         limit=limit,
@@ -125,7 +129,7 @@ def audit_log_view(request):
         action=action_filter if action_filter else None,
         search_term=search_query if search_query else None,
         target_model=model_filter if model_filter else None,
-        org=_auditor_scope_org(request),
+        organization=org,
     )
     total_count = data.get("total_count", 0)
     total_pages = max(1, (total_count + limit - 1) // limit)
@@ -180,13 +184,14 @@ def audit_approvals_view(request):
     limit = int(request.GET.get("limit", 50))
     offset = (page - 1) * limit
 
+    org = _get_auditor_org(request)
     data = get_approval_history_audit(
         target_model=target_model if target_model else None,
         action=action_filter if action_filter else None,
         search=search_query if search_query else None,
         limit=limit,
         offset=offset,
-        org=_auditor_scope_org(request),
+        organization=org,
     )
     total_count = data["total_count"]
     total_pages = max(1, (total_count + limit - 1) // limit)
@@ -216,12 +221,13 @@ def audit_po_changes_view(request):
     limit = int(request.GET.get("limit", 50))
     offset = (page - 1) * limit
 
+    org = _get_auditor_org(request)
     data = get_po_changes_audit(
         search=search_query if search_query else None,
         status=status_filter if status_filter else None,
         limit=limit,
         offset=offset,
-        org=_auditor_scope_org(request),
+        organization=org,
     )
     total_count = data["total_count"]
     total_pages = max(1, (total_count + limit - 1) // limit)
@@ -251,13 +257,14 @@ def audit_vendors_view(request):
     limit = int(request.GET.get("limit", 50))
     offset = (page - 1) * limit
 
+    org = _get_auditor_org(request)
     data = get_vendor_compliance_audit(
         status=status_filter if status_filter else None,
         kyc_status=kyc_status if kyc_status else None,
         search=search_query if search_query else None,
         limit=limit,
         offset=offset,
-        org=_auditor_scope_org(request),
+        organization=org,
     )
     total_count = data["total_count"]
     total_pages = max(1, (total_count + limit - 1) // limit)
@@ -288,13 +295,14 @@ def audit_invoice_exceptions_view(request):
     limit = int(request.GET.get("limit", 50))
     offset = (page - 1) * limit
 
+    org = _get_auditor_org(request)
     data = get_invoice_exceptions_audit(
         status=status_filter if status_filter else None,
         exception_type=exception_type if exception_type else None,
         search=search_query if search_query else None,
         limit=limit,
         offset=offset,
-        org=_auditor_scope_org(request),
+        organization=org,
     )
     total_count = data["total_count"]
     total_pages = max(1, (total_count + limit - 1) // limit)
@@ -324,12 +332,13 @@ def audit_contract_changes_view(request):
     limit = int(request.GET.get("limit", 50))
     offset = (page - 1) * limit
 
+    org = _get_auditor_org(request)
     data = get_contract_changes_audit(
         search=search_query if search_query else None,
         status=status_filter if status_filter else None,
         limit=limit,
         offset=offset,
-        org=_auditor_scope_org(request),
+        organization=org,
     )
     total_count = data["total_count"]
     total_pages = max(1, (total_count + limit - 1) // limit)
@@ -358,12 +367,13 @@ def audit_security_events_view(request):
     limit = int(request.GET.get("limit", 50))
     offset = (page - 1) * limit
 
+    org = _get_auditor_org(request)
     data = get_security_events_audit(
         search=search_query if search_query else None,
         action=action_filter if action_filter else None,
         limit=limit,
         offset=offset,
-        org=_auditor_scope_org(request),
+        organization=org,
     )
     total_count = data["total_count"]
     total_pages = max(1, (total_count + limit - 1) // limit)
@@ -393,13 +403,14 @@ def audit_sourcing_activity_view(request):
     limit = int(request.GET.get("limit", 50))
     offset = (page - 1) * limit
 
+    org = _get_auditor_org(request)
     data = get_sourcing_activity_audit(
         status=status_filter if status_filter else None,
         event_type=event_type if event_type else None,
         search=search_query if search_query else None,
         limit=limit,
         offset=offset,
-        org=_auditor_scope_org(request),
+        organization=org,
     )
     total_count = data["total_count"]
     total_pages = max(1, (total_count + limit - 1) // limit)
@@ -426,11 +437,13 @@ def audit_lifecycle_view(request):
     identifier = request.GET.get("identifier", "").strip() or request.GET.get("q", "").strip()
     entity_type = request.GET.get("entity_type", "AUTO").strip()
 
+    org = _get_auditor_org(request)
     lifecycle = None
     if identifier:
         lifecycle = get_transaction_lifecycle_service(
             entity_type=entity_type,
             entity_identifier=identifier,
+            organization=org,
         )
 
     context = {
@@ -451,5 +464,6 @@ def audit_metrics_api_view(request):
         period_days = int(request.GET.get("period_days", 30))
     except (ValueError, TypeError):
         period_days = 30
-    data = get_audit_metrics(period_days=period_days, org=_auditor_scope_org(request))
+    org = _get_auditor_org(request)
+    data = get_audit_metrics(period_days=period_days, organization=org)
     return JsonResponse(data)

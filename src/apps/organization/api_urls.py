@@ -1,4 +1,4 @@
-from rest_framework import serializers, viewsets
+from rest_framework import filters, serializers, viewsets
 from rest_framework.permissions import SAFE_METHODS, BasePermission
 from rest_framework.routers import DefaultRouter
 
@@ -12,17 +12,50 @@ class OrganizationSerializer(serializers.ModelSerializer):
         model = Organization
         fields = "__all__"
 
+    def validate_code(self, value):
+        val = value.strip()
+        qs = Organization.objects.filter(code__iexact=val)
+        if self.instance:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
+            raise serializers.ValidationError("An organization with this code already exists (case-insensitive).")
+        return val
+
 
 class DepartmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Department
         fields = "__all__"
 
+    def validate(self, attrs):
+        code = attrs.get("code", getattr(self.instance, "code", None))
+        org = attrs.get("organization", getattr(self.instance, "organization", None))
+        if code and org:
+            val = code.strip()
+            qs = Department.objects.filter(organization=org, code__iexact=val)
+            if self.instance:
+                qs = qs.exclude(pk=self.instance.pk)
+            if qs.exists():
+                raise serializers.ValidationError({"code": "A department with this code already exists in this organization."})
+        return attrs
+
 
 class CostCenterSerializer(serializers.ModelSerializer):
     class Meta:
         model = CostCenter
         fields = "__all__"
+
+    def validate(self, attrs):
+        code = attrs.get("code", getattr(self.instance, "code", None))
+        dept = attrs.get("department", getattr(self.instance, "department", None))
+        if code and dept:
+            val = code.strip()
+            qs = CostCenter.objects.filter(department=dept, code__iexact=val)
+            if self.instance:
+                qs = qs.exclude(pk=self.instance.pk)
+            if qs.exists():
+                raise serializers.ValidationError({"code": "A cost center with this code already exists in this department."})
+        return attrs
 
 
 class IsAdminOrReadOnly(BasePermission):
@@ -43,42 +76,52 @@ class IsAdminOrReadOnly(BasePermission):
 
 
 class OrganizationViewSet(viewsets.ModelViewSet):
-    queryset = Organization.objects.all()
+    queryset = Organization.objects.all().order_by("name")
     serializer_class = OrganizationSerializer
     permission_classes = [IsAdminOrReadOnly]
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ["name", "code"]
 
     def perform_destroy(self, instance):
-        if instance.departments.exists():
+        if hasattr(instance, "departments") and instance.departments.exists():
             raise serializers.ValidationError(
                 {"detail": "Cannot delete organization: active child departments exist."}
+            )
+        if hasattr(instance, "users") and instance.users.exists():
+            raise serializers.ValidationError(
+                {"detail": "Cannot delete organization: active users are assigned to this organization."}
             )
         instance.delete()
 
 
 class DepartmentViewSet(viewsets.ModelViewSet):
-    queryset = Department.objects.all()
+    queryset = Department.objects.all().order_by("name")
     serializer_class = DepartmentSerializer
     permission_classes = [IsAdminOrReadOnly]
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ["name", "code"]
 
     def perform_destroy(self, instance):
-        if instance.cost_centers.exists():
+        if hasattr(instance, "cost_centers") and instance.cost_centers.exists():
             raise serializers.ValidationError(
                 {"detail": "Cannot delete department: active child cost centers exist."}
             )
-        if instance.users.exists():
+        if hasattr(instance, "users") and instance.users.exists():
             raise serializers.ValidationError(
-                {"detail": "Cannot delete department: users are assigned to this department."}
+                {"detail": "Cannot delete department: active users are assigned to this department."}
             )
         instance.delete()
 
 
 class CostCenterViewSet(viewsets.ModelViewSet):
-    queryset = CostCenter.objects.all()
+    queryset = CostCenter.objects.all().order_by("name")
     serializer_class = CostCenterSerializer
     permission_classes = [IsAdminOrReadOnly]
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ["name", "code"]
 
     def perform_destroy(self, instance):
-        if instance.budgets.exists():
+        if hasattr(instance, "budgets") and instance.budgets.exists():
             raise serializers.ValidationError(
                 {"detail": "Cannot delete cost center: financial budget records exist."}
             )
