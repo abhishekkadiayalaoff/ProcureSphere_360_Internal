@@ -12,7 +12,7 @@
                 <i class="fa-solid fa-bars text-white fs-4"></i>
             </button>
             <a href="/audit/dashboard/" class="dashboard-brand-badge auditor-top-brand" aria-label="ProcureSphere 360 Home">
-                <img src="{% static 'landing/images/procuresphere_360_nav_brand.png' %}" alt="ProcureSphere 360" class="dashboard-brand-logo">
+                <img src="{% static 'landing/images/procuresphere_360_nav_brand_dark.png' %}" alt="ProcureSphere 360" class="dashboard-brand-logo">
             </a>
         </div>
 
@@ -108,49 +108,39 @@
             
             <nav class="d-flex flex-column gap-1" id="sidebarMenu" aria-label="Compliance Auditor Navigation">
                 <a href="/audit/dashboard/" class="vendor-navlink unified-navlink {% if request.path == '/audit/dashboard/' or request.path == '/' or request.path == '/audit/' %}active active-nav-item{% endif %}">
-                    <i class="fa-solid fa-gauge-high nav-icon text-cyan"></i>
                     <span>Executive Dashboard</span>
                 </a>
                 <a href="/audit/logs/" class="vendor-navlink unified-navlink {% if '/audit/logs/' in request.path %}active active-nav-item{% endif %}">
-                    <i class="fa-solid fa-fingerprint nav-icon text-secondary"></i>
                     <span>Audit Logs</span>
                 </a>
                 <a href="/audit/sourcing-activity/" class="vendor-navlink unified-navlink {% if '/audit/sourcing-activity/' in request.path %}active active-nav-item{% endif %}">
-                    <i class="fa-solid fa-gavel nav-icon text-warning"></i>
                     <span>Sourcing &amp; Bids</span>
                 </a>
                 <a href="/audit/approvals/" class="vendor-navlink unified-navlink {% if '/audit/approvals/' in request.path %}active active-nav-item{% endif %}">
-                    <i class="fa-solid fa-signature nav-icon text-success"></i>
                     <span>Approvals &amp; Gate Trail</span>
                 </a>
                 <a href="/audit/po-changes/" class="vendor-navlink unified-navlink {% if '/audit/po-changes/' in request.path %}active active-nav-item{% endif %}">
-                    <i class="fa-solid fa-cart-shopping nav-icon text-cyan"></i>
                     <span>PO Changes &amp; Records</span>
                 </a>
                 <a href="/audit/invoice-exceptions/" class="vendor-navlink unified-navlink {% if '/audit/invoice-exceptions/' in request.path %}active active-nav-item{% endif %}">
-                    <i class="fa-solid fa-triangle-exclamation nav-icon text-warning"></i>
                     <span>Invoice Exceptions</span>
                 </a>
                 <a href="/audit/vendors/" class="vendor-navlink unified-navlink {% if '/audit/vendors/' in request.path %}active active-nav-item{% endif %}">
-                    <i class="fa-solid fa-building-shield nav-icon text-success"></i>
                     <span>Vendor Compliance</span>
                 </a>
                 <a href="/audit/contract-changes/" class="vendor-navlink unified-navlink {% if '/audit/contract-changes/' in request.path %}active active-nav-item{% endif %}">
-                    <i class="fa-solid fa-file-contract nav-icon" style="color:#f97316;"></i>
                     <span>Contracts &amp; SLA Risk</span>
                 </a>
                 <a href="/audit/security-events/" class="vendor-navlink unified-navlink {% if '/audit/security-events/' in request.path %}active active-nav-item{% endif %}">
-                    <i class="fa-solid fa-shield-halved nav-icon text-danger"></i>
+                    
                     <span>Security &amp; Auth Events</span>
                 </a>
                 <a href="/audit/lifecycle/" class="vendor-navlink unified-navlink {% if '/audit/lifecycle/' in request.path %}active active-nav-item{% endif %}">
-                    <i class="fa-solid fa-diagram-project nav-icon text-cyan"></i>
                     <span>Lifecycle Explorer</span>
                 </a>
 
                 <div class="nav-section-label">REPORTS</div>
                 <a href="/reports/hub/" class="vendor-navlink unified-navlink {% if '/reports/' in request.path %}active active-nav-item{% endif %}">
-                    <i class="fa-solid fa-chart-line nav-icon text-secondary"></i>
                     <span>Financial Reports</span>
                 </a>
 
@@ -337,7 +327,7 @@
 
     /* Section label style matching Vendor Standard */
     .nav-section-label {
-        font-size: 0.63rem;
+        font-size: 0.68rem;
         font-weight: 700;
         text-transform: uppercase;
         letter-spacing: 0.08em;
@@ -367,16 +357,16 @@
         .auditor-top-brand {
             width: 100% !important;
             max-width: 100% !important;
-            height: 62px !important;
-            max-height: 62px !important;
-            padding: 2px 6px !important;
-            border-radius: 10px !important;
+            height: 44px !important;
+            max-height: 44px !important;
+            padding: 0 !important;
+            border-radius: 0 !important;
             margin: 0 !important;
         }
         .auditor-top-brand .dashboard-brand-logo {
             width: 100% !important;
             height: 100% !important;
-            max-height: 56px !important;
+            max-height: 34px !important;
             object-fit: contain !important;
         }
     }
@@ -385,10 +375,10 @@
         .auditor-top-brand {
             width: 190px !important;
             max-width: 190px !important;
-            height: 48px !important;
-            max-height: 48px !important;
-            padding: 4px 8px !important;
-            border-radius: 8px !important;
+            height: 38px !important;
+            max-height: 38px !important;
+            padding: 0 !important;
+            border-radius: 0 !important;
             margin: 0 !important;
         }
     }
