@@ -1,26 +1,24 @@
 {% extends 'base.html' %}
 {% load static %}
 
+{% block title %}{% block finance_title %}Finance & AP Workspace{% endblock %} — ProcureSphere 360{% endblock %}
+
 {% block navbar %}
-<!-- Top Navigation for Finance -->
+<!-- Top Navigation for Finance (Vendor Design Standard) -->
 <nav class="navbar navbar-dark bg-dark shadow-sm py-2 sticky-top border-bottom border-secondary border-opacity-25">
-    <div class="container-fluid px-2 px-sm-3 px-lg-4 d-flex align-items-center justify-content-between flex-nowrap">
-        <div class="d-flex align-items-center overflow-hidden me-2">
-            <!-- Mobile / Tablet Hamburger Button -->
-            <button class="btn btn-outline-light btn-sm d-lg-none me-2 rounded-2 flex-shrink-0" type="button" data-bs-toggle="offcanvas" data-bs-target="#financeSidebar" aria-controls="financeSidebar" title="Toggle Navigation">
-                <i class="fa-solid fa-bars-staggered"></i>
+    <div class="container-fluid ps-2 pe-2 pe-sm-3 pe-lg-4 d-flex align-items-center justify-content-between flex-nowrap">
+        <div class="d-flex align-items-center flex-nowrap finance-brand-wrapper">
+            <button class="navbar-toggler border-0 me-2 d-lg-none p-1" type="button" data-bs-toggle="offcanvas" data-bs-target="#financeSidebar" aria-controls="financeSidebar" aria-label="Toggle navigation">
+                <i class="fa-solid fa-bars text-white fs-4"></i>
             </button>
-            <a href="/" class="dashboard-brand-badge me-2 me-lg-3" aria-label="ProcureSphere 360 Home">
+            <a href="/finance/" class="dashboard-brand-badge finance-top-brand" aria-label="ProcureSphere 360 Home">
                 <img src="{% static 'landing/images/procuresphere_360_nav_brand.png' %}" alt="ProcureSphere 360" class="dashboard-brand-logo">
             </a>
-            <span class="badge bg-secondary bg-opacity-25 text-white border border-secondary border-opacity-50 px-2 py-1 rounded-pill d-none d-md-inline-flex align-items-center ms-2 flex-shrink-0" style="font-size: 0.75rem;">
-                <i class="fa-solid fa-building-columns text-danger me-1"></i> Finance & AP
-            </span>
         </div>
 
-        <div class="ms-auto d-flex align-items-center gap-1.5 gap-sm-2 flex-shrink-0">
+        <div class="d-flex align-items-center gap-2 gap-sm-3 flex-shrink-0">
             <!-- Notifications Bell -->
-            <a href="/notifications/" class="btn btn-outline-secondary btn-sm position-relative text-white border-0 d-flex align-items-center justify-content-center p-0 me-1" style="width: 36px; height: 36px;" title="Notifications">
+            <a href="/notifications/" class="btn btn-outline-secondary btn-sm position-relative text-white border-0 d-flex align-items-center justify-content-center p-0" style="width: 36px; height: 36px;" title="Notifications">
                 <i class="fa-solid fa-bell fs-5"></i>
                 {% if unread_notifications_count and unread_notifications_count > 0 %}
                 <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size: 0.65rem;">
@@ -29,17 +27,33 @@
                 </span>
                 {% endif %}
             </a>
+
+            <!-- User Profile Dropdown (Vendor Style) -->
             {% if user.is_authenticated %}
-                <div class="d-none d-md-flex align-items-center px-2 px-sm-3 py-1 bg-secondary bg-opacity-25 rounded-pill border border-secondary border-opacity-50 text-white">
-                    <i class="fa-solid fa-circle-user text-info me-1 me-sm-2 fs-5"></i>
-                    <div class="text-start leading-tight me-1">
-                        <div class="fw-semibold text-white small text-truncate" style="max-width: 140px;">{{ user.email }}</div>
-                        <div class="badge bg-danger text-white rounded-pill" style="font-size: 0.65rem;">{{ user.role_code|default:"FINANCE_AP" }}</div>
-                    </div>
-                </div>
-                <a href="/logout/" class="btn btn-outline-light btn-sm rounded-pill px-2.5 px-sm-3 text-nowrap d-inline-flex align-items-center" title="Sign Out">
-                    <i class="fa-solid fa-arrow-right-from-bracket"></i> <span class="d-none d-sm-inline ms-1">Sign Out</span>
-                </a>
+            <div class="dropdown">
+                <button class="btn btn-link text-decoration-none p-0 border-0 d-flex align-items-center justify-content-center rounded-circle"
+                        type="button"
+                        id="financeProfileDropdown"
+                        data-bs-toggle="dropdown"
+                        aria-expanded="false"
+                        title="Account Menu"
+                        style="width: 38px; height: 38px; background: rgba(255, 255, 255, 0.08); transition: all 0.2s ease;">
+                    <i class="fa-solid fa-circle-user text-cyan fs-4"></i>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end shadow-lg py-2 mt-2"
+                    aria-labelledby="financeProfileDropdown"
+                    style="min-width: 220px; background: #1e293b; border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 12px;">
+                    <li class="px-3 py-2 border-bottom border-secondary border-opacity-25">
+                        <div class="fw-semibold text-white small text-truncate" title="{{ user.email }}">{{ user.email }}</div>
+                        <div class="text-white-50" style="font-size: 0.72rem;">Finance & AP</div>
+                    </li>
+                    <li>
+                        <a class="dropdown-item text-danger d-flex align-items-center py-2 px-3 small" href="/logout/" style="transition: background 0.15s ease;">
+                            <i class="fa-solid fa-arrow-right-from-bracket me-2" style="width: 16px;"></i> Sign Out
+                        </a>
+                    </li>
+                </ul>
+            </div>
             {% endif %}
         </div>
     </div>
@@ -47,184 +61,237 @@
 {% endblock navbar %}
 
 {% block layout %}
-<div class="d-flex" style="min-height: calc(100vh - 56px);">
-    <!-- Desktop Sidebar (>= 992px) -->
-    <aside class="bg-dark border-end border-secondary border-opacity-25 shadow-sm d-none d-lg-flex flex-column" style="width: 260px; flex-shrink: 0;">
-        <div class="p-3 d-flex flex-column flex-grow-1">
-            <h6 class="text-uppercase text-light fw-bold mb-3 small"><i class="fa-solid fa-compass me-2"></i>Finance Menu</h6>
-            <ul class="nav flex-column gap-1">
-                <li class="nav-item">
-                    <a href="/finance/" class="nav-link rounded sidebar-link {% if request.path == '/finance/' or request.path == '/finance/dashboard/' or request.path == '/' %}active bg-danger fw-bold text-white border-start border-3 border-light{% else %}text-light{% endif %}">
-                        <i class="fa-solid fa-chart-pie me-2 {% if request.path == '/finance/' or request.path == '/finance/dashboard/' or request.path == '/' %}text-white{% else %}text-danger{% endif %} w-20px text-center"></i> Dashboard
-                    </a>
-                </li>
-                
-                <li class="nav-item mt-2">
-                    <div class="text-uppercase text-secondary fw-bold mb-2 small px-2">Invoices & AP</div>
-                    <a href="/invoices/" class="nav-link rounded sidebar-link {% if request.path == '/invoices/' %}active bg-danger fw-bold text-white border-start border-3 border-light{% else %}text-light{% endif %}">
-                        <i class="fa-solid fa-file-invoice-dollar me-2 {% if request.path == '/invoices/' %}text-white{% else %}text-info{% endif %} w-20px text-center"></i> All Invoices
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="/invoices/exceptions/" class="nav-link rounded sidebar-link {% if request.path == '/invoices/exceptions/' %}active bg-danger fw-bold text-white border-start border-3 border-light{% else %}text-light{% endif %}">
-                        <i class="fa-solid fa-triangle-exclamation me-2 {% if request.path == '/invoices/exceptions/' %}text-white{% else %}text-warning{% endif %} w-20px text-center"></i> Match Exceptions
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="/invoices/ready/" class="nav-link rounded sidebar-link {% if request.path == '/invoices/ready/' %}active bg-danger fw-bold text-white border-start border-3 border-light{% else %}text-light{% endif %}">
-                        <i class="fa-solid fa-money-check-dollar me-2 {% if request.path == '/invoices/ready/' %}text-white{% else %}text-success{% endif %} w-20px text-center"></i> Ready for Payment
-                    </a>
-                </li>
+<style>
+    /* Brand sizing to match vendor */
+    @media (min-width: 992px) {
+        .finance-brand-wrapper {
+            width: 244px;
+            max-width: 244px;
+            flex-shrink: 0;
+        }
+        .finance-top-brand {
+            width: 100% !important;
+            max-width: 100% !important;
+            height: 62px !important;
+            max-height: 62px !important;
+            padding: 2px 6px !important;
+            border-radius: 10px !important;
+            margin: 0 !important;
+        }
+        .finance-top-brand .dashboard-brand-logo {
+            width: 100% !important;
+            height: 100% !important;
+            max-height: 56px !important;
+            object-fit: contain !important;
+        }
+    }
+    @media (max-width: 991.98px) {
+        .finance-brand-wrapper {
+            width: auto;
+            max-width: none;
+        }
+        .finance-top-brand {
+            width: 190px !important;
+            max-width: 190px !important;
+            height: 48px !important;
+            max-height: 48px !important;
+            padding: 4px 8px !important;
+            border-radius: 8px !important;
+            margin: 0 !important;
+        }
+    }
 
-                <li class="nav-item mt-2">
-                    <div class="text-uppercase text-secondary fw-bold mb-2 small px-2">Budget Control</div>
-                    <a href="/budgets/" class="nav-link rounded sidebar-link {% if request.path == '/budgets/' %}active bg-danger fw-bold text-white border-start border-3 border-light{% else %}text-light{% endif %}">
-                        <i class="fa-solid fa-vault me-2 {% if request.path == '/budgets/' %}text-white{% else %}text-primary{% endif %} w-20px text-center"></i> Budget Overview
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="/budgets/exceptions/" class="nav-link rounded sidebar-link {% if request.path == '/budgets/exceptions/' %}active bg-danger fw-bold text-white border-start border-3 border-light{% else %}text-light{% endif %}">
-                        <i class="fa-solid fa-scale-unbalanced me-2 {% if request.path == '/budgets/exceptions/' %}text-white{% else %}text-danger{% endif %} w-20px text-center"></i> Budget Exceptions
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="/requisitions/" class="nav-link rounded sidebar-link {% if '/requisitions/' in request.path %}active bg-danger fw-bold text-white border-start border-3 border-light{% else %}text-light{% endif %}">
-                        <i class="fa-solid fa-file-signature me-2 {% if '/requisitions/' in request.path %}text-white{% else %}text-warning{% endif %} w-20px text-center"></i> PR Approvals
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="/budgets/ledger/" class="nav-link rounded sidebar-link {% if request.path == '/budgets/ledger/' %}active bg-danger fw-bold text-white border-start border-3 border-light{% else %}text-light{% endif %}">
-                        <i class="fa-solid fa-book-journal-whills me-2 {% if request.path == '/budgets/ledger/' %}text-white{% else %}text-secondary{% endif %} w-20px text-center"></i> Spend Ledger
-                    </a>
-                </li>
+    /* Preserve sticky sidebar when Bootstrap modal opens */
+    body.modal-open {
+        overflow: visible !important;
+    }
 
-                <li class="nav-item mt-2">
-                    <div class="text-uppercase text-secondary fw-bold mb-2 small px-2">Analytics</div>
-                    <a href="/reports/" class="nav-link rounded sidebar-link {% if '/reports/' in request.path or request.path == '/reports/' %}active bg-danger fw-bold text-white border-start border-3 border-light{% else %}text-light{% endif %}">
-                        <i class="fa-solid fa-chart-line me-2 {% if '/reports/' in request.path or request.path == '/reports/' %}text-white{% else %}text-success{% endif %} w-20px text-center"></i> Reports & Exports
-                    </a>
-                </li>
+    @media (min-width: 992px) {
+        aside.finance-sidebar-desktop,
+        .finance-sidebar-desktop,
+        aside#financeSidebar {
+            width: 260px !important;
+            min-width: 260px !important;
+            flex-shrink: 0 !important;
+            position: sticky !important;
+            top: 79px !important;
+            height: calc(100vh - 79px) !important;
+            max-height: calc(100vh - 79px) !important;
+            overflow: hidden !important;
+            overflow-y: hidden !important;
+            display: flex !important;
+            flex-direction: column !important;
+            z-index: 1000;
+            align-self: flex-start;
+        }
+        .finance-sidebar-desktop nav#financeNav,
+        .finance-sidebar-desktop nav {
+            overflow-y: auto !important;
+            flex: 1 1 auto !important;
+            min-height: 0 !important;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255,255,255,0.15) transparent;
+        }
+        .finance-sidebar-desktop nav::-webkit-scrollbar {
+            width: 4px;
+        }
+        .finance-sidebar-desktop nav::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.15);
+            border-radius: 4px;
+        }
+    }
 
-                <li class="nav-item">
-                    <a href="/notifications/" class="nav-link rounded sidebar-link d-flex align-items-center justify-content-between {% if request.path == '/notifications/' %}active bg-danger fw-bold text-white border-start border-3 border-light{% else %}text-light{% endif %}">
-                        <div>
-                            <i class="fa-solid fa-bell me-2 {% if request.path == '/notifications/' %}text-white{% else %}text-warning{% endif %} w-20px text-center"></i> Notifications
-                        </div>
-                        {% if unread_notifications_count and unread_notifications_count > 0 %}
-                        <span class="badge bg-danger rounded-pill">{{ unread_notifications_count }}</span>
-                        {% endif %}
-                    </a>
-                </li>
-                <li class="nav-item mt-2">
-                    <div class="text-uppercase text-secondary fw-bold mb-2 small px-2">Settings</div>
-                    <a href="/invoices/settings/tolerances/" class="nav-link rounded sidebar-link {% if request.path == '/invoices/settings/tolerances/' %}active bg-danger fw-bold text-white border-start border-3 border-light{% else %}text-light{% endif %}">
-                        <i class="fa-solid fa-gear me-2 {% if request.path == '/invoices/settings/tolerances/' %}text-white{% else %}text-light{% endif %} w-20px text-center"></i> System Settings
-                    </a>
-                </li>
-            </ul>
+    /* Section label style */
+    .nav-section-label {
+        font-size: 0.63rem;
+        letter-spacing: 0.08em;
+        font-weight: 700;
+        text-transform: uppercase;
+        color: rgba(255,255,255,0.4);
+        padding: 0.6rem 0.75rem 0.2rem;
+        margin-top: 0.25rem;
+    }
+
+    /* Top-level nav link matching vendor standard */
+    .finance-navlink {
+        display: flex;
+        align-items: center;
+        padding: 0.45rem 0.75rem;
+        border-radius: 8px;
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: rgba(255,255,255,0.75);
+        text-decoration: none;
+        transition: background 0.15s, color 0.15s;
+    }
+    .finance-navlink:hover,
+    .finance-navlink:focus {
+        background: rgba(255,255,255,0.08);
+        color: #fff;
+    }
+    .finance-navlink.active-nav-item {
+        background: #0d6efd;
+        color: #fff;
+        font-weight: 700;
+        box-shadow: 0 2px 8px rgba(13,110,253,0.35);
+    }
+    .finance-navlink .nav-icon {
+        width: 20px;
+        text-align: center;
+        margin-right: 0.65rem;
+        flex-shrink: 0;
+    }
+</style>
+
+<div class="d-flex align-items-start w-100" style="min-height: calc(100vh - 79px); max-width: 100vw;">
+    <!-- Sidebar Navigation -->
+    <aside class="offcanvas-lg offcanvas-start bg-dark border-end border-secondary border-opacity-25 shadow-sm text-white finance-sidebar-desktop" tabindex="-1" id="financeSidebar" aria-labelledby="financeSidebarLabel">
+
+        <!-- Mobile Drawer Header (Hidden on Desktop) -->
+        <div class="sidebar-brand-box px-3 py-3 border-bottom border-secondary border-opacity-25 flex-shrink-0 d-flex d-lg-none align-items-center justify-content-between">
+            <a href="/finance/" class="d-flex align-items-center text-white text-decoration-none" id="financeSidebarLabel">
+                <div class="brand-icon-box me-2 flex-shrink-0" style="width: 32px; height: 32px; background: rgba(13, 110, 253, 0.2); border-radius: 6px; display: flex; align-items: center; justify-content: center;">
+                    <i class="fa-solid fa-building-columns text-primary"></i>
+                </div>
+                <div class="overflow-hidden">
+                    <div class="fs-6 fw-bold tracking-tight text-white d-block text-truncate">ProcureSphere <span class="text-cyan">360</span></div>
+                    <span class="badge bg-secondary bg-opacity-50 text-light px-2 rounded-pill" style="font-size: 0.62rem; letter-spacing: 0.04em;">FINANCE & AP</span>
+                </div>
+            </a>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" data-bs-target="#financeSidebar" aria-label="Close menu"></button>
         </div>
+
+        <!-- Scrollable Navigation -->
+        <nav class="flex-grow-1 overflow-y-auto px-2 py-3 d-flex flex-column gap-1" id="financeNav" style="flex: 1 1 0%; min-height: 0; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.15) transparent;" aria-label="Finance Navigation">
+            <div class="d-flex align-items-center justify-content-between px-2 mb-2 text-secondary text-uppercase fw-bold" style="font-size: 0.68rem; letter-spacing: 0.06em;">
+                <span>Finance & AP</span>
+                <i class="fa-solid fa-building-columns text-primary" style="font-size:0.75rem;"></i>
+            </div>
+
+            <a href="/finance/" class="finance-navlink {% if request.path == '/finance/' or request.path == '/finance/dashboard/' %}active-nav-item{% endif %}">
+                <i class="fa-solid fa-chart-pie nav-icon text-cyan"></i>Dashboard
+            </a>
+
+            <div class="nav-section-label">Invoices & AP</div>
+
+            <a href="/invoices/" class="finance-navlink {% if request.path == '/invoices/' %}active-nav-item{% endif %}">
+                <i class="fa-solid fa-file-invoice-dollar nav-icon text-info"></i>All Invoices
+            </a>
+            <a href="/invoices/exceptions/" class="finance-navlink {% if request.path == '/invoices/exceptions/' %}active-nav-item{% endif %}">
+                <i class="fa-solid fa-triangle-exclamation nav-icon text-warning"></i>Match Exceptions
+            </a>
+            <a href="/invoices/ready/" class="finance-navlink {% if request.path == '/invoices/ready/' %}active-nav-item{% endif %}">
+                <i class="fa-solid fa-money-check-dollar nav-icon text-success"></i>Ready for Payment
+            </a>
+
+            <div class="nav-section-label">Budget Control</div>
+
+            <a href="/budgets/" class="finance-navlink {% if request.path == '/budgets/' %}active-nav-item{% endif %}">
+                <i class="fa-solid fa-vault nav-icon text-primary"></i>Budget Overview
+            </a>
+            <a href="/budgets/exceptions/" class="finance-navlink {% if request.path == '/budgets/exceptions/' %}active-nav-item{% endif %}">
+                <i class="fa-solid fa-scale-unbalanced nav-icon text-danger"></i>Budget Exceptions
+            </a>
+            <a href="/requisitions/" class="finance-navlink {% if '/requisitions/' in request.path %}active-nav-item{% endif %}">
+                <i class="fa-solid fa-file-signature nav-icon text-warning"></i>PR Approvals
+            </a>
+            <a href="/budgets/ledger/" class="finance-navlink {% if request.path == '/budgets/ledger/' %}active-nav-item{% endif %}">
+                <i class="fa-solid fa-book-journal-whills nav-icon text-secondary"></i>Spend Ledger
+            </a>
+
+            <div class="nav-section-label">Analytics</div>
+
+            <a href="/reports/" class="finance-navlink {% if '/reports/' in request.path %}active-nav-item{% endif %}">
+                <i class="fa-solid fa-chart-line nav-icon text-success"></i>Reports & Exports
+            </a>
+            <a href="/notifications/" class="finance-navlink d-flex justify-content-between {% if request.path == '/notifications/' %}active-nav-item{% endif %}">
+                <span class="d-flex align-items-center">
+                    <i class="fa-solid fa-bell nav-icon text-warning"></i>Notifications
+                </span>
+                {% if unread_notifications_count and unread_notifications_count > 0 %}
+                <span class="badge bg-danger rounded-pill" style="font-size:0.65rem;">{{ unread_notifications_count }}</span>
+                {% endif %}
+            </a>
+
+            <div class="nav-section-label">Settings</div>
+
+            <a href="/invoices/settings/tolerances/" class="finance-navlink {% if request.path == '/invoices/settings/tolerances/' %}active-nav-item{% endif %}">
+                <i class="fa-solid fa-gear nav-icon text-secondary"></i>System Settings
+            </a>
+        </nav>
     </aside>
 
-    <!-- Mobile Offcanvas Sidebar (< 992px) -->
-    <div class="offcanvas offcanvas-start bg-dark text-white d-lg-none" tabindex="-1" id="financeSidebar" aria-labelledby="financeSidebarLabel" style="width: 280px;">
-        <div class="offcanvas-header border-bottom border-secondary border-opacity-25 py-3">
-            <div class="d-flex align-items-center" id="financeSidebarLabel">
-                <i class="fa-solid fa-layer-group text-primary fa-xl me-2"></i>
-                <span class="fs-6 fw-bold text-white">ProcureSphere <span class="text-primary fw-light">360</span></span>
+    <!-- Main Content Area -->
+    <main class="flex-grow-1 p-2 p-sm-3 p-md-4 bg-light w-100" style="min-width: 0; max-width: 100vw; overflow-x: hidden;">
+        <!-- Alert Messages -->
+        {% if messages %}
+        <div class="mb-4">
+            {% for message in messages %}
+            <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show shadow-sm border-0 d-flex align-items-center py-2 px-3" role="alert">
+                <i class="fa-solid {% if message.tags == 'success' %}fa-circle-check text-success{% elif message.tags == 'error' or message.tags == 'danger' %}fa-circle-exclamation text-danger{% else %}fa-circle-info text-primary{% endif %} me-2 fs-5"></i>
+                <div class="flex-grow-1">{{ message }}</div>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
             </div>
-            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+            {% endfor %}
         </div>
-        <div class="offcanvas-body p-3 d-flex flex-column">
-            <h6 class="text-uppercase text-light fw-bold mb-3 small"><i class="fa-solid fa-compass me-2"></i>Finance Menu</h6>
-            <ul class="nav flex-column gap-1">
-                <li class="nav-item">
-                    <a href="/finance/" class="nav-link rounded sidebar-link {% if request.path == '/finance/' or request.path == '/finance/dashboard/' or request.path == '/' %}active bg-danger fw-bold text-white{% else %}text-light{% endif %}">
-                        <i class="fa-solid fa-chart-pie me-2 text-center" style="width: 20px;"></i> Dashboard
-                    </a>
-                </li>
-                
-                <li class="nav-item mt-2">
-                    <div class="text-uppercase text-secondary fw-bold mb-2 small px-2">Invoices & AP</div>
-                    <a href="/invoices/" class="nav-link rounded sidebar-link {% if request.path == '/invoices/' %}active bg-danger fw-bold text-white{% else %}text-light{% endif %}">
-                        <i class="fa-solid fa-file-invoice-dollar me-2 text-center" style="width: 20px;"></i> All Invoices
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="/invoices/exceptions/" class="nav-link rounded sidebar-link {% if request.path == '/invoices/exceptions/' %}active bg-danger fw-bold text-white{% else %}text-light{% endif %}">
-                        <i class="fa-solid fa-triangle-exclamation me-2 text-center" style="width: 20px;"></i> Match Exceptions
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="/invoices/ready/" class="nav-link rounded sidebar-link {% if request.path == '/invoices/ready/' %}active bg-danger fw-bold text-white{% else %}text-light{% endif %}">
-                        <i class="fa-solid fa-money-check-dollar me-2 text-center" style="width: 20px;"></i> Ready for Payment
-                    </a>
-                </li>
+        {% endif %}
 
-                <li class="nav-item mt-2">
-                    <div class="text-uppercase text-secondary fw-bold mb-2 small px-2">Budget Control</div>
-                    <a href="/budgets/" class="nav-link rounded sidebar-link {% if request.path == '/budgets/' %}active bg-danger fw-bold text-white{% else %}text-light{% endif %}">
-                        <i class="fa-solid fa-vault me-2 text-center" style="width: 20px;"></i> Budget Overview
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="/budgets/exceptions/" class="nav-link rounded sidebar-link {% if request.path == '/budgets/exceptions/' %}active bg-danger fw-bold text-white{% else %}text-light{% endif %}">
-                        <i class="fa-solid fa-scale-unbalanced me-2 text-center" style="width: 20px;"></i> Budget Exceptions
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="/requisitions/" class="nav-link rounded sidebar-link {% if '/requisitions/' in request.path %}active bg-danger fw-bold text-white{% else %}text-light{% endif %}">
-                        <i class="fa-solid fa-file-signature me-2 text-center" style="width: 20px;"></i> PR Approvals
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="/budgets/ledger/" class="nav-link rounded sidebar-link {% if request.path == '/budgets/ledger/' %}active bg-danger fw-bold text-white{% else %}text-light{% endif %}">
-                        <i class="fa-solid fa-book-journal-whills me-2 text-center" style="width: 20px;"></i> Spend Ledger
-                    </a>
-                </li>
-
-                <li class="nav-item mt-2">
-                    <div class="text-uppercase text-secondary fw-bold mb-2 small px-2">Analytics</div>
-                    <a href="/reports/" class="nav-link rounded sidebar-link {% if '/reports/' in request.path or request.path == '/reports/' %}active bg-danger fw-bold text-white{% else %}text-light{% endif %}">
-                        <i class="fa-solid fa-chart-line me-2 text-center" style="width: 20px;"></i> Reports & Exports
-                    </a>
-                </li>
-
-                <li class="nav-item">
-                    <a href="/notifications/" class="nav-link rounded sidebar-link d-flex align-items-center justify-content-between {% if request.path == '/notifications/' %}active bg-danger fw-bold text-white{% else %}text-light{% endif %}">
-                        <div>
-                            <i class="fa-solid fa-bell me-2 text-warning text-center" style="width: 20px;"></i> Notifications
-                        </div>
-                        {% if unread_notifications_count and unread_notifications_count > 0 %}
-                        <span class="badge bg-danger rounded-pill">{{ unread_notifications_count }}</span>
-                        {% endif %}
-                    </a>
-                </li>
-                <li class="nav-item mt-2">
-                    <div class="text-uppercase text-secondary fw-bold mb-2 small px-2">Settings</div>
-                    <a href="/invoices/settings/tolerances/" class="nav-link rounded sidebar-link {% if request.path == '/invoices/settings/tolerances/' %}active bg-danger fw-bold text-white{% else %}text-light{% endif %}">
-                        <i class="fa-solid fa-gear me-2 text-center" style="width: 20px;"></i> System Settings
-                    </a>
-                </li>
-            </ul>
-
-            <div class="mt-auto pt-4 border-top border-secondary border-opacity-25">
-                <div class="d-flex align-items-center justify-content-between gap-2 w-100">
-                    <div class="text-start leading-tight overflow-hidden me-2" style="min-width: 0; flex: 1 1 auto;">
-                        <div class="fw-semibold text-white small text-truncate" style="max-width: 150px;" title="{{ user.email }}">{{ user.email }}</div>
-                        <div class="badge bg-danger text-white rounded-pill" style="font-size: 0.65rem;">{{ user.role_code|default:"FINANCE_AP" }}</div>
-                    </div>
-                    <a href="/logout/" class="btn btn-outline-light btn-sm rounded-circle flex-shrink-0 d-inline-flex align-items-center justify-content-center" style="width: 32px; height: 32px; padding: 0;" title="Sign out">
-                        <i class="fa-solid fa-arrow-right-from-bracket"></i>
-                        <span class="visually-hidden">Sign out</span>
-                    </a>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Main Content -->
-    <main class="flex-grow-1 p-3 p-md-4 bg-light overflow-auto" style="min-width: 0;">
         {% block content %}{% endblock %}
     </main>
 </div>
+
+<script>
+    // Handle offcanvas link clicks on mobile (<992px)
+    document.querySelectorAll('#financeSidebar a.finance-navlink').forEach(function(link) {
+        link.addEventListener('click', function() {
+            var sidebarEl = document.getElementById('financeSidebar');
+            if (window.innerWidth < 992 && sidebarEl && typeof bootstrap !== 'undefined') {
+                var offcanvasInstance = bootstrap.Offcanvas.getInstance(sidebarEl);
+                if (offcanvasInstance) {
+                    offcanvasInstance.hide();
+                }
+            }
+        });
+    });
+</script>
 {% endblock layout %}

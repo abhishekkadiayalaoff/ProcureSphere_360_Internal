@@ -6,38 +6,53 @@
 {% block navbar %}
 <!-- Top Navigation for Stores & Receiving (Vendor Design Standard) -->
 <nav class="navbar navbar-dark bg-dark shadow-sm py-2 sticky-top border-bottom border-secondary border-opacity-25 stores-topbar">
-    <div class="container-fluid px-2 px-sm-3 px-lg-4 d-flex align-items-center justify-content-between flex-nowrap">
-        <div class="d-flex align-items-center overflow-hidden me-2">
+    <div class="container-fluid ps-2 pe-2 pe-sm-3 pe-lg-4 d-flex align-items-center justify-content-between flex-nowrap">
+        <div class="d-flex align-items-center flex-nowrap stores-brand-wrapper">
             <!-- Mobile / Tablet Hamburger Button -->
-            <button class="navbar-toggler border-0 me-2 d-lg-none p-1" type="button" data-bs-toggle="offcanvas" data-bs-target="#storesSidebar" aria-controls="storesSidebar" aria-label="Toggle navigation" onclick="toggleStoresSidebar()">
+            <button class="navbar-toggler border-0 me-2 d-lg-none p-1" type="button" data-bs-toggle="offcanvas" data-bs-target="#storesSidebar" aria-controls="storesSidebar" aria-label="Toggle navigation">
                 <i class="fa-solid fa-bars text-white fs-4"></i>
             </button>
-            <a href="/" class="dashboard-brand-badge me-2 me-lg-3" aria-label="ProcureSphere 360 Home">
+            <a href="/stores/" class="dashboard-brand-badge stores-top-brand" aria-label="ProcureSphere 360 Home">
                 <img src="{% static 'landing/images/procuresphere_360_nav_brand.png' %}" alt="ProcureSphere 360" class="dashboard-brand-logo">
             </a>
-            <span class="badge bg-secondary bg-opacity-50 text-light px-2 py-1 small rounded-pill d-none d-sm-inline-block">Stores &amp; Receiving</span>
         </div>
 
         <div class="d-flex align-items-center gap-2 gap-sm-3 flex-shrink-0">
-            <!-- Receiving Desk Badge -->
-            <div class="d-none d-md-flex align-items-center bg-dark bg-opacity-75 border border-secondary border-opacity-50 rounded-pill px-3 py-1 text-white">
-                <i class="fa-solid fa-warehouse text-cyan me-2"></i>
-                <span class="small fw-semibold">{% block page_heading %}Warehouse & Receiving Operations Desk{% endblock %}</span>
-            </div>
+            <!-- Notifications Icon -->
+            <a href="/notifications/" class="btn btn-outline-secondary btn-sm position-relative text-white border-0 d-flex align-items-center justify-content-center p-0" style="width: 36px; height: 36px;" title="Notifications">
+                <i class="fa-solid fa-bell fs-5"></i>
+                {% if unread_notifications_count and unread_notifications_count > 0 %}
+                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size: 0.65rem;">
+                    {{ unread_notifications_count }}
+                </span>
+                {% endif %}
+            </a>
 
-            <!-- User Profile & Sign Out -->
+            <!-- User Profile Dropdown (Vendor Style) -->
             {% if user.is_authenticated %}
-            <div class="d-flex align-items-center gap-2">
-                <div class="d-none d-md-flex align-items-center px-2 px-sm-3 py-1 bg-secondary bg-opacity-25 rounded-pill border border-secondary border-opacity-50 text-white">
-                    <i class="fa-solid fa-circle-user text-cyan me-1 me-sm-2 fs-5"></i>
-                    <div class="text-start leading-tight me-1">
-                        <div class="fw-semibold text-white small text-truncate" style="max-width: 140px;">{{ user.email }}</div>
-                        <div class="badge bg-secondary bg-opacity-75 text-cyan rounded-pill" style="font-size: 0.65rem;">Warehouse Specialist</div>
-                    </div>
-                </div>
-                <a href="/logout/" class="btn btn-outline-light btn-sm rounded-pill px-2.5 px-sm-3 text-nowrap d-inline-flex align-items-center" title="Sign Out">
-                    <i class="fa-solid fa-arrow-right-from-bracket"></i> <span class="d-none d-sm-inline ms-1">Sign Out</span>
-                </a>
+            <div class="dropdown">
+                <button class="btn btn-link text-decoration-none p-0 border-0 d-flex align-items-center justify-content-center rounded-circle"
+                        type="button"
+                        id="storesProfileDropdown"
+                        data-bs-toggle="dropdown"
+                        aria-expanded="false"
+                        title="Account Menu"
+                        style="width: 38px; height: 38px; background: rgba(255, 255, 255, 0.08); transition: all 0.2s ease;">
+                    <i class="fa-solid fa-circle-user text-cyan fs-4"></i>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end shadow-lg py-2 mt-2"
+                    aria-labelledby="storesProfileDropdown"
+                    style="min-width: 220px; background: #1e293b; border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 12px;">
+                    <li class="px-3 py-2 border-bottom border-secondary border-opacity-25">
+                        <div class="fw-semibold text-white small text-truncate" title="{{ user.email }}">{{ user.email }}</div>
+                        <div class="text-white-50" style="font-size: 0.72rem;">Warehouse Specialist</div>
+                    </li>
+                    <li>
+                        <a class="dropdown-item text-danger d-flex align-items-center py-2 px-3 small" href="/logout/" style="transition: background 0.15s ease;">
+                            <i class="fa-solid fa-arrow-right-from-bracket me-2" style="width: 16px;"></i> Sign Out
+                        </a>
+                    </li>
+                </ul>
             </div>
             {% endif %}
         </div>
@@ -46,87 +61,172 @@
 {% endblock navbar %}
 
 {% block layout %}
-<!-- Mobile backdrop hook -->
-<div id="storesMobileBackdrop" class="stores-backdrop d-lg-none" onclick="toggleStoresSidebar()"></div>
-
 <style>
     @media (min-width: 992px) {
+        .stores-brand-wrapper {
+            width: 244px;
+            max-width: 244px;
+            flex-shrink: 0;
+        }
+        .stores-top-brand {
+            width: 100% !important;
+            max-width: 100% !important;
+            height: 62px !important;
+            max-height: 62px !important;
+            padding: 2px 6px !important;
+            border-radius: 10px !important;
+            margin: 0 !important;
+        }
+        .stores-top-brand .dashboard-brand-logo {
+            width: 100% !important;
+            height: 100% !important;
+            max-height: 56px !important;
+            object-fit: contain !important;
+        }
+        aside.stores-desk-nav,
         .stores-desk-nav {
             width: 260px !important;
+            min-width: 260px !important;
             flex-shrink: 0 !important;
             position: sticky !important;
-            top: 58px !important;
-            height: calc(100vh - 58px) !important;
-            overflow-y: auto;
-            scrollbar-width: thin;
-            scrollbar-color: rgba(255,255,255,0.15) transparent;
+            top: 79px !important;
+            height: calc(100vh - 79px) !important;
+            max-height: calc(100vh - 79px) !important;
+            overflow: hidden !important;
+            overflow-y: hidden !important;
+            display: flex !important;
+            flex-direction: column !important;
             z-index: 1000;
             align-self: flex-start;
         }
-        .stores-desk-nav::-webkit-scrollbar {
-            width: 4px;
+        .stores-desk-nav nav#storesNav,
+        .stores-desk-nav nav {
+            overflow-y: auto !important;
+            flex: 1 1 auto !important;
+            min-height: 0 !important;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255,255,255,0.15) transparent;
         }
-        .stores-desk-nav::-webkit-scrollbar-thumb {
+        .stores-desk-nav nav::-webkit-scrollbar { width: 4px; }
+        .stores-desk-nav nav::-webkit-scrollbar-thumb {
             background: rgba(255,255,255,0.15);
             border-radius: 4px;
         }
     }
+    @media (max-width: 991.98px) {
+        .stores-brand-wrapper { width: auto; max-width: none; }
+        .stores-top-brand {
+            width: 190px !important;
+            max-width: 190px !important;
+            height: 48px !important;
+            max-height: 48px !important;
+            padding: 4px 8px !important;
+            border-radius: 8px !important;
+            margin: 0 !important;
+        }
+    }
+
+    body.modal-open { overflow: visible !important; }
+
+    /* Section label style */
+    .nav-section-label {
+        font-size: 0.63rem;
+        letter-spacing: 0.08em;
+        font-weight: 700;
+        text-transform: uppercase;
+        color: rgba(255,255,255,0.4);
+        padding: 0.6rem 0.75rem 0.2rem;
+        margin-top: 0.25rem;
+    }
+
+    /* unified-navlink matches vendor-navlink standard */
+    .unified-navlink {
+        display: flex;
+        align-items: center;
+        padding: 0.45rem 0.75rem;
+        border-radius: 8px;
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: rgba(255,255,255,0.75);
+        text-decoration: none;
+        transition: background 0.15s, color 0.15s;
+    }
+    .unified-navlink:hover, .unified-navlink:focus {
+        background: rgba(255,255,255,0.08);
+        color: #fff;
+    }
+    .unified-navlink.active-nav-item,
+    .unified-navlink.active {
+        background: #0d6efd !important;
+        color: #fff !important;
+        font-weight: 700;
+        box-shadow: 0 2px 8px rgba(13,110,253,0.35);
+    }
+    .unified-navlink .nav-icon {
+        width: 20px;
+        text-align: center;
+        margin-right: 0.65rem;
+        flex-shrink: 0;
+    }
 </style>
-<div class="stores-layout-container d-flex align-items-start w-100" style="min-height: calc(100vh - 58px); max-width: 100vw;">
-    <!-- Desktop Sidebar (>= 992px) -->
-    <aside class="offcanvas-lg offcanvas-start bg-dark border-end border-secondary border-opacity-25 shadow-sm text-white stores-sidebar stores-desk-nav stores-app-sidebar" tabindex="-1" id="storesSidebar" data-stores-sidebar="storesAppSidebar" aria-labelledby="storesSidebarLabel" style="max-width: 85vw;">
-        <div id="storesAppSidebar" class="d-none"></div>
-        <div class="offcanvas-header d-lg-none border-bottom border-secondary border-opacity-25">
-            <h5 class="offcanvas-title fw-bold text-white" id="storesSidebarLabel"><i class="fa-solid fa-boxes-packing text-cyan me-2"></i>Stores &amp; Receiving</h5>
-            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" data-bs-target="#storesSidebar" aria-label="Close"></button>
-        </div>
-        <div class="offcanvas-body p-0 flex-column d-block">
-            <div class="px-2 py-3">
-
-                <div class="d-flex align-items-center justify-content-between px-2 mb-3 text-secondary text-uppercase fw-bold" style="font-size: 0.68rem; letter-spacing: 0.06em;">
-                    <span>Warehouse Navigation</span>
-                    <i class="fa-solid fa-dolly text-cyan" style="font-size:0.75rem;"></i>
+<div class="stores-layout-container d-flex align-items-start w-100" style="min-height: calc(100vh - 79px); max-width: 100vw;">
+    <!-- Desktop Sidebar (>= 992px) & Offcanvas on mobile -->
+    <aside class="offcanvas-lg offcanvas-start bg-dark border-end border-secondary border-opacity-25 shadow-sm text-white stores-sidebar stores-desk-nav" tabindex="-1" id="storesSidebar" aria-labelledby="storesSidebarLabel">
+        <!-- Mobile Drawer Header (Hidden on Desktop) -->
+        <div class="sidebar-brand-box px-3 py-3 border-bottom border-secondary border-opacity-25 flex-shrink-0 d-flex d-lg-none align-items-center justify-content-between">
+            <a href="/stores/" class="d-flex align-items-center text-white text-decoration-none" id="storesSidebarLabel">
+                <div class="brand-icon-box me-2 flex-shrink-0" style="width: 32px; height: 32px; background: rgba(0, 184, 217, 0.2); border-radius: 6px; display: flex; align-items: center; justify-content: center;">
+                    <i class="fa-solid fa-boxes-packing text-cyan"></i>
                 </div>
+                <div class="overflow-hidden">
+                    <div class="fs-6 fw-bold tracking-tight text-white d-block text-truncate">ProcureSphere <span class="text-cyan">360</span></div>
+                    <span class="badge bg-secondary bg-opacity-50 text-light px-2 py-0.5 rounded-pill" style="font-size: 0.62rem; letter-spacing: 0.04em;">STORES &amp; RECEIVING</span>
+                </div>
+            </a>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" data-bs-target="#storesSidebar" aria-label="Close menu"></button>
+        </div>
 
-                <nav class="d-flex flex-column gap-1">
-                    <a href="/stores/" class="vendor-navlink unified-navlink sidebar-nav-link {% if request.path == '/stores/' or request.path == '/stores/dashboard/' or request.path == '/receipts/dashboard/' or request.path == '/' or request.path == '/dashboard/' %}active active-nav-item{% endif %}">
-                        <i class="fa-solid fa-gauge-high nav-icon text-cyan"></i><span>Receiving Desk</span>
-                    </a>
-
-                    <div class="nav-section-label">Receiving &amp; Intake</div>
-                    <a href="{% url 'orders_list' %}" class="vendor-navlink unified-navlink sidebar-nav-link {% if '/purchase-orders/' in request.path and not 'tab=deliveries' in request.get_full_path and not '/create/' in request.path or '/orders/' in request.path and not 'tab=deliveries' in request.get_full_path and not '/create/' in request.path %}active active-nav-item{% endif %}">
-                        <i class="fa-solid fa-cart-flatbed nav-icon text-info"></i><span>Receive PO Goods</span>
-                    </a>
-                    <a href="{% url 'orders_list' %}?tab=deliveries" class="vendor-navlink unified-navlink sidebar-nav-link {% if 'tab=deliveries' in request.get_full_path %}active active-nav-item{% endif %}">
-                        <i class="fa-solid fa-truck-ramp-box nav-icon text-warning"></i><span>PO Deliveries</span>
-                    </a>
-                    <a href="{% url 'receipts_list' %}" class="vendor-navlink unified-navlink sidebar-nav-link {% if request.path == '/receipts/' or '/receipts/' in request.path and not '/inspections/' in request.path and not '/handoffs/' in request.path and not '/rejections/' in request.path and not '/returns/' in request.path and not 'delivery-performance' in request.path and not '/dashboard/' in request.path and not '/create/' in request.path and not '/inspect/' in request.path and not '/handoff/' in request.path %}active active-nav-item{% endif %}">
-                        <i class="fa-solid fa-boxes-stacked nav-icon text-success"></i><span>Goods Receipts (GRN)</span>
-                    </a>
-
-                    <div class="nav-section-label">Quality &amp; Inventory Gates</div>
-                    <a href="{% url 'receipts_inspection_queue' %}" class="vendor-navlink unified-navlink sidebar-nav-link {% if '/receipts/inspections/' in request.path or '/inspect/' in request.path %}active active-nav-item{% endif %}">
-                        <i class="fa-solid fa-microscope nav-icon text-warning"></i><span>Inspection Gate</span>
-                    </a>
-                    <a href="{% url 'receipts_rejections_queue' %}" class="vendor-navlink unified-navlink sidebar-nav-link {% if '/receipts/rejections/' in request.path or '/receipts/returns/' in request.path %}active active-nav-item{% endif %}">
-                        <i class="fa-solid fa-arrow-rotate-left nav-icon text-danger"></i><span>Rejections & Returns</span>
-                    </a>
-                    <a href="{% url 'receipts_stock_handoff_queue' %}" class="vendor-navlink unified-navlink sidebar-nav-link {% if '/receipts/stock-handoff/' in request.path or '/receipts/handoffs/' in request.path or '/handoff/' in request.path %}active active-nav-item{% endif %}">
-                        <i class="fa-solid fa-warehouse nav-icon text-cyan"></i><span>Warehouse Handoff</span>
-                    </a>
-
-                    <div class="nav-section-label">Reports &amp; Traceability</div>
-                    <a href="{% url 'receipts_delivery_performance_report' %}" class="vendor-navlink unified-navlink sidebar-nav-link {% if 'delivery-performance' in request.path %}active active-nav-item{% endif %}">
-                        <i class="fa-solid fa-chart-line nav-icon text-success"></i><span>Delivery & Rejection</span>
-                    </a>
-                    <a href="/reports/hub/" class="vendor-navlink unified-navlink sidebar-nav-link {% if '/reports/' in request.path and not 'delivery-performance' in request.path %}active active-nav-item{% endif %}">
-                        <i class="fa-solid fa-folder-open nav-icon text-secondary"></i><span>Reports Hub</span>
-                    </a>
-                </nav>
-
-
-
+        <div class="px-2 py-3 flex-grow-1 overflow-y-auto" id="storesNav" style="flex: 1 1 0%; min-height: 0;">
+            <div class="d-flex align-items-center justify-content-between px-2 mb-2 text-secondary text-uppercase fw-bold" style="font-size: 0.68rem; letter-spacing: 0.06em;">
+                <span>Warehouse Navigation</span>
+                <i class="fa-solid fa-dolly text-cyan" style="font-size:0.75rem;"></i>
             </div>
+
+            <nav class="d-flex flex-column gap-1">
+                <a href="/stores/" class="unified-navlink {% if request.path == '/stores/' or request.path == '/stores/dashboard/' or request.path == '/receipts/dashboard/' or request.path == '/' or request.path == '/dashboard/' %}active-nav-item{% endif %}">
+                    <i class="fa-solid fa-gauge-high nav-icon text-cyan"></i><span>Receiving Desk</span>
+                </a>
+
+                <div class="nav-section-label">Receiving &amp; Intake</div>
+                <a href="{% url 'orders_list' %}" class="unified-navlink {% if '/purchase-orders/' in request.path and not 'tab=deliveries' in request.get_full_path and not '/create/' in request.path or '/orders/' in request.path and not 'tab=deliveries' in request.get_full_path and not '/create/' in request.path %}active-nav-item{% endif %}">
+                    <i class="fa-solid fa-cart-flatbed nav-icon text-info"></i><span>Receive PO Goods</span>
+                </a>
+                <a href="{% url 'orders_list' %}?tab=deliveries" class="unified-navlink {% if 'tab=deliveries' in request.get_full_path %}active-nav-item{% endif %}">
+                    <i class="fa-solid fa-truck-ramp-box nav-icon text-warning"></i><span>PO Deliveries</span>
+                </a>
+                <a href="{% url 'receipts_list' %}" class="unified-navlink {% if request.path == '/receipts/' or '/receipts/' in request.path and not '/inspections/' in request.path and not '/handoffs/' in request.path and not '/rejections/' in request.path and not '/returns/' in request.path and not 'delivery-performance' in request.path and not '/dashboard/' in request.path and not '/create/' in request.path and not '/inspect/' in request.path and not '/handoff/' in request.path %}active-nav-item{% endif %}">
+                    <i class="fa-solid fa-boxes-stacked nav-icon text-success"></i><span>Goods Receipts (GRN)</span>
+                </a>
+
+                <div class="nav-section-label">Quality &amp; Inventory Gates</div>
+                <a href="{% url 'receipts_inspection_queue' %}" class="unified-navlink {% if '/receipts/inspections/' in request.path or '/inspect/' in request.path %}active-nav-item{% endif %}">
+                    <i class="fa-solid fa-microscope nav-icon text-warning"></i><span>Inspection Gate</span>
+                </a>
+                <a href="{% url 'receipts_rejections_queue' %}" class="unified-navlink {% if '/receipts/rejections/' in request.path or '/receipts/returns/' in request.path %}active-nav-item{% endif %}">
+                    <i class="fa-solid fa-arrow-rotate-left nav-icon text-danger"></i><span>Rejections & Returns</span>
+                </a>
+                <a href="{% url 'receipts_stock_handoff_queue' %}" class="unified-navlink {% if '/receipts/stock-handoff/' in request.path or '/receipts/handoffs/' in request.path or '/handoff/' in request.path %}active-nav-item{% endif %}">
+                    <i class="fa-solid fa-warehouse nav-icon text-cyan"></i><span>Warehouse Handoff</span>
+                </a>
+
+                <div class="nav-section-label">Reports &amp; Traceability</div>
+                <a href="{% url 'receipts_delivery_performance_report' %}" class="unified-navlink {% if 'delivery-performance' in request.path %}active-nav-item{% endif %}">
+                    <i class="fa-solid fa-chart-line nav-icon text-success"></i><span>Delivery & Rejection</span>
+                </a>
+                <a href="/reports/hub/" class="unified-navlink {% if '/reports/' in request.path and not 'delivery-performance' in request.path %}active-nav-item{% endif %}">
+                    <i class="fa-solid fa-folder-open nav-icon text-secondary"></i><span>Reports Hub</span>
+                </a>
+            </nav>
         </div>
     </aside>
 
@@ -150,16 +250,14 @@
 </div>
 
 <script>
-    function toggleStoresSidebar() {
-        const sidebar = document.getElementById('storesSidebar') || document.getElementById('storesAppSidebar');
-        const backdrop = document.getElementById('storesMobileBackdrop');
-        if (sidebar) {
-            sidebar.classList.toggle('show');
-            sidebar.classList.toggle('show-mobile');
-        }
-        if (backdrop) {
-            backdrop.classList.toggle('show');
-        }
-    }
+    document.querySelectorAll('#storesSidebar a.unified-navlink').forEach(function(link) {
+        link.addEventListener('click', function() {
+            var sidebarEl = document.getElementById('storesSidebar');
+            if (window.innerWidth < 992 && sidebarEl && typeof bootstrap !== 'undefined') {
+                var offcanvasInstance = bootstrap.Offcanvas.getInstance(sidebarEl);
+                if (offcanvasInstance) { offcanvasInstance.hide(); }
+            }
+        });
+    });
 </script>
 {% endblock layout %}
