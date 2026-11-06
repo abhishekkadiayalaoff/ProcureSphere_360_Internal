@@ -81,11 +81,61 @@ class TestStartupAndHealthDefects:
 
         # Must display the branded 404 template
         assert "Page Not Found" in content
-        assert "Return to Dashboard" in content
+        assert "Back to Home" in content or "Return to Dashboard" in content
 
         # Must not leak technical Django debug page or URL patterns
         assert "Using the URLconf defined in" not in content
         assert "The current path," not in content
         assert "didn't match any of these" not in content
         assert "Traceback (most recent call last)" not in content
+
+
+@pytest.mark.django_db
+class TestLogoutDefects:
+    """Tests ensuring logout links across dashboards log out users via GET and POST without 500 error."""
+
+    def test_portal_logout_get_request_logs_out_cleanly(self):
+        from apps.accounts.models import Role, User
+        from apps.audit.models import AuditLog
+
+        user = User.objects.create_user(
+            email="logout_test_user@example.com",
+            password="SecurePassword123!",
+            first_name="Logout",
+            last_name="Tester",
+        )
+        client = Client()
+        client.force_login(user)
+        assert "_auth_user_id" in client.session
+
+        response = client.get("/logout/")
+        assert response.status_code == 302
+        assert response.url == "/?logged_out=1"
+        assert "_auth_user_id" not in client.session
+        assert response.cookies.get("ps360_just_logged_out").value == "1"
+
+        audit_entry = AuditLog.objects.filter(
+            actor=user,
+            action=AuditLog.ACTION_LOGOUT,
+            target_model="User",
+        ).first()
+        assert audit_entry is not None
+
+    def test_portal_logout_post_request_logs_out_cleanly(self):
+        from apps.accounts.models import User
+
+        user = User.objects.create_user(
+            email="logout_post_user@example.com",
+            password="SecurePassword123!",
+            first_name="Post",
+            last_name="Tester",
+        )
+        client = Client()
+        client.force_login(user)
+        assert "_auth_user_id" in client.session
+
+        response = client.post("/logout/")
+        assert response.status_code == 302
+        assert response.url == "/?logged_out=1"
+        assert "_auth_user_id" not in client.session
 
