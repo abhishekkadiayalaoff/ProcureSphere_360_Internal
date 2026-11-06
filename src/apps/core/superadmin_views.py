@@ -2798,6 +2798,21 @@ def _get_scoped_audit_logs(request):
 
         )
 
+    # Pagination support for large exports — prevent timeout on big datasets
+    try:
+        limit = int(request.GET.get("limit", "10000"))
+    except (ValueError, TypeError):
+        limit = 10000
+    if limit > 50000:
+        limit = 50000
+
+    try:
+        offset = int(request.GET.get("offset", "0"))
+    except (ValueError, TypeError):
+        offset = 0
+
+    logs = logs[offset:offset + limit]
+
     return logs
 
 
