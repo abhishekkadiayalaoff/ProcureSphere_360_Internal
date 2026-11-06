@@ -5,7 +5,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ProcureSphere 360 - {% block title %}ERP Dashboard{% endblock %}</title>
-    <link rel="icon" href="data:,">
+    <!-- Favicon Suite -->
+    <link rel="icon" type="image/x-icon" href="{% static 'icons/favicon.ico' %}">
+    <link rel="icon" type="image/webp" sizes="32x32" href="{% static 'icons/favicon-32x32.webp' %}">
+    <link rel="icon" type="image/webp" sizes="16x16" href="{% static 'icons/favicon-16x16.webp' %}">
+    <link rel="icon" type="image/webp" href="{% static 'icons/favicon.webp' %}">
+    <link rel="apple-touch-icon" href="{% static 'icons/apple-touch-icon.webp' %}">
+    <link rel="manifest" href="{% static 'icons/site.webmanifest' %}">
     <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Font Awesome -->
@@ -278,6 +284,41 @@
                 max-height: 40px !important;
             }
         }
+        /* Proc Exec brand badge matching vendor standard */
+        @media (min-width: 992px) {
+            .proc-exec-brand-wrapper {
+                width: 244px;
+                max-width: 244px;
+                flex-shrink: 0;
+            }
+            .proc-exec-top-brand {
+                width: 100% !important;
+                max-width: 100% !important;
+                height: 62px !important;
+                max-height: 62px !important;
+                padding: 2px 6px !important;
+                border-radius: 10px !important;
+                margin: 0 !important;
+            }
+            .proc-exec-top-brand .dashboard-brand-logo {
+                width: 100% !important;
+                height: 100% !important;
+                max-height: 56px !important;
+                object-fit: contain !important;
+            }
+        }
+        @media (max-width: 991.98px) {
+            .proc-exec-brand-wrapper { width: auto; max-width: none; }
+            .proc-exec-top-brand {
+                width: 190px !important;
+                max-width: 190px !important;
+                height: 48px !important;
+                max-height: 48px !important;
+                padding: 4px 8px !important;
+                border-radius: 8px !important;
+                margin: 0 !important;
+            }
+        }
 
         /* ========================================================================= */
         /* Vendor Navbar Profile Avatar & Dropdown (Matching Reference UI)           */
@@ -378,12 +419,12 @@
     {% if user.is_authenticated and user.role_code == 'PROC_EXEC' %}
     <!-- Top Navigation Bar for Procurement Executive (Vendor Dashboard Standard) -->
     <nav class="navbar navbar-dark bg-dark shadow-sm py-2 border-bottom border-secondary border-opacity-25 sticky-top proc-exec-topbar">
-        <div class="container-fluid px-2 px-sm-3 px-lg-4 d-flex align-items-center justify-content-between flex-nowrap">
-            <div class="d-flex align-items-center overflow-hidden me-2">
+        <div class="container-fluid ps-2 pe-2 pe-sm-3 pe-lg-4 d-flex align-items-center justify-content-between flex-nowrap">
+            <div class="d-flex align-items-center flex-nowrap proc-exec-brand-wrapper">
                 <button class="navbar-toggler border-0 me-2 d-lg-none p-1" type="button" data-bs-toggle="offcanvas" data-bs-target="#procExecSidebar" aria-controls="procExecSidebar" aria-label="Toggle navigation">
                     <i class="fa-solid fa-bars text-white fs-4"></i>
                 </button>
-                <a href="/procurement/" class="dashboard-brand-badge me-2 me-lg-3" aria-label="ProcureSphere 360 Home">
+                <a href="/procurement/" class="dashboard-brand-badge proc-exec-top-brand" aria-label="ProcureSphere 360 Home">
                     <img src="{% static 'landing/images/procuresphere_360_nav_brand.png' %}" alt="ProcureSphere 360" class="dashboard-brand-logo">
                 </a>
                 <span class="d-none">Procurement Executive</span>
@@ -574,13 +615,25 @@
     {% endblock navbar %}
 
     {% block layout %}
-    <div class="{% if user.is_authenticated and user.role_code == 'PROC_EXEC' %}d-flex align-items-start w-100{% else %}container-fluid p-0{% endif %}" style="{% if user.is_authenticated and user.role_code == 'PROC_EXEC' %}min-height: calc(100vh - 58px); max-width: 100vw;{% endif %}">
+    <div class="{% if user.is_authenticated and user.role_code == 'PROC_EXEC' %}d-flex align-items-start w-100{% else %}container-fluid p-0{% endif %}" style="{% if user.is_authenticated and user.role_code == 'PROC_EXEC' %}min-height: calc(100vh - 79px); max-width: 100vw;{% endif %}">
         {% if user.is_authenticated and user.role_code == 'PROC_EXEC' %}
         {% include 'partials/proc_exec_sidebar.html' %}
         {% endif %}
 
         <!-- Main Page Content Area -->
         <main class="{% if user.is_authenticated and user.role_code == 'PROC_EXEC' %}flex-grow-1 p-2 p-sm-3 p-md-4 w-100{% else %}container-fluid p-3 p-md-4 overflow-auto{% endif %}" style="min-width: 0; background-color: #F5F7FA; {% if user.is_authenticated and user.role_code == 'PROC_EXEC' %}max-width: 100vw; overflow-x: hidden;{% endif %}">
+            <!-- Alert Messages -->
+            {% if messages %}
+            <div class="mb-4">
+                {% for message in messages %}
+                <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show shadow-sm border-0 d-flex align-items-center py-2 px-3" role="alert">
+                    <i class="fa-solid {% if message.tags == 'success' %}fa-circle-check text-success{% elif message.tags == 'error' or message.tags == 'danger' %}fa-circle-exclamation text-danger{% else %}fa-circle-info text-primary{% endif %} me-2 fs-5"></i>
+                    <div class="flex-grow-1">{{ message }}</div>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
             {% block content %}{% endblock %}
         </main>
     </div>

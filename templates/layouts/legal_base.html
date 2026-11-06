@@ -6,63 +6,49 @@
 {% block navbar %}
 <!-- Top Navigation for Legal & Compliance (Vendor Design Standard) -->
 <nav class="navbar navbar-dark bg-dark shadow-sm py-2 sticky-top border-bottom border-secondary border-opacity-25">
-    <div class="container-fluid px-2 px-sm-3 px-lg-4 d-flex align-items-center justify-content-between flex-nowrap">
-        <div class="d-flex align-items-center flex-nowrap me-2">
+    <div class="container-fluid ps-2 pe-2 pe-sm-3 pe-lg-4 d-flex align-items-center justify-content-between flex-nowrap">
+        <div class="d-flex align-items-center flex-nowrap legal-brand-wrapper">
             <!-- Mobile / Tablet Hamburger Button -->
             <button class="navbar-toggler border-0 me-2 d-lg-none p-1" type="button" data-bs-toggle="offcanvas" data-bs-target="#legalSidebar" aria-controls="legalSidebar" aria-label="Toggle navigation">
                 <i class="fa-solid fa-bars text-white fs-4"></i>
             </button>
-            <a href="/" class="dashboard-brand-badge me-2 me-lg-3" aria-label="ProcureSphere 360 Home">
+            <a href="/legal/" class="dashboard-brand-badge legal-top-brand" aria-label="ProcureSphere 360 Home">
+                <img src="{% static 'landing/images/procuresphere_360_nav_brand.png' %}" alt="ProcureSphere 360" class="dashboard-brand-logo">
+            </a>
+            <a href="/legal/" class="dashboard-brand-badge legal-top-brand" aria-label="ProcureSphere 360 Home">
                 <img src="{% static 'landing/images/procuresphere_360_nav_brand.png' %}" alt="ProcureSphere 360" class="dashboard-brand-logo">
             </a>
             <span class="d-none">Legal &amp; Compliance</span>
         </div>
 
         <div class="d-flex align-items-center gap-2 gap-sm-3 flex-shrink-0">
-            <!-- Organization / Department Information (Matching Vendor Entity Pill) -->
-            {% with entity=user.organization|default:user.effective_organization|default:user.department %}
-            <div class="d-none d-md-flex align-items-center bg-dark bg-opacity-75 border border-secondary border-opacity-50 rounded-pill px-3 py-1 text-white">
-                <i class="fa-solid fa-building text-cyan me-2 fs-5"></i>
-                <div class="text-start lh-sm">
-                    <span class="fw-semibold small d-block mb-1">{% if entity.name %}{{ entity.name|truncatechars:35 }}{% else %}Hewlett Packard Enterprise{% endif %}</span>
-                    <span class="text-white-50 d-block" style="font-size: 0.7rem; line-height: 1;">{% if user.cost_center %}{{ user.cost_center.code }}{% elif entity.code %}{{ entity.code }}{% else %}HPE-GLOBAL{% endif %} &bull; Active</span>
-                </div>
-                <span class="badge ms-2 rounded-pill bg-success" style="font-size: 0.65rem;">Active</span>
-            </div>
-            {% endwith %}
-
             <!-- Notifications Icon -->
-            <a href="/notifications/" class="btn btn-outline-secondary btn-sm position-relative text-white border-0 d-flex align-items-center justify-content-center p-0" style="width: 36px; height: 36px;" title="Notifications">
+            <a href="/approvals/inbox/" class="btn btn-outline-secondary btn-sm position-relative text-white border-0 d-flex align-items-center justify-content-center p-0" style="width: 36px; height: 36px;" title="Pending Approvals">
                 <i class="fa-solid fa-bell fs-5"></i>
-                {% if unread_notifications_count and unread_notifications_count > 0 %}
-                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size: 0.65rem;">
-                    {{ unread_notifications_count }}
-                    <span class="visually-hidden">unread notifications</span>
-                </span>
-                {% elif metrics and metrics.pending_legal_review and metrics.pending_legal_review > 0 %}
-                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size: 0.65rem;">
-                    {{ metrics.pending_legal_review }}
-                </span>
-                {% endif %}
             </a>
 
-            <!-- User Profile Dropdown -->
+            <!-- User Profile Dropdown (Vendor Style) -->
             {% if user.is_authenticated %}
-            <div class="dropdown position-relative">
-                <button class="btn p-0 border-0 bg-transparent rounded-circle vendor-profile-avatar-btn" type="button" id="legalProfileDropdown" data-bs-toggle="dropdown" aria-expanded="false" title="{{ user.email }}">
-                    <span class="vendor-avatar-ring">
-                        <i class="fa-solid fa-circle-user text-cyan"></i>
-                    </span>
+            <div class="dropdown">
+                <button class="btn btn-link text-decoration-none p-0 border-0 d-flex align-items-center justify-content-center rounded-circle"
+                        type="button"
+                        id="legalProfileDropdown"
+                        data-bs-toggle="dropdown"
+                        aria-expanded="false"
+                        title="Account Menu"
+                        style="width: 38px; height: 38px; background: rgba(255, 255, 255, 0.08); transition: all 0.2s ease;">
+                    <i class="fa-solid fa-circle-user text-cyan fs-4"></i>
                 </button>
-                <ul class="dropdown-menu dropdown-menu-end shadow-lg vendor-profile-dropdown" aria-labelledby="legalProfileDropdown">
-                    <li class="vendor-dropdown-header">
-                        <div class="vendor-email-text">{{ user.email }}</div>
+                <ul class="dropdown-menu dropdown-menu-end shadow-lg py-2 mt-2"
+                    aria-labelledby="legalProfileDropdown"
+                    style="min-width: 220px; background: #1e293b; border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 12px;">
+                    <li class="px-3 py-2 border-bottom border-secondary border-opacity-25">
+                        <div class="fw-semibold text-white small text-truncate" title="{{ user.email }}">{{ user.email }}</div>
+                        <div class="text-white-50" style="font-size: 0.72rem;">Legal Counsel / Manager</div>
                     </li>
-                    <li><hr class="vendor-dropdown-divider"></li>
                     <li>
-                        <a class="vendor-dropdown-signout" href="/logout/">
-                            <i class="fa-solid fa-arrow-right-from-bracket me-2 text-danger"></i>
-                            <span>Sign Out</span>
+                        <a class="dropdown-item text-danger d-flex align-items-center py-2 px-3 small" href="/logout/" style="transition: background 0.15s ease;">
+                            <i class="fa-solid fa-arrow-right-from-bracket me-2" style="width: 16px;"></i> Sign Out
                         </a>
                     </li>
                 </ul>
@@ -75,127 +61,129 @@
 
 {% block layout %}
 <style>
-    /* ========================================================================= */
-    /* Legal Navbar Profile Avatar & Dropdown (Exact Vendor Dashboard Match)     */
-    /* ========================================================================= */
-    .vendor-profile-avatar-btn {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        padding: 0;
-        border: none;
-        background: transparent;
-        cursor: pointer;
-        position: relative;
-    }
-    .vendor-profile-avatar-btn::after {
-        display: none !important;
-    }
-    .vendor-profile-avatar-btn:focus,
-    .vendor-profile-avatar-btn:active {
-        outline: none !important;
-        box-shadow: none !important;
-    }
-    .vendor-avatar-ring {
-        width: 38px;
-        height: 38px;
-        border-radius: 50%;
-        background-color: #1e2634;
-        border: 2px solid #2563eb;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
-    }
-    .vendor-profile-avatar-btn:hover .vendor-avatar-ring,
-    .vendor-profile-avatar-btn[aria-expanded="true"] .vendor-avatar-ring {
-        border-color: #3b82f6;
-        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.35);
-    }
-    .vendor-avatar-ring i {
-        font-size: 1.6rem;
-        color: #06b6d4 !important;
-        line-height: 1;
-    }
-
-    /* Dark navy profile dropdown menu */
-    .vendor-profile-dropdown {
-        background-color: #1b2332 !important;
-        border: 1px solid rgba(255, 255, 255, 0.08) !important;
-        border-radius: 12px !important;
-        box-shadow: 0 12px 28px rgba(0, 0, 0, 0.55), 0 4px 10px rgba(0, 0, 0, 0.35) !important;
-        min-width: 240px !important;
-        max-width: 320px !important;
-        padding: 14px 18px 12px 18px !important;
-        margin-top: 8px !important;
-    }
-    .vendor-dropdown-header {
-        padding: 0 !important;
-        margin-bottom: 6px !important;
-        list-style: none;
-    }
-    .vendor-email-text {
-        font-size: 0.95rem;
-        font-weight: 700;
-        color: #ffffff !important;
-        word-break: break-all;
-        line-height: 1.35;
-        letter-spacing: -0.01em;
-    }
-    .vendor-dropdown-divider {
-        border: 0 !important;
-        border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
-        margin: 8px 0 10px 0 !important;
-        opacity: 1 !important;
-    }
-    .vendor-dropdown-signout {
-        display: inline-flex;
-        align-items: center;
-        color: #ef4444 !important;
-        font-size: 0.92rem;
-        font-weight: 500;
-        text-decoration: none;
-        padding: 4px 0 !important;
-        background: transparent !important;
-        transition: color 0.15s ease, opacity 0.15s ease;
-    }
-    .vendor-dropdown-signout i {
-        color: #ef4444 !important;
-        font-size: 0.95rem;
-    }
-    .vendor-dropdown-signout:hover,
-    .vendor-dropdown-signout:focus {
-        color: #f87171 !important;
-    }
-
     @media (min-width: 992px) {
+        .legal-brand-wrapper {
+            width: 244px;
+            max-width: 244px;
+            flex-shrink: 0;
+        }
+        .legal-top-brand {
+            width: 100% !important;
+            max-width: 100% !important;
+            height: 62px !important;
+            max-height: 62px !important;
+            padding: 2px 6px !important;
+            border-radius: 10px !important;
+            margin: 0 !important;
+        }
+        .legal-top-brand .dashboard-brand-logo {
+            width: 100% !important;
+            height: 100% !important;
+            max-height: 56px !important;
+            object-fit: contain !important;
+        }
         .legal-sidebar-desktop {
             width: 260px !important;
+            min-width: 260px !important;
             flex-shrink: 0 !important;
             position: sticky !important;
-            top: 58px !important;
-            height: calc(100vh - 58px) !important;
-            overflow-y: auto;
-            scrollbar-width: thin;
-            scrollbar-color: rgba(255,255,255,0.15) transparent;
+            top: 79px !important;
+            height: calc(100vh - 79px) !important;
+            max-height: calc(100vh - 79px) !important;
+            overflow: hidden !important;
+            overflow-y: hidden !important;
+            display: flex !important;
+            flex-direction: column !important;
             z-index: 1000;
             align-self: flex-start;
         }
-        .legal-sidebar-desktop::-webkit-scrollbar {
-            width: 4px;
+        .legal-sidebar-desktop nav#legalNav,
+        .legal-sidebar-desktop nav,
+        .legal-sidebar-desktop .offcanvas-body {
+            overflow-y: auto !important;
+            flex: 1 1 auto !important;
+            min-height: 0 !important;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255,255,255,0.15) transparent;
         }
-        .legal-sidebar-desktop::-webkit-scrollbar-thumb {
+        .legal-sidebar-desktop .offcanvas-body::-webkit-scrollbar { width: 4px; }
+        .legal-sidebar-desktop .offcanvas-body::-webkit-scrollbar-thumb {
             background: rgba(255,255,255,0.15);
             border-radius: 4px;
         }
     }
+    @media (max-width: 991.98px) {
+        .legal-brand-wrapper { width: auto; max-width: none; }
+        .legal-top-brand {
+            width: 190px !important;
+            max-width: 190px !important;
+            height: 48px !important;
+            max-height: 48px !important;
+            padding: 4px 8px !important;
+            border-radius: 8px !important;
+            margin: 0 !important;
+        }
+    }
+
+    body.modal-open { overflow: visible !important; }
+
+    /* Section label style */
+    .nav-section-label {
+        font-size: 0.63rem;
+        letter-spacing: 0.08em;
+        font-weight: 700;
+        text-transform: uppercase;
+        color: rgba(255,255,255,0.4);
+        padding: 0.6rem 0.75rem 0.2rem;
+        margin-top: 0.25rem;
+    }
+
+    /* unified-navlink matches vendor-navlink standard */
+    .unified-navlink {
+        display: flex;
+        align-items: center;
+        padding: 0.45rem 0.75rem;
+        border-radius: 8px;
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: rgba(255,255,255,0.75);
+        text-decoration: none;
+        transition: background 0.15s, color 0.15s;
+    }
+    .unified-navlink:hover,
+    .unified-navlink:focus {
+        background: rgba(255,255,255,0.08);
+        color: #fff;
+    }
+    .unified-navlink.active-nav-item,
+    .unified-navlink.active {
+        background: #0d6efd !important;
+        color: #fff !important;
+        font-weight: 700;
+        box-shadow: 0 2px 8px rgba(13,110,253,0.35);
+    }
+    .unified-navlink .nav-icon {
+        width: 20px;
+        text-align: center;
+        margin-right: 0.65rem;
+        flex-shrink: 0;
+    }
 </style>
-<div class="legal-layout-container d-flex align-items-start w-100" style="min-height: calc(100vh - 58px); max-width: 100vw;">
+<div class="legal-layout-container d-flex align-items-start w-100" style="min-height: calc(100vh - 79px); max-width: 100vw;">
     <!-- Desktop Sidebar (>= 992px) -->
     <aside class="legal-sidebar offcanvas-lg offcanvas-start bg-dark border-end border-secondary border-opacity-25 shadow-sm text-white legal-sidebar-desktop" tabindex="-1" id="legalSidebar" aria-labelledby="legalSidebarLabel" style="max-width: 85vw;">
-        <div class="offcanvas-header d-lg-none border-bottom border-secondary border-opacity-25">
-            <h5 class="offcanvas-title fw-bold text-white" id="legalSidebarLabel"><i class="fa-solid fa-scale-balanced text-cyan me-2"></i>Legal Portal</h5>
-            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" data-bs-target="#legalSidebar" aria-label="Close"></button>
+        <!-- Mobile Drawer Header (Hidden on Desktop) -->
+        <div class="sidebar-brand-box px-3 py-3 border-bottom border-secondary border-opacity-25 flex-shrink-0 d-flex d-lg-none align-items-center justify-content-between">
+            <a href="/legal/" class="d-flex align-items-center text-white text-decoration-none" id="legalSidebarLabel">
+                <div class="brand-icon-box me-2 flex-shrink-0" style="width: 32px; height: 32px; background: rgba(0, 184, 217, 0.2); border-radius: 6px; display: flex; align-items: center; justify-content: center;">
+                    <i class="fa-solid fa-scale-balanced text-cyan"></i>
+                </div>
+                <div class="overflow-hidden">
+                    <div class="fs-6 fw-bold tracking-tight text-white d-block text-truncate">ProcureSphere <span class="text-cyan">360</span></div>
+                    <span class="badge bg-secondary bg-opacity-50 text-light px-2 py-0.5 rounded-pill" style="font-size: 0.62rem; letter-spacing: 0.04em;">LEGAL &amp; COMPLIANCE</span>
+                </div>
+            </a>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" data-bs-target="#legalSidebar" aria-label="Close menu"></button>
         </div>
         <div class="offcanvas-body p-0 flex-column d-block">
             <div class="px-2 py-3">
@@ -205,7 +193,7 @@
                     <i class="fa-solid fa-shield-halved text-cyan" style="font-size:0.75rem;"></i>
                 </div>
 
-                <nav class="d-flex flex-column gap-1">
+                <nav class="d-flex flex-column gap-1" id="legalNav">
                     <a href="/legal/" class="unified-navlink {% if request.path == '/legal/' or request.path == '/legal/dashboard/' or request.path == '/contracts/dashboard/' or request.path == '/' %}active-nav-item{% endif %}">
                         <i class="fa-solid fa-gauge-high nav-icon text-cyan"></i>Dashboard
                     </a>
@@ -240,9 +228,6 @@
                         <i class="fa-solid fa-shield-halved nav-icon text-danger"></i>Audit Trail Log
                     </a>
                 </nav>
-
-
-
             </div>
         </div>
     </aside>
@@ -265,4 +250,16 @@
         {% block content %}{% endblock %}
     </main>
 </div>
+
+<script>
+    document.querySelectorAll('#legalSidebar a.unified-navlink').forEach(function(link) {
+        link.addEventListener('click', function() {
+            var sidebarEl = document.getElementById('legalSidebar');
+            if (window.innerWidth < 992 && sidebarEl && typeof bootstrap !== 'undefined') {
+                var offcanvasInstance = bootstrap.Offcanvas.getInstance(sidebarEl);
+                if (offcanvasInstance) { offcanvasInstance.hide(); }
+            }
+        });
+    });
+</script>
 {% endblock layout %}

@@ -4,22 +4,21 @@
 {% block title %}{% block sa_title %}Admin Control Center{% endblock %} — ProcureSphere 360{% endblock %}
 
 {% block navbar %}
-<!-- Top Navigation Bar for Admin (Matching Requester & Vendor Dashboard Design System) -->
+<!-- Top Navigation Bar for Super Admin (Vendor Dashboard Design System) -->
 <nav class="navbar navbar-dark bg-dark shadow-sm py-2 border-bottom border-secondary border-opacity-25 sticky-top">
-    <div class="container-fluid px-2 px-sm-3 px-lg-4 d-flex align-items-center justify-content-between flex-nowrap">
-        <!-- Brand & Mobile Toggle -->
-        <div class="d-flex align-items-center flex-nowrap me-2">
-            <button class="navbar-toggler border-0 me-2 d-lg-none p-1" type="button" data-bs-toggle="offcanvas" data-bs-target="#saSidebar" aria-controls="saSidebar" aria-label="Toggle navigation" onclick="toggleSaSidebar()">
+    <div class="container-fluid ps-2 pe-2 pe-sm-3 pe-lg-4 d-flex align-items-center justify-content-between flex-nowrap">
+        <div class="d-flex align-items-center flex-nowrap sa-brand-wrapper">
+            <button class="navbar-toggler border-0 me-2 d-lg-none p-1" type="button" data-bs-toggle="offcanvas" data-bs-target="#saSidebar" aria-controls="saSidebar" aria-label="Toggle navigation">
                 <i class="fa-solid fa-bars text-white fs-4"></i>
             </button>
-            <a href="/superadmin/" class="dashboard-brand-badge me-2 me-lg-3" aria-label="ProcureSphere 360 Home">
+            <a href="/superadmin/" class="dashboard-brand-badge sa-top-brand" aria-label="ProcureSphere 360 Home">
                 <img src="{% static 'landing/images/procuresphere_360_nav_brand.png' %}" alt="ProcureSphere 360" class="dashboard-brand-logo">
             </a>
         </div>
 
         <div class="d-flex align-items-center gap-2 gap-sm-3 flex-shrink-0">
             <!-- Organization / Company Information (Matching Vendor Entity Pill) -->
-            {% with org=request.user.effective_organization|default:request.user.organization %}
+            {% with org=scoped_org|default:user.effective_organization|default:user.organization %}
             <div class="d-none d-md-flex align-items-center bg-dark bg-opacity-75 border border-secondary border-opacity-50 rounded-pill px-3 py-1 text-white">
                 <i class="fa-solid fa-building text-cyan me-2 fs-5"></i>
                 <div class="text-start lh-sm">
@@ -41,30 +40,33 @@
                 <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size: 0.65rem;">
                     {{ unread_notifications_count }}
                 </span>
-                {% elif metrics.unread_notifications and metrics.unread_notifications > 0 %}
-                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size: 0.65rem;">
-                    {{ metrics.unread_notifications }}
-                </span>
                 {% endif %}
             </a>
 
-            <!-- User Profile Dropdown -->
-            {% if request.user.is_authenticated or user.is_authenticated %}
-            <div class="dropdown position-relative">
-                <button class="btn p-0 border-0 bg-transparent rounded-circle vendor-profile-avatar-btn" type="button" id="adminProfileDropdown" data-bs-toggle="dropdown" aria-expanded="false" title="{{ request.user.email|default:user.email }}">
-                    <span class="vendor-avatar-ring">
-                        <i class="fa-solid fa-circle-user text-cyan"></i>
-                    </span>
+            <!-- User Profile Dropdown (Vendor Style) -->
+            {% if user.is_authenticated %}
+            <div class="dropdown">
+                <button class="btn btn-link text-decoration-none p-0 border-0 d-flex align-items-center justify-content-center rounded-circle" 
+                        type="button" 
+                        id="saProfileDropdown" 
+                        data-bs-toggle="dropdown" 
+                        aria-expanded="false" 
+                        title="Account Menu"
+                        style="width: 38px; height: 38px; background: rgba(255, 255, 255, 0.08); transition: all 0.2s ease;">
+                    <i class="fa-solid fa-circle-user text-cyan fs-4"></i>
                 </button>
-                <ul class="dropdown-menu dropdown-menu-end shadow-lg vendor-profile-dropdown" aria-labelledby="adminProfileDropdown">
-                    <li class="vendor-dropdown-header">
-                        <div class="vendor-email-text">{{ request.user.email|default:user.email }}</div>
+                <ul class="dropdown-menu dropdown-menu-end shadow-lg py-2 mt-2" 
+                    aria-labelledby="saProfileDropdown" 
+                    style="min-width: 220px; background: #1e293b; border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 12px;">
+                    <li class="px-3 py-2 border-bottom border-secondary border-opacity-25">
+                        <div class="fw-semibold text-white small text-truncate" title="{{ user.email }}">{{ user.email }}</div>
+                        <div class="text-white-50" style="font-size: 0.72rem;">
+                            {% if user.is_superuser and not user.effective_organization %}Super Admin{% else %}Organization Admin{% endif %}
+                        </div>
                     </li>
-                    <li><hr class="vendor-dropdown-divider"></li>
                     <li>
-                        <a class="vendor-dropdown-signout" href="/logout/">
-                            <i class="fa-solid fa-arrow-right-from-bracket me-2 text-danger"></i>
-                            <span>Sign Out</span>
+                        <a class="dropdown-item text-danger d-flex align-items-center py-2 px-3 small" href="/logout/" style="transition: background 0.15s ease;">
+                            <i class="fa-solid fa-arrow-right-from-bracket me-2" style="width: 16px;"></i> Sign Out
                         </a>
                     </li>
                 </ul>
@@ -76,224 +78,140 @@
 {% endblock navbar %}
 
 {% block layout %}
-<div id="saSidebarBackdrop" class="sa-backdrop d-lg-none" onclick="toggleSaSidebar()"></div>
-<div class="d-flex align-items-start w-100" style="min-height: calc(100vh - 58px); max-width: 100vw; background-color: var(--body-bg, #f8fafc);">
-    <aside id="saSidebar" class="sa-sidebar offcanvas-lg offcanvas-start bg-dark text-white d-flex flex-column flex-shrink-0 sa-sidebar-desktop" tabindex="-1" aria-labelledby="saSidebarLabel">
-        <!-- Mobile Drawer Header (Hidden on Desktop) -->
-        <div class="sidebar-brand-box px-3 py-3 border-bottom border-secondary border-opacity-25 flex-shrink-0 d-flex d-lg-none align-items-center justify-content-between">
-            <a href="/superadmin/" class="d-flex align-items-center text-white text-decoration-none min-width-0" id="saSidebarLabel">
-                <i class="fa-solid fa-shield-halved text-warning fa-lg me-2"></i>
-                <div class="min-width-0">
-                    <div class="fw-bold lh-1 text-white" style="font-size: 0.95rem;">ProcureSphere <span class="fw-light">360</span></div>
-                    {% if request.user.is_superuser and not request.user.effective_organization %}<span class="badge bg-danger rounded-pill fw-bold mt-1" style="font-size: 0.62rem; letter-spacing: 0.04em;">SUPER ADMIN</span>{% else %}<span class="badge bg-info text-dark rounded-pill fw-bold mt-1" style="font-size: 0.62rem; letter-spacing: 0.04em;">ADMIN</span>{% endif %}
-                </div>
-            </a>
-            <button class="btn btn-link text-white-50 p-1 d-lg-none" type="button" aria-label="Close navigation" onclick="toggleSaSidebar()">
-                <i class="fa-solid fa-xmark fs-5"></i>
-            </button>
-        </div>
-
-        <!-- Desktop Sidebar Header -->
-        <div class="d-flex align-items-center justify-content-between px-3 pt-3 pb-2 text-secondary text-uppercase fw-bold" style="font-size: 0.68rem; letter-spacing: 0.06em;">
-            <span>{% if request.user.is_superuser and not request.user.effective_organization %}Super Admin Desk{% else %}Admin Control Center{% endif %}</span>
-            <i class="fa-solid fa-shield-halved text-warning" style="font-size:0.75rem;"></i>
-        </div>
-
-        <div class="flex-grow-1 overflow-y-auto px-2 py-1">
-            <ul class="nav nav-pills flex-column gap-1" id="menu">
-                <li class="nav-item">
-                    <a href="/superadmin/" class="nav-link sa-nav-link rounded-3 py-2 px-3 {% if request.path == '/admin/dashboard/' or request.path == '/superadmin/' or request.path == '/' %}active{% endif %}">
-                        <i class="fa-solid fa-gauge-high me-2 text-cyan"></i><span>Dashboard</span>
-                    </a>
-                </li>
-
-                {% if request.user.is_superuser and not request.user.effective_organization %}
-                {# ========================================================================= #}
-                {# GLOBAL SUPER ADMIN: DEDICATED SOLELY TO TENANT ORGANIZATION MANAGEMENT   #}
-                {# ========================================================================= #}
-                <li class="sa-nav-label">Organization Management</li>
-                <li class="nav-item">
-                    <a href="/superadmin/organizations/" class="nav-link sa-nav-link rounded-3 py-2 px-3 {% if '/superadmin/organizations/' in request.path %}active{% endif %}">
-                        <i class="fa-solid fa-sitemap me-2 text-info"></i><span>Organizations</span>
-                    </a>
-                </li>
-
-                {% else %}
-                {# ========================================================================= #}
-                {# ORGANIZATION ADMIN: Masters, Users, Policies, Rules, Audits             #}
-                {# ========================================================================= #}
-                <li class="sa-nav-label">Organization &amp; Masters</li>
-                <li class="nav-item">
-                    <a href="/superadmin/organizations/" class="nav-link sa-nav-link rounded-3 py-2 px-3 {% if '/superadmin/organizations/' in request.path or '/superadmin/departments/' in request.path or '/superadmin/cost-centers/' in request.path %}active{% endif %}">
-                        <i class="fa-solid fa-sitemap me-2 text-info"></i><span>Departments &amp; Cost Centers</span>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="/superadmin/locations/" class="nav-link sa-nav-link rounded-3 py-2 px-3 {% if '/superadmin/locations/' in request.path %}active{% endif %}">
-                        <i class="fa-solid fa-location-dot me-2" style="color: #f97316;"></i><span>Locations</span>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="/superadmin/users/" class="nav-link sa-nav-link rounded-3 py-2 px-3 {% if '/superadmin/users/' in request.path %}active{% endif %}">
-                        <i class="fa-solid fa-users-gear me-2 text-cyan"></i><span>Manage Users &amp; Roles</span>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="/vendors/" class="nav-link sa-nav-link rounded-3 py-2 px-3 {% if '/vendors/' in request.path %}active{% endif %}">
-                        <i class="fa-solid fa-building-user me-2 text-warning"></i><span>Vendor Management</span>
-                    </a>
-                </li>
-                <li class="sa-nav-label">Policies &amp; Rules</li>
-                <li class="nav-item">
-                    <a href="/superadmin/policies/" class="nav-link sa-nav-link rounded-3 py-2 px-3 {% if '/superadmin/policies/' in request.path %}active{% endif %}">
-                        <i class="fa-solid fa-code-branch me-2" style="color: #a78bfa;"></i><span>Approval Policies</span>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="/superadmin/budgets/" class="nav-link sa-nav-link rounded-3 py-2 px-3 {% if '/superadmin/budgets/' in request.path or '/budgets/' in request.path %}active{% endif %}">
-                        <i class="fa-solid fa-sack-dollar me-2 text-success"></i><span>Budget Configuration</span>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="/invoices/settings/tolerances/" class="nav-link sa-nav-link rounded-3 py-2 px-3 {% if '/invoices/settings/' in request.path %}active{% endif %}">
-                        <i class="fa-solid fa-sliders me-2 text-info"></i><span>Business Rules</span>
-                    </a>
-                </li>
-                <li class="sa-nav-label">Oversight &amp; Audit</li>
-                <li class="nav-item">
-                    <a href="/notifications/" class="nav-link sa-nav-link rounded-3 py-2 px-3 {% if '/notifications/' in request.path %}active{% endif %}">
-                        <i class="fa-solid fa-bell me-2 text-warning"></i><span>Notifications &amp; Alerts</span>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="/reports/hub/" class="nav-link sa-nav-link rounded-3 py-2 px-3 {% if '/reports/' in request.path %}active{% endif %}">
-                        <i class="fa-solid fa-chart-line me-2 text-success"></i><span>Reports &amp; Analytics</span>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="/superadmin/audit/" class="nav-link sa-nav-link rounded-3 py-2 px-3 {% if '/superadmin/audit/' in request.path or '/audit/' in request.path %}active{% endif %}">
-                        <i class="fa-solid fa-clock-rotate-left me-2 text-secondary"></i><span>Audit Logs</span>
-                    </a>
-                </li>
-                {% endif %}
-            </ul>
-        </div>
-    </aside>
-
-    <div class="sa-main flex-grow-1 d-flex flex-column" style="min-width: 0; min-height: calc(100vh - 58px);">
-        <main class="sa-page flex-grow-1 p-3 p-md-4">
-            {% block content %}{% endblock %}
-        </main>
-    </div>
-</div>
-
-<!-- Modal Container for HTMX popups -->
-<div class="modal fade" id="modal-container" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden" id="modal-content-body">
-            <!-- Dynamically populated via HTMX -->
-        </div>
-    </div>
-</div>
-
 <style>
-    /* ========================================================================= */
-    /* Vendor Navbar Profile Avatar & Dropdown (Matching Reference UI)           */
-    /* ========================================================================= */
-    .vendor-profile-avatar-btn {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        padding: 0;
-        border: none;
-        background: transparent;
-        cursor: pointer;
-        position: relative;
+    /* Brand Badge width and height exact match to side navbar */
+    @media (min-width: 992px) {
+        .sa-brand-wrapper {
+            width: 244px;
+            max-width: 244px;
+            flex-shrink: 0;
+        }
+        .sa-top-brand {
+            width: 100% !important;
+            max-width: 100% !important;
+            height: 62px !important;
+            max-height: 62px !important;
+            padding: 2px 6px !important;
+            border-radius: 10px !important;
+            margin: 0 !important;
+        }
+        .sa-top-brand .dashboard-brand-logo {
+            width: 100% !important;
+            height: 100% !important;
+            max-height: 56px !important;
+            object-fit: contain !important;
+        }
     }
-    .vendor-profile-avatar-btn::after {
-        display: none !important;
-    }
-    .vendor-profile-avatar-btn:focus,
-    .vendor-profile-avatar-btn:active {
-        outline: none !important;
-        box-shadow: none !important;
-    }
-    .vendor-avatar-ring {
-        width: 38px;
-        height: 38px;
-        border-radius: 50%;
-        background-color: #1e2634;
-        border: 2px solid #2563eb;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
-    }
-    .vendor-profile-avatar-btn:hover .vendor-avatar-ring,
-    .vendor-profile-avatar-btn[aria-expanded="true"] .vendor-avatar-ring {
-        border-color: #3b82f6;
-        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.35);
-    }
-    .vendor-avatar-ring i {
-        font-size: 1.6rem;
-        color: #06b6d4 !important;
-        line-height: 1;
+    @media (max-width: 991.98px) {
+        .sa-brand-wrapper {
+            width: auto;
+            max-width: none;
+        }
+        .sa-top-brand {
+            width: 190px !important;
+            max-width: 190px !important;
+            height: 48px !important;
+            max-height: 48px !important;
+            padding: 4px 8px !important;
+            border-radius: 8px !important;
+            margin: 0 !important;
+        }
     }
 
-    /* Dark navy profile dropdown menu */
-    .vendor-profile-dropdown {
-        background-color: #1b2332 !important;
-        border: 1px solid rgba(255, 255, 255, 0.08) !important;
-        border-radius: 12px !important;
-        box-shadow: 0 12px 28px rgba(0, 0, 0, 0.55), 0 4px 10px rgba(0, 0, 0, 0.35) !important;
-        min-width: 240px !important;
-        max-width: 320px !important;
-        padding: 14px 18px 12px 18px !important;
-        margin-top: 8px !important;
+    body.modal-open {
+        overflow: visible !important;
     }
-    .vendor-dropdown-header {
-        padding: 0 !important;
-        margin-bottom: 6px !important;
-        list-style: none;
+
+    @media (min-width: 992px) {
+        aside.sa-sidebar-desktop,
+        .sa-sidebar-desktop,
+        aside#saSidebar {
+            width: 260px !important;
+            min-width: 260px !important;
+            flex-shrink: 0 !important;
+            position: sticky !important;
+            top: 79px !important;
+            height: calc(100vh - 79px) !important;
+            max-height: calc(100vh - 79px) !important;
+            overflow: hidden !important;
+            overflow-y: hidden !important;
+            display: flex !important;
+            flex-direction: column !important;
+            z-index: 1000;
+            align-self: flex-start;
+        }
+        .sa-sidebar-desktop nav,
+        .sa-sidebar-desktop .sa-nav-scroll {
+            overflow-y: auto !important;
+            flex: 1 1 auto !important;
+            min-height: 0 !important;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255,255,255,0.15) transparent;
+        }
+        .sa-sidebar-desktop .sa-nav-scroll::-webkit-scrollbar {
+            width: 4px;
+        }
+        .sa-sidebar-desktop .sa-nav-scroll::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.15);
+            border-radius: 4px;
+        }
     }
-    .vendor-email-text {
-        font-size: 0.95rem;
+
+    /* Section label style matching vendor */
+    .sa-nav-label {
+        font-size: 0.63rem;
+        letter-spacing: 0.08em;
         font-weight: 700;
-        color: #ffffff !important;
-        word-break: break-all;
-        line-height: 1.35;
-        letter-spacing: -0.01em;
-    }
-    .vendor-dropdown-divider {
-        border: 0 !important;
-        border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
-        margin: 8px 0 10px 0 !important;
-        opacity: 1 !important;
-    }
-    .vendor-dropdown-signout {
-        display: inline-flex;
-        align-items: center;
-        color: #ef4444 !important;
-        font-size: 0.92rem;
-        font-weight: 500;
-        text-decoration: none;
-        padding: 4px 0 !important;
-        background: transparent !important;
-        transition: color 0.15s ease, opacity 0.15s ease;
-    }
-    .vendor-dropdown-signout i {
-        color: #ef4444 !important;
-        font-size: 0.95rem;
-    }
-    .vendor-dropdown-signout:hover,
-    .vendor-dropdown-signout:focus {
-        color: #f87171 !important;
+        text-transform: uppercase;
+        color: rgba(255,255,255,0.4);
+        padding: 0.6rem 0.75rem 0.2rem;
+        margin-top: 0.25rem;
     }
 
-    :root {
-        --body-bg: #f8fafc !important;
-        --body-fg: #1e293b !important;
-        color-scheme: light !important;
+    /* Top-level nav link matching vendor */
+    .sa-nav-link {
+        display: flex;
+        align-items: center;
+        padding: 0.45rem 0.75rem;
+        border-radius: 8px;
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: rgba(255,255,255,0.75) !important;
+        text-decoration: none;
+        transition: background 0.15s, color 0.15s;
+    }
+    .sa-nav-link:hover,
+    .sa-nav-link:focus {
+        background: rgba(255,255,255,0.08);
+        color: #fff !important;
+    }
+    .sa-nav-link.active,
+    #saSidebar .sa-nav-link.active,
+    #saSidebar a.nav-link.active,
+    #saSidebar a.active {
+        background: #0d6efd !important;
+        color: #fff !important;
+        font-weight: 700 !important;
+        box-shadow: 0 2px 8px rgba(13,110,253,0.35) !important;
+        text-decoration: none !important;
+    }
+    .sa-nav-link.active i,
+    .sa-nav-link.active span {
+        color: #fff !important;
+    }
+    .sa-nav-link i {
+        width: 20px;
+        text-align: center;
+        margin-right: 0.65rem;
+        flex-shrink: 0;
+    }
+
+    .sa-status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #10B981;
+        display: inline-block;
     }
 
     /* Force pristine white inputs in Admin & Modals regardless of dark mode */
@@ -312,483 +230,130 @@
         box-shadow: 0 0 0 0.2rem rgba(59, 130, 246, 0.15) !important;
     }
 
-    input::placeholder, textarea::placeholder, .form-control::placeholder {
-        color: #94a3b8 !important;
-        opacity: 1 !important;
-        -webkit-text-fill-color: #94a3b8 !important;
-    }
-
-    .min-width-0 {
-        min-width: 0 !important;
-    }
-
-    .sa-main {
-        min-width: 0;
-        overflow-x: clip;
-    }
-
-    .sa-topbar {
-        z-index: 1030;
-        background: rgba(255, 255, 255, 0.98);
-    }
-
-    .sa-avatar {
-        width: 32px;
-        height: 32px;
-        border-radius: 50%;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 0.85rem;
-        font-weight: 700;
-        flex-shrink: 0;
-    }
-
     .sa-kpi {
         border-width: 2px !important;
         border-style: solid !important;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
     }
-
-    .sa-kpi-sky {
-        border-color: #00B0B9 !important;
+    .sa-kpi:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 16px -2px rgba(15, 23, 42, 0.08) !important;
     }
-
-    .sa-kpi-green {
-        border-color: #10B981 !important;
-    }
-
-    .sa-kpi-red {
-        border-color: #F43F5E !important;
-    }
-
-    .sa-kpi-royal {
-        border-color: #2563EB !important;
-    }
-
-    .sa-sidebar .overflow-y-auto {
-        scrollbar-width: thin;
-        scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
-    }
-
-    .sa-sidebar .overflow-y-auto::-webkit-scrollbar {
-        width: 4px;
-    }
-
-    .sa-sidebar .overflow-y-auto::-webkit-scrollbar-track {
-        background: transparent;
-    }
-
-    .sa-sidebar .overflow-y-auto::-webkit-scrollbar-thumb {
-        background: rgba(255, 255, 255, 0.2);
-        border-radius: 4px;
-    }
-
-    .sa-sidebar .overflow-y-auto::-webkit-scrollbar-button,
-    #saSidebar .overflow-y-auto::-webkit-scrollbar-button {
-        display: none !important;
-        width: 0 !important;
-        height: 0 !important;
-    }
-
-    .sa-nav-label {
-        font-size: 0.68rem;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-        color: rgba(255, 255, 255, 0.45);
-        font-weight: 700;
-        padding: 0.85rem 0.75rem 0.25rem;
-    }
-
-    .sa-nav-link {
-        font-size: 0.875rem;
-        color: rgba(255, 255, 255, 0.78) !important;
-        display: flex;
-        align-items: center;
-    }
-
-    .sa-nav-link i {
-        width: 20px;
-        text-align: center;
-        flex-shrink: 0;
-    }
-
-    .sa-nav-link span {
-        min-width: 0;
-    }
-
-    .sa-nav-link:hover {
-        background: rgba(255, 255, 255, 0.08);
-        color: #fff !important;
-    }
-
-    .sa-nav-link.active,
-    #saSidebar .sa-nav-link.active,
-    #saSidebar a.nav-link.active,
-    #saSidebar a.active,
-    aside#saSidebar.bg-dark a.nav-link.active,
-    aside#saSidebar.bg-dark a.nav-link.active-nav-item,
-    aside.bg-dark #menu a.nav-link.active,
-    .sa-sidebar .sa-nav-link.active,
-    .sa-sidebar a.nav-link.active {
-        background: #0d6efd !important;
-        color: #ffffff !important;
-        font-weight: 700 !important;
-        box-shadow: 0 2px 8px rgba(13, 110, 253, 0.35) !important;
-        text-decoration: none !important;
-    }
-
-    .sa-nav-link.active i,
-    .sa-nav-link.active span,
-    #saSidebar .sa-nav-link.active i,
-    #saSidebar a.nav-link.active i,
-    #saSidebar .sa-nav-link.active span,
-    #saSidebar a.nav-link.active span,
-    aside#saSidebar.bg-dark a.nav-link.active i,
-    aside#saSidebar.bg-dark a.nav-link.active span,
-    aside.bg-dark #menu a.nav-link.active i,
-    aside.bg-dark #menu a.nav-link.active span,
-    .sa-sidebar .sa-nav-link.active i,
-    .sa-sidebar a.nav-link.active i,
-    .sa-sidebar .sa-nav-link.active span,
-    .sa-sidebar a.nav-link.active span {
-        color: #ffffff !important;
-    }
-
-    .sa-status-dot {
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        background: #10B981;
-        display: inline-block;
-    }
-
-    .sa-page .metric-value {
-        font-size: clamp(1.15rem, 1.7vw, 1.75rem);
-        overflow-wrap: anywhere;
-        line-height: 1.15;
-    }
-
-    .sa-page h2 {
-        font-size: clamp(1.35rem, 2vw, 1.75rem);
-    }
-
-    .sa-page h3 {
-        font-size: clamp(1.15rem, 1.6vw, 1.45rem);
-    }
-
-    .sa-page .table {
-        font-size: 0.9rem;
-    }
-
-    .sa-page .table th {
-        font-size: 0.75rem;
-        letter-spacing: 0.03em;
-        text-transform: uppercase;
-        white-space: nowrap;
-        color: #64748b;
-    }
-
-    .sa-page .row.mb-4>.col-12.d-flex,
-    .sa-page .card-header.d-flex {
-        flex-wrap: wrap;
-        gap: 0.75rem;
-    }
-
-    @media (min-width: 992px) {
-        #saSidebar,
-        .sa-sidebar,
-        aside#saSidebar.bg-dark,
-        .sa-sidebar-desktop {
-            position: sticky !important;
-            top: 58px !important;
-            width: 260px !important;
-            min-width: 260px !important;
-            height: calc(100vh - 58px) !important;
-            max-height: calc(100vh - 58px) !important;
-            z-index: 1000 !important;
-            overflow-y: hidden !important;
-            display: flex !important;
-            flex-direction: column !important;
-            flex-shrink: 0 !important;
-            align-self: flex-start !important;
-            background-color: #121824 !important;
-        }
-
-        .sa-sidebar .overflow-y-auto,
-        .sa-sidebar-desktop .overflow-y-auto {
-            overflow-y: auto !important;
-            flex: 1 1 auto !important;
-            min-height: 0 !important;
-            scrollbar-width: thin;
-            scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
-        }
-
-        .sa-main {
-            margin-left: 0 !important;
-            width: calc(100% - 260px) !important;
-            min-width: 0 !important;
-            flex: 1 1 auto !important;
-        }
-
-        .sa-backdrop {
-            display: none !important;
-        }
-    }
-
-    @media (max-width: 991.98px) {
-        .sa-sidebar {
-            position: fixed;
-            top: 0;
-            left: 0;
-            bottom: 0;
-            width: 280px;
-            max-width: 85vw;
-            height: 100vh;
-            z-index: 1050;
-            transform: translateX(-105%);
-            transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
-            -webkit-overflow-scrolling: touch;
-        }
-
-        .sa-sidebar.show {
-            transform: translateX(0);
-            box-shadow: 0 0 30px rgba(0, 0, 0, 0.45);
-        }
-
-        .sa-main {
-            margin-left: 0 !important;
-            width: 100% !important;
-        }
-
-        .sa-backdrop {
-            position: fixed;
-            inset: 0;
-            background: rgba(15, 23, 42, 0.55);
-            z-index: 1040;
-            opacity: 0;
-            visibility: hidden;
-            transition: opacity 0.25s ease, visibility 0.25s ease;
-        }
-
-        .sa-backdrop.show {
-            opacity: 1;
-            visibility: visible;
-        }
-    }
-
-    .table-responsive {
-        -webkit-overflow-scrolling: touch;
-    }
-
-    .table-responsive::-webkit-scrollbar {
-        height: 6px;
-    }
-
-    .table-responsive::-webkit-scrollbar-thumb {
-        background: #cbd5e1;
-        border-radius: 4px;
-    }
-
-    /* Neat horizontal scrollable tabs across all screens */
-    .sa-tabs-scroll {
-        display: flex !important;
-        flex-wrap: nowrap !important;
-        overflow-x: auto !important;
-        -webkit-overflow-scrolling: touch;
-        scrollbar-width: none !important; /* Firefox */
-        -ms-overflow-style: none !important; /* IE 10+ */
-        gap: 0.35rem !important;
-        padding: 0.25rem 0.25rem 0 0.25rem !important;
-        border-bottom: 2px solid #e2e8f0 !important;
-    }
-
-    .sa-tabs-scroll::-webkit-scrollbar,
-    .nav-tabs-scroll::-webkit-scrollbar,
-    ul[role="tablist"]::-webkit-scrollbar {
-        display: none !important;
-        width: 0 !important;
-        height: 0 !important;
-        background: transparent !important;
-    }
-    .sa-tabs-scroll::-webkit-scrollbar-thumb,
-    .nav-tabs-scroll::-webkit-scrollbar-thumb,
-    ul[role="tablist"]::-webkit-scrollbar-thumb {
-        display: none !important;
-        background: transparent !important;
-    }
-    .sa-tabs-scroll::-webkit-scrollbar-track,
-    .nav-tabs-scroll::-webkit-scrollbar-track,
-    ul[role="tablist"]::-webkit-scrollbar-track {
-        display: none !important;
-        background: transparent !important;
-    }
-    .sa-tabs-scroll::-webkit-scrollbar-button,
-    .nav-tabs-scroll::-webkit-scrollbar-button,
-    ul[role="tablist"]::-webkit-scrollbar-button {
-        display: none !important;
-        width: 0 !important;
-        height: 0 !important;
-    }
-
-    .sa-tabs-scroll .nav-item {
-        flex-shrink: 0 !important;
-    }
-
-    .sa-tabs-scroll .nav-link {
-        white-space: nowrap !important;
-        flex-shrink: 0 !important;
-        border: none !important;
-        border-bottom: 2px solid transparent !important;
-        border-radius: 0 !important;
-        padding: 0.65rem 0.95rem !important;
-        font-size: 0.88rem !important;
-        font-weight: 500 !important;
-        color: #64748b !important;
-        background: transparent !important;
-        transition: all 0.2s ease-in-out !important;
-        margin-bottom: -2px !important;
-    }
-
-    .sa-tabs-scroll .nav-link:hover {
-        color: #0f172a !important;
-        border-bottom-color: #cbd5e1 !important;
-        background: rgba(241, 245, 249, 0.6) !important;
-        border-top-left-radius: 6px !important;
-        border-top-right-radius: 6px !important;
-    }
-
-    .sa-tabs-scroll .nav-link.active {
-        color: #2563eb !important;
-        font-weight: 700 !important;
-        border-bottom: 2px solid #2563eb !important;
-        background: transparent !important;
-    }
-
-    .sa-tabs-scroll .nav-link .badge {
-        font-size: 0.72rem !important;
-        padding: 0.25em 0.55em !important;
-        border-radius: 999px !important;
-        vertical-align: middle;
-        transition: all 0.2s ease;
-    }
-
-    .sa-tabs-scroll .nav-link.active .badge {
-        background-color: rgba(37, 99, 235, 0.12) !important;
-        color: #2563eb !important;
-    }
-
-    @media (max-width: 767.98px) {
-        .sa-page {
-            padding: 0.85rem !important;
-        }
-
-        .sa-topbar {
-            padding: 0.5rem 0.75rem !important;
-        }
-
-        .sa-topbar h1,
-        .sa-topbar h2,
-        .sa-topbar h3 {
-            font-size: 1.05rem !important;
-        }
-
-        .sa-page .metric-value {
-            font-size: 1.25rem !important;
-        }
-
-        .sa-page .card {
-            border-radius: 12px !important;
-        }
-
-        .sa-page .card-body {
-            padding: 0.85rem !important;
-        }
-
-        .sa-page .card-header {
-            padding: 0.75rem 0.85rem !important;
-        }
-
-        .sa-page .table td,
-        .sa-page .table th {
-            padding: 0.55rem 0.5rem !important;
-        }
-
-        .sa-page .breadcrumb {
-            font-size: 0.78rem;
-            flex-wrap: nowrap;
-            overflow-x: auto;
-            white-space: nowrap;
-            padding-bottom: 2px;
-            scrollbar-width: none;
-        }
-
-        .sa-page .breadcrumb::-webkit-scrollbar {
-            display: none;
-        }
-
-        .sa-tabs-scroll .nav-link {
-            padding: 0.55rem 0.7rem !important;
-            font-size: 0.82rem !important;
-        }
-    }
-
-    @media (max-width: 480px) {
-        .sa-page {
-            padding: 0.65rem !important;
-        }
-
-        .sa-page .metric-value {
-            font-size: 1.15rem !important;
-        }
-
-        .sa-page .badge {
-            font-size: 0.7rem !important;
-        }
-    }
+    .sa-kpi-sky { border-color: #00B0B9 !important; }
+    .sa-kpi-green { border-color: #10B981 !important; }
+    .sa-kpi-red { border-color: #F43F5E !important; }
+    .sa-kpi-royal { border-color: #2563EB !important; }
 </style>
 
+<div class="d-flex align-items-start w-100" style="min-height: calc(100vh - 79px); max-width: 100vw;">
+    <!-- Sidebar Navigation -->
+    <aside class="offcanvas-lg offcanvas-start bg-dark border-end border-secondary border-opacity-25 shadow-sm text-white sa-sidebar-desktop" tabindex="-1" id="saSidebar" aria-labelledby="saSidebarLabel">
+        <!-- 1. Mobile Drawer Header (Hidden on Desktop) -->
+        <div class="sidebar-brand-box px-3 py-3 border-bottom border-secondary border-opacity-25 flex-shrink-0 d-flex d-lg-none align-items-center justify-content-between">
+            <a href="/superadmin/" class="d-flex align-items-center text-white text-decoration-none" id="saSidebarLabel">
+                <div class="brand-icon-box me-2 flex-shrink-0" style="width: 32px; height: 32px; background: rgba(0, 176, 185, 0.2); border-radius: 6px; display: flex; align-items: center; justify-content: center;">
+                    <i class="fa-solid fa-shield-halved text-cyan"></i>
+                </div>
+                <div class="overflow-hidden">
+                    <div class="fs-6 fw-bold tracking-tight text-white d-block text-truncate">ProcureSphere <span class="text-cyan">360</span></div>
+                    <span class="badge bg-secondary bg-opacity-50 text-light px-2 py-0.5 rounded-pill" style="font-size: 0.62rem; letter-spacing: 0.04em;">ADMIN CONTROL</span>
+                </div>
+            </a>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" data-bs-target="#saSidebar" aria-label="Close menu"></button>
+        </div>
+
+        <!-- 2. Scrollable Navigation -->
+        <nav class="flex-grow-1 overflow-y-auto px-2 py-3 d-flex flex-column gap-1 sa-nav-scroll" id="menu" style="flex: 1 1 0%; min-height: 0;" aria-label="Admin Navigation">
+            <div class="d-flex align-items-center justify-content-between px-2 mb-2 text-secondary text-uppercase fw-bold" style="font-size: 0.68rem; letter-spacing: 0.06em;">
+                <span>Admin Workspace</span>
+                <i class="fa-solid fa-shield-check text-cyan" style="font-size:0.75rem;"></i>
+            </div>
+
+            <a href="/admin/dashboard/" class="sa-nav-link {% if request.path == '/admin/dashboard/' or request.path == '/superadmin/' or request.path == '/' %}active{% endif %}">
+                <i class="fa-solid fa-gauge-high text-cyan"></i><span>Dashboard</span>
+            </a>
+
+            {% if request.user.is_superuser and not request.user.effective_organization %}
+            <div class="sa-nav-label">Organization Management</div>
+            <a href="/superadmin/organizations/" class="sa-nav-link {% if '/superadmin/organizations/' in request.path %}active{% endif %}">
+                <i class="fa-solid fa-sitemap text-info"></i><span>Organizations</span>
+            </a>
+            {% else %}
+            <div class="sa-nav-label">Organization &amp; Masters</div>
+            <a href="/superadmin/organizations/" class="sa-nav-link {% if '/superadmin/organizations/' in request.path or '/superadmin/departments/' in request.path or '/superadmin/cost-centers/' in request.path %}active{% endif %}">
+                <i class="fa-solid fa-sitemap text-info"></i><span>Departments &amp; Cost Centers</span>
+            </a>
+            <a href="/superadmin/locations/" class="sa-nav-link {% if '/superadmin/locations/' in request.path %}active{% endif %}">
+                <i class="fa-solid fa-location-dot text-warning"></i><span>Locations</span>
+            </a>
+            <a href="/superadmin/users/" class="sa-nav-link {% if '/superadmin/users/' in request.path %}active{% endif %}">
+                <i class="fa-solid fa-users-gear text-cyan"></i><span>Manage Users &amp; Roles</span>
+            </a>
+            <a href="/vendors/" class="sa-nav-link {% if '/vendors/' in request.path %}active{% endif %}">
+                <i class="fa-solid fa-building-user text-success"></i><span>Vendor Management</span>
+            </a>
+
+            <div class="sa-nav-label">Policies &amp; Rules</div>
+            <a href="/superadmin/policies/" class="sa-nav-link {% if '/superadmin/policies/' in request.path %}active{% endif %}">
+                <i class="fa-solid fa-code-branch text-warning"></i><span>Approval Policies</span>
+            </a>
+            <a href="/superadmin/budgets/" class="sa-nav-link {% if '/superadmin/budgets/' in request.path or '/budgets/' in request.path %}active{% endif %}">
+                <i class="fa-solid fa-sack-dollar text-success"></i><span>Budget Configuration</span>
+            </a>
+            <a href="/invoices/settings/tolerances/" class="sa-nav-link {% if '/invoices/settings/' in request.path %}active{% endif %}">
+                <i class="fa-solid fa-sliders text-secondary"></i><span>Business Rules</span>
+            </a>
+
+            <div class="sa-nav-label">Oversight &amp; Audit</div>
+            <a href="/notifications/" class="sa-nav-link {% if '/notifications/' in request.path %}active{% endif %}">
+                <i class="fa-solid fa-bell text-warning"></i><span>Notifications &amp; Alerts</span>
+            </a>
+            <a href="/reports/hub/" class="sa-nav-link {% if '/reports/' in request.path %}active{% endif %}">
+                <i class="fa-solid fa-chart-line text-success"></i><span>Reports &amp; Analytics</span>
+            </a>
+            <a href="/superadmin/audit/" class="sa-nav-link {% if '/superadmin/audit/' in request.path or '/audit/' in request.path %}active{% endif %}">
+                <i class="fa-solid fa-clock-rotate-left text-danger"></i><span>Audit Logs</span>
+            </a>
+            {% endif %}
+        </nav>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="flex-grow-1 p-2 p-sm-3 p-md-4 bg-light w-100" style="min-width: 0; max-width: 100vw; overflow-x: hidden;">
+        <!-- Alert Messages -->
+        {% if messages %}
+        <div class="mb-4">
+            {% for message in messages %}
+            <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show shadow-sm border-0 d-flex align-items-center py-2 px-3" role="alert">
+                <i class="fa-solid {% if message.tags == 'success' %}fa-circle-check text-success{% elif message.tags == 'error' or message.tags == 'danger' %}fa-circle-exclamation text-danger{% else %}fa-circle-info text-primary{% endif %} me-2 fs-5"></i>
+                <div class="flex-grow-1">{{ message }}</div>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        {% block content %}{% endblock %}
+    </main>
+</div>
+
+<!-- Modal Container for HTMX popups -->
+<div class="modal fade" id="modal-container" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden" id="modal-content-body">
+            <!-- Dynamically populated via HTMX -->
+        </div>
+    </div>
+</div>
+
 <script>
-    function toggleSaSidebar() {
-        var sidebar = document.getElementById("saSidebar");
-        var backdrop = document.getElementById("saSidebarBackdrop");
-        if (!sidebar) return;
-        var isOpen = sidebar.classList.contains("show");
-        if (isOpen) {
-            sidebar.classList.remove("show");
-            if (backdrop) backdrop.classList.remove("show");
-            document.body.style.overflow = "";
-        } else {
-            sidebar.classList.add("show");
-            if (backdrop) backdrop.classList.add("show");
-            document.body.style.overflow = "hidden";
-        }
-    }
-
-    document.addEventListener("DOMContentLoaded", function () {
-        var sidebar = document.getElementById("saSidebar");
-        if (!sidebar) return;
-
-        sidebar.querySelectorAll(".sa-nav-link").forEach(function (link) {
-            link.addEventListener("click", function () {
-                if (window.innerWidth < 992) {
-                    toggleSaSidebar();
-                }
-            });
-        });
-
-        document.addEventListener("keydown", function (e) {
-            if (e.key === "Escape" && sidebar && sidebar.classList.contains("show")) {
-                toggleSaSidebar();
+    document.querySelectorAll('#saSidebar a.sa-nav-link').forEach(function(link) {
+        link.addEventListener('click', function() {
+            var sidebarEl = document.getElementById('saSidebar');
+            if (window.innerWidth < 992 && sidebarEl && typeof bootstrap !== 'undefined') {
+                var offcanvasInstance = bootstrap.Offcanvas.getInstance(sidebarEl);
+                if (offcanvasInstance) { offcanvasInstance.hide(); }
             }
-        });
-
-        document.querySelectorAll('.sa-tabs-scroll').forEach(function (el) {
-            el.addEventListener('wheel', function (e) {
-                if (e.deltaY !== 0) {
-                    e.preventDefault();
-                    el.scrollLeft += e.deltaY;
-                }
-            }, { passive: false });
         });
     });
 </script>
